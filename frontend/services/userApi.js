@@ -85,5 +85,41 @@ export const userApi = {
         }
     },
 
+    verifyEmail: async (verificationData) => {
+        try {
+            const response = await api.post('/users/verify-email', verificationData);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'verifyEmail');
+        }
+    },
+
+    resendVerificationCode: async (emailData) => {
+        try {
+            const response = await api.post('/users/resend-verification', emailData);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'resendVerificationCode');
+        }
+    },
+
+    forgotPassword: async (emailData) => {
+        try {
+            const response = await api.post('/users/forgot-password', emailData);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'forgotPassword');
+        }
+    },
+
+    resetPassword: async (resetData) => {
+        try {
+            const response = await api.post('/users/reset-password', resetData);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'resetPassword');
+        }
+    },
+
     clearAuthData,
 };

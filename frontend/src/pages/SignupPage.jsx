@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 
@@ -10,10 +10,23 @@ const SignupPage = () => {
     password: '',
     confirmPassword: '',
     fullName: '',
+    agreedToTerms: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const isFormValid = () => {
+    return (
+      formData.email &&
+      formData.password &&
+      formData.confirmPassword &&
+      formData.fullName &&
+      formData.agreedToTerms &&
+      formData.password.length >= 6 &&
+      formData.password === formData.confirmPassword
+    );
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,23 +63,57 @@ const SignupPage = () => {
 
     setLoading(true);
     try {
+      console.log('Starting Firebase signup for:', formData.email);
+      
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      const user = userCredential.user;
+      
+      console.log('User created successfully:', user.uid);
+      
       const signupData = {
+        uid: user.uid,
         email: formData.email,
-        password: formData.password,
         fullName: formData.fullName,
         username: formData.email.split('@')[0],
       };
 
-      const response = await userApi.register(signupData);
-
-      if (response.success) {
-        alert('Sign up successful! Please verify your email.');
-        navigate('/login');
-      } else {
-        setError(response.message || 'Sign up failed');
+      try {
+        const response = await userApi.register(signupData);
+        
+        if (response.success || user) {
+          // Navigate to verification page with email
+          navigate('/verify-email', { state: { email: formData.email } });
+        } else {
+          setError(response.message || 'Sign up failed');
+        }
+      } catch (backendErr) {
+        console.warn('Backend registration warning:', backendErr);
+        // Still navigate to verification even if backend has issues
+        navigate('/verify-email', { state: { email: formData.email } });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Sign up failed. Please try again.');
+      console.error('Signup error details:', {
+        code: err.code,
+        message: err.message,
+        email: formData.email,
+        fullError: err,
+      });
+
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email is already in use. Please try another email.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Please use a stronger password.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/Password authentication is not enabled. Please contact support.');
+      } else {
+        setError(err.message || 'Sign up failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,8 +124,6 @@ const SignupPage = () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      // Send user data to backend
       const response = await userApi.googleAuth({
         uid: user.uid,
         email: user.email,
@@ -101,6 +146,23 @@ const SignupPage = () => {
 
   return (
     <div className="flex min-h-screen">
+      <style>{`
+        @keyframes slideInFromRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slideInFromRight 0.4s ease-out;
+        }
+      `}</style>
+
       {/* Left Panel */}
       <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('/src/assets/shop.png')` }} />
@@ -118,7 +180,7 @@ const SignupPage = () => {
           <img src="/src/assets/jjs logo.png" alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
-          <p className="text-sm font-thin opacity-70 tracking-wide">Where every stitch tells a story.</p>
+          <p className="text-sm font-thin opacity-70 tracking-wide">Where Every Stitch Reflects Quality and Craftsmanship.</p>
         </div>
 
         <span className="absolute bottom-6 z-10 text-xs opacity-40">© 2026 • DevMinds</span>
@@ -126,14 +188,14 @@ const SignupPage = () => {
 
       {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[420px] animate-slide-in">
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8 relative">
-            <Link to="/login" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">login</Link>
-            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">register</button>
+            <Link to="/login" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Login</Link>
+            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Register</button>
           </div>
 
           <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Create account</h2>
-          <p className="text-md xl:text-sm text-slate-400 mb-7">Fill in your details to get started.</p>
+          <p className="text-md xl:text-sm text-slate-400 mb-7">Join JJS Track — create your account today.</p>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
@@ -197,8 +259,8 @@ const SignupPage = () => {
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  name="remember"
-                  checked={formData.remember}
+                  name="agreedToTerms"
+                  checked={formData.agreedToTerms}
                   onChange={handleChange}
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
@@ -207,7 +269,7 @@ const SignupPage = () => {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isFormValid()}
               className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-slate-800/25 hover:from-blue-500 hover:to-blue-400 hover:shadow-xl hover:shadow-slate-800/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
               {loading ? 'Creating Account...' : 'Sign Up'} →

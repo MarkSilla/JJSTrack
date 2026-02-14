@@ -75,6 +75,23 @@ const LoginPage = () => {
 
   return (
     <div className="flex min-h-screen">
+      <style>{`
+        @keyframes slideInFromLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slideInFromLeft 0.4s ease-out;
+        }
+      `}</style>
+
       {/* Left Panel */}
       <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('/src/assets/shop.png')` }} />
@@ -90,8 +107,8 @@ const LoginPage = () => {
         <div className="relative z-10 flex flex-col items-center text-center px-8">
           <img src="/src/assets/jjs logo.png" alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
-          <div class="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
-          <p className="text-sm text-thin font-thin opacity-70 tracking-wide ">Where every stitch tells a story.</p>
+          <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
+          <p className="text-sm text-thin font-thin opacity-70 tracking-wide ">Where Every Stitch Reflects Quality and Craftsmanship.</p>
         </div>
 
         <span className="absolute bottom-6 z-10 text-xs opacity-40">© 2026 • DevMinds</span>
@@ -100,14 +117,14 @@ const LoginPage = () => {
 
       {/* Right Panel */}
       <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[420px] animate-slide-in">
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8 relative">
-            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">login</button>
-            <Link to="/signup" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors">register</Link>
+            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Login</button>
+            <Link to="/signup" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Register</Link>
           </div>
 
           <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Welcome back</h2>
-          <p className="text-md xl:text-sm text-slate-400 mb-7">Enter your details to access your workspace.</p>
+          <p className="text-md xl:text-sm text-slate-400 mb-7">Access your account to manage your appointment schedule.</p>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
@@ -152,7 +169,7 @@ const LoginPage = () => {
                 />
                 <span className="text-sm text-gray-600">Remember me</span>
               </label>
-              <Link to=" #" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 hover:underline no-underline">
                 Forgot password?
               </Link>
             </div>
