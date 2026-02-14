@@ -1,8 +1,14 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import logo from '../assets/jjs logo.png'
 
 const LandingNavbar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate()
+
+  const handleSignIn = () => {
+    navigate('/login')
+  }
 
   return (
     <nav className="bg-white shadow-md">
@@ -18,8 +24,8 @@ const LandingNavbar = () => {
             <li><a href="#features" className="text-blue-500 hover:text-blue-600">Features</a></li>
             <li><a href="#about" className="text-blue-500 hover:text-blue-600">About</a></li>
           </ul>
-          <button className="hidden md:block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-            Login
+          <button onClick={handleSignIn} className="hidden md:block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+            Sign In
           </button>
           {/* Mobile hamburger */}
           <div
@@ -39,7 +45,7 @@ const LandingNavbar = () => {
             <li><a href="#features" onClick={() => setIsOpen(false)} className="text-blue-500 hover:text-blue-600 block">Features</a></li>
             <li><a href="#about" onClick={() => setIsOpen(false)} className="text-blue-500 hover:text-blue-600 block">About</a></li>
           </ul>
-          <button className="mt-4 w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+          <button onClick={handleSignIn} className="mt-4 w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
             Login
           </button>
         </div>
