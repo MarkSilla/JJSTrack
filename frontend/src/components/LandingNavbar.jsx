@@ -1,7 +1,14 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import logo from '../assets/jjs logo.png'
 
 const LandingNavbar = () => {
+  const navigate = useNavigate()
+
+  const handleSignIn = () => {
+    navigate('/login')
+  }
+
   return (
     <nav className="bg-white shadow-md">
       <div className="container mx-auto px-4 py-4">
@@ -15,8 +22,11 @@ const LandingNavbar = () => {
             <li><a href="#features" className="text-blue-500 hover:text-blue-600">Features</a></li>
             <li><a href="#about" className="text-blue-500 hover:text-blue-600">About</a></li>
           </ul>
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-            Login
+          <button 
+            onClick={handleSignIn}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+           Sign In 
           </button>
         </div>
       </div>
