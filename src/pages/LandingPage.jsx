@@ -41,7 +41,7 @@ const LandingPage = () => {
             <p className="text-md md:text-lg mb-12 max-w-3xl mx-auto">
               Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
             </p>
-            <div className="grid md:grid-cols-1 lg:grid-cols-4  md: grid-cols-2 gap-6 md:gap-4 lg:gap-6 justify-center">
+            <div className="grid grid-cols-1 lg:grid-cols-4  md:grid-cols-2 gap-6 md:gap-4 lg:gap-6 md:mx-3 justify-center">
               <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
                   <span className="material-symbols-outlined text-blue-600">assignment</span>
