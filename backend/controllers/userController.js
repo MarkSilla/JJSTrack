@@ -86,28 +86,20 @@ export const updateUserProfile = async (req, res) => {
 export const register = async (req, res) => {
   try {
     const { email, password, fullName, username } = req.body;
-
-    // Validate inputs
     if (!email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
-
-    // Check if user already exists
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ success: false, message: 'Email already registered' });
     }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
     const newUser = new userModel({
       email,
       fullName,
       username: username || email.split('@')[0],
       password: hashedPassword,
-      isVerified: false, // Email verification required
+      isVerified: false, 
     });
 
     await newUser.save();
@@ -134,8 +126,6 @@ export const register = async (req, res) => {
     res.status(500).json({ success: false, message: 'Registration failed' });
   }
 };
-
-// Login with Email & Password
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
