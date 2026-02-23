@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import logo from '../assets/jjs logo.png'
+import logo from '../assets/jjslogo1.png'
 
 const LandingNavbar = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -69,13 +69,10 @@ const LandingNavbar = () => {
 
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
-          {/* Logo */}
           <div className="flex items-center px-6 gap-3">
             <img src={logo} alt="jjs logo" className="h-10 transition-transform duration-300 hover:scale-110" />
             <h1 className="text-xl font-bold text-[#1E293B] font-playfair">JJS Track</h1>
           </div>
-
-          {/* Desktop Navigation */}
           <ul className="hidden md:flex space-x-8 items-center">
             <li>
               <a href="#home" className="nav-link text-blue-600 font-medium">
@@ -93,16 +90,12 @@ const LandingNavbar = () => {
               </a>
             </li>
           </ul>
-
-          {/* Sign In Button */}
-          <button 
-            onClick={handleSignIn} 
+          <button
+            onClick={handleSignIn}
             className="hidden md:block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium transition-opacity duration-200 hover:opacity-90"
           >
             Sign In
           </button>
-
-          {/* Mobile Hamburger */}
           <div
             className="md:hidden flex w-10 h-10 cursor-pointer items-center justify-center hover:bg-blue-50 rounded-lg transition-all duration-200"
             onClick={() => setIsOpen(!isOpen)}
@@ -113,41 +106,39 @@ const LandingNavbar = () => {
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white/90 backdrop-blur-md px-6 pb-6 pt-4 animate-slideDown">
           <ul className="flex flex-col space-y-4">
             <li>
-              <a 
-                href="#home" 
-                onClick={() => setIsOpen(false)} 
+              <a
+                href="#home"
+                onClick={() => setIsOpen(false)}
                 className="mobile-nav-link text-blue-600 font-medium block"
               >
                 Home
               </a>
             </li>
             <li>
-              <a 
-                href="#features" 
-                onClick={() => setIsOpen(false)} 
+              <a
+                href="#features"
+                onClick={() => setIsOpen(false)}
                 className="mobile-nav-link text-blue-600 font-medium block"
               >
                 Features
               </a>
             </li>
             <li>
-              <a 
-                href="#about" 
-                onClick={() => setIsOpen(false)} 
+              <a
+                href="#about"
+                onClick={() => setIsOpen(false)}
                 className="mobile-nav-link text-blue-600 font-medium block"
               >
                 About
               </a>
             </li>
           </ul>
-          <button 
-            onClick={handleSignIn} 
+          <button
+            onClick={handleSignIn}
             className="mt-6 w-full bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium transition-opacity duration-200 hover:opacity-90"
           >
             Sign In

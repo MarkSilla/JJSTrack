@@ -114,8 +114,11 @@ export const googleAuth = async (req, res) => {
         id: user._id,
         email: user.email,
         fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        address: user.address,
         photoURL: user.photoURL,
         role: user.role,
+        isGoogleUser: true,
       },
     });
   } catch (error) {
@@ -513,5 +516,60 @@ export const resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Reset Password Error:', error);
     res.status(500).json({ success: false, message: 'Password reset failed' });
+  }
+};
+
+// Complete Google user profile (add phone number, address, last name)
+export const completeGoogleProfile = async (req, res) => {
+  try {
+    const { lastName, phoneNumber, address } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!phoneNumber || !address) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Phone number and address are required' 
+      });
+    }
+
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update user profile with additional info
+    // Split fullName if lastName is provided
+    if (lastName) {
+      const nameParts = user.fullName ? user.fullName.split(' ') : [''];
+      // Keep first name (already exists from Google) and update with lastName
+      const firstName = nameParts[0] || '';
+      user.fullName = `${firstName} ${lastName}`.trim();
+    }
+
+    user.phoneNumber = phoneNumber;
+    user.address = address;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile completed successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        address: user.address,
+        photoURL: user.photoURL,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Complete Google Profile Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to complete profile' });
   }
 };

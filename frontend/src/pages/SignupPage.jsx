@@ -9,11 +9,16 @@ const SignupPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    fullName: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    address: '',
     agreedToTerms: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmedPassword, setConfirmedPassword] = useState(false)
   const navigate = useNavigate();
 
   const isFormValid = () => {
@@ -21,9 +26,12 @@ const SignupPage = () => {
       formData.email &&
       formData.password &&
       formData.confirmPassword &&
-      formData.fullName &&
+      formData.firstName &&
+      formData.lastName &&
+      formData.phone &&
+      formData.address &&
       formData.agreedToTerms &&
-      formData.password.length >= 6 &&
+      formData.password.length >= 8 &&
       formData.password === formData.confirmPassword
     );
   };
@@ -38,18 +46,23 @@ const SignupPage = () => {
   };
 
   const validateForm = () => {
-    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.fullName) {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.firstName || !formData.lastName || !formData.address || !formData.phone) {
       setError('Please fill in all fields');
       return false;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      return false;
+    }
+
+    if (formData.phone.length < 11) {
+      setError('Phone number must be at least 11 digits');
       return false;
     }
 
@@ -64,26 +77,28 @@ const SignupPage = () => {
     setLoading(true);
     try {
       console.log('Starting Firebase signup for:', formData.email);
-      
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
       const user = userCredential.user;
-      
+
       console.log('User created successfully:', user.uid);
-      
+
       const signupData = {
         uid: user.uid,
         email: formData.email,
-        fullName: formData.fullName,
+        fullName: `${formData.firstName} ${formData.lastName}`,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address,
         username: formData.email.split('@')[0],
       };
 
       try {
         const response = await userApi.register(signupData);
-        
         if (response.success || user) {
           // Navigate to verification page with email
           navigate('/verify-email', { state: { email: formData.email } });
@@ -127,6 +142,7 @@ const SignupPage = () => {
       const response = await userApi.googleAuth({
         uid: user.uid,
         email: user.email,
+        //leave ko muna to diko alam cchange HAHAHAH
         fullName: user.displayName || user.email.split('@')[0],
         photoURL: user.photoURL || '',
       });
@@ -177,7 +193,7 @@ const SignupPage = () => {
         </Link>
 
         <div className="relative z-10 flex flex-col items-center text-center px-8">
-          <img src="/src/assets/jjs logo.png" alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
+          <img src="/src/assets/jjslogo1.png" alt="JJS Logo" className="w-50 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
           <p className="text-sm font-thin opacity-70 tracking-wide">Where Every Stitch Reflects Quality and Craftsmanship.</p>
@@ -187,8 +203,16 @@ const SignupPage = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
+      <div className="flex-1 flex items-center justify-center bg-white px-6 py-4">
         <div className="w-full max-w-[420px] animate-slide-in">
+          <div className="mb-8 xl:hidden md:hidden ">
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm font-medium text-gray-400 hover:text-blue-800 transition-colors"
+            >
+              ← Back to Landing
+            </button>
+          </div>
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8 relative">
             <Link to="/login" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Login</Link>
             <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Register</button>
@@ -204,18 +228,63 @@ const SignupPage = () => {
           )}
 
           <form onSubmit={handleSignup}>
-            <div className="mb-4">
-              <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Enter your full name"
-                disabled={loading}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
-              />
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">First Name</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="First name"
+                  disabled={loading}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="Last name"
+                  disabled={loading}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+              </div>
             </div>
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className=" block text-sm md:text-md font-medium text-gray-600 mb-1.5 ">Phone Number</label>
+                <input
+                  type="text"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  placeholder="Phone number"
+                  disabled={loading}
+                  maxLength={11}
+                  onInput={(e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '');
+                  }}
+                  className="w-[140px] px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+              </div>
+              <div className="flex-1">
+                <label className=" block text-sm md:text-md font-medium text-gray-600 mb-1.5">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Address"
+                  disabled={loading}
+                  className="w-[270px] px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+              </div>
+            </div>
+
 
             <div className="mb-4">
               <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Email Address</label>
@@ -241,19 +310,51 @@ const SignupPage = () => {
                 disabled={loading}
                 className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
               />
+              <div className="relative">
+                <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Password</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter password (min 8 characters)"
+                  disabled={loading}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 bottom-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="mb-6">
               <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Confirm Password</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Confirm password"
-                disabled={loading}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmedPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm password"
+                  disabled={loading}
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmedPassword(!showConfirmedPassword)}
+                  className="absolute right-3 bottom-1.5 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showConfirmedPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="flex mb-6 mt-6 justify-center ">
               <label className="flex items-center gap-2 cursor-pointer">

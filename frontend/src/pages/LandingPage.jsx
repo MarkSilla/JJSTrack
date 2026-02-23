@@ -2,6 +2,7 @@ import React from 'react'
 import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 
+
 const LandingPage = () => {
   return (
     <div className="flex flex-col min-h-screen">
@@ -24,7 +25,7 @@ const LandingPage = () => {
               All-in-one web application. Track orders, manage clients, and grow your business with precision and style.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors">
+              <button onClick={() => navigate('/signup')} className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors">
                 Register Now!
               </button>
 
@@ -34,14 +35,14 @@ const LandingPage = () => {
             <span className="material-symbols-outlined text-white text-4xl opacity-80">keyboard_arrow_down</span>
           </div>
         </section >
-        <section id="features" className="relative px-4 md:px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
+        <section id="features" className="relative px-4 px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
           <div className="absolute inset-0 bg-[#F1F5F9]"> </div>
           <div className="relative z-10 text-center px-0 max-w-6xl mx-auto">
             <h1 className="text-6xl md:text-4xl font-bold font-playfair text-[#0F172A] mb-6 ">Everything You Need to Scale</h1>
             <p className="text-md md:text-lg mb-12 max-w-3xl mx-auto">
               Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
             </p>
-            <div className="grid md:grid-cols-1 lg:grid-cols-4  md: grid-cols-2 gap-6 md:gap-4 lg:gap-6 justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-4 lg:gap-6 justify-center">
               <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
                   <span className="material-symbols-outlined text-blue-600">assignment</span>

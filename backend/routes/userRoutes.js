@@ -10,6 +10,7 @@ import {
   resendVerificationCode,
   forgotPassword,
   resetPassword,
+  completeGoogleProfile,
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -30,5 +31,6 @@ router.post('/reset-password', resetPassword);
 // Protected routes 
 router.get('/profile', authMiddleware, getUserProfile);
 router.put('/profile', authMiddleware, updateUserProfile);
+router.post('/complete-google-profile', authMiddleware, completeGoogleProfile);
 
 export default router;

@@ -4,6 +4,7 @@ import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import google1 from '../assets/google.svg';
+import GoogleProfileModal from '../components/GoogleProfileModal.jsx';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,9 @@ const LoginPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [googleUser, setGoogleUser] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -37,7 +41,7 @@ const LoginPage = () => {
 
       if (response.success) {
         alert('Login successful!');
-        navigate('/dashboard');
+        navigate('/home');
       } else {
         setError(response.message || 'Login failed');
       }
@@ -61,16 +65,27 @@ const LoginPage = () => {
       });
 
       if (response.success) {
-        alert('Google login successful!');
-        navigate('/dashboard');
+        // Store user data temporarily
+        setGoogleUser(response.user);
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
+        
+        // Navigate to home first, then show modal from there
+        navigate('/home');
       } else {
         setError(response.message || 'Google login failed');
       }
     } catch (err) {
+      console.error('Google login error:', err);
       setError(err.message || 'Google login failed. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProfileSuccess = (updatedUser) => {
+    alert('Profile completed successfully!');
+    navigate('/home');
   };
 
   return (
@@ -100,12 +115,12 @@ const LoginPage = () => {
         <img src="/src/assets/line2.svg" alt="lineRight" className="absolute xl:right-10 md:right-[-10px]  top-0 h-full w-auto opacity-40 pointer-events-none origin-center" />
         <img src="/src/assets/line3.svg" alt="lineBottom" className="absolute bottom-10 w-full h-auto object-cover opacity-40 pointer-events-none " />
         <img src="/src/assets/ruler.svg" alt="ruler" className="absolute right-0 w-auto h-auto object-cover pointer-events-none " />
-        <Link to="/" className="absolute top-6 left-6 z-10 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/25 bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 hover:border-white/40 transition-all no-underline">
+        <Link to="/" className="absolute top-6 left-6 z-10  items-center gap-1.5 px-4 py-2 rounded-lg border border-white/25 bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 hover:border-white/40 transition-all no-underline">
           ← Back
         </Link>
 
         <div className="relative z-10 flex flex-col items-center text-center px-8">
-          <img src="/src/assets/jjs logo.png" alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
+          <img src="/src/assets/jjslogo1.png" alt="JJS Logo" className="w-50 h-44 rounded-full object-contain mb-6  drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
           <p className="text-sm text-thin font-thin opacity-70 tracking-wide ">Where Every Stitch Reflects Quality and Craftsmanship.</p>
@@ -116,8 +131,16 @@ const LoginPage = () => {
 
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-12">
+      <div className="relative  flex-1 flex items-center justify-center bg-white px-6 py-12">
         <div className="w-full max-w-[420px] animate-slide-in">
+          <div className="mb-8 xl:hidden md:hidden ">
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm font-medium text-gray-400 hover:text-blue-800 transition-colors"
+            >
+              ← Back to Landing
+            </button>
+          </div>
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8 relative">
             <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Login</button>
             <Link to="/signup" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Register</Link>
@@ -148,15 +171,26 @@ const LoginPage = () => {
 
             <div className="mb-6">
               <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                disabled={loading}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  disabled={loading}
+                  className="w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {showPassword ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
             <div className="flex items-center justify-between mb-6">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -207,6 +241,13 @@ const LoginPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Google Profile Completion Modal */}
+      <GoogleProfileModal 
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSuccess={handleProfileSuccess}
+      />
     </div>
   );
 };
