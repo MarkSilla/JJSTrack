@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, googleProvider } from '../../config/firebase.js';
+import { auth, googleProvider } from '../../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 
 const SignupPage = () => {
