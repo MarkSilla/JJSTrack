@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { MdPictureAsPdf, MdEmail, MdPhone, MdLocationOn, MdReceipt, MdCheckCircle, MdAccessTime } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
-import { mockOrders } from '../../data/mockData'
+import { orderApi } from '../../../services/orderApi'
 import qrcode from '../../assets/qrcode.png'
 import logo from '../../assets/jjslogo1.png'
 import { useParams } from 'react-router-dom'
@@ -47,29 +47,64 @@ const Invoices = () => {
     const { id } = useParams()
     const { name } = useUser()
 
-    const invoices = mockOrders.map((order) => ({
-        ...order.invoice,
-        orderId: order.id,
-        orderItem: order.item,
-        players: order.players,
-    }))
-
+    const [invoices, setInvoices] = useState([])
     const [selectedIdx, setSelectedIdx] = useState(0)
+    const [loading, setLoading] = useState(true)
 
-    React.useEffect(() => {
-        if (id) {
+    // Fetch invoices from API
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                setLoading(true)
+                const response = await orderApi.getOrders()
+                if (response.success) {
+                    // Transform API orders to invoice format
+                    const invoiceData = (response.orders || []).map((order) => ({
+                        id: order._id,
+                        invoiceNumber: order.invoiceNumber || `INV-${order._id.slice(-6).toUpperCase()}`,
+                        customerName: order.customerName || 'N/A',
+                        itemName: order.itemName || 'N/A',
+                        amount: order.amount || 0,
+                        status: order.status === 'Completed' ? 'Paid' : order.status === 'In Progress' ? 'Pending' : 'Pending',
+                        date: new Date(order.createdAt).toLocaleDateString('en-PH'),
+                        orderId: order._id,
+                        items: [
+                            {
+                                desc: order.itemName || 'Service',
+                                qty: 1,
+                                unitPrice: order.amount || 0,
+                                addOnPrice: 0
+                            }
+                        ],
+                        taxRate: 0,
+                        discount: null
+                    }))
+                    setInvoices(invoiceData)
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error)
+                setInvoices([])
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchInvoices()
+    }, [])
+
+    useEffect(() => {
+        if (id && invoices.length > 0) {
             const idx = invoices.findIndex(inv => inv.id === id)
             if (idx !== -1) setSelectedIdx(idx)
         }
-    }, [id])
+    }, [id, invoices])
 
     const invoice = invoices[selectedIdx]
 
-    const subtotal = invoice.items.reduce((sum, item) => {
+    const subtotal = invoice ? invoice.items.reduce((sum, item) => {
         return sum + (item.qty * item.unitPrice) + ((item.addOnPrice || 0) * item.qty)
-    }, 0)
-    const tax = invoice.taxRate ? subtotal * invoice.taxRate : 0
-    const discount = invoice.discount?.amount || 0
+    }, 0) : 0
+    const tax = invoice && invoice.taxRate ? subtotal * invoice.taxRate : 0
+    const discount = invoice?.discount?.amount || 0
     const total = subtotal + tax - discount
 
     // Stats
@@ -79,6 +114,22 @@ const Invoices = () => {
 
     return (
         <main className="p-4 sm:p-6 lg:p-8">
+            {loading ? (
+                <div className="flex items-center justify-center h-80">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading invoices...</p>
+                    </div>
+                </div>
+            ) : invoices.length === 0 ? (
+                <div className="flex items-center justify-center h-80">
+                    <div className="text-center">
+                        <MdReceipt size={48} className="mx-auto mb-4 text-gray-300" />
+                        <p className="text-gray-600">No invoices found</p>
+                    </div>
+                </div>
+            ) : (
+                <>
 
             {/* ── Hero Banner ── */}
             <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
@@ -173,6 +224,7 @@ const Invoices = () => {
 
                 {/* Invoice Preview */}
                 <div className="lg:col-span-3">
+                    {invoice ? (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
                         <div className="h-1.5 bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-500"></div>
                         <div className="p-4 sm:p-8 lg:p-10">
@@ -345,8 +397,15 @@ const Invoices = () => {
                             </div>
                         </div>
                     </div>
+                    ) : (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24 h-96 flex items-center justify-center">
+                        <p className="text-gray-400">Select an invoice to view details</p>
+                    </div>
+                    )}
                 </div>
             </div>
+                </>
+            )}
         </main>
     )
 }

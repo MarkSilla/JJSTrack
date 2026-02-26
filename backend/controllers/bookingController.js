@@ -5,6 +5,10 @@ import invoiceModel from '../models/invoiceModel.js';
 // Create a new booking (from repair form, team jersey, or organizational)
 export const createBooking = async (req, res) => {
   try {
+    console.log('=== CREATE BOOKING START ===');
+    console.log('Request userId:', req.userId);
+    console.log('Request body:', req.body);
+
     const {
       bookingType,
       service,
@@ -25,6 +29,66 @@ export const createBooking = async (req, res) => {
       notes,
     } = req.body;
 
+    // Log request data
+    console.log('Creating booking with data:', {
+      bookingType,
+      service,
+      userId: req.userId,
+      contact
+    });
+
+    // Validate required fields
+    if (!bookingType || !service) {
+      console.log('Validation failed: missing bookingType or service');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'bookingType and service are required',
+        received: { bookingType, service }
+      });
+    }
+
+    // Validate bookingType enum
+    const validBookingTypes = ['repair', 'jersey', 'organizational'];
+    if (!validBookingTypes.includes(bookingType)) {
+      console.log('Validation failed: invalid bookingType', bookingType);
+      return res.status(400).json({ 
+        success: false, 
+        message: `Invalid bookingType. Must be one of: ${validBookingTypes.join(', ')}`,
+        received: bookingType
+      });
+    }
+
+    // Validate contact exists - at least fullName and one contact method
+    if (!contact) {
+      console.log('Validation failed: no contact object');
+      return res.status(400).json({
+        success: false,
+        message: 'Contact information is required',
+        received: contact
+      });
+    }
+
+    if (!contact.fullName) {
+      console.log('Validation failed: no fullName in contact');
+      return res.status(400).json({
+        success: false,
+        message: 'Contact full name is required',
+        received: contact
+      });
+    }
+
+    // Check for at least one contact method
+    if (!contact.email && !contact.phone) {
+      console.log('Validation failed: no email or phone in contact');
+      return res.status(400).json({
+        success: false,
+        message: 'Email or phone number is required in contact information',
+        received: contact
+      });
+    }
+
+    console.log('Validation passed, creating booking document...');
+
     const booking = new bookingModel({
       userId: req.userId,
       bookingType,
@@ -44,9 +108,13 @@ export const createBooking = async (req, res) => {
       pickupDate,
       pickupSlot,
       notes,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
+    console.log('Booking object created, saving to database...');
     await booking.save();
+    console.log('Booking saved successfully:', booking._id);
 
     res.status(201).json({
       success: true,
@@ -54,8 +122,31 @@ export const createBooking = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error('Create Booking Error:', error);
-    res.status(500).json({ success: false, message: 'Failed to create booking' });
+    console.error('=== CREATE BOOKING ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error name:', error.name);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', error);
+    
+    // Handle MongoDB validation errors
+    if (error.name === 'ValidationError') {
+      console.error('MongoDB ValidationError detected');
+      const messages = Object.values(error.errors).map(err => {
+        console.error(`  - ${err.path}: ${err.message}`);
+        return `${err.path}: ${err.message}`;
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: messages
+      });
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to create booking',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

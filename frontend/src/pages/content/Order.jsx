@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { MdSearch, MdInventory, MdDesktopWindows, MdPrint, MdCheckCircle, MdShoppingBag, MdLoop, MdDoneAll } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
-import { mockOrders } from '../../data/mockData'
+import { orderApi } from '../../../services/orderApi'
+import { bookingApi } from '../../../services/bookingApi'
 import { useNavigate } from 'react-router-dom'
 
 // 👇 Replace with your actual auth context
@@ -85,6 +86,15 @@ const OrderProgressTracker = ({ steps }) => (
 
 const OrderCard = ({ order }) => {
     const navigate = useNavigate()
+    
+    // Determine if this is a booking or order
+    const isBooking = !order.amount && order.bookingType
+    const displayName = isBooking 
+        ? `${order.bookingType?.charAt(0).toUpperCase() + order.bookingType?.slice(1)} Request`
+        : order.itemName || order.item
+    const displayCustomer = isBooking ? order.contact?.fullName : order.customerName
+    const displayStatus = order.status
+    
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <div className="p-4 sm:p-6 pb-0">
@@ -92,41 +102,69 @@ const OrderCard = ({ order }) => {
                     <div className="flex items-center gap-4">
                         <div>
                             <div className="flex items-center gap-3 mb-1">
-                                <h3 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight">{order.item}</h3>
+                                <h3 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight">{displayName}</h3>
                                 <span className="bg-gray-100 text-gray-500 text-[9px] sm:text-[10px] font-extrabold uppercase px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md tracking-widest whitespace-nowrap">
-                                    {order.serviceType}
+                                    {isBooking ? 'Booking' : 'Order'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                                <span>Order # {order.id}</span>
+                                <span>{isBooking ? 'Booking' : 'Order'} # {order._id?.slice(-8) || order.id}</span>
                                 <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                <span>Placed on {order.date}</span>
+                                <span>Created {isBooking ? 'on ' + new Date(order.createdAt).toLocaleDateString() : 'on ' + (order.date || 'N/A')}</span>
                             </div>
                         </div>
                     </div>
                     <div className="sm:text-right">
-                        <p className="text-[9px] sm:text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">Estimated Completion</p>
-                        <p className="text-sm sm:text-base font-black text-gray-800">{order.estimatedCompletion}</p>
+                        <p className="text-[9px] sm:text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                        <p className="text-sm sm:text-base font-black text-gray-800">{displayStatus}</p>
                     </div>
                 </div>
             </div>
-            <div className="p-4 sm:p-6 py-4">
-                <OrderProgressTracker steps={order.steps} />
-            </div>
-            <div className="px-4 py-4 sm:px-6 sm:py-4 bg-gray-50/50 border-t border-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Assigned Tailor:</span>
-                    <span className="text-xs font-black text-gray-700">{order.assignedTailor}</span>
+            
+            {isBooking ? (
+                // Booking details
+                <div className="p-4 sm:p-6 py-4 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer Name</p>
+                            <p className="text-sm font-bold text-gray-800">{displayCustomer}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Service Type</p>
+                            <p className="text-sm font-bold text-gray-800">{order.service || order.bookingType}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
+                            <p className="text-sm font-bold text-gray-800">{order.contact?.phone || order.contact?.email || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pickup Date</p>
+                            <p className="text-sm font-bold text-gray-800">{order.pickupDate ? `Day ${order.pickupDate}` : 'Not scheduled'}</p>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button onClick={() => navigate('/invoices')} className="text-[10px] sm:text-[11px] font-bold text-gray-400 hover:text-gray-600 transition-colors uppercase tracking-widest px-1 sm:px-3 py-1.5 flex items-center gap-1.5 cursor-pointer">
-                        View Invoice
-                    </button>
-                    <button className="bg-white border border-gray-200 text-[#2563EB] text-[10px] sm:text-[11px] font-black uppercase tracking-widest px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
-                        Track Details
-                    </button>
-                </div>
-            </div>
+            ) : (
+                // Order details
+                <>
+                    <div className="p-4 sm:p-6 py-4">
+                        <OrderProgressTracker steps={order.steps} />
+                    </div>
+                    <div className="px-4 py-4 sm:px-6 sm:py-4 bg-gray-50/50 border-t border-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Assigned Tailor:</span>
+                            <span className="text-xs font-black text-gray-700">{order.assignedTailor}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => navigate('/invoices')} className="text-[10px] sm:text-[11px] font-bold text-gray-400 hover:text-gray-600 transition-colors uppercase tracking-widest px-1 sm:px-3 py-1.5 flex items-center gap-1.5 cursor-pointer">
+                                View Invoice
+                            </button>
+                            <button className="bg-white border border-gray-200 text-[#2563EB] text-[10px] sm:text-[11px] font-black uppercase tracking-widest px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
+                                Track Details
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }
@@ -134,26 +172,86 @@ const OrderCard = ({ order }) => {
 const Order = () => {
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('All Orders')
+    const [allOrders, setAllOrders] = useState([])
+    const [allBookings, setAllBookings] = useState([])
+    const [stats, setStats] = useState({ total: 0, inProgress: 0, completed: 0, spent: '0' })
+    const [filteredOrders, setFilteredOrders] = useState([])
+    const [loading, setLoading] = useState(true)
     const { name } = useUser()
 
-    const stats = useMemo(() => {
-        const inProgress = mockOrders.filter(o => o.status === 'In Progress').length
-        const completed = mockOrders.filter(o => o.status === 'Completed').length
-        const totalSpent = mockOrders.reduce((sum, o) => {
-            const orderTotal = o.invoice?.items?.reduce((s, item) => s + (item.qty * item.unitPrice), 0) || 0
-            return sum + orderTotal
-        }, 0)
-        return { total: mockOrders.length, inProgress, completed, spent: totalSpent.toLocaleString('en-US') }
+    // Fetch orders and bookings from API
+    useEffect(() => {
+        const fetchOrdersAndBookings = async () => {
+            try {
+                setLoading(true)
+                
+                // Fetch orders
+                const orderResponse = await orderApi.getOrders()
+                const orders = orderResponse.success ? (orderResponse.orders || []) : []
+                setAllOrders(orders)
+                
+                // Fetch bookings
+                let bookings = []
+                try {
+                    const bookingResponse = await bookingApi.getBookings()
+                    bookings = bookingResponse.success ? (bookingResponse.bookings || []) : []
+                } catch (err) {
+                    console.error('Error fetching bookings:', err)
+                }
+                setAllBookings(bookings)
+                
+                // Combine orders and bookings for stats
+                const combined = [...orders, ...bookings]
+                const inProgress = combined.filter(o => o.status === 'In Progress' || o.status === 'Pending').length || 0
+                const completed = combined.filter(o => o.status === 'Completed').length || 0
+                const totalSpent = orders.reduce((sum, o) => sum + (o.amount || 0), 0) || 0
+                
+                setStats({
+                    total: combined.length || 0,
+                    inProgress,
+                    completed,
+                    spent: totalSpent.toLocaleString('en-US')
+                })
+            } catch (error) {
+                console.error('Error fetching orders and bookings:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchOrdersAndBookings()
     }, [])
 
-    const filteredOrders = useMemo(() => {
-        return mockOrders.filter(order => {
-            const matchesSearch = order.item.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                order.id.toLowerCase().includes(searchQuery.toLowerCase())
-            if (activeFilter === 'All Orders') return matchesSearch
-            return matchesSearch && order.status === activeFilter
-        })
-    }, [searchQuery, activeFilter])
+    // Filter orders and bookings based on search and filter
+    useEffect(() => {
+        let combined = [...allOrders, ...allBookings]
+        
+        if (activeFilter !== 'All Orders') {
+            const status = activeFilter.replace(' Orders', '')
+            combined = combined.filter(item => {
+                // For orders
+                if (item.amount !== undefined) return item.status === status
+                // For bookings
+                return item.status === status || (status === 'Pending' && item.status === 'Pending')
+            })
+        }
+        
+        if (searchQuery) {
+            combined = combined.filter(item => {
+                // For orders
+                if (item.amount !== undefined) {
+                    return item.itemName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           item.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           item._id?.includes(searchQuery)
+                }
+                // For bookings
+                return item.contact?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       item.service?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       item._id?.includes(searchQuery)
+            })
+        }
+        
+        setFilteredOrders(combined)
+    }, [searchQuery, activeFilter, allOrders, allBookings])
 
     return (
         <main className="p-4 sm:p-6 lg:p-10 w-full">
@@ -175,15 +273,15 @@ const Order = () => {
                     {/* Left */}
                     <div>
                         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                            My Orders
+                            My Orders & Bookings
                         </h2>
-                        <p className="text-slate-400 text-sm">Track and manage all your tailoring orders.</p>
+                        <p className="text-slate-400 text-sm">Track and manage all your tailoring orders and service bookings.</p>
                     </div>
 
                     {/* Right — Stats */}
                     <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
                         {[
-                            { label: 'Total Orders', value: stats.total, sub: 'All time', icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300' },
+                            { label: 'Total Items', value: stats.total, sub: 'All time', icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300' },
                             { label: 'In Progress', value: stats.inProgress, sub: 'Active', icon: MdLoop, color: 'bg-amber-400/20 text-amber-300' },
                             { label: 'Completed', value: stats.completed, sub: 'Done', icon: MdDoneAll, color: 'bg-green-400/20 text-green-300' },
                         ].map(({ label, value, sub, icon: Icon, color }) => (

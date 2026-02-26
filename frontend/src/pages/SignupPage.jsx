@@ -94,7 +94,6 @@ const SignupPage = () => {
         lastName: formData.lastName,
         phone: formData.phone,
         address: formData.address,
-        username: formData.email.split('@')[0],
       };
 
       try {

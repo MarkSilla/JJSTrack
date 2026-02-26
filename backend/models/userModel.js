@@ -7,10 +7,6 @@ const userSchema = new mongoose.Schema({
     sparse: true,
   },
 
-  username: {
-    type: String,
-  },
-
   fullName: {
     type: String,
   },

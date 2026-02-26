@@ -91,7 +91,6 @@ export const googleAuth = async (req, res) => {
         email,
         fullName: fullName || email.split('@')[0],
         photoURL: photoURL || '',
-        username: email.split('@')[0],
         isVerified: true,
       });
       await user.save();
@@ -143,10 +142,10 @@ export const getUserProfile = async (req, res) => {
 // Update user profile
 export const updateUserProfile = async (req, res) => {
   try {
-    const { fullName, phoneNumber, username } = req.body;
+    const { fullName, phoneNumber } = req.body;
     const user = await userModel.findByIdAndUpdate(
       req.userId,
-      { fullName, phoneNumber, username },
+      { fullName, phoneNumber },
       { new: true }
     );
     res.json({ success: true, user });
@@ -158,7 +157,7 @@ export const updateUserProfile = async (req, res) => {
 // Register with Email & Password (Firebase)
 export const register = async (req, res) => {
   try {
-    const { uid, email, fullName, username } = req.body;
+    const { uid, email, fullName } = req.body;
     
     if (!email || !fullName || !uid) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
@@ -176,7 +175,6 @@ export const register = async (req, res) => {
         firebaseUID: uid,
         email,
         fullName,
-        username: username || email.split('@')[0],
         isVerified: false,
         verificationCode,
         verificationCodeExpiry: codeExpiry,
@@ -185,7 +183,6 @@ export const register = async (req, res) => {
     } else {
       // Update existing user
       user.fullName = fullName || user.fullName;
-      user.username = username || user.username;
       user.verificationCode = verificationCode;
       user.verificationCodeExpiry = codeExpiry;
       user.isVerified = false;
@@ -522,17 +519,17 @@ export const resetPassword = async (req, res) => {
 // Complete Google user profile (add phone number, address, last name)
 export const completeGoogleProfile = async (req, res) => {
   try {
-    const { lastName, phoneNumber, address } = req.body;
+    const { firstName, lastName, phoneNumber, address } = req.body;
     const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (!phoneNumber || !address) {
+    if (!firstName || !lastName || !phoneNumber || !address) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Phone number and address are required' 
+        message: 'First name, last name, phone number, and address are required' 
       });
     }
 
@@ -542,15 +539,8 @@ export const completeGoogleProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Update user profile with additional info
-    // Split fullName if lastName is provided
-    if (lastName) {
-      const nameParts = user.fullName ? user.fullName.split(' ') : [''];
-      // Keep first name (already exists from Google) and update with lastName
-      const firstName = nameParts[0] || '';
-      user.fullName = `${firstName} ${lastName}`.trim();
-    }
-
+    // Update user profile with both firstName and lastName
+    user.fullName = `${firstName} ${lastName}`.trim();
     user.phoneNumber = phoneNumber;
     user.address = address;
     await user.save();

@@ -3,18 +3,28 @@ import userModel from '../models/userModel.js';
 
 export const authMiddleware = (req, res, next) => {
   try {
+    console.log('AuthMiddleware: Checking authorization...');
     const token = req.headers.authorization?.split(' ')[1]; 
 
     if (!token) {
+      console.log('Auth Error: No token provided');
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
+    console.log('Auth: Token found, verifying...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     req.userId = decoded.id;
+    console.log('Auth Success: userId =', req.userId, '| Calling next()...');
+    
+    if (typeof next !== 'function') {
+      console.error('ERROR: next is not a function in authMiddleware!');
+      throw new Error('next is not a function');
+    }
+    
     next();
   } catch (error) {
-    console.error('Auth Middleware Error:', error);
-    res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    console.error('Auth Middleware Error:', error.message);
+    return res.status(401).json({ success: false, message: 'Invalid or expired token', error: error.message });
   }
 };
 

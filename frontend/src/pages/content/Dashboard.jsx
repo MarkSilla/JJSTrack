@@ -5,7 +5,6 @@ import { MdAdd, MdShoppingBag, MdCheckCircle, MdInventory, MdDesktopWindows, MdP
 import { GiSewingMachine } from 'react-icons/gi'
 import { orderApi } from '../../../services/orderApi'
 import { appointmentApi } from '../../../services/appointmentApi'
-import { mockOrders } from '../../data/mockData'
 import '../../styles/calendar.css'
 
 // Auth context hook - gets user from localStorage
@@ -141,7 +140,7 @@ const Dashboard = () => {
         fetchData()
     }, [])
 
-    const name = user?.fullName || user?.username || 'Guest'
+    const name = user?.fullName || 'Guest'
 
     const dayCellClassNames = useCallback((arg) => {
         const key = toKey(arg.date)
@@ -193,79 +192,79 @@ const Dashboard = () => {
 
     return (
         <>
-            <main className="p-6 lg:p-8">
+            <main className="p-3 sm:p-4 md:p-6 lg:p-8">
 
                 {/* ── Hero Banner with Stats inside ── */}
-                <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
+                <div className="bg-[#0F172A] rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-2xl relative overflow-hidden mb-6 sm:mb-8">
 
                     {/* Tailoring bg elements */}
-                    <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
-                        <GiSewingMachine size={140} />
+                    <div className="absolute -top-3 right-4 opacity-5 sm:opacity-10 text-white pointer-events-none">
+                        <GiSewingMachine size={100} className="sm:w-32 sm:h-32" />
                     </div>
-                    <div className="absolute bottom-2 left-6 opacity-[0.07] text-white -rotate-12 pointer-events-none">
-                        <MdInventory size={110} />
+                    <div className="absolute bottom-2 left-6 opacity-[0.03] sm:opacity-[0.07] text-white -rotate-12 pointer-events-none">
+                        <MdInventory size={80} className="sm:w-28 sm:h-28" />
                     </div>
-                    <div className="absolute top-3 left-1/2 opacity-[0.04] text-white rotate-6 pointer-events-none">
-                        <MdPrint size={90} />
+                    <div className="absolute top-3 left-1/2 opacity-[0.02] sm:opacity-[0.04] text-white rotate-6 pointer-events-none">
+                        <MdPrint size={70} className="sm:w-24 sm:h-24" />
                     </div>
-                    <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.04] text-white pointer-events-none">
-                        <div className="w-44 h-44 rounded-full border-[18px] border-current" />
+                    <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.02] sm:opacity-[0.04] text-white pointer-events-none">
+                        <div className="w-32 h-32 sm:w-44 sm:h-44 rounded-full border-[14px] sm:border-[18px] border-current" />
                     </div>
 
-                    <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6">
 
                         {/* Left — Greeting + Book Now */}
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2 sm:gap-3">
                             <div>
-                                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                                    {getGreeting()}, <span className="text-blue-300">{name}</span> 👋
+                                <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1">
+                                    {getGreeting()}, <span className="text-blue-300 truncate">{name}</span> 👋
                                 </h2>
-                                <p className="text-slate-400 text-sm">Here's what's happening with your orders.</p>
+                                <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
                             </div>
                             <button
                                 onClick={() => setShowBooking(true)}
-                                className="flex items-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer shadow-lg w-fit"
+                                className="flex items-center justify-center sm:justify-start gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"
                             >
-                                Book Now <MdAdd size={18} />
+                                Book Now <MdAdd size={16} className="sm:w-5 sm:h-5" />
                             </button>
                         </div>
 
                         {/* Right — Stat Cards */}
-                        <div className="grid grid-cols-3 gap-3 w-full lg:w-auto lg:flex lg:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto lg:flex lg:gap-3">
 
                             {/* My Order */}
-                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/15 transition-all">
-                                <div className="w-10 h-10 rounded-lg bg-blue-400/20 flex items-center justify-center shrink-0">
-                                    <MdShoppingBag size={20} className="text-blue-300" />
+                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-col items-center sm:items-start gap-2 sm:gap-3 hover:bg-white/15 transition-all">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-400/20 flex items-center justify-center shrink-0">
+                                    <MdShoppingBag size={16} className="sm:w-5 sm:h-5 text-blue-300" />
                                 </div>
-                                <div>
-                                    <p className="text-slate-400 text-[10px] font-medium">My Orders</p>
-                                    <p className="text-white text-xl font-bold leading-tight">2</p>
-                                    <p className="text-slate-500 text-[10px]">Active</p>
+                                <div className="text-center sm:text-left">
+                                    <p className="text-slate-400 text-[9px] sm:text-[10px] font-medium">My Orders</p>
+                                    <p className="text-white text-base sm:text-xl font-bold leading-tight">2</p>
+                                    <p className="text-slate-500 text-[9px] sm:text-[10px]">Active</p>
                                 </div>
                             </div>
 
                             {/* Pickup Ready */}
-                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/15 transition-all">
-                                <div className="w-10 h-10 rounded-lg bg-green-400/20 flex items-center justify-center shrink-0">
-                                    <MdCheckCircle size={20} className="text-green-300" />
+                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-col items-center sm:items-start gap-2 sm:gap-3 hover:bg-white/15 transition-all">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-400/20 flex items-center justify-center shrink-0">
+                                    <MdCheckCircle size={16} className="sm:w-5 sm:h-5 text-green-300" />
                                 </div>
-                                <div>
-                                    <p className="text-slate-400 text-[10px] font-medium">Pickup Ready</p>
-                                    <p className="text-white text-xl font-bold leading-tight">1</p>
-                                    <p className="text-slate-500 text-[10px]">Awaiting</p>
+                                <div className="text-center sm:text-left">
+                                    <p className="text-slate-400 text-[9px] sm:text-[10px] font-medium">Pickup Ready</p>
+                                    <p className="text-white text-base sm:text-xl font-bold leading-tight">1</p>
+                                    <p className="text-slate-500 text-[9px] sm:text-[10px]">Awaiting</p>
                                 </div>
                             </div>
 
                             {/* Total Orders */}
-                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/15 transition-all">
-                                <div className="w-10 h-10 rounded-lg bg-orange-400/20 flex items-center justify-center shrink-0">
-                                    <MdInventory size={20} className="text-orange-300" />
+                            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-col items-center sm:items-start gap-2 sm:gap-3 hover:bg-white/15 transition-all col-span-2 sm:col-span-1">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-orange-400/20 flex items-center justify-center shrink-0">
+                                    <MdInventory size={16} className="sm:w-5 sm:h-5 text-orange-300" />
                                 </div>
-                                <div>
-                                    <p className="text-slate-400 text-[10px] font-medium">Total Orders</p>
-                                    <p className="text-white text-xl font-bold leading-tight">8</p>
-                                    <p className="text-slate-500 text-[10px]">Lifetime</p>
+                                <div className="text-center sm:text-left">
+                                    <p className="text-slate-400 text-[9px] sm:text-[10px] font-medium">Total Orders</p>
+                                    <p className="text-white text-base sm:text-xl font-bold leading-tight">8</p>
+                                    <p className="text-slate-500 text-[9px] sm:text-[10px]">Lifetime</p>
                                 </div>
                             </div>
 
@@ -274,10 +273,10 @@ const Dashboard = () => {
                 </div>
 
                 {/* Calendar + Order Tracker */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
                     <div className="lg:col-span-2">
-                        <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                            <h3 className="text-sm font-semibold text-gray-800 mb-4">Calendar</h3>
+                        <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
+                            <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-3 sm:mb-4">Calendar</h3>
                             <div className="calendar-wrapper" style={{ padding: '0', boxShadow: 'none', border: 'none' }}>
                                 <CalendarComponent
                                     dayCellClassNames={dayCellClassNames}
@@ -287,24 +286,28 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="lg:col-span-3 bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="text-sm font-semibold text-gray-800">Order Tracker</h3>
-                            <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full font-medium">
-                                {mockOrders.length} Active Orders
+                    <div className="lg:col-span-3 bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-5">
+                            <h3 className="text-xs sm:text-sm font-semibold text-gray-800">Order Tracker</h3>
+                            <span className="text-[11px] sm:text-xs bg-green-100 text-green-600 px-2 sm:px-3 py-1 rounded-full font-medium whitespace-nowrap">
+                                {orders.length} Active Orders
                             </span>
                         </div>
-                        <div className="flex flex-col gap-6">
-                            {mockOrders.map((order) => (
-                                <div key={order.id} className="border border-gray-100 rounded-xl p-4">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-sm font-semibold text-gray-800">{order.item}</p>
-                                        <span className="text-[11px] text-gray-400 font-mono">{order.id}</span>
+                        <div className="flex flex-col gap-3 sm:gap-6">
+                            {orders.map((order) => (
+                                <div key={order._id} className="border border-gray-100 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-1 gap-1 sm:gap-0">
+                                        <p className="text-xs sm:text-sm font-semibold text-gray-800">{order.itemName || 'Order'}</p>
+                                        <span className="text-[10px] sm:text-[11px] text-gray-400 font-mono">{order._id?.slice(-6)}</span>
                                     </div>
-                                    <p className="text-xs text-gray-400 mb-2">{order.customer} · Placed {order.date}</p>
-                                    <ProgressTracker steps={order.steps} />
+                                    <p className="text-[11px] sm:text-xs text-gray-400 mb-2 sm:mb-2">{order.customerName || 'Customer'} · Status: {order.status || 'Pending'}</p>
                                 </div>
                             ))}
+                            {orders.length === 0 && (
+                                <div className="text-center text-gray-400 text-sm py-8">
+                                    <p>No active orders yet</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
