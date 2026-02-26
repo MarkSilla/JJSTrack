@@ -109,21 +109,6 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
           </button>
         </div>
 
-        {/* Center - Search */}
-        <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <MdSearch
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              placeholder="Search orders, appointments, or invoices..."
-              className="w-full pl-9 pr-4 py-2 text-sm bg-gray-100 border border-gray-200 rounded-full outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors placeholder-gray-400"
-            />
-          </div>
-        </div>
-
         {/* Right - Notifications + Date + User Profile */}
         <div className="flex items-center gap-3 sm:gap-4">
           <button className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer">

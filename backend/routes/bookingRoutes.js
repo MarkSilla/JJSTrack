@@ -7,6 +7,7 @@ import {
   updateBookingStatus,
   deleteBooking,
   convertBookingToOrder,
+  cancelBooking,
 } from '../controllers/bookingController.js';
 import { authMiddleware, adminMiddleware, staffMiddleware } from '../middleware/auth.js';
 
@@ -17,6 +18,11 @@ const router = express.Router();
 // Protected routes - requires authentication
 router.post('/', authMiddleware, createBooking);
 router.get('/', authMiddleware, getBookings);
+
+// More specific routes before generic /:id routes
+router.put('/:id/cancel', authMiddleware, cancelBooking);
+
+// Less specific routes
 router.get('/:id', authMiddleware, getBookingById);
 router.put('/:id', authMiddleware, updateBooking);
 router.put('/:id/status', authMiddleware, updateBookingStatus);

@@ -327,6 +327,7 @@ export const convertBookingToOrder = async (req, res) => {
 
     const order = new orderModel({
       userId: booking.userId,
+      bookingId: booking._id,
       item,
       customer: booking.contact?.fullName,
       date: new Date().toLocaleDateString(),
@@ -414,5 +415,55 @@ export const convertBookingToOrder = async (req, res) => {
   } catch (error) {
     console.error('Convert Booking To Order Error:', error);
     res.status(500).json({ success: false, message: 'Failed to convert booking to order' });
+  }
+};
+
+export const cancelBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await bookingModel.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const user = await userModel.findById(req.userId);
+    const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
+
+    // Check ownership - allow if user owns booking or is admin/staff
+    if (!isAdminStaff && booking.userId.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Check if booking can be cancelled
+    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel a booking that is already ${booking.status}`
+      });
+    }
+
+    // Update booking status
+    booking.status = 'Cancelled';
+    await booking.save();
+
+    // If there's an associated order, cancel it too
+    if (booking.orderId) {
+      await orderModel.findByIdAndUpdate(
+        booking.orderId,
+        { status: 'Cancelled' },
+        { new: true }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      booking,
+    });
+
+  } catch (error) {
+    console.error('Cancel Booking Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking' });
   }
 };

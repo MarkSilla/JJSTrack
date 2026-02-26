@@ -17,26 +17,60 @@ const Profile = () => {
   })
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      navigate('/login')
-      return
+    const loadProfile = async () => {
+      const storedUser = localStorage.getItem('user')
+      if (!storedUser) {
+        navigate('/login')
+        return
+      }
+
+      try {
+        const parsedUser = JSON.parse(storedUser)
+        
+        // Fetch fresh user data from server
+        const freshData = await userApi.getUserProfile()
+        if (freshData.success && freshData.user) {
+          const user = freshData.user
+          setUser(user)
+          setFormData({
+            fullName: user.fullName || '',
+            email: user.email || '',
+            phoneNumber: user.phoneNumber || '',
+            address: user.address || '',
+          })
+          // Update localStorage with fresh data
+          localStorage.setItem('user', JSON.stringify(user))
+        } else {
+          // Fallback to stored user if fetch fails
+          setUser(parsedUser)
+          setFormData({
+            fullName: parsedUser.fullName || '',
+            email: parsedUser.email || '',
+            phoneNumber: parsedUser.phoneNumber || '',
+            address: parsedUser.address || '',
+          })
+        }
+      } catch (e) {
+        console.error('Error loading profile:', e)
+        // Fallback to stored user
+        try {
+          const parsedUser = JSON.parse(localStorage.getItem('user'))
+          setUser(parsedUser)
+          setFormData({
+            fullName: parsedUser.fullName || '',
+            email: parsedUser.email || '',
+            phoneNumber: parsedUser.phoneNumber || '',
+            address: parsedUser.address || '',
+          })
+        } catch {
+          navigate('/login')
+        }
+      } finally {
+        setLoading(false)
+      }
     }
 
-    try {
-      const parsedUser = JSON.parse(storedUser)
-      setUser(parsedUser)
-      setFormData({
-        fullName: parsedUser.fullName || '',
-        email: parsedUser.email || '',
-        phoneNumber: parsedUser.phoneNumber || '',
-        address: parsedUser.address || '',
-      })
-    } catch (e) {
-      navigate('/login')
-    } finally {
-      setLoading(false)
-    }
+    loadProfile()
   }, [navigate])
 
   const handleChange = (e) => {

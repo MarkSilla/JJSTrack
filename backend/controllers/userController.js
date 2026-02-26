@@ -142,14 +142,28 @@ export const getUserProfile = async (req, res) => {
 // Update user profile
 export const updateUserProfile = async (req, res) => {
   try {
-    const { fullName, phoneNumber } = req.body;
+    const { fullName, phoneNumber, address, email } = req.body;
+    
+    // Build update object with all provided fields
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (address) updateData.address = address;
+    if (email) updateData.email = email;
+    
     const user = await userModel.findByIdAndUpdate(
       req.userId,
-      { fullName, phoneNumber },
+      updateData,
       { new: true }
     );
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
     res.json({ success: true, user });
   } catch (error) {
+    console.error('Update User Profile Error:', error);
     res.status(500).json({ success: false, message: 'Error updating user' });
   }
 };
@@ -352,6 +366,8 @@ export const login = async (req, res) => {
         id: user._id,
         email: user.email,
         fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        address: user.address,
         photoURL: user.photoURL,
         role: user.role,
         isVerified: user.isVerified,

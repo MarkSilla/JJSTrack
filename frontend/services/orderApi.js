@@ -1,17 +1,6 @@
 import api from './api.js';
 
 export const orderApi = {
-  // Create a new order
-  createOrder: async (orderData) => {
-    try {
-      const response = await api.post('/orders', orderData);
-      return response.data;
-    } catch (error) {
-      console.error('Create Order Error:', error);
-      throw error;
-    }
-  },
-
   // Get all orders
   getOrders: async (params = {}) => {
     try {
@@ -74,6 +63,17 @@ export const orderApi = {
       return response.data;
     } catch (error) {
       console.error('Delete Order Error:', error);
+      throw error;
+    }
+  },
+
+  // Cancel order
+  cancelOrder: async (id) => {
+    try {
+      const response = await api.put(`/orders/${id}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Cancel Order Error:', error);
       throw error;
     }
   },

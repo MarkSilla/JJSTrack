@@ -77,4 +77,15 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Cancel booking
+  cancelBooking: async (id) => {
+    try {
+      const response = await api.put(`/bookings/${id}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Cancel Booking Error:', error);
+      throw error;
+    }
+  },
 };
