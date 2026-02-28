@@ -1,5 +1,5 @@
 import React from 'react'
-import logo from '../assets/jjslogo1.png'
+import img from '../assets/img.js'
 
 const Footer = () => {
   return (
@@ -9,7 +9,7 @@ const Footer = () => {
           <div >
             <div className="text-center md:text-left">
               <div className="flex items-center gap-3 justify-center md:justify-start sm:justify-center">
-                <img src={logo} alt="jjs logo" className="h-10" />
+                <img src={img.jjslogo1} alt="jjs logo" className="h-10" />
                 <h3 className="text-lg font-bold mb-1 ">JJS Track</h3>
               </div>
               <div className="relative z-10 p-1 md:p-2 mr-0 xl:mr-10 mb-4 xl:mb-0">
@@ -25,6 +25,8 @@ const Footer = () => {
                 <li><a href="#home" className="hover:text-blue-400">Home</a></li>
                 <li><a href="#features" className="hover:text-blue-400">Features</a></li>
                 <li><a href="#about" className="hover:text-blue-400">About</a></li>
+                <li><a href="#testimonials" className="hover:text-blue-400">Testimonials</a></li>
+                <li><a href="#FAQ" className="hover:text-blue-400">FAQ</a></li>
               </ul>
             </div>
           </div>
@@ -44,7 +46,7 @@ const Footer = () => {
               <h3 className="text-lg font-bold mb-2 text-center md:text-left">Follow Us</h3>
               <ul className="  text-gray-400 flex space-x-4 justify-center md:justify-start">
                 <li><a href="https://www.facebook.com/JennoelJennyl" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 "><i className="fa fa-facebook text-blue-400 text-xl"></i></a></li>
-                <li><a href="#" className="hover:text-blue-400"><i className="fa fa-instagram text-blue-400 text-xl"></i></a></li>
+                <li><a href="https://www.instagram.com/jjsportswearph?igsh=MXNka3JiZXNtZ3NqNw==" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400"><i className="fa fa-instagram text-blue-400 text-xl"></i></a></li>
               </ul>
             </div>
           </div>

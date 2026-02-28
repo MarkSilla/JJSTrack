@@ -122,4 +122,16 @@ export const userApi = {
     },
 
     clearAuthData,
+
+    completeGoogleProfile: async (profileData) => {
+        try {
+            const response = await api.post('/users/complete-google-profile', profileData);
+            if (response.data.success) {
+                localStorage.setItem("user", JSON.stringify(response.data.user));
+            }
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'completeGoogleProfile');
+        }
+    },
 };

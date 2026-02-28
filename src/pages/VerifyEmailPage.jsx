@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { userApi } from '../../services/userApi.js';
+import img from '../assets/img.js'
 
 const VerifyEmailPage = () => {
   const [code, setCode] = useState('');
@@ -11,7 +12,7 @@ const VerifyEmailPage = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const email = location.state?.email;
 
   // Cooldown timer for resend button
@@ -125,15 +126,15 @@ const VerifyEmailPage = () => {
 
       {/* Left Panel */}
       <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('/src/assets/shop.png')` }} />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.shop})` }} />
         <div className="absolute inset-0 bg-slate-900/90" />
-        <img src="/src/assets/line1.svg" alt="lineTop" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none" />
-        <img src="/src/assets/line2.svg" alt="lineRight" className="absolute xl:right-10 md:right-[-10px] top-0 h-full w-auto opacity-40 pointer-events-none origin-center" />
-        <img src="/src/assets/line3.svg" alt="lineBottom" className="absolute bottom-10 w-full h-auto object-cover opacity-40 pointer-events-none" />
-        <img src="/src/assets/ruler.svg" alt="ruler" className="absolute right-0 w-auto h-auto object-cover pointer-events-none" />
+        <img src={img.line1} alt="lineTop" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none" />
+        <img src={img.line2} alt="lineRight" className="absolute xl:right-10 md:right-[-10px] top-0 h-full w-auto opacity-40 pointer-events-none origin-center" />
+        <img src={img.line3} alt="lineBottom" className="absolute bottom-10 w-full h-auto object-cover opacity-40 pointer-events-none" />
+        <img src={img.ruler} alt="ruler" className="absolute right-0 w-auto h-auto object-cover pointer-events-none" />
 
         <div className="relative z-10 flex flex-col items-center text-center px-8">
-          <img src="/src/assets/jjs logo.png" alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
+          <img src={img.jjsLogo} alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
           <p className="text-sm font-thin opacity-70 tracking-wide">Where Every Stitch Reflects Quality and Craftsmanship.</p>
@@ -202,11 +203,11 @@ const VerifyEmailPage = () => {
               disabled={resendLoading || resendCooldown > 0}
               className="w-full py-2.5 bg-white border-[1.5px] border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {resendCooldown > 0 
-                ? `Resend in ${resendCooldown}s` 
-                : resendLoading 
-                ? 'Sending...' 
-                : 'Resend Code'}
+              {resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
+                : resendLoading
+                  ? 'Sending...'
+                  : 'Resend Code'}
             </button>
           </div>
         </div>

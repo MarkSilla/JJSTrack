@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
-import logo from '../../assets/jjslogo1.png'
+import { bookingApi } from '../../../services/bookingApi'
+import img from '../../assets/img.js'
 
 // Repair steps
 import StepService from '../repairForm/StepService'
@@ -102,6 +103,8 @@ const Stepper = ({ currentStep, labels }) => (
 const BookingModal = ({ isOpen, onClose }) => {
     const [step, setStep] = useState(1)
     const [service, setService] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -126,6 +129,85 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
 
+    // Initialize contact data from user on component mount
+    useEffect(() => {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr)
+                // Auto-fill repair form details
+                if (user.fullName || user.phoneNumber || user.email || user.address) {
+                    setDetails({
+                        name: user.fullName || '',
+                        email: user.email || '',
+                        phone: user.phoneNumber || '',
+                        address: user.address || '',
+                        city: ''
+                    })
+                }
+                // Auto-fill team contact
+                if (user.fullName || user.phoneNumber || user.email) {
+                    setContact({
+                        fullName: user.fullName || '',
+                        phone: user.phoneNumber || '',
+                        email: user.email || '',
+                        facebook: '',
+                        address: user.address || ''
+                    })
+                }
+                // Auto-fill org contact
+                if (user.fullName || user.phoneNumber || user.email) {
+                    setOrgContact({
+                        fullName: user.fullName || '',
+                        phone: user.phoneNumber || '',
+                        email: user.email || '',
+                        facebook: '',
+                        address: user.address || ''
+                    })
+                }
+            } catch (err) {
+                console.error('Error parsing user data:', err)
+            }
+        }
+    }, [])
+
+    // Reset form function
+    const resetForm = () => {
+        setStep(1)
+        setService('')
+        setLoading(false)
+        setError('')
+
+        // Reset repair state
+        setSelectedOptions([])
+        setQuantities({})
+        setRepairDescription('')
+        setPhotos([])
+        setDetails({ name: '', email: '', phone: '', address: '', city: '' })
+        setSelectedDate(null)
+        setSelectedSlot('')
+
+        // Reset team state
+        setTeamName('')
+        setPlayers([])
+        setDesignFile(null)
+        setDriveLink('')
+        setContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+
+        // Reset org state
+        setOrgName('')
+        setMembers([])
+        setOrgDesignFile(null)
+        setOrgDriveLink('')
+        setOrgContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    }
+
+    // Handle modal close
+    const handleClose = () => {
+        resetForm()
+        onClose()
+    }
+
     // Derived
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
@@ -144,9 +226,128 @@ const BookingModal = ({ isOpen, onClose }) => {
         return true
     }
 
-    const handleSubmit = () => {
-        alert('Booking submitted successfully!')
-        onClose()
+    const handleSubmit = async () => {
+        try {
+            setLoading(true)
+            setError('')
+
+            // Get token - verify authentication
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+            if (!token) {
+                setError('Authentication failed. Please login again.')
+                return
+            }
+
+            // Get user from localStorage
+            const userStr = localStorage.getItem('user')
+            const user = userStr ? JSON.parse(userStr) : null
+
+            if (!user) {
+                setError('User not authenticated. Please login first.')
+                return
+            }
+
+            // Build booking object based on service type
+            const bookingData = {
+                bookingType: isRepair ? 'repair' : isJersey ? 'jersey' : 'organizational',
+                service: service,
+            }
+
+            // Determine which contact object to use
+            let contactToUse = contact
+            if (isRepair) {
+                contactToUse = {
+                    fullName: details.name,
+                    email: details.email,
+                    phone: details.phone,
+                    address: details.address,
+                    city: details.city,
+                }
+            } else if (isOrg) {
+                contactToUse = orgContact
+            }
+
+            // Validate contact info
+            if (!contactToUse.fullName || contactToUse.fullName.trim() === '') {
+                setError('Full name is required in contact information')
+                return
+            }
+
+            if (!contactToUse.email && !contactToUse.phone) {
+                setError('Please provide either email or phone number')
+                return
+            }
+
+            if (isRepair) {
+                // Repair booking
+                const optionsArray = selectedOptions.map(optId => ({
+                    name: optId,
+                    quantity: quantities[optId] || 1,
+                    price: 0 // Price would be fetched from options data if available
+                }))
+
+                bookingData.selectedOptions = optionsArray
+                bookingData.repairDescription = repairDescription
+                bookingData.photos = photos // Array of file paths/URLs
+                bookingData.contact = contactToUse
+                bookingData.pickupDate = selectedDate
+                bookingData.pickupSlot = selectedSlot
+            } else if (isJersey) {
+                // Team jersey booking
+                bookingData.teamName = teamName
+                bookingData.players = players
+                bookingData.designFile = designFile ? designFile.name : ''
+                bookingData.driveLink = driveLink
+                bookingData.contact = contact
+            } else if (isOrg) {
+                // Organizational booking
+                bookingData.orgName = orgName
+                bookingData.members = members
+                bookingData.orgDesignFile = orgDesignFile ? orgDesignFile.name : ''
+                bookingData.orgDriveLink = orgDriveLink
+                bookingData.contact = orgContact
+            }
+
+            console.log('Submitting booking data:', bookingData)
+
+            // Call API to create booking
+            const response = await bookingApi.createBooking(bookingData)
+
+            console.log('Booking response:', response)
+
+            if (response.success || response._id || response.booking) {
+                // Show success message
+                alert('Booking submitted successfully! We will contact you soon.')
+                resetForm()
+                onClose()
+            } else {
+                setError(response.message || 'Failed to create booking')
+            }
+        } catch (err) {
+            console.error('Booking submission error:', err)
+            console.error('Error response data:', err.response?.data)
+            console.error('Error status:', err.response?.status)
+
+            // Try to extract detailed error message from backend
+            let errorMsg = 'Error submitting booking. Please try again.'
+
+            if (err.response?.data?.message) {
+                errorMsg = err.response.data.message
+            } else if (err.response?.data?.error) {
+                errorMsg = err.response.data.error
+            } else if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+                errorMsg = 'Validation errors: ' + err.response.data.errors.join(', ')
+            } else if (err.response?.data?.received) {
+                errorMsg = err.response.data.message + ' - Received: ' + JSON.stringify(err.response.data.received)
+            } else if (err.message) {
+                errorMsg = err.message
+            }
+
+            console.error('Final error message to display:', errorMsg)
+            setError(errorMsg)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const goToStep = (s) => setStep(s)
@@ -197,7 +398,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             <div className="relative w-full max-w-3xl mx-4 my-6 sm:my-10">
                 <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden">
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="absolute top-4 right-4 z-10 w-9 h-9 rounded-xl bg-white/80 hover:bg-red-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer shadow-sm"
                     >
                         <MdClose size={18} />
@@ -205,7 +406,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
                     {/* Header */}
                     <div className="pt-6 pb-2 text-center select-none">
-                        <img src={logo} alt="" className='h-20 mx-auto' />
+                        <img src={img.jjslogo1} alt="" className='h-20 mx-auto' />
                         <p className="text-[10px] uppercase tracking-[0.35em] text-blue-500/50 font-bold mt-1">
                             Repair & Custom Jersey Service
                         </p>
@@ -222,6 +423,13 @@ const BookingModal = ({ isOpen, onClose }) => {
                             <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
                             <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl shadow-gray-200/50">
                                 {renderStep()}
+
+                                {error && (
+                                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-sm text-red-700">{error}</p>
+                                    </div>
+                                )}
+
                                 <div className="border-t border-gray-200 mt-8 pt-5 flex items-center justify-between">
                                     {step > 1 ? (
                                         <button
@@ -232,7 +440,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                                         </button>
                                     ) : (
                                         <button
-                                            onClick={onClose}
+                                            onClick={handleClose}
                                             className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-sm font-medium group"
                                         >
                                             <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Cancel
@@ -253,9 +461,22 @@ const BookingModal = ({ isOpen, onClose }) => {
                                     ) : (
                                         <button
                                             onClick={handleSubmit}
-                                            className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30 transition-all duration-300 cursor-pointer"
+                                            disabled={loading}
+                                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                            ${loading
+                                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'}`}
                                         >
-                                            {submitLabel} <MdSend size={16} />
+                                            {loading ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                    Submitting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {submitLabel} <MdSend size={16} />
+                                                </>
+                                            )}
                                         </button>
                                     )}
                                 </div>
