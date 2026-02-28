@@ -84,8 +84,6 @@ const ProgressTracker = ({ steps }) => (
                 </React.Fragment>
             ))}
         </div>
-
-        {/* Mobile — full width, no scroll */}
         <div className="md:hidden flex items-start w-full mt-3">
             {steps.map((step, i) => (
                 <React.Fragment key={step.label + i}>

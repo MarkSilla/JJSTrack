@@ -31,12 +31,12 @@ const App = () => {
 
           {/* Private routes — may sidebar + navbar */}
           <Route element={<HomeLayout />}>
-            <Route path="/home" element={<Dashboard />} />
-            <Route path="/appointment" element={<Appointment />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoices/:id" element={<Invoices />} />
-            <Route path="/repair-booking" element={<BookingForms />} />
-            <Route path="/order" element={<Order />} />
+            <Route path="/home" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/appointment" element={<ProtectedRoute><Appointment /></ProtectedRoute>} />
+            <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+            <Route path="/invoices/:id" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+            <Route path="/repair-booking" element={<ProtectedRoute><BookingForms /></ProtectedRoute>} />
+            <Route path="/order" element={<ProtectedRoute><Order /></ProtectedRoute>} />
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Routes>

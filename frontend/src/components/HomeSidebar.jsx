@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
-import logo from '../assets/jjslogo1.png'
+import img from '../assets/img.js'
 import { MdDashboard, MdCalendarToday, MdLogout, MdShoppingBag, MdReceipt } from 'react-icons/md'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -18,9 +18,9 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
   const [hoveredItem, setHoveredItem] = useState(null)
 
   const isDesktopCollapsed = collapsed ?? true
-  const setIsDesktopCollapsed = setCollapsed ?? (() => {})
+  const setIsDesktopCollapsed = setCollapsed ?? (() => { })
   const mobileExpanded = isMobileExpanded ?? false
-  const setMobileExpanded = setIsMobileExpanded ?? (() => {})
+  const setMobileExpanded = setIsMobileExpanded ?? (() => { })
 
   useEffect(() => {
     const handleResize = () => {
@@ -77,7 +77,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <div className={`flex items-center ${isDesktopCollapsed && !isSmallScreen ? 'justify-center w-full' : ''}`}>
             <div className={`flex items-center justify-center ${isDesktopCollapsed && !isSmallScreen ? 'w-7 h-7' : 'w-7 h-7 mr-2.5'}`}>
-              <img src={logo} alt="JJS Logo" className="object-contain w-7 h-7" />
+              <img src={img.jjslogo1} alt="JJS Logo" className="object-contain w-7 h-7" />
             </div>
             <div className={showLabel ? 'block' : 'hidden'}>
               <h1 className="text-xl font-bold text-white">JJS-Track</h1>

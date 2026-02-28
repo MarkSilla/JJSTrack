@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
 import { bookingApi } from '../../../services/bookingApi'
-import logo from '../../assets/jjslogo1.png'
+import img from '../../assets/img.js'
 
 // Repair steps
 import StepService from '../repairForm/StepService'
@@ -327,10 +327,10 @@ const BookingModal = ({ isOpen, onClose }) => {
             console.error('Booking submission error:', err)
             console.error('Error response data:', err.response?.data)
             console.error('Error status:', err.response?.status)
-            
+
             // Try to extract detailed error message from backend
             let errorMsg = 'Error submitting booking. Please try again.'
-            
+
             if (err.response?.data?.message) {
                 errorMsg = err.response.data.message
             } else if (err.response?.data?.error) {
@@ -342,7 +342,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             } else if (err.message) {
                 errorMsg = err.message
             }
-            
+
             console.error('Final error message to display:', errorMsg)
             setError(errorMsg)
         } finally {
@@ -406,7 +406,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
                     {/* Header */}
                     <div className="pt-6 pb-2 text-center select-none">
-                        <img src={logo} alt="" className='h-20 mx-auto' />
+                        <img src={img.jjslogo1} alt="" className='h-20 mx-auto' />
                         <p className="text-[10px] uppercase tracking-[0.35em] text-blue-500/50 font-bold mt-1">
                             Repair & Custom Jersey Service
                         </p>
@@ -423,7 +423,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                             <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
                             <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl shadow-gray-200/50">
                                 {renderStep()}
-                                
+
                                 {error && (
                                     <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                                         <p className="text-sm text-red-700">{error}</p>
@@ -463,9 +463,9 @@ const BookingModal = ({ isOpen, onClose }) => {
                                             onClick={handleSubmit}
                                             disabled={loading}
                                             className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
-                                            ${loading 
-                                                ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                                                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'}`}
+                                            ${loading
+                                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'}`}
                                         >
                                             {loading ? (
                                                 <>
