@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
 import { bookingApi } from '../../../services/bookingApi'
 import img from '../../assets/img.js'
+import { REPAIR_OPTIONS, PRICING } from '../repairForm/constants'
 
 // Repair steps
 import StepService from '../repairForm/StepService'
@@ -25,6 +26,81 @@ import OrgStepConfirm from '../OrgTeam/OrgStepConfirm'
 const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Confirm']
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
+
+// Calculate prices based on selections
+const calculateBookingPrice = (bookingType, data) => {
+    let items = []
+
+    if (bookingType === 'repair') {
+        // Add base service fee
+        if (PRICING.repair.baseFee > 0) {
+            items.push({
+                description: 'Service Base Fee',
+                qty: 1,
+                unitPrice: PRICING.repair.baseFee,
+                addOnPrice: 0
+            })
+        }
+        
+        // Add selected options with prices
+        data.selectedOptions?.forEach(optionId => {
+            const option = REPAIR_OPTIONS.find(o => o.id === optionId)
+            if (option && option.price) {
+                const qty = data.quantities?.[optionId] || 1
+                items.push({
+                    description: option.label,
+                    qty: qty,
+                    unitPrice: option.price,
+                    addOnPrice: 0
+                })
+            }
+        })
+    } else if (bookingType === 'jersey') {
+        // Add design fee
+        if (PRICING.jersey.baseFee > 0) {
+            items.push({
+                description: 'Design & Setup Fee',
+                qty: 1,
+                unitPrice: PRICING.jersey.baseFee,
+                addOnPrice: 0
+            })
+        }
+        
+        // Add price per player
+        const playerCount = data.players?.length || 0
+        if (playerCount > 0) {
+            items.push({
+                description: `Team Jerseys (${playerCount} players)`,
+                qty: playerCount,
+                unitPrice: PRICING.jersey.basePerPlayer,
+                addOnPrice: 0
+            })
+        }
+    } else if (bookingType === 'organizational') {
+        // Add design fee
+        if (PRICING.organizational.baseFee > 0) {
+            items.push({
+                description: 'Design & Setup Fee',
+                qty: 1,
+                unitPrice: PRICING.organizational.baseFee,
+                addOnPrice: 0
+            })
+        }
+        
+        // Add price per member
+        const memberCount = data.members?.length || 0
+        if (memberCount > 0) {
+            items.push({
+                description: `Organization Items (${memberCount} members)`,
+                qty: memberCount,
+                unitPrice: PRICING.organizational.basePerItem,
+                addOnPrice: 0
+            })
+        }
+    }
+
+    return items
+}
 
 // Stepper
 const Stepper = ({ currentStep, labels }) => (
@@ -283,7 +359,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 const optionsArray = selectedOptions.map(optId => ({
                     name: optId,
                     quantity: quantities[optId] || 1,
-                    price: 0 // Price would be fetched from options data if available
+                    price: REPAIR_OPTIONS.find(o => o.id === optId)?.price || 0
                 }))
 
                 bookingData.selectedOptions = optionsArray
@@ -292,6 +368,12 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
+                
+                // Calculate and add items with prices
+                bookingData.items = calculateBookingPrice('repair', {
+                    selectedOptions,
+                    quantities
+                })
             } else if (isJersey) {
                 // Team jersey booking
                 bookingData.teamName = teamName
@@ -299,6 +381,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.designFile = designFile ? designFile.name : ''
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact
+                
+                // Calculate and add items with prices
+                bookingData.items = calculateBookingPrice('jersey', {
+                    players
+                })
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
@@ -306,6 +393,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.orgDesignFile = orgDesignFile ? orgDesignFile.name : ''
                 bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
+                
+                // Calculate and add items with prices
+                bookingData.items = calculateBookingPrice('organizational', {
+                    members
+                })
             }
 
             console.log('Submitting booking data:', bookingData)

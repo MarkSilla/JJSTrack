@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
+import { AuthContext } from '../context/Context'
 import img from '../assets/img.js'
 import { Quote } from 'lucide-react'
 
@@ -54,10 +56,31 @@ const faqData = [
 
 const LandingPage = () => {
   const [openFaq, setOpenFaq] = useState(null);
+  const { isAuthenticated, loading } = useContext(AuthContext)
+  const navigate = useNavigate()
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate('/home', { replace: true })
+    }
+  }, [isAuthenticated, loading, navigate])
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
+        <div className="text-center">
+          <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-white text-lg">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

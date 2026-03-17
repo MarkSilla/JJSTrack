@@ -1,0 +1,95 @@
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:4000/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('adminToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const orderApi = {
+  // Get all orders
+  getAllOrders: async () => {
+    try {
+      const response = await api.get('/orders');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  },
+
+  // Get order by ID
+  getOrderById: async (id) => {
+    try {
+      const response = await api.get(`/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      throw error;
+    }
+  },
+
+  // Update order status
+  updateOrderStatus: async (id, status) => {
+    try {
+      const response = await api.put(`/orders/${id}`, { status });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
+  },
+
+  // Update order step
+  updateOrderStep: async (id, step) => {
+    try {
+      const response = await api.put(`/orders/${id}/step`, { step });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order step:', error);
+      throw error;
+    }
+  },
+
+  // Generic update order - can update any fields including steps
+  updateOrder: async (id, data) => {
+    try {
+      // If updating steps, use the dedicated steps endpoint
+      if (data.steps) {
+        const response = await api.put(`/orders/${id}/steps`, { steps: data.steps });
+        return response.data;
+      }
+      // Otherwise use generic update
+      const response = await api.put(`/orders/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
+  },
+
+  // Assign employee to order
+  assignEmployee: async (id, employeeId) => {
+    try {
+      const response = await api.put(`/orders/${id}/assign`, { employeeId });
+      return response.data;
+    } catch (error) {
+      console.error('Error assigning employee:', error);
+      throw error;
+    }
+  },
+};
+
+export default api;

@@ -205,11 +205,15 @@ const DetailsModal = ({ order, onClose }) => {
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel }) => {
     const [showModal, setShowModal] = useState(false)
+    const [showQR, setShowQR] = useState(false)
     const isBooking = !!order.bookingType
     const displayName = isBooking
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
     const steps = order.steps || []
+
+    // Check if order is dropped off
+    const isDroppedOff = steps.some(s => s.label?.toLowerCase().includes('drop') && s.done)
 
     return (
         <>
@@ -279,10 +283,10 @@ const OrderCard = ({ order, onCancel }) => {
             <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                        {isBooking ? 'By:' : 'Tailor:'}
+                        {order.assignedTailor ? 'Tailor:' : (isBooking ? 'By:' : 'Tailor:')}
                     </span>
                     <span className="text-[11px] font-black text-gray-700 truncate">
-                        {isBooking ? (order.contact?.fullName || '—') : (order.assignedTailor || '—')}
+                        {order.assignedTailor || (isBooking ? (order.contact?.fullName || '—') : '—')}
                     </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -292,6 +296,16 @@ const OrderCard = ({ order, onCancel }) => {
                             className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
                         >
                             Cancel
+                        </button>
+                    )}
+                    {isDroppedOff && (
+                        <button
+                            onClick={() => setShowQR(true)}
+                            className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                            title="View invoice QR code"
+                        >
+                            <MdPrint size={12} />
+                            Invoice
                         </button>
                     )}
                     <button
@@ -306,6 +320,183 @@ const OrderCard = ({ order, onCancel }) => {
 
         {/* ── Details Modal ── */}
         {showModal && <DetailsModal order={order} onClose={() => setShowModal(false)} />}
+
+        {/* ── QR Code Invoice Modal ── */}
+        {showQR && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-white">Invoice</h3>
+                        <button
+                            onClick={() => setShowQR(false)}
+                            className="text-white hover:text-purple-200 transition-colors"
+                        >
+                            <MdClose size={24} />
+                        </button>
+                    </div>
+
+                    {/* Invoice Content */}
+                    <div className="p-8 space-y-6">
+                        {/* Invoice Header */}
+                        <div className="flex justify-between items-start border-b border-gray-200 pb-6">
+                            <div>
+                                <h1 className="text-2xl font-black text-gray-900">JJS-TRACK</h1>
+                                <p className="text-sm text-gray-500 mt-1">Order Management System</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-bold text-gray-700">Invoice #</p>
+                                <p className="text-lg font-black text-gray-900">{order.orderId || order._id?.slice(-8)}</p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {new Date(order.createdAt || order.date).toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                    })}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Customer Info */}
+                        <div className="grid grid-cols-2 gap-8">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Customer</p>
+                                <div className="space-y-1">
+                                    <p className="font-bold text-gray-900">
+                                        {order.contact?.fullName || order.assignedTailor || 'Customer'}
+                                    </p>
+                                    {order.contact?.phone && <p className="text-sm text-gray-600">{order.contact.phone}</p>}
+                                    {order.contact?.email && <p className="text-sm text-gray-600">{order.contact.email}</p>}
+                                    {order.contact?.address && <p className="text-sm text-gray-600">{order.contact.address}</p>}
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Service Details</p>
+                                <div className="space-y-1">
+                                    <p className="font-bold text-gray-900">
+                                        {order.service || order.item || order.serviceType || 'Service'}
+                                    </p>
+                                    {order.pickupDate && <p className="text-sm text-gray-600">Pickup: {order.pickupDate}</p>}
+                                    {order.estimatedCompletion && <p className="text-sm text-gray-600">Due: {order.estimatedCompletion}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Items */}
+                        <div>
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-t border-b border-gray-200">
+                                    <tr>
+                                        <th className="text-left py-3 px-4 font-bold text-gray-700">Description</th>
+                                        <th className="text-center py-3 px-4 font-bold text-gray-700">Qty</th>
+                                        <th className="text-right py-3 px-4 font-bold text-gray-700">Unit Price</th>
+                                        <th className="text-right py-3 px-4 font-bold text-gray-700">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {order.invoice?.items && order.invoice.items.length > 0 ? (
+                                        order.invoice.items.map((item, idx) => {
+                                            const itemTotal = (item.qty * item.unitPrice) + (item.addOnPrice || 0);
+                                            return (
+                                                <tr key={idx} className="border-b border-gray-100">
+                                                    <td className="py-3 px-4 text-gray-800">{item.description}</td>
+                                                    <td className="py-3 px-4 text-center text-gray-800">{item.qty}</td>
+                                                    <td className="py-3 px-4 text-right text-gray-800">₱{item.unitPrice.toLocaleString()}</td>
+                                                    <td className="py-3 px-4 text-right font-bold text-gray-900">₱{itemTotal.toLocaleString()}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr className="border-b border-gray-100">
+                                            <td colSpan="4" className="py-4 px-4 text-center text-gray-500">No items</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Totals */}
+                        <div className="flex justify-end">
+                            <div className="w-64 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Subtotal:</span>
+                                    <span className="font-semibold text-gray-900">
+                                        ₱{(order.invoice?.items?.reduce((s, i) => s + (i.qty * i.unitPrice), 0) || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Add-on Fees:</span>
+                                    <span className="font-semibold text-gray-900">
+                                        ₱{(order.invoice?.items?.reduce((s, i) => s + (i.addOnPrice || 0), 0) || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="border-t-2 border-gray-300 pt-2 flex justify-between text-lg">
+                                    <span className="font-bold text-gray-900">Total:</span>
+                                    <span className="font-black text-gray-900">
+                                        ₱{(order.invoice?.items?.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice || 0), 0) || 0).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* QR Code */}
+                        <div className="flex flex-col items-center gap-3 pt-6 border-t border-gray-200">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Scan to Track</p>
+                            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                                <svg 
+                                    className="w-40 h-40 text-gray-800"
+                                    viewBox="0 0 100 100" 
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    {/* Simple QR pattern */}
+                                    <rect width="100" height="100" fill="white" />
+                                    {/* Top-left corner */}
+                                    <rect x="10" y="10" width="30" height="30" fill="black" />
+                                    <rect x="12" y="12" width="26" height="26" fill="white" />
+                                    <rect x="16" y="16" width="18" height="18" fill="black" />
+                                    {/* Top-right corner */}
+                                    <rect x="60" y="10" width="30" height="30" fill="black" />
+                                    <rect x="62" y="12" width="26" height="26" fill="white" />
+                                    <rect x="66" y="16" width="18" height="18" fill="black" />
+                                    {/* Bottom-left corner */}
+                                    <rect x="10" y="60" width="30" height="30" fill="black" />
+                                    <rect x="12" y="62" width="26" height="26" fill="white" />
+                                    <rect x="16" y="66" width="18" height="18" fill="black" />
+                                    {/* Pattern dots */}
+                                    {[...Array(36)].map((_, i) => (
+                                        <rect 
+                                            key={i}
+                                            x={45 + (i % 3) * 12}
+                                            y={45 + Math.floor(i / 3) * 12}
+                                            width="3"
+                                            height="3"
+                                            fill={Math.random() > 0.5 ? 'black' : 'white'}
+                                        />
+                                    ))}
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="border-t border-gray-200 pt-4 flex gap-3">
+                            <button
+                                onClick={() => window.print()}
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                <MdPrint size={16} />
+                                Print Invoice
+                            </button>
+                            <button
+                                onClick={() => setShowQR(false)}
+                                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
         </>
     )
 }
@@ -413,6 +604,14 @@ const Order = () => {
 
     // Re-fetch on filter change
     useEffect(() => { fetchData(activeFilter) }, [activeFilter])
+
+    // Auto-refresh every 60 seconds to get updates from admin
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchData(activeFilter, searchQuery)
+        }, 60000); // 60 seconds
+        return () => clearInterval(interval);
+    }, [activeFilter, searchQuery])
 
     // Stats from API
     useEffect(() => {
@@ -523,6 +722,16 @@ const Order = () => {
                         className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
                     />
                 </div>
+
+                {/* Refresh button - visible on all sizes */}
+                <button
+                    onClick={() => fetchData(activeFilter, searchQuery)}
+                    className="bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                    title="Refresh orders"
+                >
+                    <MdLoop size={16} />
+                    <span className="hidden sm:inline">Refresh</span>
+                </button>
 
                 {/* Mobile filter button */}
                 <button

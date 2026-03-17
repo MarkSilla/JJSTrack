@@ -1,13 +1,100 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import image from '../assets/img'
 
 function Login() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [rememberMe, setRememberMe] = useState(false)
+    const navigate = useNavigate()
+
+    useEffect(() => {
+        // Initialize email from localStorage if remembered
+        const rememberedEmail = localStorage.getItem('rememberAdminEmail')
+        if (rememberedEmail) {
+            setEmail(rememberedEmail)
+            setRememberMe(true)
+        }
+    }, [])
+
+    const validateForm = () => {
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!email) {
+            setError('Email address is required')
+            return false
+        }
+        if (!emailRegex.test(email)) {
+            setError('Please enter a valid email address')
+            return false
+        }
+
+        // Password validation
+        if (!password) {
+            setError('Password is required')
+            return false
+        }
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters')
+            return false
+        }
+
+        return true
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setError('')
+
+        if (!validateForm()) {
+            return
+        }
+
+        setLoading(true)
+
+        try {
+            const response = await fetch('http://localhost:4000/api/users/admin/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email.trim(),
+                    password: password,
+                }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Login failed')
+            }
+
+            if (data.success) {
+                // Store token in localStorage
+                localStorage.setItem('adminToken', data.token)
+                if (rememberMe) {
+                    localStorage.setItem('rememberAdminEmail', email)
+                } else {
+                    localStorage.removeItem('rememberAdminEmail')
+                }
+
+                // Redirect to dashboard
+                navigate('/admin/dashboard')
+            }
+        } catch (err) {
+            setError(err.message || 'An error occurred during login')
+            console.error('Login error:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     return (
         <div className="flex min-h-screen w-full font-sans bg-slate-50 overflow-hidden">
-            <div className="hidden md:flex lg:w-[65%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
+            <div className="hidden md:flex xl:w-[65%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10 pointer-events-none"
                     style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
                 </div>
@@ -17,16 +104,16 @@ function Login() {
                     <div className="text-2xl font-bold tracking-tight">JJSTrack <span className="text-sm font-normal text-slate-400 ml-2">Admin</span></div>
                 </div>
 
-                <div className="relative z-10 max-w-lg mb-12 md:mb-0  items-center">
+                <div className="relative z-10 max-w-sm mb-12 md:mb-0 items-center">
                     <div className="flex mb-3">
                         <div className="px-8 py-3 bg-white/5 border border-white/10 rounded-full text-sm flex items-center gap-2 hover:bg-white/10 transition-all cursor-default backdrop-blur-sm">
                             Your trusted tailoring shop in the Philippines
                         </div>
                     </div>
-                    <h1 className="text-4xl md:text-6xl font-playfair font-bold leading-tight mb-6 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                    <h1 className="text-2xl md:text-5xl  xl:text-6xl  font-playfair font-bold leading-tight mb-6 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
                         Where every stitch tells a story.
                     </h1>
-                    <p className="text-lg text-slate-300 mb-8 leading-relaxed">
+                    <p className="text-sm md:text-sm xl:text-lg text-slate-300 mb-8 leading-relaxed">
                         All-in-one web application. Track orders, manage clients, and grow your business with precision and style.
                     </p>
                 </div>
@@ -37,19 +124,25 @@ function Login() {
             </div>
 
             {/* Right Login Side */}
-            <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-slate-100">
+            <div className="flex-1 flex items-center justify-center md:p-12 bg-slate-100">
                 <div className="w-full max-w-md">
                     <div className="rounded-[2.5rem] p-8 md:p-12 relative ">
                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-30 h-30" />
                         </div>
 
-                        <div className="text-start mt-6 mb-10">
-                            <h2 className="text-black text-3xl mb-2 font-playfair">Welcome Back</h2>
+                        <div className="text-start mt-6 mb-5 xl:mb-10">
+                            <h2 className="text-black text-2xl lg:text-3xl mb-2 font-playfair">Welcome Back</h2>
                             <p className="text-slate-400 text-sm">Enter your credentials to access the admin panel</p>
                         </div>
 
-                        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {error && (
+                                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                                    <p className="text-red-700 text-sm font-medium">{error}</p>
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <label className="block text-slate-300 text-sm font-medium">Email Address</label>
                                 <div className="relative">
@@ -58,10 +151,11 @@ function Login() {
                                     </div>
                                     <input
                                         type="email"
-                                        placeholder="admin@jjstrack.com"
-                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+                                        placeholder="Enter your email address"
+                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
@@ -69,7 +163,6 @@ function Login() {
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <label className="text-slate-300 text-sm font-medium">Password</label>
-                                    <a href="#" className="text-blue-500 text-sm hover:underline font-medium">Forgot password?</a>
                                 </div>
                                 <div className="relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
@@ -77,23 +170,41 @@ function Login() {
                                     </div>
                                     <input
                                         type="password"
-                                        placeholder="••••••••"
-                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+                                        placeholder="Enter your password"
+                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
 
                             <div className="flex items-center">
                                 <label className="flex items-center gap-2 text-slate-400 text-sm cursor-pointer select-none">
-                                    <input type="checkbox" className="w-4 h-4 rounded border-slate-800 bg-[#0f172a] text-blue-600 focus:ring-blue-500/20" />
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 rounded border-slate-800 bg-[#0f172a] text-blue-600 focus:ring-blue-500/20"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        disabled={loading}
+                                    />
                                     Remember me
                                 </label>
                             </div>
 
-                            <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transform transition-all active:scale-[0.98]">
-                                Sign In
+                            <button 
+                                type="submit" 
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                        Signing in...
+                                    </>
+                                ) : (
+                                    'Sign In'
+                                )}
                             </button>
                         </form>
 

@@ -156,9 +156,22 @@ export const getBookings = async (req, res) => {
     const { status, bookingType } = req.query;
     let query = {};
 
+    // Check if user is admin or staff
+    let isAdminOrStaff = req.userId === 'admin'; // Admin users have userId 'admin'
+    
+    if (!isAdminOrStaff && req.userId) {
+      try {
+        const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
+        if (user && (user.role === 'admin' || user.role === 'staff')) {
+          isAdminOrStaff = true;
+        }
+      } catch (dbError) {
+        console.log('User lookup failed, treating as regular user');
+      }
+    }
+
     // If not admin/staff, only return user's bookings
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
+    if (!isAdminOrStaff) {
       query.userId = req.userId;
     }
 
@@ -212,7 +225,7 @@ export const getBookingById = async (req, res) => {
 export const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, adminNotes, contact, pickupDate, pickupSlot } = req.body;
+    const { status, adminNotes, contact, pickupDate, pickupSlot, steps, assignedTailor } = req.body;
 
     const booking = await bookingModel.findById(id);
 
@@ -225,6 +238,8 @@ export const updateBooking = async (req, res) => {
     if (contact) booking.contact = contact;
     if (pickupDate) booking.pickupDate = pickupDate;
     if (pickupSlot) booking.pickupSlot = pickupSlot;
+    if (steps) booking.steps = steps;
+    if (assignedTailor) booking.assignedTailor = assignedTailor;
 
     await booking.save();
 

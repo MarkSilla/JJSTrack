@@ -43,6 +43,8 @@ const LoginPage = () => {
       const response = await userApi.login(formData);
 
       if (response.success) {
+        // Save to context
+        login(response.user);
         alert('Login successful!');
         navigate('/home');
       } else {

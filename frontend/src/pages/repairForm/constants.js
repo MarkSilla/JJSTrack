@@ -15,6 +15,22 @@ export const REPAIR_OPTIONS = [
     { id: 'others', label: 'Others', price: '' },
 ]
 
+export const PRICING = {
+    repair: {
+        baseFee: 0,
+        options: REPAIR_OPTIONS.reduce((acc, opt) => ({
+            ...acc,
+            [opt.id]: opt.price
+        }), {})
+    },
+    jersey: {
+        basePerPlayer: 350,
+    },
+    organizational: {
+        basePerItem: 300,
+    }
+}
+
 export const TIME_SLOTS = [
     { id: 'morning', label: 'Morning', range: '08:00 AM – 12:00 PM' },
     { id: 'afternoon', label: 'Afternoon', range: '01:00 PM – 05:00 PM' },

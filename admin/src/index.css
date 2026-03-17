@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    @apply bg-white text-gray-800;
+  }
+}
+
 @layer utilities {
   .font-playfair {
     font-family: 'Playfair Display', serif;

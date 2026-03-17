@@ -104,6 +104,7 @@ const bookingSchema = new mongoose.Schema({
 
   notes: String,
   adminNotes: String,
+  assignedTailor: String,
 },
 {
   // ✅ timestamps:true replaces manual createdAt/updatedAt

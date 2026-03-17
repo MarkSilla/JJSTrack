@@ -7,6 +7,7 @@ import {
   deleteOrder,
   cancelOrder,
   getOrderStats,
+  assignEmployee,
 } from '../controllers/orderController.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
@@ -21,6 +22,7 @@ router.get('/stats', authMiddleware, getOrderStats);
 // More specific routes must come before generic /:id routes
 router.put('/:id/cancel', authMiddleware, cancelOrder);
 router.put('/:id/steps', authMiddleware, updateOrderSteps);
+router.put('/:id/assign', authMiddleware, assignEmployee);
 
 // Less specific routes
 router.get('/:id', authMiddleware, getOrderById);

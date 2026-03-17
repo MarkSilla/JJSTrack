@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import img from '../assets/img.js'
-import { MdDashboard, MdCalendarToday, MdLogout, MdShoppingBag, MdReceipt } from 'react-icons/md'
+import { MdDashboard, MdCalendarToday, MdLogout, MdShoppingBag, MdReceipt, MdSettings } from 'react-icons/md'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const navItems = [
@@ -116,7 +116,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                   >
                     <item.icon
                       size={19}
-                      className={`transition-colors duration-200 flex-shrink-0 ${isActive ? 'text-[#60A5FA]' : 'text-gray-400 group-hover:text-white'}`}
+                      className={`transition-all duration-300 flex-shrink-0 group-hover:scale-110 ${isActive ? 'text-[#60A5FA] drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
                     />
                     <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
                       <span className="font-medium text-sm leading-tight">{item.label}</span>
@@ -145,8 +145,41 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
           </div>
         )}
 
-        {/* Logout */}
+        {/* Footer */}
         <div className={`mt-1 mb-3 border-t border-gray-700 pt-2 ${isDesktopCollapsed && !isSmallScreen ? 'px-2' : 'px-3'}`}>
+          {/* Settings */}
+          <div
+            className="relative"
+            onMouseEnter={() => setHoveredItem('settings')}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <button
+              aria-label="Settings"
+              className={`flex items-center gap-2.5 w-full rounded-lg text-gray-400 hover:bg-gray-700/60 hover:text-white transition-all duration-200 group mb-1
+                ${isDesktopCollapsed && !isSmallScreen ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5'}`}
+            >
+              <MdSettings size={19} className="text-gray-400 flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+              <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
+                <span className="font-medium text-sm leading-tight">Settings</span>
+                <span className="text-[10px] text-gray-500 leading-tight mt-0.5">Manage preferences</span>
+              </div>
+            </button>
+
+            {isDesktopCollapsed && !isSmallScreen && hoveredItem === 'settings' && (
+              <div
+                className="fixed left-[4.5rem] z-[200] pointer-events-none"
+                style={{ top: `${document.querySelector('button[aria-label="Settings"]')?.getBoundingClientRect().top || 0}px` }}
+              >
+                <div className="bg-gray-900 text-white px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap text-xs">
+                  <div className="font-semibold">Settings</div>
+                  <div className="text-[10px] text-gray-300 mt-0.5">Manage preferences</div>
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Logout */}
           <div
             className="relative"
             onMouseEnter={() => setHoveredItem('logout')}
@@ -158,7 +191,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
               className={`flex items-center gap-2.5 w-full rounded-lg text-red-400 hover:bg-red-500/10 transition-all duration-200 group
                 ${isDesktopCollapsed && !isSmallScreen ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5'}`}
             >
-              <MdLogout size={19} className="text-red-400 flex-shrink-0" />
+              <MdLogout size={19} className="text-red-400 flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
               <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
                 <span className="font-medium text-sm leading-tight">Logout</span>
                 <span className="text-[10px] text-red-500 leading-tight mt-0.5">Sign out securely</span>

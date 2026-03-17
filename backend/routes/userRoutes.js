@@ -11,6 +11,9 @@ import {
   forgotPassword,
   resetPassword,
   completeGoogleProfile,
+  adminLogin,
+  adminLogout,
+  verifyAdminToken,
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -27,6 +30,11 @@ router.post('/resend-verification', resendVerificationCode);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+
+// Admin routes
+router.post('/admin/login', adminLogin);
+router.post('/admin/logout', adminLogout);
+router.post('/admin/verify-token', verifyAdminToken);
 
 // Protected routes 
 router.get('/profile', authMiddleware, getUserProfile);

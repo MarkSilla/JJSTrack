@@ -5,12 +5,23 @@ import userModel from '../models/userModel.js';
 export const getOrders = async (req, res) => {
   try {
     const { status, search } = req.query;
-    const user = await userModel.findById(req.userId);
+    const userId = req.userId;
 
     let query = {};
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
-      query.userId = req.userId;
+
+    // Only filter by userId if the user is NOT an admin
+    if (userId !== 'admin') {
+      try {
+        const user = await userModel.findById(userId);
+        if (user && user.role !== 'admin' && user.role !== 'staff') {
+          query.userId = userId;
+        }
+      } catch (err) {
+        // If user lookup fails, still proceed- filter by userId
+        query.userId = userId;
+      }
     }
+    // If userId is 'admin', no filtering - show all orders
 
     if (status) {
       query.status = status;
@@ -28,7 +39,8 @@ export const getOrders = async (req, res) => {
 
     res.json({
       success: true,
-      orders,
+      data: orders,
+      orders, // for compatibility
     });
 
   } catch (error) {
@@ -227,6 +239,39 @@ export const deleteOrder = async (req, res) => {
   } catch (error) {
     console.error('Delete Order Error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete order' });
+  }
+};
+
+export const assignEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { employeeId } = req.body;
+
+    const user = await userModel.findById(req.userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin/staff can assign employees'
+      });
+    }
+
+    const order = await orderModel.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    order.assignedTailor = employeeId;
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Employee assigned successfully',
+      order,
+    });
+
+  } catch (error) {
+    console.error('Assign Employee Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign employee' });
   }
 };
 
