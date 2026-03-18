@@ -24,6 +24,7 @@ export default function OrderDetail({
 }) {
     const [pickupApprovalDate, setPickupApprovalDate] = useState('');
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+    const [approvalMode, setApprovalMode] = useState(false);
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
 
@@ -138,28 +139,15 @@ export default function OrderDetail({
                         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col gap-3">
                             <h4 className="text-[11px] font-black tracking-wider uppercase mb-2 text-gray-400">Quick Actions</h4>
                             {canApprovePickup && (
-                                <div className="rounded-xl border border-violet-200 bg-violet-50 p-3.5 mb-2">
-                                    <p className="text-[11px] font-bold text-violet-800 uppercase tracking-wider mb-2">Set Pickup Date</p>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="date"
-                                            value={pickupApprovalDate}
-                                            onChange={(e) => setPickupApprovalDate(e.target.value)}
-                                            className="flex-1 bg-white border border-violet-200 rounded-lg px-2.5 py-2 text-sm text-gray-700 outline-none"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                if (!pickupApprovalDate) return;
-                                                handleApprovePickupDate(activeOrder.id || activeOrder._id, pickupApprovalDate);
-                                                setPickupApprovalDate('');
-                                            }}
-                                            className="px-3 py-2 rounded-lg font-bold text-xs text-white bg-violet-600 hover:bg-violet-700 border-none cursor-pointer disabled:opacity-50"
-                                            disabled={!pickupApprovalDate}
-                                        >
-                                            Approve
-                                        </button>
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={() => {
+                                        setApprovalMode(true);
+                                        setShowRescheduleModal(true);
+                                    }}
+                                    className="w-full rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 p-3 font-bold text-xs text-violet-700 uppercase tracking-wider transition-colors border-none cursor-pointer"
+                                >
+                                    Set Pickup Date & Time
+                                </button>
                             )}
                             <button className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
                                 <Edit size={18} /> Edit Order Details
@@ -188,8 +176,15 @@ export default function OrderDetail({
 
             <RescheduleModal 
                 isOpen={showRescheduleModal} 
-                onClose={() => setShowRescheduleModal(false)} 
-                onConfirm={handleRescheduleConfirm}
+                onClose={() => {
+                    setShowRescheduleModal(false);
+                    setApprovalMode(false);
+                }} 
+                onConfirm={(date, time) => {
+                    handleRescheduleConfirm(date, time);
+                    setApprovalMode(false);
+                }}
+                mode={approvalMode ? 'approve' : 'reschedule'}
                 currentDate={activeOrder?.pickupDate || new Date().toISOString().split('T')[0]}
             />
         </div>

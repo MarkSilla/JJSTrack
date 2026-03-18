@@ -26,7 +26,7 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 const STEPS = ['date', 'time', 'confirm'];
 const STEP_LABELS = ['Date', 'Time', 'Confirm'];
 
-export default function RescheduleModal({ isOpen, onClose, onConfirm }) {
+export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 'reschedule' }) {
     if (!isOpen) return null;
 
     const today = new Date();
@@ -167,7 +167,9 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm }) {
                             </button>
                         )}
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">Reschedule Delivery</h2>
+                            <h2 className="text-base font-bold text-gray-900">
+                                {mode === 'approve' ? 'Set Schedule' : 'Reschedule Delivery'}
+                            </h2>
                             <p className="text-[11px] text-gray-400">
                                 {step === 'date' && 'Step 1 — Pick a new date'}
                                 {step === 'time' && `Step 2 — Pick a time · ${selectedDateShort}`}
@@ -318,14 +320,22 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm }) {
                                 <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-3">
                                     <CheckCircle2 size={36} className="text-blue-600" />
                                 </div>
-                                <p className="text-sm font-bold text-gray-800">Confirm Reschedule?</p>
-                                <p className="text-xs text-gray-400 mt-1 text-center">Please review the new schedule below before confirming.</p>
+                                <p className="text-sm font-bold text-gray-800">
+                                    {mode === 'approve' ? 'Confirm Schedule?' : 'Confirm Reschedule?'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1 text-center">
+                                    {mode === 'approve' 
+                                        ? 'Please review the schedule below before confirming.' 
+                                        : 'Please review the new schedule below before confirming.'}
+                                </p>
                             </div>
 
                             {/* Summary card */}
                             <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
                                 <div className="px-4 py-3 bg-blue-600">
-                                    <p className="text-xs font-bold text-blue-100 uppercase tracking-wider">New Schedule</p>
+                                    <p className="text-xs font-bold text-blue-100 uppercase tracking-wider">
+                                        {mode === 'approve' ? 'Schedule' : 'New Schedule'}
+                                    </p>
                                 </div>
                                 <div className="p-4 space-y-3">
                                     <div className="flex items-start gap-3">
@@ -351,8 +361,10 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm }) {
                             </div>
 
                             <p className="text-[11px] text-gray-400 text-center">
-                                This will update the delivery schedule. The customer will be notified.
-            </p>
+                                {mode === 'approve' 
+                                    ? 'This will set the delivery schedule. The customer will be notified.' 
+                                    : 'This will update the delivery schedule. The customer will be notified.'}
+                            </p>
                         </div>
                     )}
                 </div>
