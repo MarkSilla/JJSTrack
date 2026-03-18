@@ -1,37 +1,47 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Package, AlertTriangle, TrendingDown, RefreshCw,
   Search, Plus, ChevronDown, Pencil, Trash2,
   ArrowUpCircle, ArrowDownCircle, X, Check,
   Filter, BarChart3, Clock, ShoppingBag, Layers,
   Tag, CheckCircle2, AlertCircle, XCircle,
-  ArrowUpRight, ArrowDownRight,
+  Wrench, Sparkles, Link2,
 } from "lucide-react";
+import { inventoryApi } from "../../services/inventoryApi";
+import { fmt } from "../../utils/helpers";
 
-//MOCK DATA 
-const INITIAL_INVENTORY = [
-  { id: 1, name: "Sewing Needles", category: "Sewing", stock: 12, max: 100, unit: "pcs" },
-  { id: 2, name: "Polyester Thread", category: "Sewing", stock: 230, max: 500, unit: "spools" },
-  { id: 3, name: "Cotton Thread", category: "Sewing", stock: 85, max: 500, unit: "spools" },
-  { id: 4, name: "Fabric Rolls", category: "Fabric", stock: 5, max: 50, unit: "rolls" },
-  { id: 5, name: "Buttons (Assorted)", category: "Fastener", stock: 0, max: 300, unit: "pcs" },
-  { id: 6, name: "Zippers 20cm", category: "Fastener", stock: 18, max: 150, unit: "pcs" },
-  { id: 7, name: "Measuring Tape", category: "Tool", stock: 7, max: 20, unit: "pcs" },
-  { id: 8, name: "Tailor's Chalk", category: "Tool", stock: 40, max: 80, unit: "pcs" },
-  { id: 9, name: "Elastic Bands", category: "Notions", stock: 15, max: 200, unit: "pcs" },
-];
-
-const INITIAL_ACTIVITY = [
-  { id: 1, type: "add", text: "+20 Polyester Threads added", time: "Today, 09:14 AM" },
-  { id: 2, type: "dec", text: "Sewing Needles decreased by 5", time: "Today, 08:50 AM" },
-  { id: 3, type: "warn", text: "Buttons marked as Out of Stock", time: "Yesterday, 4:30 PM" },
-  { id: 4, type: "add", text: "+10 Zippers 20cm restocked", time: "Yesterday, 2:00 PM" },
-  { id: 5, type: "warn", text: "Fabric Rolls flagged as Low Stock", time: "Mar 12, 11:20 AM" },
-  { id: 6, type: "add", text: "+50 Buttons (Assorted) added", time: "Mar 11, 3:05 PM" },
-];
+const numberInputStyle = `
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+`;
 
 const CATEGORIES = ["All", "Sewing", "Fabric", "Fastener", "Tool", "Notions"];
 const STATUS_OPTIONS = ["All", "In Stock", "Low Stock", "Out of Stock"];
+
+// Format time for activity log
+function formatActivityTime(date) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const activityDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const timeStr = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+  if (activityDate.getTime() === today.getTime()) {
+    return `Today, ${timeStr}`;
+  } else if (activityDate.getTime() === yesterday.getTime()) {
+    return `Yesterday, ${timeStr}`;
+  } else {
+    return `${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${timeStr}`;
+  }
+}
 
 // HELPERS 
 function getStatus(item) {
@@ -105,9 +115,10 @@ function ActivityItem({ item }) {
   const cfg = {
     add: { bg: "bg-emerald-50", Icon: ArrowUpCircle, cl: "text-emerald-600" },
     dec: { bg: "bg-red-50", Icon: ArrowDownCircle, cl: "text-red-500" },
+    edit: { bg: "bg-purple-50", Icon: Pencil, cl: "text-purple-600" },
     warn: { bg: "bg-amber-50", Icon: AlertTriangle, cl: "text-amber-500" },
   };
-  const { bg, Icon, cl } = cfg[item.type];
+  const { bg, Icon, cl } = cfg[item.type] || cfg.warn;
   return (
     <div className="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0">
       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${bg}`}>
@@ -121,7 +132,7 @@ function ActivityItem({ item }) {
   );
 }
 
-function MobileCard({ item, onAdjust, onDelete }) {
+function MobileCard({ item, onAdjust, onEditMax, onDelete }) {
   const status = getStatus(item);
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -152,6 +163,10 @@ function MobileCard({ item, onAdjust, onDelete }) {
           className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
           <ArrowDownCircle size={13} /> Remove
         </button>
+        <button onClick={() => onEditMax(item)}
+          className="flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit Max Capacity">
+          <Pencil size={13} />
+        </button>
         <button onClick={() => onDelete(item)}
           className="flex items-center justify-center px-3 py-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
           <Trash2 size={13} />
@@ -168,7 +183,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   const handleConfirm = () => {
     const n = parseInt(amount);
     if (!n || n < 1) return;
-    onConfirm(item.id, adjType, n);
+    onConfirm(item._id, adjType, n);
   };
 
   return (
@@ -206,7 +221,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
           <input type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)}
             placeholder="Enter amount…"
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium" />
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
         </div>
 
         <div className="flex gap-3">
@@ -224,7 +239,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 }
 
 function AddItemModal({ onConfirm, onClose }) {
-  const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", max: "", unit: "pcs" });
+  const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", max: "", unit: "pcs", unitPrice: "" });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleConfirm = () => {
@@ -235,6 +250,7 @@ function AddItemModal({ onConfirm, onClose }) {
       stock: parseInt(form.stock) || 0,
       max: parseInt(form.max) || 100,
       unit: form.unit || "pcs",
+      unitPrice: parseFloat(form.unitPrice) || 0,
     });
   };
 
@@ -243,6 +259,7 @@ function AddItemModal({ onConfirm, onClose }) {
     { key: "stock", label: "Initial Stock", type: "number", placeholder: "e.g. 50" },
     { key: "max", label: "Max Capacity", type: "number", placeholder: "e.g. 200" },
     { key: "unit", label: "Unit", type: "text", placeholder: "e.g. pcs, rolls" },
+    { key: "unitPrice", label: "Price per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
   ];
 
   return (
@@ -260,9 +277,13 @@ function AddItemModal({ onConfirm, onClose }) {
         {fields.map(f => (
           <div key={f.key} className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">{f.label}</label>
-            <input type={f.type} value={form[f.key]} onChange={e => set(f.key, e.target.value)}
+            <input 
+              type={f.type} 
+              value={form[f.key]} 
+              onChange={e => set(f.key, e.target.value)}
               placeholder={f.placeholder}
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors" />
+              step={f.step || undefined}
+              className={`w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors ${f.type === "number" ? "appearance-none" : ""}`} />
           </div>
         ))}
 
@@ -285,18 +306,130 @@ function AddItemModal({ onConfirm, onClose }) {
   );
 }
 
+function EditMaxModal({ item, onConfirm, onClose }) {
+  const [newMax, setNewMax] = useState(String(item.max || 100));
+
+  const handleConfirm = () => {
+    const maxVal = parseInt(newMax);
+    if (!newMax.trim() || maxVal <= 0) {
+      alert("Max capacity must be greater than 0");
+      return;
+    }
+    if (maxVal < item.stock) {
+      alert(`Max capacity cannot be less than current stock (${item.stock})`);
+      return;
+    }
+    onConfirm(maxVal);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-black text-gray-900">Edit Max Capacity</h3>
+            <p className="text-xs text-slate-400">{item.name}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Current Stock: {item.stock}</label>
+          <input
+            type="number"
+            min={item.stock + 1}
+            value={newMax}
+            onChange={e => setNewMax(e.target.value)}
+            placeholder="Enter new max capacity…"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
+          <p className="text-xs text-slate-400 mt-1">Must be at least {item.stock}</p>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleConfirm}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+            <Check size={15} /> Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InventorySystem() {
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY);
-  const [activities, setActivities] = useState(INITIAL_ACTIVITY);
+  return (
+    <>
+      <style>{numberInputStyle}</style>
+      <InventorySystemContent />
+    </>
+  );
+}
+
+function InventorySystemContent() {
+  const [inventory, setInventory] = useState([]);
+  const [activities, setActivities] = useState(() => {
+    try {
+      const saved = localStorage.getItem("inventoryActivities");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load activities from localStorage:", e);
+      return [];
+    }
+  });
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
   const [adjModal, setAdjModal] = useState(null);
+  const [editMaxModal, setEditMaxModal] = useState(null);
   const [addModal, setAddModal] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Save activities to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("inventoryActivities", JSON.stringify(activities));
+    } catch (e) {
+      console.error("Failed to save activities to localStorage:", e);
+    }
+  }, [activities]);
+
+  // Fetch inventory data on component mount
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const data = await inventoryApi.getAllInventory();
+      setInventory(data);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to fetch inventory:", err);
+      setError("Failed to load inventory");
+      setInventory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const lowCount = inventory.filter(i => getStatus(i) === "Low Stock").length;
   const outCount = inventory.filter(i => getStatus(i) === "Out of Stock").length;
+  const inStockCount = inventory.filter(i => getStatus(i) === "In Stock").length;
+  
+  const totalValue = useMemo(() => {
+    return inventory.reduce((sum, item) => sum + ((item.max || 0) * (item.unitPrice || 0)), 0);
+  }, [inventory]);
+
+  const currentValue = useMemo(() => {
+    return inventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
+  }, [inventory]);
 
   const filtered = useMemo(() => inventory.filter(item => {
     const matchQ = item.name.toLowerCase().includes(search.toLowerCase()) || item.category.toLowerCase().includes(search.toLowerCase());
@@ -307,42 +440,67 @@ export default function InventorySystem() {
 
   const STAT_CARDS = [
     { label: "Total Items", value: inventory.length, sub: "All supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
+    { label: "Total Value (Max)", value: fmt(totalValue), sub: "Full capacity cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
+    { label: "Current Value", value: fmt(currentValue), sub: "Current stock cost", icon: Layers, accent: "#8B5CF6", bgAccent: "#FAF5FF" },
+    { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
-    { label: "Out of Stock", value: outCount, sub: "Immediate action", icon: TrendingDown, accent: "#DC2626", bgAccent: "#FEF2F2" },
-    { label: "Last Updated", value: "Today", sub: "Mar 13, 2026", icon: RefreshCw, accent: "#7C3AED", bgAccent: "#F5F3FF" }
+    { label: "Out of Stock", value: outCount, sub: "Immediate action", icon: TrendingDown, accent: "#DC2626", bgAccent: "#FEF2F2" }
   ];
 
   const pushActivity = (type, text) =>
-    setActivities(a => [{ id: Date.now(), type, text, time: "Just now" }, ...a]);
+    setActivities(a => [{ id: Date.now(), type, text, time: formatActivityTime(new Date()) }, ...a]);
 
-  const handleAdjust = (itemId, type, amount) => {
-    setInventory(inv => inv.map(i => {
-      if (i.id !== itemId) return i;
-      const newStock = type === "increase"
-        ? Math.min(i.max, i.stock + amount)
-        : Math.max(0, i.stock - amount);
+  const handleAdjust = async (itemId, type, amount) => {
+    try {
+      const updatedItem = await inventoryApi.adjustStock(itemId, type, amount);
+      setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
       pushActivity(
         type === "increase" ? "add" : "dec",
         type === "increase"
-          ? `+${amount} ${i.name} added`
-          : `${i.name} stock decreased by ${amount}`
+          ? `+${amount} added`
+          : `Stock decreased by ${amount}`
       );
-      return { ...i, stock: newStock };
-    }));
-    setAdjModal(null);
+      setAdjModal(null);
+    } catch (err) {
+      console.error("Failed to adjust stock:", err);
+      alert("Failed to adjust stock");
+    }
   };
 
-  const handleAddItem = (data) => {
-    const newItem = { id: Date.now(), ...data };
-    setInventory(inv => [...inv, newItem]);
-    pushActivity("add", `New item "${data.name}" added to inventory`);
-    setAddModal(false);
+  const handleAddItem = async (data) => {
+    try {
+      const newItem = await inventoryApi.createInventory(data);
+      setInventory(inv => [...inv, newItem]);
+      pushActivity("add", `New item "${data.name}" added to inventory`);
+      setAddModal(false);
+    } catch (err) {
+      console.error("Failed to add item:", err);
+      alert("Failed to add item");
+    }
   };
 
-  const handleDelete = (item) => {
+  const handleDelete = async (item) => {
     if (!window.confirm(`Delete "${item.name}" from inventory?`)) return;
-    setInventory(inv => inv.filter(i => i.id !== item.id));
-    pushActivity("dec", `"${item.name}" removed from inventory`);
+    try {
+      await inventoryApi.deleteInventory(item._id);
+      setInventory(inv => inv.filter(i => i._id !== item._id));
+      pushActivity("dec", `"${item.name}" removed from inventory`);
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+      alert("Failed to delete item");
+    }
+  };
+
+  const handleEditMax = async (itemId, newMax) => {
+    try {
+      const updatedItem = await inventoryApi.updateInventory(itemId, { max: newMax });
+      setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
+      pushActivity("edit", `Max capacity updated to ${newMax}`);
+      setEditMaxModal(null);
+    } catch (err) {
+      console.error("Failed to update max capacity:", err);
+      alert("Failed to update max capacity");
+    }
   };
 
   const alertCount = lowCount + outCount;
@@ -371,7 +529,7 @@ export default function InventorySystem() {
         )} */}
 
         {/* STAT */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
           {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, }) => (
             <div
               key={label}
@@ -433,13 +591,16 @@ export default function InventorySystem() {
 
         <div className="lg:hidden space-y-3 mb-8">
           <p className="text-sm font-bold text-gray-900">All Supplies <span className="text-slate-400 font-normal">({filtered.length})</span></p>
-          {filtered.length === 0
+          {loading ? (
+            <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">Loading...</div>
+          ) : filtered.length === 0
             ? <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">
               <ShoppingBag size={28} className="mx-auto mb-2 opacity-30" />No items found.
             </div>
             : filtered.map(item => (
-              <MobileCard key={item.id} item={item}
+              <MobileCard key={item._id} item={item}
                 onAdjust={(i, t) => setAdjModal({ item: i, type: t })}
+                onEditMax={(i) => setEditMaxModal(i)}
                 onDelete={handleDelete} />
             ))
           }
@@ -454,16 +615,16 @@ export default function InventorySystem() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                {["Item Name", "Category", "Stock", "Level", "Status", "Actions"].map(h => (
+                {["Item Name", "Category", "Price per Unit", "Stock", "Total Price (Max)", "Total Price (Current)", "Level", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-5 py-3">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0
-                ? <tr><td colSpan={6} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
+                ? <tr><td colSpan={9} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
                 : filtered.map(item => (
-                  <tr key={item.id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
+                  <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
                     <td className="px-5 py-3.5">
                       <p className="font-bold text-gray-900">{item.name}</p>
                     </td>
@@ -473,8 +634,17 @@ export default function InventorySystem() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
+                      <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(item.unitPrice || 0)}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
                       <span className="font-bold text-gray-900 tabular-nums">{item.stock}</span>
                       <span className="text-slate-400 text-xs"> / {item.max} {item.unit}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt((item.max || 0) * (item.unitPrice || 0))}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
                     </td>
                     <td className="px-5 py-3.5 w-40"><StockBar item={item} /></td>
                     <td className="px-5 py-3.5"><StatusBadge status={getStatus(item)} /></td>
@@ -487,6 +657,10 @@ export default function InventorySystem() {
                         <button onClick={() => setAdjModal({ item, type: "decrease" })}
                           className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Remove Stock">
                           <ArrowDownCircle size={14} />
+                        </button>
+                        <button onClick={() => setEditMaxModal(item)}
+                          className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit Max Capacity">
+                          <Pencil size={14} />
                         </button>
                         <button onClick={() => handleDelete(item)}
                           className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete">
@@ -501,14 +675,49 @@ export default function InventorySystem() {
           </table>
         </div>
 
-        {/* RECENT ACTIVITY */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Clock size={14} className="text-blue-600" />
-            <p className="text-sm font-bold text-gray-900">Recent Activity</p>
+        {/* RECENT ACTIVITY & CATEGORY BREAKDOWN */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* RECENT ACTIVITY */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Clock size={14} className="text-blue-600" />
+              <p className="text-sm font-bold text-gray-900">Recent Activity</p>
+            </div>
+            <div className="px-5 divide-y divide-slate-100">
+              {activities.slice(0, 6).map(a => <ActivityItem key={a.id} item={a} />)}
+            </div>
           </div>
-          <div className="px-5 divide-y divide-slate-100">
-            {activities.slice(0, 6).map(a => <ActivityItem key={a.id} item={a} />)}
+
+          {/* CATEGORY BREAKDOWN */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Layers size={14} className="text-purple-600" />
+              <p className="text-sm font-bold text-gray-900">Category Breakdown</p>
+            </div>
+            <div className="px-5 py-4">
+              {CATEGORIES.filter(c => c !== "All").map(category => {
+                const count = inventory.filter(item => item.category === category).length;
+                const categoryConfig = {
+                  "Sewing": { Icon: Pencil, color: "text-pink-600", bg: "bg-pink-50" },
+                  "Fabric": { Icon: Layers, color: "text-purple-600", bg: "bg-purple-50" },
+                  "Fastener": { Icon: Link2, color: "text-orange-600", bg: "bg-orange-50" },
+                  "Tool": { Icon: Wrench, color: "text-slate-600", bg: "bg-slate-100" },
+                  "Notions": { Icon: Sparkles, color: "text-yellow-600", bg: "bg-yellow-50" }
+                };
+                const { Icon, color, bg } = categoryConfig[category];
+                return (
+                  <div key={category} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bg}`}>
+                        <Icon size={16} className={color} />
+                      </div>
+                      <span className="text-sm text-gray-800 font-medium">{category}</span>
+                    </div>
+                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -520,6 +729,13 @@ export default function InventorySystem() {
           type={adjModal.type}
           onConfirm={handleAdjust}
           onClose={() => setAdjModal(null)}
+        />
+      )}
+      {editMaxModal && (
+        <EditMaxModal
+          item={editMaxModal}
+          onConfirm={newMax => handleEditMax(editMaxModal._id, newMax)}
+          onClose={() => setEditMaxModal(null)}
         />
       )}
       {addModal && (

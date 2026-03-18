@@ -8,6 +8,7 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
 
 // App Config
 const app = express();
@@ -40,5 +41,8 @@ app.use('/api/bookings', bookingRoutes);
 
 // Service Routes
 app.use('/api/services', serviceRoutes);
+
+// Inventory Routes
+app.use('/api/inventory', inventoryRoutes);
 
 app.listen(port, () => console.log('Server started on Port: ' + port));
