@@ -8,7 +8,7 @@ import {
   Wrench, Sparkles, Link2,
 } from "lucide-react";
 import { inventoryApi } from "../../services/inventoryApi";
-import { fmt } from "../../utils/helpers";
+import { fmt } from "../../utils/helpers.js";
 
 const numberInputStyle = `
   input[type="number"]::-webkit-outer-spin-button,

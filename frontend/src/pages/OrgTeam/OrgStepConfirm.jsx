@@ -35,7 +35,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
         <section>
             <div className="text-center mb-10">
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Review & Confirm</h2>
-                <p className="text-gray-500 mt-2 text-sm">Please verify your order details before submitting</p>
+                <p className="text-gray-500 mt-2 text-sm">Please verify your order details before submitting. Booking will wait for admin approval. Admin will schedule pickup date.</p>
             </div>
 
             <div className="max-w-xl mx-auto">

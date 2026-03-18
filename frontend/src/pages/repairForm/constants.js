@@ -45,10 +45,26 @@ export const SERVICES = [
 export const getWeekDays = () => {
     const days = []
     const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    
+    // Start from tomorrow instead of today
     const d = new Date()
-    while (days.length < 6) {
-        if (d.getDay() !== 0) days.push({ day: names[d.getDay()], date: d.getDate(), full: new Date(d) })
+    d.setDate(d.getDate() + 1) // Start from tomorrow
+    
+    const maxIterations = 30 // Safety limit
+    let iterations = 0
+    
+    while (days.length < 6 && iterations < maxIterations) {
+        // Include all days (not skipping Sundays)
+        days.push({ 
+            day: names[d.getDay()], 
+            date: String(d.getDate()).padStart(2, '0'),
+            month: d.getMonth() + 1,
+            year: d.getFullYear(),
+            full: new Date(d),
+            dateString: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        })
         d.setDate(d.getDate() + 1)
+        iterations++
     }
     return days
 }

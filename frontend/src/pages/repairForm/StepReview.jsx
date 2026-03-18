@@ -11,10 +11,14 @@ const ReviewBlock = ({ title, children }) => (
     </div>
 )
 
-const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription }) => {
-    const chosen = REPAIR_OPTIONS.filter((o) => selectedOptions.includes(o.id))
-    const total = chosen.reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0)
-    const slot = TIME_SLOTS.find((s) => s.id === selectedSlot)
+const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription, teamName, players, orgName, members, designFile, driveLink, contact }) => {
+    const isRepair = service === 'repair'
+    const isJersey = service === 'jersey'
+    const isOrg = service === 'organizational'
+    
+    const chosen = isRepair ? REPAIR_OPTIONS.filter((o) => (selectedOptions || []).includes(o.id)) : []
+    const total = isRepair ? chosen.reduce((s, o) => s + o.price * (quantities?.[o.id] || 1), 0) : 0
+    const slot = isRepair ? TIME_SLOTS.find((s) => s.id === selectedSlot) : null
 
     return (
         <section>
@@ -25,13 +29,57 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
 
             <div className="max-w-xl mx-auto">
                 <ReviewBlock title="Service Type">
-                    <p className="text-gray-800 font-semibold">{service === 'repair' ? 'Custom Repair' : 'Team Jersey'}</p>
+                    <p className="text-gray-800 font-semibold">
+                        {isRepair ? 'Custom Repair' : isJersey ? 'Team Jersey' : isOrg ? 'Organization' : 'Booking'}
+                    </p>
                     {repairDescription && (
                         <p className="text-gray-500 text-sm mt-2 italic">"{repairDescription}"</p>
                     )}
                 </ReviewBlock>
 
-                {chosen.length > 0 && (
+                {isJersey && teamName && (
+                    <ReviewBlock title="Team Information">
+                        <dl className="space-y-2.5 text-sm">
+                            <div>
+                                <dt className="text-gray-400 font-medium">Team Name</dt>
+                                <dd className="text-gray-800 font-semibold">{teamName}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-gray-400 font-medium">Players</dt>
+                                <dd className="text-gray-800">{players?.length || 0} players</dd>
+                            </div>
+                            {driveLink && (
+                                <div>
+                                    <dt className="text-gray-400 font-medium">Design Link</dt>
+                                    <dd className="text-blue-600 truncate"><a href={driveLink} target="_blank" rel="noopener noreferrer">{driveLink}</a></dd>
+                                </div>
+                            )}
+                        </dl>
+                    </ReviewBlock>
+                )}
+
+                {isOrg && orgName && (
+                    <ReviewBlock title="Organization Information">
+                        <dl className="space-y-2.5 text-sm">
+                            <div>
+                                <dt className="text-gray-400 font-medium">Organization Name</dt>
+                                <dd className="text-gray-800 font-semibold">{orgName}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-gray-400 font-medium">Members</dt>
+                                <dd className="text-gray-800">{members?.length || 0} members</dd>
+                            </div>
+                            {driveLink && (
+                                <div>
+                                    <dt className="text-gray-400 font-medium">Design Link</dt>
+                                    <dd className="text-blue-600 truncate"><a href={driveLink} target="_blank" rel="noopener noreferrer">{driveLink}</a></dd>
+                                </div>
+                            )}
+                        </dl>
+                    </ReviewBlock>
+                )}
+
+                {isRepair && chosen.length > 0 && (
                     <ReviewBlock title="Selected Options">
                         <div className="divide-y divide-gray-200">
                             {chosen.map((o) => {
@@ -51,7 +99,7 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                     </ReviewBlock>
                 )}
 
-                {photos.length > 0 && (
+                {isRepair && photos.length > 0 && (
                     <ReviewBlock title={`Photos (${photos.length})`}>
                         <div className="flex gap-2 flex-wrap">
                             {photos.map((p, i) => (
@@ -64,10 +112,10 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                 <ReviewBlock title="Contact Information">
                     <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
                         {[
-                            ['Name', details.name],
-                            ['Email', details.email],
-                            ['Phone', details.phone],
-                            ['Address', [details.address, details.city, details.zip].filter(Boolean).join(', ')],
+                            ['Name', contact?.fullName || details?.name],
+                            ['Email', contact?.email || details?.email],
+                            ['Phone', contact?.phone || details?.phone],
+                            ['Address', contact?.address || [details?.address, details?.city, details?.zip].filter(Boolean).join(', ')],
                         ].map(([k, v]) => (
                             <React.Fragment key={k}>
                                 <dt className="text-gray-400 font-medium">{k}</dt>
@@ -77,14 +125,26 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                     </dl>
                 </ReviewBlock>
 
-                <ReviewBlock title="Pickup Schedule">
-                    <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
-                        <dt className="text-gray-400 font-medium">Date</dt>
-                        <dd className="text-gray-800">{selectedDate || '—'}</dd>
-                        <dt className="text-gray-400 font-medium">Time Slot</dt>
-                        <dd className="text-gray-800">{slot ? `${slot.label} (${slot.range})` : '—'}</dd>
-                    </dl>
-                </ReviewBlock>
+                {isRepair && (
+                    <ReviewBlock title="Pickup Schedule">
+                        <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
+                            <dt className="text-gray-400 font-medium">Date</dt>
+                            <dd className="text-gray-800">{selectedDate || '—'}</dd>
+                            <dt className="text-gray-400 font-medium">Time Slot</dt>
+                            <dd className="text-gray-800">{slot ? `${slot.label} (${slot.range})` : '—'}</dd>
+                        </dl>
+                    </ReviewBlock>
+                )}
+
+                {!isRepair && (
+                    <ReviewBlock title="Approval Status">
+                        <p className="text-gray-700 text-sm">
+                            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                            Awaiting Admin Review
+                        </p>
+                        <p className="text-gray-500 text-xs mt-2">Our team will review your {isJersey ? 'team' : 'organization'} booking and contact you with pickup scheduling details.</p>
+                    </ReviewBlock>
+                )}
             </div>
         </section>
     )

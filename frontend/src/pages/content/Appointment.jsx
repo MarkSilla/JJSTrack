@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react'
-import CalendarComponent, { toKey, MAX_SLOTS, SLOT_MAP, USER_BOOKINGS } from '../../components/calendar'
+import React, { useState, useCallback, useEffect } from 'react'
+import CalendarComponent, { toKey, MAX_SLOTS, SLOT_MAP } from '../../components/calendar'
+import { appointmentApi } from '../../../services/appointmentApi'
 import { MdClose, MdCalendarToday, MdAccessTime, MdInfo, MdCheckCircle, MdPending, MdEventAvailable, MdAdd } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import '../../styles/calendar.css'
@@ -11,8 +12,10 @@ const getGreeting = () => {
     return 'Good evening'
 }
 
-// 👇 Replace with your actual auth context
-const useUser = () => ({ name: 'Juan' })
+const useUser = () => {
+    const name = localStorage.getItem('userName') || 'User'
+    return { name }
+}
 
 const BookingModal = ({ booking, onClose }) => {
     if (!booking) return null
@@ -29,7 +32,7 @@ const BookingModal = ({ booking, onClose }) => {
                     </div>
                 </div>
                 <div className="space-y-3">
-                    {[['Service', booking.service], ['Date', booking.date]].map(([label, value]) => (
+                    {[['Service', booking.service], ['Date', booking.date], ['Time', booking.time || 'Not specified']].map(([label, value]) => (
                         <div key={label} className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-gray-100">
                             <span className="text-xs text-gray-500">{label}</span>
                             <span className="text-sm font-medium text-gray-800">{value}</span>
@@ -48,12 +51,44 @@ const BookingModal = ({ booking, onClose }) => {
 const Appointment = () => {
     const [selectedDate, setSelectedDate] = useState(null)
     const [modalBooking, setModalBooking] = useState(null)
+    const [appointments, setAppointments] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const { name } = useUser()
 
-    const totalBookings = USER_BOOKINGS.length
-    const approvedBookings = USER_BOOKINGS.filter(b => b.status === 'Approved').length
-    const pendingBookings = USER_BOOKINGS.filter(b => b.status === 'Pending').length
-    const completedBookings = USER_BOOKINGS.filter(b => b.status === 'Completed').length
+    // Fetch appointments from backend
+    useEffect(() => {
+        const fetchAppointments = async () => {
+            try {
+                setLoading(true)
+                const data = await appointmentApi.getAppointments()
+                // Handle both array and object response formats
+                const appointmentsList = Array.isArray(data) ? data : data.appointments || []
+                setAppointments(appointmentsList)
+                setError(null)
+            } catch (err) {
+                console.error('Failed to fetch appointments:', err)
+                setError('Failed to load appointments')
+                setAppointments([])
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchAppointments()
+    }, [])
+
+    // Convert appointments to the format needed for display
+    const appointmentsByDate = {}
+    appointments.forEach(apt => {
+        if (!appointmentsByDate[apt.date]) {
+            appointmentsByDate[apt.date] = apt
+        }
+    })
+
+    const totalBookings = appointments.length
+    const approvedBookings = appointments.filter(b => b.status === 'Approved').length
+    const pendingBookings = appointments.filter(b => b.status === 'Pending').length
+    const completedBookings = appointments.filter(b => b.status === 'Completed').length
 
     const handleDateClick = useCallback((info) => {
         const dateStr = info.dateStr
@@ -62,10 +97,10 @@ const Appointment = () => {
         if (d < now) return
         const used = SLOT_MAP[dateStr] || 0
         if (used >= MAX_SLOTS) return
-        const ub = USER_BOOKINGS.find((b) => b.date === dateStr)
-        if (ub) { setModalBooking(ub); return }
+        const userApt = appointmentsByDate[dateStr]
+        if (userApt) { setModalBooking(userApt); return }
         setSelectedDate(dateStr)
-    }, [])
+    }, [appointmentsByDate])
 
     const dayCellClassNames = useCallback((arg) => {
         const key = toKey(arg.date)
@@ -75,10 +110,10 @@ const Appointment = () => {
         const used = SLOT_MAP[key] || 0
         if (used >= MAX_SLOTS) classes.push('day-full')
         else if (used >= 7) classes.push('day-near-full')
-        if (USER_BOOKINGS.some((b) => b.date === key)) classes.push('day-user-booking')
+        if (appointmentsByDate[key]) classes.push('day-user-booking')
         if (selectedDate === key) classes.push('day-selected')
         return classes
-    }, [selectedDate])
+    }, [selectedDate, appointmentsByDate])
 
     const dayCellContent = useCallback((arg) => {
         const key = toKey(arg.date)
@@ -87,7 +122,7 @@ const Appointment = () => {
         const used = SLOT_MAP[key] || 0
         const isFull = used >= MAX_SLOTS
         const ratio = used / MAX_SLOTS
-        const ub = USER_BOOKINGS.find((b) => b.date === key)
+        const userApt = appointmentsByDate[key]
         const isSelected = selectedDate === key
         let fillColor = 'green'
         if (ratio >= 1) fillColor = 'red'
@@ -97,7 +132,7 @@ const Appointment = () => {
             <div className="day-cell-inner">
                 <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
                 <div className="day-cell-spacer" />
-                {ub && !isSelected && <span className="pickup-badge">Pickup</span>}
+                {userApt && !isSelected && <span className="pickup-badge">Pickup</span>}
                 {isFull && !isPast && <span className="full-badge">Full</span>}
                 {!isPast && !isFull && used > 0 && !isSelected && (
                     <div className="slot-badge">
@@ -233,27 +268,35 @@ const Appointment = () => {
                                 Your Bookings
                             </h3>
                             <div className="flex flex-col gap-3">
-                                {USER_BOOKINGS.map((b) => {
-                                    const sc = b.status === 'Approved' ? 'bg-green-50 text-green-600 border border-green-100' : b.status === 'Completed' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                                    return (
-                                        <button
-                                            key={b.orderId}
-                                            onClick={() => setModalBooking(b)}
-                                            className="flex items-center gap-3 p-3.5 rounded-xl bg-[#F8FAFC] border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 text-left cursor-pointer"
-                                        >
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 text-blue-500 flex items-center justify-center shrink-0">
-                                                <MdCalendarToday size={16} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[#0f172a]">{b.service}</p>
-                                                <p className="text-[11px] text-gray-400 font-medium mt-0.5">{b.date} · {b.orderId}</p>
-                                            </div>
-                                            <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 ${sc}`}>
-                                                {b.status}
-                                            </span>
-                                        </button>
-                                    )
-                                })}
+                                {loading ? (
+                                    <div className="text-center py-6 text-gray-400 text-sm">Loading appointments...</div>
+                                ) : error ? (
+                                    <div className="text-center py-6 text-red-500 text-sm">{error}</div>
+                                ) : appointments.length === 0 ? (
+                                    <div className="text-center py-6 text-gray-400 text-sm">No appointments yet</div>
+                                ) : (
+                                    appointments.map((b) => {
+                                        const sc = b.status === 'Approved' ? 'bg-green-50 text-green-600 border border-green-100' : b.status === 'Completed' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+                                        return (
+                                            <button
+                                                key={b._id}
+                                                onClick={() => setModalBooking(b)}
+                                                className="flex items-center gap-3 p-3.5 rounded-xl bg-[#F8FAFC] border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 text-left cursor-pointer"
+                                            >
+                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 text-blue-500 flex items-center justify-center shrink-0">
+                                                    <MdCalendarToday size={16} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-[#0f172a]">{b.service}</p>
+                                                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">{b.date} · {b._id}</p>
+                                                </div>
+                                                <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 ${sc}`}>
+                                                    {b.status}
+                                                </span>
+                                            </button>
+                                        )
+                                    })
+                                )}
                             </div>
                         </div>
 

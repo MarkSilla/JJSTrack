@@ -87,9 +87,18 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    // For jersey/organizational, no pickup required (admin sets later)
+    if (bookingType === 'repair' && (!pickupDate || !pickupSlot)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pickup date and slot required for repair bookings',
+        received: { pickupDate, pickupSlot }
+      });
+    }
+
     console.log('Validation passed, creating booking document...');
 
-    const booking = new bookingModel({
+    const bookingData = {
       userId: req.userId,
       bookingType,
       service,
@@ -105,12 +114,16 @@ export const createBooking = async (req, res) => {
       orgDesignFile,
       orgDriveLink,
       contact,
-      pickupDate,
-      pickupSlot,
       notes,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    };
+
+    // Only add pickup for repair
+    if (bookingType === 'repair') {
+      bookingData.pickupDate = pickupDate;
+      bookingData.pickupSlot = pickupSlot;
+    }
+
+    const booking = new bookingModel(bookingData);
 
     console.log('Booking object created, saving to database...');
     await booking.save();
@@ -156,24 +169,8 @@ export const getBookings = async (req, res) => {
     const { status, bookingType } = req.query;
     let query = {};
 
-    // Check if user is admin or staff
-    let isAdminOrStaff = req.userId === 'admin'; // Admin users have userId 'admin'
-    
-    if (!isAdminOrStaff && req.userId) {
-      try {
-        const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-        if (user && (user.role === 'admin' || user.role === 'staff')) {
-          isAdminOrStaff = true;
-        }
-      } catch (dbError) {
-        console.log('User lookup failed, treating as regular user');
-      }
-    }
-
-    // If not admin/staff, only return user's bookings
-    if (!isAdminOrStaff) {
-      query.userId = req.userId;
-    }
+    // Always return all bookings for admin panel - no filtering
+    console.log('getBookings called with userId:', req.userId, 'query:', req.query);
 
     if (status) {
       query.status = status;

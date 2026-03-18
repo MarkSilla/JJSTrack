@@ -104,6 +104,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [service, setService] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [nextError, setNextError] = useState('')
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -223,6 +224,22 @@ const BookingModal = ({ isOpen, onClose }) => {
         if (isJersey && step === 2) return players.length > 0
         if (isOrg && step === 2) return members.length > 0
         return true
+    }
+
+    const getNextErrorMessage = () => {
+        if (step === 1) return 'Please select a service before continuing.'
+        if (isJersey && step === 2) return 'Please add at least one player first.'
+        if (isOrg && step === 2) return 'Please add at least one member first.'
+        return 'Please complete the required fields before continuing.'
+    }
+
+    const handleNext = () => {
+        if (canNext()) {
+            setNextError('')
+            setStep((s) => s + 1)
+            return
+        }
+        setNextError(getNextErrorMessage())
     }
 
     const handleSubmit = async () => {
@@ -351,6 +368,10 @@ const BookingModal = ({ isOpen, onClose }) => {
 
     const goToStep = (s) => setStep(s)
 
+    useEffect(() => {
+        if (nextError && canNext()) setNextError('')
+    }, [nextError, step, service, players.length, members.length])
+
     const renderStep = () => {
         if (step === 1) return <StepService service={service} setService={setService} />
 
@@ -426,6 +447,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                                         <p className="text-sm text-red-700">{error}</p>
                                     </div>
                                 )}
+                                {nextError && (
+                                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <p className="text-sm text-amber-700">{nextError}</p>
+                                    </div>
+                                )}
 
                                 <div className="border-t border-gray-200 mt-8 pt-5 flex items-center justify-between">
                                     {step > 1 ? (
@@ -446,12 +472,11 @@ const BookingModal = ({ isOpen, onClose }) => {
 
                                     {step < totalSteps ? (
                                         <button
-                                            onClick={() => canNext() && setStep((s) => s + 1)}
-                                            disabled={!canNext()}
+                                            onClick={handleNext}
                                             className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
                                             ${canNext()
                                                     ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
-                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
+                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 shadow-none'}`}
                                         >
                                             Next <MdArrowForward size={16} />
                                         </button>

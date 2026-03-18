@@ -123,6 +123,13 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                         ))}
                     </dl>
                 </ReviewBlock>
+
+                {/* Admin Approval Note */}
+                <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-sm text-blue-800 font-medium">
+                        <strong>Pickup Schedule:</strong> Awaiting admin approval. Admin will contact you to schedule pickup date.
+                    </p>
+                </div>
             </div>
         </section>
     )

@@ -1,9 +1,16 @@
 import mongoose from "mongoose";
 
 const playerSchema = new mongoose.Schema({
-  name: String,
+  surname: String,
+  firstName: String,
   number: String,
-  size: String,
+  jerseySize: String,
+  shortSize: String,
+  pockets: {
+    type: Boolean,
+    default: false,
+  },
+  productType: String,
   hasPocketShorts: {
     type: Boolean,
     default: false,
@@ -91,7 +98,7 @@ const bookingSchema = new mongoose.Schema({
     city: String,
   },
 
-  // Pickup details
+  // Pickup details  
   pickupDate: String,
   pickupSlot: String,
 

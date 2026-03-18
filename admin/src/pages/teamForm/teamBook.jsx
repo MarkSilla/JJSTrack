@@ -5,6 +5,7 @@ import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
 import TeamStepContact from './TeamStepContact'
 import TeamStepConfirm from './TeamStepConfirm'
+import { bookingApi } from '../../services/bookingApi.js'
 
 const STEP_LABELS = ['Team & Players', 'Design', 'Contact', 'Confirm']
 
@@ -94,15 +95,72 @@ const TeamBook = () => {
 
     // Step 3
     const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    const [loading, setLoading] = useState(false)
+    const [nextError, setNextError] = useState('')
 
     const canNext = () => {
+        console.log('canNext check - step:', step, 'players:', players.length)
         if (step === 1) return players.length > 0
         return true
     }
 
-    const handleSubmit = () => {
-        alert('Team order submitted successfully!')
-        navigate('/home')
+    const handleNext = () => {
+        if (canNext()) {
+            setNextError('')
+            const newStep = step + 1
+            setStep(newStep)
+            console.log('Navigated to step:', newStep)
+            return
+        }
+        setNextError('Please add at least 1 player before continuing.')
+    }
+
+    const handleSubmit = async () => {
+        try {
+            setLoading(true)
+
+            const token = localStorage.getItem('token')
+            if (!token) {
+                alert('Please login first')
+                return
+            }
+
+            const userStr = localStorage.getItem('user')
+            const user = userStr ? JSON.parse(userStr) : null
+            if (!user) {
+                alert('User not found. Please login again.')
+                return
+            }
+
+            const bookingData = {
+                bookingType: 'jersey',
+                service: 'team-jersey',
+                teamName,
+                players,
+                designFile: designFile ? designFile.name : '',
+                driveLink,
+                contact,
+                items: players.map(p => ({
+                    description: `Jersey (${p.name || p.firstName + ' ' + p.surname} #${p.number})`,
+                    qty: 1,
+                    unitPrice: 650, // base price
+                    size: p.size || p.jerseySize
+                }))
+            }
+
+            const response = await bookingApi.createBooking(bookingData)
+            if (response.success || response._id) {
+                alert('Team booking submitted! Awaiting admin approval.')
+                navigate('/home')
+            } else {
+                alert('Submit failed: ' + (response.message || 'Unknown error'))
+            }
+        } catch (err) {
+            console.error(err)
+            alert('Error: ' + err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const goToStep = (s) => setStep(s)
@@ -136,10 +194,22 @@ const TeamBook = () => {
 
                     <div className="bg-[#0F1729]/90 border border-gray-700/40 rounded-2xl p-7 md:p-10 backdrop-blur-sm shadow-2xl shadow-black/30">
                         {renderStep()}
+                        {nextError && (
+                            <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                                <p className="text-sm text-amber-300">{nextError}</p>
+                            </div>
+                        )}
                         <div className="border-t border-gray-700/30 mt-10 pt-6 flex items-center justify-between">
                             {step > 1 ? (
                                 <button
-                                    onClick={() => setStep((s) => s - 1)}
+                                    onClick={() => {
+                                        console.log('Back clicked, current step:', step)
+                                        setStep((s) => {
+                                            const newStep = s - 1
+                                            console.log('Navigated back to step:', newStep)
+                                            return newStep
+                                        })
+                                    }}
                                     className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer text-sm font-medium group"
                                 >
                                     <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back
@@ -155,21 +225,30 @@ const TeamBook = () => {
 
                             {step < 4 ? (
                                 <button
-                                    onClick={() => canNext() && setStep((s) => s + 1)}
-                                    disabled={!canNext()}
+                                    onClick={handleNext}
                                     className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
                                             ${canNext()
                                             ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
-                                            : 'bg-gray-800 text-gray-600 cursor-not-allowed shadow-none'}`}
+                                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'}`}
                                 >
                                     Next <MdArrowForward size={16} />
                                 </button>
                             ) : (
                                 <button
                                     onClick={handleSubmit}
-                                    className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30 transition-all duration-300 cursor-pointer"
+                                    disabled={loading}
+                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'} text-white`}
                                 >
-                                    Confirm & Submit <MdSend size={16} />
+                                    {loading ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Confirm & Submit <MdSend size={16} />
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

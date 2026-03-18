@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { bookingApi } from '../../../services/bookingApi'
 import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
 import TeamStepContact from './TeamStepContact'
@@ -93,6 +94,7 @@ const TeamBook = () => {
     const [driveLink, setDriveLink] = useState('')
 
     // Step 3
+    const [loading, setLoading] = useState(false)
     const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
 
     const canNext = () => {
@@ -100,9 +102,40 @@ const TeamBook = () => {
         return true
     }
 
-    const handleSubmit = () => {
-        alert('Team order submitted successfully!')
-        navigate('/home')
+    const handleSubmit = async () => {
+        try {
+            setLoading(true)
+            
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+            if (!token) {
+                alert('Please login to submit booking')
+                return
+            }
+
+            const bookingData = {
+                bookingType: 'jersey',
+                service: 'team-jersey',
+                teamName,
+                players,
+                designFile: designFile ? designFile.name : '',
+                driveLink,
+                contact,
+            }
+
+            const response = await bookingApi.createBooking(bookingData)
+            
+            if (response.success || response._id) {
+                alert('Team booking submitted successfully! Awaiting admin approval for pickup scheduling.')
+                navigate('/home')
+            } else {
+                alert('Error: ' + (response.message || 'Failed to submit booking'))
+            }
+        } catch (err) {
+            console.error('Submit error:', err)
+            alert('Error submitting booking. Please try again.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const goToStep = (s) => setStep(s)
@@ -167,9 +200,23 @@ const TeamBook = () => {
                             ) : (
                                 <button
                                     onClick={handleSubmit}
-                                    className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30 transition-all duration-300 cursor-pointer"
+                                    disabled={loading}
+                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                        ${loading 
+                                            ? 'bg-gray-600 text-white cursor-not-allowed shadow-none' 
+                                            : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
+                                        }`}
                                 >
-                                    Confirm & Submit <MdSend size={16} />
+                                    {loading ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Confirm & Submit <MdSend size={16} />
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

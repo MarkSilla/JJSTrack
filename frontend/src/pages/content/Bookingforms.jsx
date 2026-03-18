@@ -190,6 +190,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [details, setDetails] = useState({ name: '', email: '', phone: '', address: '', city: '' })
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
+    // Note: pickupDate/slot only used for repair; jersey/org wait for admin approval
 
     // Team state
     const [teamName, setTeamName] = useState('')
@@ -375,6 +376,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                     quantities
                 })
             } else if (isJersey) {
+                // Note: No pickup for jersey - admin will schedule after approval
                 // Team jersey booking
                 bookingData.teamName = teamName
                 bookingData.players = players
@@ -456,6 +458,10 @@ const BookingModal = ({ isOpen, onClose }) => {
                 case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} />
                 default: return null
             }
+        } else if (!isRepair && step === 5) {
+            // For jersey/org: Use confirm step as review at step 5
+            const contactToPass = isJersey ? contact : orgContact
+            return <StepReview service={service} teamName={teamName} players={players} orgName={orgName} members={members} designFile={designFile || orgDesignFile} driveLink={driveLink || orgDriveLink} contact={contactToPass} />
         }
 
         if (isJersey) {

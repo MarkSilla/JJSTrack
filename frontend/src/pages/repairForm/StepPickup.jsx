@@ -18,11 +18,11 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-10">
                     {weekDays.map((d) => {
-                        const active = selectedDate === d.date
+                        const active = selectedDate === d.dateString
                         return (
                             <button
-                                key={d.date}
-                                onClick={() => setSelectedDate(d.date)}
+                                key={d.dateString}
+                                onClick={() => setSelectedDate(d.dateString)}
                                 className={`flex flex-col items-center py-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
                   ${active
                                         ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-100'
