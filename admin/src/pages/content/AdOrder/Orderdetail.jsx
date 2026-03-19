@@ -25,8 +25,14 @@ export default function OrderDetail({
     const [pickupApprovalDate, setPickupApprovalDate] = useState('');
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [approvalMode, setApprovalMode] = useState(false);
+
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
+
+    const hasSchedule = useMemo(() =>
+        Boolean(activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion),
+        [activeOrder]
+    );
 
     const handleRescheduleConfirm = (newDate, newTime) => {
         handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate);
@@ -85,11 +91,8 @@ export default function OrderDetail({
                                 <button className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors bg-transparent border-none cursor-pointer">
                                     <Edit size={16} className="text-gray-400" /> Edit Order
                                 </button>
-                                <button 
-                                    onClick={() => {
-                                        setShowRescheduleModal(true);
-                                        setIsMenuOpen(false);
-                                    }}
+                                <button
+                                    onClick={() => { setShowRescheduleModal(true); setIsMenuOpen(false); }}
                                     className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors border-b border-gray-50 bg-transparent border-none cursor-pointer"
                                 >
                                     <CalendarClock size={16} className="text-gray-400" /> Reschedule
@@ -125,6 +128,8 @@ export default function OrderDetail({
                             currentStepIdx={currentStepIdx}
                             onStepClick={handleStepClick}
                             orderId={activeOrder.id}
+                            isForApproval={isForApproval}
+                            hasSchedule={hasSchedule}
                         />
                         <ProductionTimeline
                             activeOrderSteps={activeOrderSteps}
@@ -132,6 +137,7 @@ export default function OrderDetail({
                             onStepClick={handleStepClick}
                             orderId={activeOrder.id}
                             isForApproval={isForApproval}
+                            hasSchedule={hasSchedule}
                         />
                         <TeamRoster players={activeOrder.players} />
                     </div>
@@ -140,10 +146,7 @@ export default function OrderDetail({
                             <h4 className="text-[11px] font-black tracking-wider uppercase mb-2 text-gray-400">Quick Actions</h4>
                             {canApprovePickup && (
                                 <button
-                                    onClick={() => {
-                                        setApprovalMode(true);
-                                        setShowRescheduleModal(true);
-                                    }}
+                                    onClick={() => { setApprovalMode(true); setShowRescheduleModal(true); }}
                                     className="w-full rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 p-3 font-bold text-xs text-violet-700 uppercase tracking-wider transition-colors border-none cursor-pointer"
                                 >
                                     Set Pickup Date & Time
@@ -152,7 +155,7 @@ export default function OrderDetail({
                             <button className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
                                 <Edit size={18} /> Edit Order Details
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setShowRescheduleModal(true)}
                                 className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
                             >
@@ -174,16 +177,10 @@ export default function OrderDetail({
                 </div>
             </div>
 
-            <RescheduleModal 
-                isOpen={showRescheduleModal} 
-                onClose={() => {
-                    setShowRescheduleModal(false);
-                    setApprovalMode(false);
-                }} 
-                onConfirm={(date, time) => {
-                    handleRescheduleConfirm(date, time);
-                    setApprovalMode(false);
-                }}
+            <RescheduleModal
+                isOpen={showRescheduleModal}
+                onClose={() => { setShowRescheduleModal(false); setApprovalMode(false); }}
+                onConfirm={(date, time) => { handleRescheduleConfirm(date, time); setApprovalMode(false); }}
                 mode={approvalMode ? 'approve' : 'reschedule'}
                 currentDate={activeOrder?.pickupDate || new Date().toISOString().split('T')[0]}
             />

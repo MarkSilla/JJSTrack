@@ -47,7 +47,7 @@ const serviceMix = [
 // Helpers 
 
 const calcOrderTotal = (o) =>
-  o.invoice.items.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice ?? 0), 0);
+  o.totalPrice || o.invoice?.total || o.invoice?.items?.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice ?? 0), 0) || 0;
 
 const fmt = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 0 });
 

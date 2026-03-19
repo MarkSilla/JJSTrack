@@ -44,7 +44,7 @@ export default function OrderSummary({ activeOrder, assignedEmployee }) {
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                     <span className="text-xs uppercase tracking-wider font-bold text-gray-500">Total Price</span>
                     <span className="text-lg font-black text-gray-900">
-                        ₱{activeOrder.invoice?.items?.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice || 0), 0).toLocaleString()}
+                        ₱{(activeOrder.invoice?.total || activeOrder.totalPrice || activeOrder.invoice?.items?.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice || 0), 0) || 0).toLocaleString()}
                     </span>
                 </div>
             </div>

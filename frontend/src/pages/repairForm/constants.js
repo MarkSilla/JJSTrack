@@ -24,9 +24,11 @@ export const PRICING = {
         }), {})
     },
     jersey: {
+        baseFee: 500,
         basePerPlayer: 350,
     },
     organizational: {
+        baseFee: 500,
         basePerItem: 300,
     }
 }

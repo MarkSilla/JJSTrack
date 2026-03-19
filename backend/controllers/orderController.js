@@ -37,10 +37,21 @@ export const getOrders = async (req, res) => {
 
     const orders = await orderModel.find(query).sort({ createdAt: -1 });
 
+    // Fetch invoice for each order
+    const ordersWithInvoice = await Promise.all(
+      orders.map(async (order) => {
+        const invoice = await invoiceModel.findOne({ orderId: order._id });
+        return {
+          ...order.toObject(),
+          invoice,
+        };
+      })
+    );
+
     res.json({
       success: true,
-      data: orders,
-      orders, // for compatibility
+      data: ordersWithInvoice,
+      orders: ordersWithInvoice, // for compatibility
     });
 
   } catch (error) {

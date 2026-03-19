@@ -55,7 +55,7 @@ const bookingSchema = new mongoose.Schema({
     required: true,
   },
 
-  // ✅ Steps — same order as orderModel so icons work
+
   steps: {
     type: [bookingStepSchema],
     default: () => [
@@ -96,6 +96,15 @@ const bookingSchema = new mongoose.Schema({
     facebook: String,
     address: String,
     city: String,
+  },
+
+  // Invoice items with pricing
+  items: [bookingItemSchema],
+
+  // Total price for the booking
+  totalPrice: {
+    type: Number,
+    default: 0,
   },
 
   // Pickup details  

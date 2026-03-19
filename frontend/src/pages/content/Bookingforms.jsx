@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
 import { bookingApi } from '../../../services/bookingApi'
+import { pricingApi } from '../../../services/pricingApi'
 import img from '../../assets/img.js'
-import { REPAIR_OPTIONS, PRICING } from '../repairForm/constants'
+import { REPAIR_OPTIONS, PRICING as DEFAULT_PRICING } from '../repairForm/constants'
 
 // Repair steps
 import StepService from '../repairForm/StepService'
@@ -27,17 +28,37 @@ const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Conf
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
 
+const resolvePositivePrice = (value, fallback) => {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback
+}
+
+const TEAM_PRODUCT_TYPES = [
+    { id: 'jersey', label: 'Jersey', price: 500, needsShortSize: false },
+    { id: 'shorts', label: 'Shorts', price: 500, needsShortSize: true },
+    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
+    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
+]
+
+const ORG_PRODUCT_TYPES = [
+    { id: 'tshirt', label: 'T-Shirt', price: 500 },
+    { id: 'polo', label: 'Polo Shirt', price: 650 },
+]
+
+const POCKET_PRICE = 100
+
 // Calculate prices based on selections
-const calculateBookingPrice = (bookingType, data) => {
+const calculateBookingPrice = (bookingType, data, pricing = DEFAULT_PRICING) => {
     let items = []
 
     if (bookingType === 'repair') {
         // Add base service fee
-        if (PRICING.repair.baseFee > 0) {
+        if (pricing.repair.baseFee > 0) {
             items.push({
                 description: 'Service Base Fee',
                 qty: 1,
-                unitPrice: PRICING.repair.baseFee,
+                unitPrice: pricing.repair.baseFee,
                 addOnPrice: 0
             })
         }
@@ -56,47 +77,45 @@ const calculateBookingPrice = (bookingType, data) => {
             }
         })
     } else if (bookingType === 'jersey') {
-        // Add design fee
-        if (PRICING.jersey.baseFee > 0) {
-            items.push({
-                description: 'Design & Setup Fee',
+        // Follow Team form pricing per player/product type.
+        const playerItems = (data.players || []).map((player, index) => {
+            const product = TEAM_PRODUCT_TYPES.find((p) => p.id === player.productType)
+            const unitPrice = product?.price || pricing.jersey.basePerPlayer || DEFAULT_PRICING.jersey.basePerPlayer
+            const hasPocket = Boolean(player.pockets && product?.needsShortSize)
+            const addOnPrice = hasPocket ? POCKET_PRICE : 0
+            const playerName = [player.firstName, player.surname].filter(Boolean).join(' ') || `Player ${index + 1}`
+
+            return {
+                description: `${product?.label || 'Jersey'} (${playerName}${player.number ? ` #${player.number}` : ''})`,
+                type: 'Custom',
                 qty: 1,
-                unitPrice: PRICING.jersey.baseFee,
-                addOnPrice: 0
-            })
-        }
-        
-        // Add price per player
-        const playerCount = data.players?.length || 0
-        if (playerCount > 0) {
-            items.push({
-                description: `Team Jerseys (${playerCount} players)`,
-                qty: playerCount,
-                unitPrice: PRICING.jersey.basePerPlayer,
-                addOnPrice: 0
-            })
-        }
+                unitPrice,
+                size: player.jerseySize || '',
+                addOn: hasPocket ? `Pocket Short (+${POCKET_PRICE})` : 'None',
+                addOnPrice,
+            }
+        })
+
+        items.push(...playerItems)
     } else if (bookingType === 'organizational') {
-        // Add design fee
-        if (PRICING.organizational.baseFee > 0) {
-            items.push({
-                description: 'Design & Setup Fee',
+        // Follow Organization form pricing per member/product type.
+        const memberItems = (data.members || []).map((member, index) => {
+            const product = ORG_PRODUCT_TYPES.find((p) => p.id === member.productType)
+            const unitPrice = product?.price || pricing.organizational.basePerItem || DEFAULT_PRICING.organizational.basePerItem
+            const memberName = member.surname || `Member ${index + 1}`
+
+            return {
+                description: `${product?.label || 'Organization Item'} (${memberName}${member.number ? ` #${member.number}` : ''})`,
+                type: 'Custom',
                 qty: 1,
-                unitPrice: PRICING.organizational.baseFee,
-                addOnPrice: 0
-            })
-        }
-        
-        // Add price per member
-        const memberCount = data.members?.length || 0
-        if (memberCount > 0) {
-            items.push({
-                description: `Organization Items (${memberCount} members)`,
-                qty: memberCount,
-                unitPrice: PRICING.organizational.basePerItem,
-                addOnPrice: 0
-            })
-        }
+                unitPrice,
+                size: member.size || '',
+                addOn: 'None',
+                addOnPrice: 0,
+            }
+        })
+
+        items.push(...memberItems)
     }
 
     return items
@@ -181,6 +200,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [service, setService] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [pricing, setPricing] = useState(DEFAULT_PRICING)
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -205,6 +225,46 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+
+    // Fetch pricing on mount
+    useEffect(() => {
+        const fetchPricing = async () => {
+            try {
+                const response = await pricingApi.getAllPricing()
+                if (response.success && response.pricing) {
+                    // Convert array to object format
+                    const pricingObj = {
+                        repair: { ...DEFAULT_PRICING.repair },
+                        jersey: { ...DEFAULT_PRICING.jersey },
+                        organizational: { ...DEFAULT_PRICING.organizational }
+                    }
+                    
+                    response.pricing.forEach(p => {
+                        if (p.serviceType === 'jersey') {
+                            pricingObj.jersey.baseFee = p.baseFee ?? pricingObj.jersey.baseFee
+                            pricingObj.jersey.basePerPlayer = resolvePositivePrice(
+                                p.basePerPlayer,
+                                pricingObj.jersey.basePerPlayer
+                            )
+                        } else if (p.serviceType === 'organizational') {
+                            pricingObj.organizational.baseFee = p.baseFee ?? pricingObj.organizational.baseFee
+                            pricingObj.organizational.basePerItem = resolvePositivePrice(
+                                p.basePerItem,
+                                pricingObj.organizational.basePerItem
+                            )
+                        }
+                    })
+                    
+                    setPricing(pricingObj)
+                }
+            } catch (err) {
+                console.error('Error fetching pricing:', err)
+                // Keep default pricing if fetch fails
+            }
+        }
+        
+        fetchPricing()
+    }, [])
 
     // Initialize contact data from user on component mount
     useEffect(() => {
@@ -358,7 +418,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             if (isRepair) {
                 // Repair booking
                 const optionsArray = selectedOptions.map(optId => ({
-                    name: optId,
+                    name: REPAIR_OPTIONS.find(o => o.id === optId)?.label || optId,
                     quantity: quantities[optId] || 1,
                     price: REPAIR_OPTIONS.find(o => o.id === optId)?.price || 0
                 }))
@@ -374,7 +434,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.items = calculateBookingPrice('repair', {
                     selectedOptions,
                     quantities
-                })
+                }, pricing)
             } else if (isJersey) {
                 // Note: No pickup for jersey - admin will schedule after approval
                 // Team jersey booking
@@ -387,7 +447,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 // Calculate and add items with prices
                 bookingData.items = calculateBookingPrice('jersey', {
                     players
-                })
+                }, pricing)
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
@@ -399,7 +459,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 // Calculate and add items with prices
                 bookingData.items = calculateBookingPrice('organizational', {
                     members
-                })
+                }, pricing)
             }
 
             console.log('Submitting booking data:', bookingData)

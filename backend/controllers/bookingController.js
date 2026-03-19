@@ -1,6 +1,7 @@
 import bookingModel from '../models/bookingModel.js';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
+import pricingModel from '../models/pricingModel.js';
 
 // Create a new booking (from repair form, team jersey, or organizational)
 export const createBooking = async (req, res) => {
@@ -27,6 +28,7 @@ export const createBooking = async (req, res) => {
       pickupDate,
       pickupSlot,
       notes,
+      items,
     } = req.body;
 
     // Log request data
@@ -98,6 +100,55 @@ export const createBooking = async (req, res) => {
 
     console.log('Validation passed, creating booking document...');
 
+    // Fetch pricing from database with fallbacks
+    let pricingJersey = await pricingModel.findOne({ serviceType: 'jersey' });
+    let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
+    
+    // Use database pricing or fallback to hardcoded defaults
+    const jerseyPrice = pricingJersey?.basePerPlayer || 650;
+    const pocketPrice = pricingJersey?.pocketPrice || 100;
+    const orgPrice = pricingOrg?.basePerItem || 650;
+    const orgPocketPrice = pricingOrg?.pocketPrice || 100;
+
+    const normalizedItems = Array.isArray(items)
+      ? items
+          .map((item) => ({
+            description: item?.description || 'Service Item',
+            type: item?.type || 'Service',
+            qty: Number(item?.qty) > 0 ? Number(item.qty) : 1,
+            unitPrice: Number(item?.unitPrice) || 0,
+            size: item?.size || '',
+            addOn: item?.addOn || 'None',
+            addOnPrice: Number(item?.addOnPrice) || 0,
+          }))
+          .filter((item) => item.unitPrice >= 0)
+      : [];
+
+    // Calculate total price based on provided items first, then fallback logic.
+    let totalPrice = 0;
+
+    if (normalizedItems.length > 0) {
+      totalPrice = normalizedItems.reduce((sum, item) => {
+        return sum + ((item.unitPrice * item.qty) + ((item.addOnPrice || 0) * item.qty));
+      }, 0);
+    } else if (bookingType === 'repair' && selectedOptions && Array.isArray(selectedOptions)) {
+      totalPrice = selectedOptions.reduce((sum, option) => {
+        return sum + ((option.price || 0) * (option.quantity || 1));
+      }, 0);
+    } else if (bookingType === 'jersey' && players) {
+      const playerArray = Array.isArray(players) ? players : [players];
+      totalPrice = playerArray.reduce((sum, player) => {
+        const addOnPrice = player.hasPocketShorts ? pocketPrice : 0;
+        return sum + jerseyPrice + addOnPrice;
+      }, 0);
+    } else if (bookingType === 'organizational' && members) {
+      const memberArray = Array.isArray(members) ? members : [members];
+      totalPrice = memberArray.reduce((sum, member) => {
+        const addOnPrice = member.hasPocketShorts ? orgPocketPrice : 0;
+        return sum + orgPrice + addOnPrice;
+      }, 0);
+    }
+
     const bookingData = {
       userId: req.userId,
       bookingType,
@@ -114,7 +165,9 @@ export const createBooking = async (req, res) => {
       orgDesignFile,
       orgDriveLink,
       contact,
+      items: normalizedItems,
       notes,
+      totalPrice,
     };
 
     // Only add pickup for repair
@@ -356,40 +409,62 @@ export const convertBookingToOrder = async (req, res) => {
     // Update booking with order reference
     booking.orderId = order._id;
     booking.status = 'Approved';
-    await booking.save();
 
     // Create invoice for the order
-    const items = [];
+    const items = Array.isArray(booking.items) && booking.items.length > 0
+      ? booking.items.map((item) => ({
+          description: item.description || 'Service Item',
+          type: item.type || 'Service',
+          qty: item.qty || 1,
+          unitPrice: item.unitPrice || 0,
+          size: item.size || '',
+          addOn: item.addOn || 'None',
+          addOnPrice: item.addOnPrice || 0,
+        }))
+      : [];
     
-    if (booking.bookingType === 'jersey' && booking.players) {
+    // Fetch pricing from database with fallbacks
+    let pricingJersey = await pricingModel.findOne({ serviceType: 'jersey' });
+    let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
+    
+    const jerseyPrice = pricingJersey?.basePerPlayer || 650;
+    const pocketPrice = pricingJersey?.pocketPrice || 100;
+    const orgPrice = pricingOrg?.basePerItem || 650;
+    const orgPocketPrice = pricingOrg?.pocketPrice || 100;
+    
+    if (items.length === 0 && booking.bookingType === 'jersey' && booking.players) {
       for (const player of booking.players) {
-        const unitPrice = 650; // Base jersey price
-        const addOnPrice = player.hasPocketShorts ? 100 : 0;
+        const unitPrice = jerseyPrice;
+        const hasPocket = player.hasPocketShorts || player.pockets;
+        const addOnPrice = hasPocket ? pocketPrice : 0;
+        const playerName = [player.firstName, player.surname].filter(Boolean).join(' ') || player.name || 'Player';
         items.push({
-          description: `Jersey (${player.name} #${player.number})`,
+          description: `Jersey (${playerName}${player.number ? ` #${player.number}` : ''})`,
           type: 'Custom',
           qty: 1,
           unitPrice,
-          size: player.size,
-          addOn: player.hasPocketShorts ? 'Pocket Short (+100)' : 'None',
+          size: player.jerseySize || player.size || '',
+          addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
           addOnPrice,
         });
       }
-    } else if (booking.bookingType === 'organizational' && booking.members) {
+    } else if (items.length === 0 && booking.bookingType === 'organizational' && booking.members) {
       for (const member of booking.members) {
-        const unitPrice = 650;
-        const addOnPrice = member.hasPocketShorts ? 100 : 0;
+        const unitPrice = orgPrice;
+        const hasPocket = member.hasPocketShorts || member.pockets;
+        const addOnPrice = hasPocket ? orgPocketPrice : 0;
+        const memberName = [member.firstName, member.surname].filter(Boolean).join(' ') || member.name || 'Member';
         items.push({
-          description: `Jersey (${member.name} #${member.number})`,
+          description: `Jersey (${memberName}${member.number ? ` #${member.number}` : ''})`,
           type: 'Custom',
           qty: 1,
           unitPrice,
-          size: member.size,
-          addOn: member.hasPocketShorts ? 'Pocket Short (+100)' : 'None',
+          size: member.size || member.jerseySize || '',
+          addOn: hasPocket ? `Pocket Short (+${orgPocketPrice})` : 'None',
           addOnPrice,
         });
       }
-    } else if (booking.bookingType === 'repair' && booking.selectedOptions) {
+    } else if (items.length === 0 && booking.bookingType === 'repair' && booking.selectedOptions) {
       for (const option of booking.selectedOptions) {
         items.push({
           description: `${booking.service} - ${option.name}`,
@@ -399,6 +474,15 @@ export const convertBookingToOrder = async (req, res) => {
         });
       }
     }
+
+    // Calculate total price from items
+    const totalPrice = items.reduce((sum, item) => {
+      const itemTotal = (item.unitPrice * item.qty) + (item.addOnPrice || 0);
+      return sum + itemTotal;
+    }, 0);
+
+    booking.totalPrice = totalPrice;
+    await booking.save();
 
     const invoice = new invoiceModel({
       userId: booking.userId,
