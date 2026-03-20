@@ -1,6 +1,7 @@
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
+import QRCode from 'qrcode';
 
 export const getOrders = async (req, res) => {
   try {
@@ -328,5 +329,117 @@ export const getOrderStats = async (req, res) => {
   } catch (error) {
     console.error('Get Order Stats Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch order stats' });
+  }
+};
+
+// Generate QR code for an order
+const generateOrderQR = async (orderId) => {
+  try {
+    const qrData = JSON.stringify({ orderId, timestamp: new Date().toISOString() });
+    const qrCodeDataUrl = await QRCode.toDataURL(qrData, { width: 300, margin: 2 });
+    return qrCodeDataUrl;
+  } catch (error) {
+    console.error('QR Code Generation Error:', error);
+    return null;
+  }
+};
+
+// Mark order as released by scanning QR code
+export const markAsReleased = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    const order = await orderModel.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if already released
+    if (order.isReleased) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is already released',
+        order
+      });
+    }
+
+    order.isReleased = true;
+    order.releasedAt = new Date();
+    order.status = 'Released';  // Set status to Released when QR is scanned
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Order marked as released successfully',
+      order,
+    });
+
+  } catch (error) {
+    console.error('Mark As Released Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark order as released' });
+  }
+};
+
+// Get QR code for an order
+export const getOrderQR = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await orderModel.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Generate QR code if not already generated
+    if (!order.qrCode) {
+      const qrCode = await generateOrderQR(order.orderId);
+      order.qrCode = qrCode;
+      await order.save();
+    }
+
+    res.json({
+      success: true,
+      qrCode: order.qrCode,
+      orderId: order.orderId,
+    });
+
+  } catch (error) {
+    console.error('Get Order QR Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get order QR code' });
+  }
+};
+
+// Generate QR codes for all orders that don't have one
+export const generateMissingQRCodes = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin can generate QR codes'
+      });
+    }
+
+    const ordersWithoutQR = await orderModel.find({ qrCode: { $exists: false } });
+    let generated = 0;
+
+    for (const order of ordersWithoutQR) {
+      const qrCode = await generateOrderQR(order.orderId);
+      if (qrCode) {
+        order.qrCode = qrCode;
+        await order.save();
+        generated++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Generated ${generated} QR codes`,
+      generated,
+    });
+
+  } catch (error) {
+    console.error('Generate Missing QR Codes Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate QR codes' });
   }
 };

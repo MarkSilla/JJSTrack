@@ -99,4 +99,26 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Get QR code for booking
+  getBookingQR: async (id) => {
+    try {
+      const response = await api.get(`/bookings/${id}/qr`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching QR code:', error);
+      throw error;
+    }
+  },
+
+  // Mark booking as picked up by scanning QR
+  markAsPickedUp: async (bookingId) => {
+    try {
+      const response = await api.post('/bookings/qr/pickup', { bookingId });
+      return response.data;
+    } catch (error) {
+      console.error('Error marking booking as picked up:', error);
+      throw error;
+    }
+  },
 };

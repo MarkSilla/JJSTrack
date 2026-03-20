@@ -101,6 +101,39 @@ export const orderApi = {
       throw error;
     }
   },
+
+  // Get QR code for order
+  getOrderQR: async (id) => {
+    try {
+      const response = await api.get(`/orders/${id}/qr`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching QR code:', error);
+      throw error;
+    }
+  },
+
+  // Mark order as released by scanning QR
+  markAsReleased: async (orderId) => {
+    try {
+      const response = await api.post('/orders/qr/release', { orderId });
+      return response.data;
+    } catch (error) {
+      console.error('Error marking order as released:', error);
+      throw error;
+    }
+  },
+
+  // Generate QR codes for all orders (admin only)
+  generateMissingQRCodes: async () => {
+    try {
+      const response = await api.post('/orders/admin/generate-qr');
+      return response.data;
+    } catch (error) {
+      console.error('Error generating QR codes:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

@@ -1,6 +1,7 @@
 import bookingModel from '../models/bookingModel.js';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
+import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
 
@@ -687,5 +688,117 @@ export const getAvailableSlots = async (req, res) => {
   } catch (error) {
     console.error('Get Available Slots Error:', error);
     res.status(500).json({ success: false, message: 'Failed to check available slots' });
+  }
+};
+
+// Generate QR code for a booking
+const generateBookingQR = async (bookingId) => {
+  try {
+    const qrData = JSON.stringify({ bookingId, timestamp: new Date().toISOString() });
+    const qrCodeDataUrl = await QRCode.toDataURL(qrData, { width: 300, margin: 2 });
+    return qrCodeDataUrl;
+  } catch (error) {
+    console.error('QR Code Generation Error:', error);
+    return null;
+  }
+};
+
+// Get QR code for a booking
+export const getBookingQR = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await bookingModel.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Generate QR code if not already generated
+    if (!booking.qrCode) {
+      const qrCode = await generateBookingQR(booking._id.toString());
+      booking.qrCode = qrCode;
+      await booking.save();
+    }
+
+    res.json({
+      success: true,
+      qrCode: booking.qrCode,
+      bookingId: booking._id.toString(),
+    });
+
+  } catch (error) {
+    console.error('Get Booking QR Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get booking QR code' });
+  }
+};
+
+// Mark booking as picked up by scanning QR code
+export const markAsPickedUp = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+
+    const booking = await bookingModel.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Check if already picked up
+    if (booking.isPickedUp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already marked as picked up',
+        booking
+      });
+    }
+
+    booking.isPickedUp = true;
+    booking.pickedUpAt = new Date();
+    booking.status = 'Released';  // Set status to Released when QR is scanned
+    await booking.save();
+
+    res.json({
+      success: true,
+      message: 'Booking marked as picked up successfully',
+      booking,
+    });
+
+  } catch (error) {
+    console.error('Mark As Picked Up Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark booking as picked up' });
+  }
+};
+
+// Generate QR codes for all bookings that don't have one
+export const generateMissingBookingQRCodes = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin can generate QR codes'
+      });
+    }
+
+    const bookingsWithoutQR = await bookingModel.find({ qrCode: { $exists: false } });
+    let generated = 0;
+
+    for (const booking of bookingsWithoutQR) {
+      const qrCode = await generateBookingQR(booking._id.toString());
+      if (qrCode) {
+        booking.qrCode = qrCode;
+        await booking.save();
+        generated++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Generated ${generated} QR codes`,
+      generated,
+    });
+
+  } catch (error) {
+    console.error('Generate Missing Booking QR Codes Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate QR codes' });
   }
 };

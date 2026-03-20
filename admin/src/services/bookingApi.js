@@ -95,6 +95,39 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Get QR code for booking
+  getBookingQR: async (id) => {
+    try {
+      const response = await api.get(`/bookings/${id}/qr`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching QR code:', error);
+      throw error;
+    }
+  },
+
+  // Mark booking as picked up by scanning QR
+  markAsPickedUp: async (bookingId) => {
+    try {
+      const response = await api.post('/bookings/qr/pickup', { bookingId });
+      return response.data;
+    } catch (error) {
+      console.error('Error marking booking as picked up:', error);
+      throw error;
+    }
+  },
+
+  // Generate QR codes for all bookings (admin only)
+  generateMissingQRCodes: async () => {
+    try {
+      const response = await api.post('/bookings/admin/generate-qr');
+      return response.data;
+    } catch (error) {
+      console.error('Error generating QR codes:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

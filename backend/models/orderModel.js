@@ -34,9 +34,15 @@ const orderSchema = new mongoose.Schema({
   assignedTailor: String,
   status: {
     type: String,
-    enum: ['Pending', 'In Progress', 'Completed', 'Cancelled'],
+    enum: ['Pending', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
   },
+  isReleased: {
+    type: Boolean,
+    default: false,
+  },
+  releasedAt: Date,
+  qrCode: String,
 
   steps: {
     type: [orderStepSchema],
@@ -53,6 +59,9 @@ const orderSchema = new mongoose.Schema({
     name: String, number: String, size: String, hasPocketShorts: Boolean,
   }],
   notes: String,
+  qrCode: String,
+  isReleased: { type: Boolean, default: false },
+  releasedAt: Date,
 }, { timestamps: true });
 
 orderSchema.pre('save', async function (next) {

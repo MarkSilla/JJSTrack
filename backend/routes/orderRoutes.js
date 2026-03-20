@@ -8,6 +8,9 @@ import {
   cancelOrder,
   getOrderStats,
   assignEmployee,
+  markAsReleased,
+  getOrderQR,
+  generateMissingQRCodes,
 } from '../controllers/orderController.js';
 import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
@@ -23,6 +26,13 @@ router.get('/stats', authMiddleware, getOrderStats);
 router.put('/:id/cancel', authMiddleware, cancelOrder);
 router.put('/:id/steps', authMiddleware, updateOrderSteps);
 router.put('/:id/assign', authMiddleware, assignEmployee);
+router.get('/:id/qr', authMiddleware, getOrderQR);
+
+// QR code scanning - mark order as released
+router.post('/qr/release', authMiddleware, markAsReleased);
+
+// Admin only - generate missing QR codes
+router.post('/admin/generate-qr', authMiddleware, adminMiddleware, generateMissingQRCodes);
 
 // Less specific routes
 router.get('/:id', authMiddleware, getOrderById);

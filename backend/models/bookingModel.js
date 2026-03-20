@@ -114,13 +114,21 @@ const bookingSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['Pending', 'Approved', 'In Progress', 'Completed', 'Cancelled'],
+    enum: ['Pending', 'Approved', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
   },
 
   notes: String,
   adminNotes: String,
   assignedTailor: String,
+
+  // QR Code and pickup tracking
+  qrCode: String,
+  isPickedUp: {
+    type: Boolean,
+    default: false,
+  },
+  pickedUpAt: Date,
 },
 {
   // ✅ timestamps:true replaces manual createdAt/updatedAt

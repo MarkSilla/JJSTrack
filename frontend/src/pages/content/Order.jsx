@@ -2,9 +2,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
     MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdPrint,
     MdMoveToInbox, MdDesktopWindows, MdLocalPrintshop, MdLocalShipping,
-    MdFilterList, MdClose,
+    MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
+    MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag,
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
+import { 
+    FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check
+} from 'lucide-react'
 import { orderApi }   from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate } from 'react-router-dom'
@@ -125,6 +129,75 @@ const DetailsModal = ({ order, onClose }) => {
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
 
+    const [qrCode, setQrCode] = useState(null)
+    const [loadingQR, setLoadingQR] = useState(false)
+    const [activeTab, setActiveTab] = useState('items')
+    const [copied, setCopied] = useState(false)
+
+    // Prevent body scroll when drawer is open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden'
+        return () => {
+            document.body.style.overflow = 'unset'
+        }
+    }, [])
+
+    // Load QR code when component mounts or when activeTab changes to 'qr'
+    useEffect(() => {
+        if (activeTab === 'qr' && !qrCode && !loadingQR) {
+            loadQRCode()
+        }
+    }, [activeTab])
+
+    const loadQRCode = async () => {
+        try {
+            setLoadingQR(true)
+            const response = isBooking 
+                ? await bookingApi.getBookingQR(order._id)
+                : await orderApi.getOrderQR(order._id)
+            setQrCode(response.qrCode)
+        } catch (error) {
+            console.error('Error fetching QR code:', error)
+        } finally {
+            setLoadingQR(false)
+        }
+    }
+
+    const handleCopyQR = () => {
+        if (qrCode) {
+            navigator.clipboard.writeText(qrCode)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }
+    }
+
+    const handleDownloadQR = () => {
+        if (!qrCode) return
+        const link = document.createElement('a')
+        link.href = qrCode
+        link.download = `${isBooking ? 'booking' : 'order'}-${order._id}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    const iconMap = {
+        'Order ID': MdTag,
+        'Status': MdCheckCircle,
+        'Item/Service': MdShoppingBag,
+        'Service Type': MdInfo,
+        'Date Placed': MdDateRange,
+        'Est. Completion': MdDateRange,
+        'Assigned Tailor': MdPerson,
+        'Notes': MdAssignment,
+        'Full Name': MdPerson,
+        'Phone': MdPhone,
+        'Email': MdEmail,
+        'Pickup Date': MdDateRange,
+        'Pickup Slot': MdDateRange,
+        'Address': MdLocationOn,
+    }
+
     const fields = [
         { label: 'Order ID',     value: order.orderId || order._id },
         { label: 'Status',       value: order.status },
@@ -145,75 +218,250 @@ const DetailsModal = ({ order, onClose }) => {
         ]),
     ].filter(f => f.value)
 
+    const items = order.items || []
+    const hasItems = items.length > 0
+
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div
-                className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Modal Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <div>
-                        <h3 className="text-sm font-black text-gray-800">{displayName}</h3>
-                        <p className="text-[11px] text-gray-400 font-medium">
-                            #{order.orderId || order._id?.slice(-8)}
-                        </p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
-                    >
-                        <MdClose size={18} />
-                    </button>
-                </div>
-
-                {/* Modal Body — scrollable */}
-                <div className="overflow-y-auto p-5 flex-1">
-                    <div className="grid grid-cols-2 gap-3">
-                        {fields.map(({ label, value }) => (
-                            <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-                                <p className="text-[11px] font-semibold text-gray-800 break-words">{value}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between gap-3 bg-gray-50/60">
-                    {!isBooking && order.status === 'Completed' && (
-                        <button
-                            onClick={() => { navigate('/invoices'); onClose() }}
-                            className="text-[11px] font-bold text-blue-500 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors"
-                        >
-                            View Invoice
-                        </button>
-                    )}
-                    <button
-                        onClick={onClose}
-                        className="ml-auto bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-widest px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-all cursor-pointer"
-                    >
-                        Close
-                    </button>
-                </div>
+        <>
+        {/* Backdrop */}
+        <div 
+            className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={onClose}
+        />
+        
+        {/* Side Drawer - Mobile rounded-t-3xl, Desktop rounded-2xl */}
+        <div
+            className="fixed bottom-0 sm:right-0 sm:top-0 h-1/2 sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+        >
+            {/* Mobile Handle Bar */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                <div className="w-10 h-1 bg-gray-200 rounded-full" />
             </div>
+
+            {/* Header - Payroll Style */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                        <FileText size={16} className="text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h2 className="text-[15px] font-black text-gray-900 truncate">{displayName}</h2>
+                        <p className="text-[10px] text-gray-400 mt-0.5">#{order.orderId || order._id?.slice(-8)}</p>
+                    </div>
+                </div>
+                <button 
+                    onClick={onClose} 
+                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors shrink-0"
+                >
+                    <MdClose size={18} className="text-gray-400" />
+                </button>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white">
+                <button
+                    onClick={() => setActiveTab('items')}
+                    className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                        ${activeTab === 'items' 
+                            ? 'text-blue-600 border-b-blue-600' 
+                            : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                        }`}
+                >
+                    <Package size={14} />
+                    Ordered Items
+                </button>
+                {order.status !== 'Cancelled' && (
+                    <button
+                        onClick={() => setActiveTab('qr')}
+                        className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                            ${activeTab === 'qr' 
+                                ? 'text-blue-600 border-b-blue-600' 
+                                : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                            }`}
+                    >
+                        <QrCode size={14} />
+                        QR Code
+                    </button>
+                )}
+            </div>
+
+            {/* Body — scrollable */}
+            <div className="overflow-y-auto p-5 flex-1 space-y-5">
+                {activeTab === 'items' ? (
+                    <>
+                        {/* Details Section */}
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                {fields.map(({ label, value }) => {
+                                    const Icon = iconMap[label]
+                                    return (
+                                        <div key={label} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                            {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+                                                <p className="text-[11px] font-semibold text-gray-800 break-words">{value}</p>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Items Section */}
+                        {hasItems && (
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
+                                <div className="space-y-2.5">
+                                    {items.map((item, idx) => (
+                                        <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                            <div className="flex items-start justify-between gap-2 mb-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] font-bold text-gray-800">{item.description}</p>
+                                                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">Type: {item.type}</p>
+                                                </div>
+                                                <span className="bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                                                    ×{item.qty}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                                <div className="bg-white rounded-lg p-2 border border-gray-100/50">
+                                                    <p className="text-gray-400 font-medium">Unit Price</p>
+                                                    <p className="text-gray-800 font-bold mt-0.5">₱{item.unitPrice?.toLocaleString() || '—'}</p>
+                                                </div>
+                                                <div className="bg-white rounded-lg p-2 border border-gray-100/50">
+                                                    <p className="text-gray-400 font-medium">Total</p>
+                                                    <p className="text-gray-800 font-bold mt-0.5">₱{(item.qty * item.unitPrice)?.toLocaleString() || '—'}</p>
+                                                </div>
+                                            </div>
+                                            {item.size && (
+                                                <p className="text-[9px] text-gray-500 mt-2">Size: <span className="font-semibold">{item.size}</span></p>
+                                            )}
+                                            {item.addOn && (
+                                                <p className="text-[9px] text-gray-500">Add-on: <span className="font-semibold">{item.addOn} (₱{item.addOnPrice || '—'})</span></p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    // QR Code Tab
+                    <div className="space-y-4">
+                        {loadingQR ? (
+                            <div className="bg-white rounded-xl p-12 flex flex-col items-center justify-center gap-3">
+                                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center animate-pulse">
+                                    <QrCode size={24} className="text-purple-400" />
+                                </div>
+                                <p className="text-sm text-gray-500 font-medium">Loading QR Code...</p>
+                            </div>
+                        ) : qrCode ? (
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="bg-white p-4 rounded-xl border-2 border-purple-200 shadow-sm">
+                                    <img 
+                                        src={qrCode} 
+                                        alt="QR Code"
+                                        className="w-48 h-48 object-contain"
+                                    />
+                                </div>
+                                <p className="text-[9px] text-gray-500 text-center leading-relaxed max-w-xs">
+                                    Staff scans this code to release your order. Do not share with others.
+                                </p>
+                                <div className="flex gap-2 w-full">
+                                    <button
+                                        onClick={handleCopyQR}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-purple-600 text-[11px] font-bold transition-colors cursor-pointer"
+                                    >
+                                        {copied ? (
+                                            <>
+                                                <Check size={14} /> Copied
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy size={14} /> Copy
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadQR}
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
+                                    >
+                                        <Download size={14} /> Download
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-xl p-8 flex flex-col items-center justify-center gap-3">
+                                <AlertCircle size={24} className="text-red-400" />
+                                <p className="text-sm text-gray-600 font-medium">Failed to load QR code</p>
+                                <button
+                                    onClick={loadQRCode}
+                                    className="text-blue-600 text-[11px] font-bold hover:text-blue-700"
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer */}
+            {!isBooking && order.status === 'Completed' && (
+                <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0">
+                    <button
+                        onClick={() => { navigate('/invoices'); onClose() }}
+                        className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
+                    >
+                        <FileText size={14} /> View Invoice
+                    </button>
+                </div>
+            )}
         </div>
+        </>
     )
 }
 
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel }) => {
     const [showModal, setShowModal] = useState(false)
-    const [showQR, setShowQR] = useState(false)
+    const [qrCode, setQrCode] = useState(null)
+    const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
     const displayName = isBooking
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
     const steps = order.steps || []
 
-    // Check if order is dropped off
-    const isDroppedOff = steps.some(s => s.label?.toLowerCase().includes('drop') && s.done)
+    const loadQRCode = async () => {
+        if (loadingQR || qrCode) return
+        try {
+            setLoadingQR(true)
+            const response = isBooking 
+                ? await bookingApi.getBookingQR(order._id)
+                : await orderApi.getOrderQR(order._id)
+            setQrCode(response.qrCode)
+        } catch (error) {
+            console.error('Error fetching QR code:', error)
+            alert('Failed to load QR code')
+        } finally {
+            setLoadingQR(false)
+        }
+    }
+
+    const handleDownloadQR = async () => {
+        if (!qrCode) {
+            await loadQRCode()
+            return
+        }
+        const link = document.createElement('a')
+        link.href = qrCode
+        link.download = `${isBooking ? 'booking' : 'order'}-${order._id}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
 
     return (
         <>
@@ -283,10 +531,10 @@ const OrderCard = ({ order, onCancel }) => {
             <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                        {order.assignedTailor ? 'Tailor:' : (isBooking ? 'By:' : 'Tailor:')}
+                        {order.assignedTailor ? 'Tailor:' : 'Status:'}
                     </span>
                     <span className="text-[11px] font-black text-gray-700 truncate">
-                        {order.assignedTailor || (isBooking ? (order.contact?.fullName || '—') : '—')}
+                        {order.assignedTailor || 'is not assigned'}
                     </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -298,20 +546,23 @@ const OrderCard = ({ order, onCancel }) => {
                             Cancel
                         </button>
                     )}
-                    {isDroppedOff && (
+                    {order.status !== 'Cancelled' && (
                         <button
-                            onClick={() => setShowQR(true)}
-                            className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
-                            title="View invoice QR code"
+                            onClick={handleDownloadQR}
+                            disabled={loadingQR}
+                            className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                            title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
                         >
-                            <MdPrint size={12} />
-                            Invoice
+                            <Download size={12} />
+                            <span className="hidden sm:inline">Download QR</span>
+                            <span className="sm:hidden">QR</span>
                         </button>
                     )}
                     <button
                         onClick={() => setShowModal(true)}
-                        className="bg-white border border-gray-200 text-[#2563EB] text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-blue-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
                     >
+                        <QrCode size={12} />
                         Details
                     </button>
                 </div>
@@ -320,183 +571,6 @@ const OrderCard = ({ order, onCancel }) => {
 
         {/* ── Details Modal ── */}
         {showModal && <DetailsModal order={order} onClose={() => setShowModal(false)} />}
-
-        {/* ── QR Code Invoice Modal ── */}
-        {showQR && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8">
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-white">Invoice</h3>
-                        <button
-                            onClick={() => setShowQR(false)}
-                            className="text-white hover:text-purple-200 transition-colors"
-                        >
-                            <MdClose size={24} />
-                        </button>
-                    </div>
-
-                    {/* Invoice Content */}
-                    <div className="p-8 space-y-6">
-                        {/* Invoice Header */}
-                        <div className="flex justify-between items-start border-b border-gray-200 pb-6">
-                            <div>
-                                <h1 className="text-2xl font-black text-gray-900">JJS-TRACK</h1>
-                                <p className="text-sm text-gray-500 mt-1">Order Management System</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-gray-700">Invoice #</p>
-                                <p className="text-lg font-black text-gray-900">{order.orderId || order._id?.slice(-8)}</p>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    {new Date(order.createdAt || order.date).toLocaleDateString('en-US', { 
-                                        year: 'numeric', 
-                                        month: 'long', 
-                                        day: 'numeric' 
-                                    })}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Customer Info */}
-                        <div className="grid grid-cols-2 gap-8">
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Customer</p>
-                                <div className="space-y-1">
-                                    <p className="font-bold text-gray-900">
-                                        {order.contact?.fullName || order.assignedTailor || 'Customer'}
-                                    </p>
-                                    {order.contact?.phone && <p className="text-sm text-gray-600">{order.contact.phone}</p>}
-                                    {order.contact?.email && <p className="text-sm text-gray-600">{order.contact.email}</p>}
-                                    {order.contact?.address && <p className="text-sm text-gray-600">{order.contact.address}</p>}
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Service Details</p>
-                                <div className="space-y-1">
-                                    <p className="font-bold text-gray-900">
-                                        {order.service || order.item || order.serviceType || 'Service'}
-                                    </p>
-                                    {order.pickupDate && <p className="text-sm text-gray-600">Pickup: {order.pickupDate}</p>}
-                                    {order.estimatedCompletion && <p className="text-sm text-gray-600">Due: {order.estimatedCompletion}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Items */}
-                        <div>
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-t border-b border-gray-200">
-                                    <tr>
-                                        <th className="text-left py-3 px-4 font-bold text-gray-700">Description</th>
-                                        <th className="text-center py-3 px-4 font-bold text-gray-700">Qty</th>
-                                        <th className="text-right py-3 px-4 font-bold text-gray-700">Unit Price</th>
-                                        <th className="text-right py-3 px-4 font-bold text-gray-700">Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {order.invoice?.items && order.invoice.items.length > 0 ? (
-                                        order.invoice.items.map((item, idx) => {
-                                            const itemTotal = (item.qty * item.unitPrice) + (item.addOnPrice || 0);
-                                            return (
-                                                <tr key={idx} className="border-b border-gray-100">
-                                                    <td className="py-3 px-4 text-gray-800">{item.description}</td>
-                                                    <td className="py-3 px-4 text-center text-gray-800">{item.qty}</td>
-                                                    <td className="py-3 px-4 text-right text-gray-800">₱{item.unitPrice.toLocaleString()}</td>
-                                                    <td className="py-3 px-4 text-right font-bold text-gray-900">₱{itemTotal.toLocaleString()}</td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr className="border-b border-gray-100">
-                                            <td colSpan="4" className="py-4 px-4 text-center text-gray-500">No items</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Totals */}
-                        <div className="flex justify-end">
-                            <div className="w-64 space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Subtotal:</span>
-                                    <span className="font-semibold text-gray-900">
-                                        ₱{(order.invoice?.items?.reduce((s, i) => s + (i.qty * i.unitPrice), 0) || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Add-on Fees:</span>
-                                    <span className="font-semibold text-gray-900">
-                                        ₱{(order.invoice?.items?.reduce((s, i) => s + (i.addOnPrice || 0), 0) || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                                <div className="border-t-2 border-gray-300 pt-2 flex justify-between text-lg">
-                                    <span className="font-bold text-gray-900">Total:</span>
-                                    <span className="font-black text-gray-900">
-                                        ₱{(order.invoice?.items?.reduce((s, i) => s + i.unitPrice * i.qty + (i.addOnPrice || 0), 0) || 0).toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* QR Code */}
-                        <div className="flex flex-col items-center gap-3 pt-6 border-t border-gray-200">
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Scan to Track</p>
-                            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                                <svg 
-                                    className="w-40 h-40 text-gray-800"
-                                    viewBox="0 0 100 100" 
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    {/* Simple QR pattern */}
-                                    <rect width="100" height="100" fill="white" />
-                                    {/* Top-left corner */}
-                                    <rect x="10" y="10" width="30" height="30" fill="black" />
-                                    <rect x="12" y="12" width="26" height="26" fill="white" />
-                                    <rect x="16" y="16" width="18" height="18" fill="black" />
-                                    {/* Top-right corner */}
-                                    <rect x="60" y="10" width="30" height="30" fill="black" />
-                                    <rect x="62" y="12" width="26" height="26" fill="white" />
-                                    <rect x="66" y="16" width="18" height="18" fill="black" />
-                                    {/* Bottom-left corner */}
-                                    <rect x="10" y="60" width="30" height="30" fill="black" />
-                                    <rect x="12" y="62" width="26" height="26" fill="white" />
-                                    <rect x="16" y="66" width="18" height="18" fill="black" />
-                                    {/* Pattern dots */}
-                                    {[...Array(36)].map((_, i) => (
-                                        <rect 
-                                            key={i}
-                                            x={45 + (i % 3) * 12}
-                                            y={45 + Math.floor(i / 3) * 12}
-                                            width="3"
-                                            height="3"
-                                            fill={Math.random() > 0.5 ? 'black' : 'white'}
-                                        />
-                                    ))}
-                                </svg>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="border-t border-gray-200 pt-4 flex gap-3">
-                            <button
-                                onClick={() => window.print()}
-                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-                            >
-                                <MdPrint size={16} />
-                                Print Invoice
-                            </button>
-                            <button
-                                onClick={() => setShowQR(false)}
-                                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors cursor-pointer"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
         </>
     )
 }
@@ -571,6 +645,7 @@ const Order = () => {
     const [showStickySearch, setShowStickySearch] = useState(false)
 
     const mainRef = useRef(null)
+    const searchTimeoutRef = useRef(null)
 
     const handleScroll = (e) => {
         setShowStickySearch(e.target.scrollTop > 300)
@@ -612,6 +687,23 @@ const Order = () => {
         }, 60000); // 60 seconds
         return () => clearInterval(interval);
     }, [activeFilter, searchQuery])
+
+    // Debounced search
+    useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current)
+        }
+        
+        searchTimeoutRef.current = setTimeout(() => {
+            fetchData(activeFilter, searchQuery)
+        }, 500) // 500ms debounce
+        
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current)
+            }
+        }
+    }, [searchQuery])
 
     // Stats from API
     useEffect(() => {
@@ -718,7 +810,6 @@ const Order = () => {
                         placeholder="Search orders..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
                     />
                 </div>
