@@ -99,6 +99,48 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    // Check daily slot limits
+    // Repair: max 7 slots per day
+    // Jersey + Organizational: max 3 slots combined per day
+    if (bookingType === 'repair' && pickupDate) {
+      const repairSlotsOnDate = await bookingModel.countDocuments({
+        pickupDate: pickupDate,
+        bookingType: 'repair',
+        status: { $ne: 'Cancelled' }
+      });
+      
+      if (repairSlotsOnDate >= 7) {
+        console.log(`Repair slot limit reached for ${pickupDate}. Current repair bookings: ${repairSlotsOnDate}`);
+        return res.status(400).json({
+          success: false,
+          message: `Repair slots are fully booked for this date (max 7). Please choose another date.`,
+          date: pickupDate,
+          availableSlots: 0,
+          slotType: 'repair'
+        });
+      }
+    }
+
+    // For jersey/organizational bookings from frontend pickup selection
+    if ((bookingType === 'jersey' || bookingType === 'organizational') && pickupDate) {
+      const jerseyOrgSlotsOnDate = await bookingModel.countDocuments({
+        pickupDate: pickupDate,
+        bookingType: { $in: ['jersey', 'organizational'] },
+        status: { $ne: 'Cancelled' }
+      });
+      
+      if (jerseyOrgSlotsOnDate >= 3) {
+        console.log(`Jersey/Organizational slot limit reached for ${pickupDate}. Current bookings: ${jerseyOrgSlotsOnDate}`);
+        return res.status(400).json({
+          success: false,
+          message: `Jersey/Organization slots are fully booked for this date (max 3). Please choose another date.`,
+          date: pickupDate,
+          availableSlots: 0,
+          slotType: 'jersey_org'
+        });
+      }
+    }
+
     console.log('Validation passed, creating booking document...');
 
     // Fetch pricing from database with fallbacks
@@ -583,5 +625,67 @@ export const cancelBooking = async (req, res) => {
   } catch (error) {
     console.error('Cancel Booking Error:', error);
     res.status(500).json({ success: false, message: 'Failed to cancel booking' });
+  }
+};
+
+// Get available slots for a specific date
+export const getAvailableSlots = async (req, res) => {
+  try {
+    const { date } = req.params;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date parameter is required'
+      });
+    }
+
+    // Count repair bookings for the date
+    const repairBookedSlots = await bookingModel.countDocuments({
+      pickupDate: date,
+      bookingType: 'repair',
+      status: { $ne: 'Cancelled' }
+    });
+
+    // Count jersey + organizational bookings for the date
+    const jerseyOrgBookedSlots = await bookingModel.countDocuments({
+      pickupDate: date,
+      bookingType: { $in: ['jersey', 'organizational'] },
+      status: { $ne: 'Cancelled' }
+    });
+
+    const maxRepairSlots = 7;
+    const maxJerseyOrgSlots = 3;
+
+    const availableRepairSlots = Math.max(0, maxRepairSlots - repairBookedSlots);
+    const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - jerseyOrgBookedSlots);
+
+    const repairIsFull = repairBookedSlots >= maxRepairSlots;
+    const jerseyOrgIsFull = jerseyOrgBookedSlots >= maxJerseyOrgSlots;
+
+    res.json({
+      success: true,
+      date,
+      repair: {
+        booked: repairBookedSlots,
+        available: availableRepairSlots,
+        max: maxRepairSlots,
+        isFull: repairIsFull
+      },
+      jerseyOrg: {
+        booked: jerseyOrgBookedSlots,
+        available: availableJerseyOrgSlots,
+        max: maxJerseyOrgSlots,
+        isFull: jerseyOrgIsFull
+      },
+      totalBooked: repairBookedSlots + jerseyOrgBookedSlots,
+      totalMax: maxRepairSlots + maxJerseyOrgSlots,
+      totalAvailable: availableRepairSlots + availableJerseyOrgSlots,
+      allSlotsFull: repairIsFull && jerseyOrgIsFull
+    });
+
+  } catch (error) {
+    console.error('Get Available Slots Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to check available slots' });
   }
 };

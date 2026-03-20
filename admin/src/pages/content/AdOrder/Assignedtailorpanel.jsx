@@ -10,6 +10,7 @@ export default function AssignedTailorPanel({
     assignedEmployee,
     earningsPreview,
     onAssign,
+    isCancelled,
 }) {
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -19,10 +20,16 @@ export default function AssignedTailorPanel({
                 </h4>
             </div>
             <div className="p-5 flex flex-col gap-4">
-                <AssignEmployeeDropdown
-                    currentId={assignments[activeOrder.id]}
-                    onAssign={(empId) => onAssign(activeOrder.id, empId)}
-                />
+                {isCancelled ? (
+                    <div className="flex items-center gap-2 text-[12px] text-gray-500 bg-red-50 rounded-xl px-3.5 py-3 border border-red-200">
+                        <span className="text-red-600 font-semibold">Cannot assign staff to cancelled orders</span>
+                    </div>
+                ) : (
+                    <AssignEmployeeDropdown
+                        currentId={assignments[activeOrder.id]}
+                        onAssign={(empId) => onAssign(activeOrder.id, empId)}
+                    />
+                )}
                 {assignedEmployee ? (
                     <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3.5 py-3 border border-gray-100">
                         <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-[12px] font-black text-blue-700 shrink-0">

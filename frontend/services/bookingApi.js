@@ -88,4 +88,15 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Check available slots for a date
+  getAvailableSlots: async (date) => {
+    try {
+      const response = await api.get(`/bookings/slots/available/${date}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get Available Slots Error:', error);
+      throw error;
+    }
+  },
 };

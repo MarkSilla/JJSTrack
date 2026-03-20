@@ -53,7 +53,7 @@ export default function OrderList({
                             <div className="absolute right-0 top-14 w-64 bg-white border border-gray-100 shadow-2xl rounded-2xl p-4 z-30">
                                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
                                     <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Filters</h3>
-                                    <button onClick={() => setFilterStatus('All')} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer">Reset</button>
+                                    <button onClick={() => { setFilterStatus('All'); setIsFilterOpen(false); }} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer">Reset</button>
                                 </div>
                                 <div>
                                     <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Order Status</label>
@@ -61,7 +61,7 @@ export default function OrderList({
                                         {statusTabs.map(tab => (
                                             <button
                                                 key={tab}
-                                                onClick={() => setFilterStatus(tab)}
+                                                onClick={() => { setFilterStatus(tab); setIsFilterOpen(false); }}
                                                 className={`px-3 py-2 text-[11px] font-bold rounded-lg border transition-all flex items-center justify-between cursor-pointer
                                                 ${filterStatus === tab ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300'}`}
                                             >

@@ -8,12 +8,14 @@ import {
   deleteBooking,
   convertBookingToOrder,
   cancelBooking,
+  getAvailableSlots,
 } from '../controllers/bookingController.js';
 import { authMiddleware, adminMiddleware, staffMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes - none for bookings
+// Public routes
+router.get('/slots/available/:date', getAvailableSlots);
 
 // Protected routes - requires authentication
 router.post('/', authMiddleware, createBooking);

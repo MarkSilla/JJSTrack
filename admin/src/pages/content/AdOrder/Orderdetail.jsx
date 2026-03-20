@@ -31,6 +31,7 @@ export default function OrderDetail({
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
+    const isCancelled = useMemo(() => getDerivedStatus(activeOrder) === 'Cancelled', [activeOrder]);
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
 
     const hasSchedule = useMemo(() =>
@@ -213,6 +214,7 @@ export default function OrderDetail({
                             assignedEmployee={assignedEmployee}
                             earningsPreview={earningsPreview}
                             onAssign={handleAssign}
+                            isCancelled={isCancelled}
                         />
                         <OrderSummary
                             activeOrder={activeOrder}
