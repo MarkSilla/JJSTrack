@@ -124,7 +124,8 @@ export default function OrderList({
                                 key={orderId}
                                 onClick={() => setActiveOrderId(orderId)}
                                 className={`cursor-pointer rounded-2xl relative transition-all duration-200 border overflow-hidden
-                                ${isSelected ? 'bg-blue-50/30 border-blue-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm'}`}
+                                ${isSelected ? 'bg-blue-50/30 border-blue-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm'}
+                                ${derivedStatus === 'Cancelled' ? 'opacity-60 bg-gray-50' : ''}`}
                             >
                                 {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />}
                                 <div className="p-4 pl-5">

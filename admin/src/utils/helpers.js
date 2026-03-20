@@ -14,6 +14,7 @@ export const isOverdue = (dueDateStr) => {
 };
 
 export const getDerivedStatus = (order) => {
+    if (order?.status === "Cancelled") return "Cancelled";
     const needsApproval = order?.serviceType === 'Team Jersey' || order?.serviceType === 'Organization';
     const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
     if (needsApproval && !hasPickupDate) return "For Approval";
