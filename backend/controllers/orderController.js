@@ -192,11 +192,17 @@ export const cancelOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const user = await userModel.findById(req.userId);
-    const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
+    // Handle special case where userId is 'admin' (string)
+    let isAdminStaff = false;
+    if (req.userId === 'admin') {
+      isAdminStaff = true;
+    } else {
+      const user = await userModel.findById(req.userId);
+      isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
+    }
 
     // Check ownership - allow if user owns order or is admin/staff
-    if (!isAdminStaff && order.userId.toString() !== req.userId) {
+    if (!isAdminStaff && order.userId?.toString() !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

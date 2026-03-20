@@ -31,6 +31,9 @@ const isOverdue = (dueDateStr) => {
 };
 
 const getDerivedStatus = (order) => {
+    if (!order) return "Pending";
+    // Check for cancelled first
+    if (order.status === 'Cancelled') return 'Cancelled';
     const needsApproval = order?.serviceType === 'Team Jersey' || order?.serviceType === 'Organization';
     const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
     if (needsApproval && !hasPickupDate) return "For Approval";
@@ -201,16 +204,25 @@ export default function AdOrder() {
             (o.id || o._id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
             (o.item || o.itemType || o.serviceType || '').toLowerCase().includes(searchQuery.toLowerCase())
         );
+        
+        // Filter by status
         if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
         else if (filterStatus === 'Ready') result = result.filter(o => getDerivedStatus(o) === 'Ready');
         else if (filterStatus === 'Overdue') result = result.filter(o => getDerivedStatus(o) === 'Overdue');
         else if (filterStatus === 'For Approval') result = result.filter(o => getDerivedStatus(o) === 'For Approval');
+        else if (filterStatus === 'Cancelled') result = result.filter(o => getDerivedStatus(o) === 'Cancelled');
+        else if (filterStatus === 'All') result = result.filter(o => getDerivedStatus(o) !== 'Cancelled'); // Hide cancelled by default
+        
         return result;
     }, [searchQuery, filterStatus, orders]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'For Approval': 0, 'In Progress': 0, 'Ready': 0, 'Overdue': 0 };
-        orders.forEach(o => { c.All++; const s = getDerivedStatus(o); if (c[s] !== undefined) c[s]++; });
+        const c = { All: 0, 'For Approval': 0, 'In Progress': 0, 'Ready': 0, 'Overdue': 0, 'Cancelled': 0 };
+        orders.forEach(o => {
+            const s = getDerivedStatus(o);
+            if (c[s] !== undefined) c[s]++;
+            if (s !== 'Cancelled') c.All++; // All count excludes cancelled
+        });
         return c;
     }, [orders]);
 
@@ -242,7 +254,10 @@ export default function AdOrder() {
                 if ((order.id || order._id) === orderId && order.steps) {
                     const updatedSteps = [...order.steps];
                     if (updatedSteps[stepIndex]) {
-                        updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], date: new Date().toISOString().split('T')[0], done: true, active: true };
+                        const now = new Date();
+                        const dateStr = now.toISOString().split('T')[0];
+                        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                        updatedSteps[stepIndex] = { ...updatedSteps[stepIndex], date: dateStr, time: timeStr, done: true, active: true };
                         const isBooking = !!order.bookingType;
                         const orderIdToUse = order._id || order.id;
                         
@@ -340,57 +355,12 @@ export default function AdOrder() {
         );
     };
 
-    // ─── Loading / Error States ───────────────────────────────────────────────
-
-    if (loading) {
-        return (
-            <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
-                <div className="flex items-start sm:items-center justify-between mb-8 gap-4">
-                    <div>
-                        <h1 className="text-2xl lg:text-3xl font-black text-gray-800 tracking-tight">Orders</h1>
-                        <p className="text-sm text-gray-500 mt-1">Manage your orders</p>
-                    </div>
-                </div>
-                <div className="flex items-center justify-center h-96">
-                    <div className="text-center">
-                        <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p className="text-gray-500 text-sm font-medium">Loading orders...</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error && orders.length === 0) {
-        return (
-            <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
-                <div className="flex items-start sm:items-center justify-between mb-8 gap-4">
-                    <div>
-                        <h1 className="text-2xl lg:text-3xl font-black text-gray-800 tracking-tight">Orders</h1>
-                        <p className="text-sm text-gray-500 mt-1">Manage your orders</p>
-                    </div>
-                </div>
-                <div className="flex items-center justify-center h-96">
-                    <div className="text-center">
-                        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                        <p className="text-gray-700 font-medium">{error}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
     return (
         <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
-            <div className="flex items-start sm:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h1 className="text-2xl lg:text-3xl font-black text-gray-800 tracking-tight">Orders</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage your orders</p>
-                </div>
-            </div>
-
+    
             <KPICards counts={counts} />
 
             <div className="flex gap-6">
@@ -410,20 +380,22 @@ export default function AdOrder() {
                 />
 
                 <div className={`flex-1 flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden h-[calc(100vh-64px)] ${activeOrder ? 'flex' : 'hidden lg:flex'}`}>
-                    <OrderDetail
-                        activeOrder={activeOrder}
-                        activeOrderSteps={activeOrderSteps}
-                        currentStepIdx={currentStepIdx}
-                        assignedEmployee={assignedEmployee}
-                        earningsPreview={earningsPreview}
-                        assignments={assignments}
-                        isMenuOpen={isMenuOpen}
-                        setIsMenuOpen={setIsMenuOpen}
-                        setActiveOrderId={setActiveOrderId}
-                        handleStepClick={handleStepClick}
-                        handleAssign={handleAssign}
-                        handleApprovePickupDate={handleApprovePickupDate}
-                    />
+                    {activeOrder && (
+                        <OrderDetail
+                            activeOrder={activeOrder}
+                            activeOrderSteps={activeOrderSteps}
+                            currentStepIdx={currentStepIdx}
+                            assignedEmployee={assignedEmployee}
+                            earningsPreview={earningsPreview}
+                            assignments={assignments}
+                            isMenuOpen={isMenuOpen}
+                            setIsMenuOpen={setIsMenuOpen}
+                            setActiveOrderId={setActiveOrderId}
+                            handleStepClick={handleStepClick}
+                            handleAssign={handleAssign}
+                            handleApprovePickupDate={handleApprovePickupDate}
+                        />
+                    )}
                 </div>
             </div>
 

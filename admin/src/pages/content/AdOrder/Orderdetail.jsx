@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X } from 'lucide-react';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';
@@ -7,6 +7,8 @@ import AssignedTailorPanel from './Assignedtailorpanel';
 import OrderSummary from './Ordersummary';
 import RescheduleModal from './RescheduleModal';
 import { getDerivedStatus } from '../../../utils/helpers.js';
+import { orderApi } from '../../../services/orderApi.js';
+import { bookingApi } from '../../../services/bookingApi.js';
 
 export default function OrderDetail({
     activeOrder,
@@ -25,6 +27,8 @@ export default function OrderDetail({
     const [pickupApprovalDate, setPickupApprovalDate] = useState('');
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [approvalMode, setApprovalMode] = useState(false);
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
@@ -36,6 +40,32 @@ export default function OrderDetail({
 
     const handleRescheduleConfirm = (newDate, newTime) => {
         handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate);
+    };
+
+    const handleCancelOrder = () => {
+        setShowCancelConfirm(true);
+    };
+
+    const confirmCancelOrder = async () => {
+        const orderId = activeOrder.id || activeOrder._id;
+
+        try {
+            setCancelLoading(true);
+            if (activeOrder.isBooking) {
+                await bookingApi.cancelBooking(orderId);
+            } else {
+                await orderApi.cancelOrder(orderId);
+            }
+            setShowCancelConfirm(false);
+            setIsMenuOpen(false);
+            setActiveOrderId(null);
+        } catch (error) {
+            console.error('Failed to cancel order:', error);
+            alert('Failed to cancel order. Please try again.');
+            setShowCancelConfirm(false);
+        } finally {
+            setCancelLoading(false);
+        }
     };
 
     if (!activeOrder) {
@@ -97,7 +127,14 @@ export default function OrderDetail({
                                 >
                                     <CalendarClock size={16} className="text-gray-400" /> Reschedule
                                 </button>
-                                <button className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer">
+                                <button
+                                    onClick={() => {
+                                        setShowCancelConfirm(true);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    disabled={activeOrder.status === 'Cancelled'}
+                                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer"
+                                >
                                     <XCircle size={16} className="text-red-500" /> Cancel Order
                                 </button>
                             </div>
@@ -161,6 +198,14 @@ export default function OrderDetail({
                             >
                                 <CalendarClock size={18} /> Reschedule Delivery
                             </button>
+                            {activeOrder.status !== 'Cancelled' && (
+                                <button
+                                    onClick={() => setShowCancelConfirm(true)}
+                                    className="w-full bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
+                                >
+                                    <XCircle size={18} /> Cancel Order
+                                </button>
+                            )}
                         </div>
                         <AssignedTailorPanel
                             activeOrder={activeOrder}
@@ -184,6 +229,51 @@ export default function OrderDetail({
                 mode={approvalMode ? 'approve' : 'reschedule'}
                 currentDate={activeOrder?.pickupDate || new Date().toISOString().split('T')[0]}
             />
+
+            {/* Cancel Confirmation Modal */}
+            {showCancelConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">Cancel Order</h2>
+                                <p className="text-sm text-gray-500 mt-1">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowCancelConfirm(false)}
+                                disabled={cancelLoading}
+                                className="text-gray-400 hover:text-gray-600 disabled:opacity-50 bg-transparent border-none cursor-pointer ml-2"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 space-y-3">
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                <p className="text-xs font-semibold text-red-700">Order ID: <span className="font-bold">{activeOrder.id}</span></p>
+                                <p className="text-xs font-semibold text-red-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 flex gap-3 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowCancelConfirm(false)}
+                                disabled={cancelLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                            >
+                                Keep Order
+                            </button>
+                            <button
+                                onClick={confirmCancelOrder}
+                                disabled={cancelLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                            >
+                                {cancelLoading ? 'Cancelling...' : 'Cancel Order'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

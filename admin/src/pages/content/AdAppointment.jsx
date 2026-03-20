@@ -163,7 +163,7 @@ const AdAppointment = () => {
     const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
     const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     const selectedAppointments = useMemo(() => {
         return appointments.filter(app => app.date === selectedDateStr).sort((a, b) => {
@@ -230,12 +230,12 @@ const AdAppointment = () => {
                         ${isSelected
                             ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-md'
                             : totalCount >= 8
-                            ? 'bg-red-50 border-red-200 hover:shadow-md'
-                            : totalCount >= 5
-                            ? 'bg-yellow-50 border-yellow-200 hover:shadow-md'
-                            : isToday
-                            ? 'bg-blue-50 border-blue-200 hover:shadow-md'
-                            : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 hover:shadow-sm'
+                                ? 'bg-red-50 border-red-200 hover:shadow-md'
+                                : totalCount >= 5
+                                    ? 'bg-yellow-50 border-yellow-200 hover:shadow-md'
+                                    : isToday
+                                        ? 'bg-blue-50 border-blue-200 hover:shadow-md'
+                                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 hover:shadow-sm'
                         }
                     `}
                 >
@@ -280,39 +280,50 @@ const AdAppointment = () => {
         <div className="font-inter min-h-screen bg-slate-50">
             <div className="px-4 sm:px-6 py-5 pb-24 sm:pb-10">
 
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-800 tracking-tight">Appointments</h1>
-                        <p className="text-[12px] sm:text-sm text-gray-500 mt-0.5">Manage all service and organization appointments.</p>
-                    </div>
-                    <button
-                        onClick={() => setShowBooking(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold tracking-wide shadow-sm hover:shadow-md transition-all flex items-center gap-2 shrink-0 relative group">
-                        <Plus size={18} />
-                        <span className="hidden xs:inline sm:inline">Add new</span>
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs border border-gray-800 min-w-max opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-bold">
-                            For Walk Ins
-                        </div>
-                    </button>
-                </div>
-
                 {/* KEY FIX: items-start so the right panel doesn't stretch to match calendar height */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 xl:items-start">
 
                     {/* ── Calendar Panel ── */}
                     <div className="xl:col-span-2 bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-5 sm:mb-8">
+                        <div className="flex items-center justify-between mb-5 sm:mb-8 flex-wrap gap-3 sm:gap-4">
                             <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2 sm:gap-3 tracking-tight">
                                 <Calendar className="text-blue-500" size={22} />
                                 {monthNames[month]} {year}
                             </h2>
-                            <div className="flex items-center gap-1 bg-gray-50 rounded-full p-1 border border-gray-100">
-                                <button onClick={prevMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
-                                    <ChevronLeft size={18} />
+                            <div className="flex items-center gap-2 ml-auto">
+                                <button
+                                    onClick={() => setShowBooking(true)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-0 hover:gap-2 shrink-0 overflow-hidden group"
+                                    style={{
+                                        padding: '10px',
+                                        width: '40px',
+                                        transition: 'width 280ms cubic-bezier(0.4,0,0.2,1), padding 280ms cubic-bezier(0.4,0,0.2,1), gap 280ms cubic-bezier(0.4,0,0.2,1)',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.width = '122px';
+                                        e.currentTarget.style.padding = '10px 16px';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.width = '40px';
+                                        e.currentTarget.style.padding = '10px';
+                                    }}
+                                >
+                                    <Plus size={18} className="shrink-0" />
+                                    <span
+                                        className="overflow-hidden whitespace-nowrap opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[80px]"
+                                        style={{ transition: 'max-width 280ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease' }}
+                                    >
+                                        Add new
+                                    </span>
                                 </button>
-                                <button onClick={nextMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
-                                    <ChevronRight size={18} />
-                                </button>
+                                <div className="flex items-center gap-1 bg-gray-50 rounded-full p-1 border border-gray-100">
+                                    <button onClick={prevMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
+                                        <ChevronLeft size={18} />
+                                    </button>
+                                    <button onClick={nextMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -399,11 +410,10 @@ const AdAppointment = () => {
                                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                                     <button
                                         onClick={() => setActiveFilter('all')}
-                                        className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all border-none cursor-pointer ${
-                                            activeFilter === 'all'
+                                        className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all border-none cursor-pointer ${activeFilter === 'all'
                                                 ? 'bg-gray-800 text-white shadow-sm'
                                                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                        }`}
+                                            }`}
                                     >
                                         All {selectedAppointments.length}
                                     </button>

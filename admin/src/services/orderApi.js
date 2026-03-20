@@ -90,6 +90,17 @@ export const orderApi = {
       throw error;
     }
   },
+
+  // Cancel order
+  cancelOrder: async (id) => {
+    try {
+      const response = await api.put(`/orders/${id}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

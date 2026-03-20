@@ -23,7 +23,8 @@ export const STATUS_CONFIG = {
     "Pending":           { color: "bg-amber-100 text-amber-700",     label: "Pending"  },
     "Ready":             { color: "bg-green-100 text-green-700",     label: "Ready" },
     "Overdue":           { color: "bg-red-100 text-red-600",         label: "Overdue" },
-    "Cancel/Incomplete": { color: "bg-red-100 text-red-600",         label: "Cancelled" },
+    "Cancelled":         { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },
+    "Cancel/Incomplete": { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },
 };
 
 export const TYPE_CONFIG = {

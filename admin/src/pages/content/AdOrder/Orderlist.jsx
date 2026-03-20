@@ -17,7 +17,7 @@ export default function OrderList({
     orderTracking,
     assignments,
 }) {
-    const statusTabs = ['All', 'For Approval', 'In Progress', 'Ready', 'Overdue'];
+    const statusTabs = ['All', 'For Approval', 'In Progress', 'Ready', 'Overdue', 'Cancelled'];
     const approvalTabs = [
         { label: 'All', value: 'All' },
         { label: 'Pending Approval', value: 'For Approval' },

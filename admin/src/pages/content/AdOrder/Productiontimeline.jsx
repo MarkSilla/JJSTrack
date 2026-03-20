@@ -41,7 +41,7 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                     {activeOrderSteps.map((step, idx) => {
                         const isCompleted = idx < currentStepIdx || step.done;
                         const isCurrent = idx === currentStepIdx;
-                        const label = step.label || step;
+                        const label = (step?.label || step) || `Step ${idx + 1}`;
                         return (
                             <div
                                 key={idx}
@@ -61,18 +61,27 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                                 </div>
                                 <div className="flex-1 -mt-1 pb-4">
                                     <div className={`text-sm font-black tracking-wide transition-colors flex items-center justify-between ${(isCompleted || isCurrent) ? 'text-gray-900' : 'text-gray-400'}`}>
-                                        <span>{label}</span>
+                                        <span className="min-h-[20px]">{typeof label === 'string' ? label : String(label)}</span>
                                         {(isCompleted || isCurrent) && step.worker && (
                                             <span className="text-[10px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
                                                 <User size={10} className="inline mr-1" />{step.worker}
                                             </span>
                                         )}
                                     </div>
-                                    {(step.time || step.date) && (isCompleted || isCurrent) && (
-                                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-500 bg-gray-50/50 p-2.5 rounded-lg border border-gray-100/50">
-                                            <div><span className="font-semibold text-gray-400">Started:</span> {step.date} - {step.time}</div>
-                                            {step.endTime && <div><span className="font-semibold text-gray-400">Completed:</span> {step.endTime}</div>}
-                                            {step.duration && <div><span className="font-semibold text-gray-400">Duration:</span> {step.duration}</div>}
+                                    {(step?.time || step?.date) && (isCompleted || isCurrent) && (
+                                        <div className="mt-2 space-y-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            {step.date && (
+                                                <div><span className="font-semibold text-gray-400">Date:</span> {step.date}</div>
+                                            )}
+                                            {step.time && (
+                                                <div><span className="font-semibold text-gray-400">Time:</span> {step.time}</div>
+                                            )}
+                                            {step.endTime && (
+                                                <div><span className="font-semibold text-gray-400">Completed:</span> {step.endTime}</div>
+                                            )}
+                                            {step.duration && (
+                                                <div><span className="font-semibold text-gray-400">Duration:</span> {step.duration}</div>
+                                            )}
                                         </div>
                                     )}
                                     {isCurrent && !isCompleted && idx < activeOrderSteps.length && !isLocked && (

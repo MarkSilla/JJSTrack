@@ -2,6 +2,7 @@ import bookingModel from '../models/bookingModel.js';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import pricingModel from '../models/pricingModel.js';
+import userModel from '../models/userModel.js';
 
 // Create a new booking (from repair form, team jersey, or organizational)
 export const createBooking = async (req, res) => {
@@ -220,10 +221,25 @@ export const createBooking = async (req, res) => {
 export const getBookings = async (req, res) => {
   try {
     const { status, bookingType } = req.query;
+    const userId = req.userId;
     let query = {};
 
-    // Always return all bookings for admin panel - no filtering
-    console.log('getBookings called with userId:', req.userId, 'query:', req.query);
+    // Only filter by userId if the user is NOT an admin or staff
+    if (userId !== 'admin') {
+      try {
+        const userModel = (await import('../models/userModel.js')).default;
+        const user = await userModel.findById(userId);
+        if (user && user.role !== 'admin' && user.role !== 'staff') {
+          query.userId = userId;
+        }
+      } catch (err) {
+        // If user lookup fails, still proceed - filter by userId
+        query.userId = userId;
+      }
+    }
+    // If userId is 'admin', no filtering - show all bookings
+
+    console.log('getBookings called with userId:', req.userId, 'query:', query, 'params:', req.query);
 
     if (status) {
       query.status = status;
@@ -523,11 +539,17 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    const user = await userModel.findById(req.userId);
-    const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
+    // Handle special case where userId is 'admin' (string)
+    let isAdminStaff = false;
+    if (req.userId === 'admin') {
+      isAdminStaff = true;
+    } else {
+      const user = await userModel.findById(req.userId);
+      isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
+    }
 
     // Check ownership - allow if user owns booking or is admin/staff
-    if (!isAdminStaff && booking.userId.toString() !== req.userId) {
+    if (!isAdminStaff && booking.userId?.toString() !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
