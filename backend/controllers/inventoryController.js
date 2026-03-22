@@ -1,6 +1,37 @@
 import Inventory from "../models/inventoryModel.js";
 
-// Get all inventory items
+// Helper function to normalize item names - STRICT normalization
+const normalizeName = (name) => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "") // Remove ALL spaces
+    .replace(/[^a-z0-9]/g, ""); // Keep only letters and numbers (remove all special chars, accents, etc)
+};
+
+// Helper function to generate SKU
+const generateSKU = async (category) => {
+  // Get category abbreviation (first 3 letters, uppercase)
+  const categoryAbbr = category.substring(0, 3).toUpperCase();
+  
+  // Find the highest number for this category
+  const lastItem = await Inventory.findOne({ category })
+    .sort({ sku: -1 })
+    .lean();
+  
+  let nextNumber = 1;
+  if (lastItem && lastItem.sku) {
+    // Extract number from existing SKU (e.g., "SEW-001" → 1)
+    const match = lastItem.sku.match(/\d+$/);
+    if (match) {
+      nextNumber = parseInt(match[0]) + 1;
+    }
+  }
+  
+  // Format: "SEW-001", "SEW-002", etc.
+  return `${categoryAbbr}-${String(nextNumber).padStart(3, "0")}`;
+};
+
 export const getAllInventory = async (req, res) => {
   try {
     const inventory = await Inventory.find().sort({ createdAt: -1 });
@@ -34,29 +65,65 @@ export const getInventoryByCategory = async (req, res) => {
   }
 };
 
-// Create new inventory item
+// Create new inventory item or update if exists
 export const createInventory = async (req, res) => {
   try {
-    const { name, category, stock, max, unit, description, supplier, unitPrice } = req.body;
+    const { name, category, stock, minStock, unit, description, supplier, unitPrice } = req.body;
 
     // Validation
-    if (!name || !category || max == null || !unit) {
-      return res.status(400).json({ message: "Please provide required fields: name, category, max, unit" });
+    if (!name || !category || !unit) {
+      return res.status(400).json({ message: "Please provide required fields: name, category, unit" });
     }
 
+    const normalizedName = normalizeName(name);
+    const stockValue = parseInt(stock) || 0;
+    const minStockValue = parseInt(minStock) || 5;
+
+    // Check if item already exists by normalizedName
+    const existingItem = await Inventory.findOne({
+      normalizedName,
+      archived: false
+    });
+
+    if (existingItem) {
+      // Item exists - update stock instead of creating new one
+      const newStock = existingItem.stock + stockValue;
+      existingItem.stock = newStock;
+      existingItem.lastActivityDate = new Date();
+      
+      const updatedInventory = await existingItem.save();
+      return res.status(200).json({
+        ...updatedInventory.toObject(),
+        message: "Item already exists. Stock updated.",
+        isUpdate: true
+      });
+    }
+
+    // Auto-generate SKU
+    const generatedSKU = await generateSKU(category);
+
+    // Item doesn't exist - create new one
     const newInventory = new Inventory({
       name,
+      sku: generatedSKU,
+      normalizedName,
       category,
-      stock: stock || 0,
-      max,
+      stock: stockValue,
+      initialStock: stockValue,
+      minStock: minStockValue,
       unit,
       description: description || "",
       supplier: supplier || "",
       unitPrice: unitPrice || 0,
+      lastActivityDate: new Date(),
     });
 
     const savedInventory = await newInventory.save();
-    res.status(201).json(savedInventory);
+    res.status(201).json({
+      ...savedInventory.toObject(),
+      message: "New item created.",
+      isUpdate: false
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -65,7 +132,7 @@ export const createInventory = async (req, res) => {
 // Update inventory item
 export const updateInventory = async (req, res) => {
   try {
-    const { name, category, stock, max, unit, description, supplier, unitPrice } = req.body;
+    const { name, category, stock, minStock, unit, description, supplier, unitPrice } = req.body;
 
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
@@ -75,8 +142,11 @@ export const updateInventory = async (req, res) => {
     // Update fields if provided
     if (name) inventory.name = name;
     if (category) inventory.category = category;
-    if (stock != null) inventory.stock = Math.max(0, Math.min(stock, inventory.max));
-    if (max) inventory.max = max;
+    if (stock != null) {
+      inventory.stock = Math.max(0, stock);
+      inventory.lastActivityDate = new Date();
+    }
+    if (minStock != null) inventory.minStock = minStock;
     if (unit) inventory.unit = unit;
     if (description != null) inventory.description = description;
     if (supplier != null) inventory.supplier = supplier;
@@ -103,13 +173,17 @@ export const adjustStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
+    // Only adjust current stock, not initialStock
     if (type === "increase") {
-      inventory.stock = Math.min(inventory.max, inventory.stock + amount);
+      inventory.stock = inventory.stock + amount;
     } else if (type === "decrease") {
       inventory.stock = Math.max(0, inventory.stock - amount);
     } else {
       return res.status(400).json({ message: "Invalid adjustment type" });
     }
+
+    // Update lastActivityDate on stock adjustment
+    inventory.lastActivityDate = new Date();
 
     const updatedInventory = await inventory.save();
     res.status(200).json(updatedInventory);
@@ -118,14 +192,49 @@ export const adjustStock = async (req, res) => {
   }
 };
 
-// Delete inventory item
-export const deleteInventory = async (req, res) => {
+// Archive inventory item (instead of delete)
+export const archiveInventory = async (req, res) => {
   try {
-    const inventory = await Inventory.findByIdAndDelete(req.params.id);
+    const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
-    res.status(200).json({ message: "Inventory item deleted successfully" });
+
+    inventory.archived = true;
+    const updatedInventory = await inventory.save();
+    res.status(200).json(updatedInventory);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Restore inventory item (from archive)
+export const restoreInventory = async (req, res) => {
+  try {
+    const inventory = await Inventory.findById(req.params.id);
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory item not found" });
+    }
+
+    inventory.archived = false;
+    const updatedInventory = await inventory.save();
+    res.status(200).json(updatedInventory);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Delete inventory item (kept for backwards compatibility)
+export const deleteInventory = async (req, res) => {
+  try {
+    const inventory = await Inventory.findById(req.params.id);
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory item not found" });
+    }
+
+    inventory.archived = true;
+    const updatedInventory = await inventory.save();
+    res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

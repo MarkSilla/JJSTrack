@@ -113,7 +113,9 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toDateString(year, month, d);
+            const dateObj = new Date(year, month, d);
             const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+            const isPastDate = dateObj < today && !isToday; // Disable dates before today
             const isSelected = selectedDateStr === dateStr;
             const marks = marksByDate[dateStr] || {};
             const activeTypes = Object.keys(marks);
@@ -122,18 +124,21 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
             cells.push(
                 <button
                     key={d}
-                    onClick={() => { setSelectedDateStr(dateStr); setStep('time'); setSelectedTime(''); }}
+                    onClick={() => { if (!isPastDate) { setSelectedDateStr(dateStr); setStep('time'); setSelectedTime(''); } }}
+                    disabled={isPastDate}
                     className={`
-                        relative cursor-pointer transition-all duration-200 border rounded-lg aspect-square flex flex-col items-center justify-center gap-0.5 p-1
-                        ${isSelected ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-sm'
-                        : totalCount >= 8 ? 'bg-red-50 border-red-200'
-                        : totalCount >= 5 ? 'bg-yellow-50 border-yellow-200'
-                        : isToday ? 'bg-blue-50 border-blue-200'
-                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50'}
+                        relative transition-all duration-200 border rounded-lg aspect-square flex flex-col items-center justify-center gap-0.5 p-1
+                        ${isPastDate ? 'opacity-40 cursor-not-allowed bg-gray-50 border-gray-100'
+                        : isSelected ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-sm cursor-pointer'
+                        : totalCount >= 8 ? 'bg-red-50 border-red-200 cursor-pointer'
+                        : totalCount >= 5 ? 'bg-yellow-50 border-yellow-200 cursor-pointer'
+                        : isToday ? 'bg-blue-50 border-blue-200 cursor-pointer'
+                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 cursor-pointer'}
                     `}
                 >
                     <div className={`w-5 h-5 flex items-center justify-center rounded-full font-bold text-[10px]
-                        ${isSelected ? 'bg-blue-600 text-white'
+                        ${isPastDate ? 'bg-gray-300 text-gray-500'
+                        : isSelected ? 'bg-blue-600 text-white'
                         : totalCount >= 8 ? 'bg-red-500 text-white'
                         : totalCount >= 5 ? 'bg-yellow-400 text-gray-800'
                         : isToday ? 'bg-blue-600 text-white'
@@ -141,7 +146,7 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                     >
                         {d}
                     </div>
-                    {activeTypes.length > 0 && (
+                    {activeTypes.length > 0 && !isPastDate && (
                         <div className="flex gap-0.5">
                             {activeTypes.map(type => (
                                 <div key={type} className="w-1 h-1 rounded-full" style={{ backgroundColor: TYPE_CONFIG[type]?.hex }} />

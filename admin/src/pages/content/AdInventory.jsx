@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import {
-  Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
-  Tag, CheckCircle2, AlertCircle, XCircle,
+  Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Archive, RotateCcw, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
+  Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown,
   Wrench, Sparkles, Link2,
 } from "lucide-react";
+import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
 import { inventoryApi } from "../../services/inventoryApi";
 import { fmt } from "../../utils/helpers.js";
 
@@ -20,6 +21,13 @@ const numberInputStyle = `../../services/inventoryApi.js
 
 const CATEGORIES = ["All", "Sewing", "Fabric", "Fastener", "Tool", "Notions"];
 const STATUS_OPTIONS = ["All", "In Stock", "Low Stock", "Out of Stock"];
+
+const SORT_INVENTORY_OPTIONS = [
+  { value: 'newest', label: 'Newest → Oldest' },
+  { value: 'oldest', label: 'Oldest → Newest' },
+  { value: 'name-az', label: 'Name A → Z' },
+  { value: 'name-za', label: 'Name Z → A' },
+];
 
 // Format time for activity log
 function formatActivityTime(date) {
@@ -43,13 +51,52 @@ function formatActivityTime(date) {
 // HELPERS 
 function getStatus(item) {
   if (item.stock === 0) return "Out of Stock";
-  const pct = item.stock / item.max;
-  if (pct < 0.2) return "Low Stock";
+  if (item.stock < (item.minStock || 5)) return "Low Stock";
   return "In Stock";
 }
 
+// Calculate string similarity using Levenshtein distance
+function stringSimilarity(str1, str2) {
+  const s1 = str1.toLowerCase().trim();
+  const s2 = str2.toLowerCase().trim();
+  
+  if (s1 === s2) return 1;
+  
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  
+  if (longer.length === 0) return 1;
+  
+  const editDistance = getEditDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+function getEditDistance(s1, s2) {
+  const costs = [];
+  for (let i = 0; i <= s1.length; i++) {
+    let lastValue = i;
+    for (let j = 0; j <= s2.length; j++) {
+      if (i === 0) {
+        costs[j] = j;
+      } else if (j > 0) {
+        let newValue = costs[j - 1];
+        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+          newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+        }
+        costs[j - 1] = lastValue;
+        lastValue = newValue;
+      }
+    }
+    if (i > 0) costs[s2.length] = lastValue;
+  }
+  return costs[s2.length];
+}
+
 function getPct(item) {
-  return item.max > 0 ? Math.min(100, Math.round((item.stock / item.max) * 100)) : 0;
+  // Show percentage based on compared to minStock threshold
+  const minStock = item.minStock || 5;
+  const pct = Math.round((item.stock / (minStock * 2)) * 100);
+  return Math.min(100, pct);
 }
 
 // STATUS BADGE 
@@ -129,7 +176,7 @@ function ActivityItem({ item }) {
   );
 }
 
-function MobileCard({ item, onAdjust, onEditMax, onDelete }) {
+function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
   const status = getStatus(item);
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
@@ -146,30 +193,184 @@ function MobileCard({ item, onAdjust, onEditMax, onDelete }) {
       <div className="mb-3">
         <div className="flex justify-between text-xs text-slate-500 mb-1.5">
           <span>Stock Level</span>
-          <span className="font-semibold text-gray-800 tabular-nums">{item.stock} / {item.max} {item.unit}</span>
+          <span className="font-semibold text-gray-800 tabular-nums">{item.stock} {item.unit}</span>
         </div>
         <StockBar item={item} />
       </div>
 
       <div className="flex gap-2 pt-1">
-        <button onClick={() => onAdjust(item, "increase")}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
-          <ArrowUpCircle size={13} /> Add Stock
-        </button>
-        <button onClick={() => onAdjust(item, "decrease")}
-          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
-          <ArrowDownCircle size={13} /> Remove
-        </button>
-        <button onClick={() => onEditMax(item)}
-          className="flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit Max Capacity">
-          <Pencil size={13} />
-        </button>
-        <button onClick={() => onDelete(item)}
-          className="flex items-center justify-center px-3 py-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
-          <Trash2 size={13} />
-        </button>
+        {!isArchived ? (
+          <>
+            <button onClick={() => onAdjust(item, "increase")}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
+              <ArrowUpCircle size={13} /> Add Stock
+            </button>
+            <button onClick={() => onAdjust(item, "decrease")}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+              <ArrowDownCircle size={13} /> Remove
+            </button>
+            <button onClick={() => onUpdate(item)}
+              className="flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
+              <Pencil size={13} />
+            </button>
+            <button onClick={() => onArchive(item._id, false)}
+              className="flex items-center justify-center px-3 py-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Archive">
+              <Archive size={13} />
+            </button>
+          </>
+        ) : (
+          <button onClick={() => onArchive(item._id, true)}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
+            <RotateCcw size={13} /> Restore
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+function UpdateModal({ item, onConfirm, onClose }) {
+  const [form, setForm] = useState({
+    name: item.name || "",
+    category: item.category || "Sewing",
+    unit: item.unit || "pcs",
+    unitPrice: item.unitPrice || "",
+    minStock: item.minStock || 5
+  });
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Check if form has changed from original
+  const hasChanges = form.name !== item.name || 
+                     form.category !== item.category || 
+                     form.unit !== item.unit || 
+                     form.unitPrice !== item.unitPrice || 
+                     form.minStock !== item.minStock;
+
+  const handleConfirm = () => {
+    if (!form.name.trim()) return;
+    const minStockValue = parseInt(form.minStock) || 5;
+    
+    if (minStockValue < 0) {
+      alert("Min stock cannot be negative");
+      return;
+    }
+    
+    setConfirmModal(true);
+  };
+
+  const handleConfirmUpdate = () => {
+    onConfirm(item._id, {
+      name: form.name.trim(),
+      category: form.category,
+      unit: form.unit || "pcs",
+      unitPrice: parseFloat(form.unitPrice) || 0,
+      minStock: parseInt(form.minStock) || 5,
+    });
+  };
+
+  const fields = [
+    { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
+    { key: "unit", label: "Unit", type: "text", placeholder: "e.g. pcs, rolls" },
+    { key: "unitPrice", label: "Price per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
+    { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
+  ];
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
+        <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-lg font-black text-gray-900">Update Item</h3>
+              <p className="text-xs text-slate-400">Edit item details</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+          </div>
+
+          {fields.map(f => (
+            <div key={f.key} className="mb-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                {f.label}
+              </label>
+              <input
+                type={f.type}
+                value={form[f.key]}
+                onChange={e => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                step={f.step || undefined}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
+            </div>
+          ))}
+
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+            <div className="relative">
+              <button
+                onClick={() => setShowCategoryModal((v) => !v)}
+                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.category}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+              </button>
+{showCategoryModal && (
+                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] py-1 w-full max-h-48 overflow-y-auto">
+                  {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => { 
+                        set("category", c); 
+                        setShowCategoryModal(false); 
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button onClick={handleConfirm} disabled={!hasChanges} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+              hasChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"
+            }`}>
+              <Check size={15} /> Update
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={() => setConfirmModal(false)}>
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900">Confirm Update</h3>
+                <p className="text-sm text-slate-500 mt-1">Are you sure you want to update this item details?</p>
+              </div>
+              <button onClick={() => setConfirmModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-slate-600"><strong className="text-gray-900">{form.name}</strong></p>
+              <p className="text-xs text-slate-400 mt-1">Changes will be saved permanently</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={handleConfirmUpdate} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                <Check size={15} /> Confirm Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -235,26 +436,118 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   );
 }
 
-function AddItemModal({ onConfirm, onClose }) {
-  const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", max: "", unit: "pcs", unitPrice: "" });
+function SimilarItemModal({ similarItem, onUseSimilar, onCreateNew, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-black text-gray-900">Similar Item Found</h3>
+            <p className="text-sm text-slate-500 mt-1">We found an existing item with a similar name</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
+
+        <div className="bg-emerald-50 rounded-xl p-4 mb-6 border border-emerald-100">
+          <p className="text-sm font-semibold text-gray-900">{similarItem.name}</p>
+          <p className="text-xs text-slate-500 mt-2">
+            <span className="text-slate-400">Category:</span> {similarItem.category}
+          </p>
+          <p className="text-xs text-slate-500">
+            <span className="text-slate-400">Unit:</span> {similarItem.unit}
+          </p>
+          <p className="text-xs text-slate-500">
+            <span className="text-slate-400">Current Stock:</span> {similarItem.stock} {similarItem.unit}
+          </p>
+        </div>
+
+        <p className="text-sm text-slate-600 mb-6">Did you mean to use this item instead?</p>
+
+        <div className="flex gap-3">
+          <button onClick={onCreateNew} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Create New</button>
+          <button onClick={() => onUseSimilar(similarItem)} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+            <Check size={15} /> Use {similarItem.name.split(' ')[0]}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DuplicateItemModal({ existingItem, newData, onUpdateExisting, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-black text-gray-900">Item Already Exists</h3>
+            <p className="text-sm text-slate-500 mt-1">An item with the same name and unit is already in inventory</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
+
+        <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
+          <p className="text-sm font-semibold text-gray-900">{existingItem.name}</p>
+          <p className="text-xs text-slate-500 mt-2">
+            <span className="text-slate-400">Unit:</span> {existingItem.unit}
+          </p>
+          <p className="text-xs text-slate-500">
+            <span className="text-slate-400">Current Price:</span> {fmt(existingItem.unitPrice || 0)}
+          </p>
+          <p className="text-xs text-slate-500">
+            <span className="text-slate-400">New Price:</span> {fmt(newData.unitPrice || 0)}
+          </p>
+        </div>
+
+        <p className="text-sm text-slate-600 mb-6">Would you like to update the existing item instead?</p>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+          <button onClick={() => onUpdateExisting(existingItem)} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+            <Pencil size={15} /> Update Existing
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddItemModal({ onConfirm, onClose, inventory = [] }) {
+  const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", minStock: "", unit: "pcs", unitPrice: "" });
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleConfirm = () => {
     if (!form.name.trim()) return;
-    onConfirm({
+    const stockValue = parseInt(form.stock) || 0;
+    const minStockValue = parseInt(form.minStock) || 5;
+    
+    if (stockValue < 0) {
+      alert("Current stock cannot be negative");
+      return;
+    }
+    
+    if (minStockValue < 0) {
+      alert("Min stock cannot be negative");
+      return;
+    }
+    
+    const newData = {
       name: form.name.trim(),
       category: form.category,
-      stock: parseInt(form.stock) || 0,
-      max: parseInt(form.max) || 100,
+      stock: stockValue,
+      minStock: minStockValue,
       unit: form.unit || "pcs",
       unitPrice: parseFloat(form.unitPrice) || 0,
-    });
+    };
+    
+    onConfirm(newData);
   };
 
   const fields = [
     { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
-    { key: "stock", label: "Initial Stock", type: "number", placeholder: "e.g. 50" },
-    { key: "max", label: "Max Capacity", type: "number", placeholder: "e.g. 200" },
+    { key: "stock", label: "Current Stock", type: "number", placeholder: "e.g. 50" },
+    { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
     { key: "unit", label: "Unit", type: "text", placeholder: "e.g. pcs, rolls" },
     { key: "unitPrice", label: "Price per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
   ];
@@ -273,83 +566,52 @@ function AddItemModal({ onConfirm, onClose }) {
 
         {fields.map(f => (
           <div key={f.key} className="mb-4">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">{f.label}</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              {f.label}
+            </label>
             <input
               type={f.type}
               value={form[f.key]}
               onChange={e => set(f.key, e.target.value)}
               placeholder={f.placeholder}
               step={f.step || undefined}
-              className={`w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors ${f.type === "number" ? "appearance-none" : ""}`} />
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
           </div>
         ))}
 
         <div className="mb-5">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-          <select value={form.category} onChange={e => set("category", e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 bg-white">
-            {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => <option key={c}>{c}</option>)}
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setShowCategoryModal((v) => !v)}
+              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+            >
+              <span className="truncate">{form.category}</span>
+              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+            </button>
+{showCategoryModal && (
+              <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] max-h-48 overflow-y-auto w-full">
+                {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => { 
+                      set("category", c); 
+                      setShowCategoryModal(false); 
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           <button onClick={handleConfirm} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
             <Plus size={15} /> Add Item
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EditMaxModal({ item, onConfirm, onClose }) {
-  const [newMax, setNewMax] = useState(String(item.max || 100));
-
-  const handleConfirm = () => {
-    const maxVal = parseInt(newMax);
-    if (!newMax.trim() || maxVal <= 0) {
-      alert("Max capacity must be greater than 0");
-      return;
-    }
-    if (maxVal < item.stock) {
-      alert(`Max capacity cannot be less than current stock (${item.stock})`);
-      return;
-    }
-    onConfirm(maxVal);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Edit Max Capacity</h3>
-            <p className="text-xs text-slate-400">{item.name}</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Current Stock: {item.stock}</label>
-          <input
-            type="number"
-            min={item.stock + 1}
-            value={newMax}
-            onChange={e => setNewMax(e.target.value)}
-            placeholder="Enter new max capacity…"
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
-          <p className="text-xs text-slate-400 mt-1">Must be at least {item.stock}</p>
-        </div>
-
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-            Cancel
-          </button>
-          <button onClick={handleConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-            <Check size={15} /> Save
           </button>
         </div>
       </div>
@@ -380,12 +642,21 @@ function InventorySystemContent() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
+const [sortBy, setSortBy] = useState('newest');
+  const [showSort, setShowSort] = useState(false);
+  const [showCategory, setShowCategory] = useState(false);
+  const [showStatus, setShowStatus] = useState(false);
   const [adjModal, setAdjModal] = useState(null);
-  const [editMaxModal, setEditMaxModal] = useState(null);
   const [addModal, setAddModal] = useState(false);
+  const [updateModal, setUpdateModal] = useState(null);
+  const [duplicateModal, setDuplicateModal] = useState(null);
+  const [similarModal, setSimilarModal] = useState(null);
+  const [pendingAddData, setPendingAddData] = useState(null);
+  const [archiveConfirm, setArchiveConfirm] = useState({ show: false, id: null, isRestore: false, itemName: '' });
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Save activities to localStorage whenever they change
   useEffect(() => {
@@ -416,32 +687,47 @@ function InventorySystemContent() {
     }
   };
 
-  const lowCount = inventory.filter(i => getStatus(i) === "Low Stock").length;
-  const outCount = inventory.filter(i => getStatus(i) === "Out of Stock").length;
-  const inStockCount = inventory.filter(i => getStatus(i) === "In Stock").length;
+  const activeInventory = inventory.filter(i => !i.archived);
+  const archivedInventory = inventory.filter(i => i.archived);
+  const lowCount = activeInventory.filter(i => getStatus(i) === "Low Stock").length;
+  const outCount = activeInventory.filter(i => getStatus(i) === "Out of Stock").length;
+  const inStockCount = activeInventory.filter(i => getStatus(i) === "In Stock").length;
 
   const totalValue = useMemo(() => {
-    return inventory.reduce((sum, item) => sum + ((item.max || 0) * (item.unitPrice || 0)), 0);
-  }, [inventory]);
+    return activeInventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
+  }, [activeInventory]);
 
   const currentValue = useMemo(() => {
-    return inventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
-  }, [inventory]);
+    return activeInventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
+  }, [activeInventory]);
 
-  const filtered = useMemo(() => inventory.filter(item => {
-    const matchQ = item.name.toLowerCase().includes(search.toLowerCase()) || item.category.toLowerCase().includes(search.toLowerCase());
-    const matchCat = catFilter === "All" || item.category === catFilter;
-    const matchSt = statFilter === "All" || getStatus(item) === statFilter;
-    return matchQ && matchCat && matchSt;
-  }), [inventory, search, catFilter, statFilter]);
+  const filtered = useMemo(() => {
+    let items = [];
+    const source = showArchived ? archivedInventory : activeInventory;
+    items = source.filter(item => {
+      const matchQ = item.name.toLowerCase().includes(search.toLowerCase()) || item.category.toLowerCase().includes(search.toLowerCase());
+      const matchCat = catFilter === "All" || item.category === catFilter;
+      const matchSt = statFilter === "All" || getStatus(item) === statFilter;
+      return matchQ && matchCat && matchSt;
+    });
 
-  const STAT_CARDS = [
-    { label: "Total Items", value: inventory.length, sub: "All supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
-    { label: "Total Value", value: fmt(totalValue), sub: "Full capacity cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
+    // Apply sorting
+    if (sortBy === 'newest') items = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (sortBy === 'oldest') items = [...items].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    if (sortBy === 'name-az') items = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === 'name-za') items = [...items].sort((a, b) => b.name.localeCompare(a.name));
+
+    return items;
+  }, [activeInventory, archivedInventory, search, catFilter, statFilter, showArchived, sortBy]);
+
+const STAT_CARDS = [
+    { label: "Total Items", value: activeInventory.length, sub: "Active supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
+    { label: "Total Value", value: fmt(totalValue), sub: "Current inventory cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
     { label: "Current Value", value: fmt(currentValue), sub: "Current stock cost", icon: Layers, accent: "#8B5CF6", bgAccent: "#FAF5FF" },
     { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
-    { label: "Out of Stock", value: outCount, sub: "Immediate action", icon: TrendingDown, accent: "#DC2626", bgAccent: "#FEF2F2" }
+    { label: "Out of Stock", value: outCount, sub: "Critical - reorder ASAP", icon: XCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
+    { label: "Archived", value: archivedInventory.length, sub: "Out of service", icon: Archive, accent: "#6366F1", bgAccent: "#EEF2FF" }
   ];
 
   const pushActivity = (type, text) =>
@@ -451,6 +737,7 @@ function InventorySystemContent() {
     try {
       const updatedItem = await inventoryApi.adjustStock(itemId, type, amount);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
+      
       pushActivity(
         type === "increase" ? "add" : "dec",
         type === "increase"
@@ -466,9 +753,45 @@ function InventorySystemContent() {
 
   const handleAddItem = async (data) => {
     try {
-      const newItem = await inventoryApi.createInventory(data);
-      setInventory(inv => [...inv, newItem]);
-      pushActivity("add", `New item "${data.name}" added to inventory`);
+      // Check for existing item with same name and unit
+      const existingItem = inventory.find(item => 
+        item.name.toLowerCase() === data.name.toLowerCase() && 
+        item.unit.toLowerCase() === data.unit.toLowerCase() &&
+        !item.archived
+      );
+
+      if (existingItem) {
+        // Show duplicate modal instead of adding
+        setDuplicateModal({ existingItem, newData: data });
+        setPendingAddData(data);
+        return;
+      }
+
+      // Check for similar items (fuzzy match)
+      const SIMILARITY_THRESHOLD = 0.75; // 75% similarity
+      const similarItem = inventory.find(item => {
+        if (item.archived) return false;
+        const similarity = stringSimilarity(data.name, item.name);
+        return similarity >= SIMILARITY_THRESHOLD && similarity < 1; // Don't count exact matches
+      });
+
+      if (similarItem) {
+        // Show similar item suggestion modal
+        setSimilarModal(similarItem);
+        setPendingAddData(data);
+        return;
+      }
+
+      // No duplicate or similar item found, proceed with adding
+      const result = await inventoryApi.createInventory(data);
+      
+      if (result.isUpdate) {
+        setInventory(inv => inv.map(i => i._id === result._id ? result : i));
+        pushActivity("add", `Stock updated for "${result.name}" (+${data.stock} ${result.unit})`);
+      } else {
+        setInventory(inv => [...inv, result]);
+        pushActivity("add", `New item "${result.name}" added to inventory`);
+      }
       setAddModal(false);
     } catch (err) {
       console.error("Failed to add item:", err);
@@ -476,28 +799,94 @@ function InventorySystemContent() {
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!window.confirm(`Delete "${item.name}" from inventory?`)) return;
-    try {
-      await inventoryApi.deleteInventory(item._id);
-      setInventory(inv => inv.filter(i => i._id !== item._id));
-      pushActivity("dec", `"${item.name}" removed from inventory`);
-    } catch (err) {
-      console.error("Failed to delete item:", err);
-      alert("Failed to delete item");
+  const handleUseSimilarItem = (similarItem) => {
+    // Close similar modal, open update modal for the similar item
+    setAddModal(false);
+    setSimilarModal(null);
+    setPendingAddData(null);
+    setUpdateModal(similarItem);
+  };
+
+  const handleCreateNewAnyway = () => {
+    // Proceed to create the new item despite similar item existing
+    setSimilarModal(null);
+    if (pendingAddData) {
+      // Continue with adding the item
+      inventoryApi.createInventory(pendingAddData).then(result => {
+        if (result.isUpdate) {
+          setInventory(inv => inv.map(i => i._id === result._id ? result : i));
+          pushActivity("add", `Stock updated for "${result.name}" (+${pendingAddData.stock} ${result.unit})`);
+        } else {
+          setInventory(inv => [...inv, result]);
+          pushActivity("add", `New item "${result.name}" added to inventory`);
+        }
+        setAddModal(false);
+      }).catch(err => {
+        console.error("Failed to add item:", err);
+        alert("Failed to add item");
+      });
+      setPendingAddData(null);
     }
   };
 
-  const handleEditMax = async (itemId, newMax) => {
+  const handleUpdateFromDuplicate = (existingItem) => {
+    // Close add and duplicate modals, open update modal for the existing item
+    setAddModal(false);
+    setDuplicateModal(null);
+    setPendingAddData(null);
+    setUpdateModal(existingItem);
+  };
+
+  const handleUpdate = async (itemId, data) => {
     try {
-      const updatedItem = await inventoryApi.updateInventory(itemId, { max: newMax });
+      const updatedItem = await inventoryApi.updateInventory(itemId, data);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
-      pushActivity("edit", `Max capacity updated to ${newMax}`);
-      setEditMaxModal(null);
+      pushActivity("edit", `"${data.name}" details updated`);
+      setUpdateModal(null);
     } catch (err) {
-      console.error("Failed to update max capacity:", err);
-      alert("Failed to update max capacity");
+      console.error("Failed to update item:", err);
+      alert("Failed to update item");
     }
+  };
+
+  const handleArchive = async (itemId, restore = false) => {
+    try {
+      const item = inventory.find(i => i._id === itemId);
+      setArchiveConfirm({ 
+        show: true, 
+        id: itemId, 
+        isRestore: restore, 
+        itemName: item.name 
+      });
+    } catch (err) {
+      console.error("Error finding item:", err);
+    }
+  };
+
+  const handleArchiveConfirm = async () => {
+    try {
+      const { id, isRestore } = archiveConfirm;
+      const item = inventory.find(i => i._id === id);
+      const updatedItem = isRestore 
+        ? await inventoryApi.restoreInventory(id)
+        : await inventoryApi.archiveInventory(id);
+      
+      setInventory(inv => inv.map(i => i._id === id ? updatedItem : i));
+      pushActivity(
+        isRestore ? "add" : "warn", 
+        isRestore 
+          ? `"${item.name}" restored to active inventory`
+          : `"${item.name}" archived`
+      );
+      setArchiveConfirm({ show: false, id: null, isRestore: false, itemName: '' });
+    } catch (err) {
+      console.error("Failed to archive/restore item:", err);
+      alert(archiveConfirm.isRestore ? "Failed to restore item" : "Failed to archive item");
+    }
+  };
+
+  const handleArchiveCancel = () => {
+    setArchiveConfirm({ show: false, id: null, isRestore: false, itemName: '' });
   };
 
   const alertCount = lowCount + outCount;
@@ -526,7 +915,7 @@ function InventorySystemContent() {
         )} */}
 
         {/* STAT */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
           {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, }) => (
             <div
               key={label}
@@ -558,23 +947,86 @@ function InventorySystemContent() {
 
             {/* Filters */}
             <div className="flex gap-1">
+              {/* Category Filter */}
               <div className="relative">
-                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-                  className="pl-6 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white appearance-none cursor-pointer">
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={statFilter}
-                  onChange={e => setStatFilter(e.target.value)}
-                  className="w-23 pl-2 pr-8 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white appearance-none cursor-pointer truncate"
+                <button
+                  onClick={() => setShowCategory(v => !v)}
+                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[100px]"
                 >
-                  {STATUS_OPTIONS.map(s => <option key={s}>{s}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <span className="truncate">{catFilter === "All" ? "Category" : catFilter}</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? 'rotate-180' : ''}`} />
+                </button>
+                {showCategory && (
+                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[140px] max-h-48 overflow-y-auto">
+                    {CATEGORIES.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => { 
+                          setCatFilter(c); 
+                          setShowCategory(false); 
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${catFilter === c ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Status Filter */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowStatus(v => !v)}
+                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[110px]"
+                >
+                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <span className="truncate">{statFilter === "All" ? "Status" : statFilter}</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showStatus ? 'rotate-180' : ''}`} />
+                </button>
+                {showStatus && (
+                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[120px] max-h-48 overflow-y-auto">
+                    {STATUS_OPTIONS.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => { 
+                          setStatFilter(s); 
+                          setShowStatus(false); 
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${statFilter === s ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Sort dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSort(v => !v)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
+                >
+                  <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
+                  <span className="truncate max-w-[90px]">Sort</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? 'rotate-180 scale-110' : ''}`} />
+                </button>
+                {showSort && (
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                    {SORT_INVENTORY_OPTIONS.map(o => (
+                      <button
+                        key={o.value}
+                        onClick={() => { 
+                          setSortBy(o.value); 
+                          setShowSort(false); 
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === o.value ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -587,7 +1039,25 @@ function InventorySystemContent() {
         </div>
 
         <div className="lg:hidden space-y-3 mb-8">
-          <p className="text-sm font-bold text-gray-900">All Supplies <span className="text-slate-400 font-normal">({filtered.length})</span></p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-gray-900">All Supplies <span className="text-slate-400 font-normal">({filtered.length})</span></p>
+            <button onClick={() => setShowArchived(!showArchived)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                showArchived 
+                  ? "bg-indigo-100 text-indigo-700" 
+                  : "bg-slate-100 text-slate-600"
+              }`}>
+              {showArchived ? (
+                <>
+                  <Archive size={13} /> Archived
+                </>
+              ) : (
+                <>
+                  <Package size={13} /> Active
+                </>
+              )}
+            </button>
+          </div>
           {loading ? (
             <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">Loading...</div>
           ) : filtered.length === 0
@@ -597,8 +1067,9 @@ function InventorySystemContent() {
             : filtered.map(item => (
               <MobileCard key={item._id} item={item}
                 onAdjust={(i, t) => setAdjModal({ item: i, type: t })}
-                onEditMax={(i) => setEditMaxModal(i)}
-                onDelete={handleDelete} />
+                onUpdate={(item) => setUpdateModal(item)}
+                onArchive={handleArchive}
+                isArchived={showArchived} />
             ))
           }
         </div>
@@ -608,22 +1079,43 @@ function InventorySystemContent() {
               <BarChart3 size={15} className="text-blue-600" /> All Supplies
               <span className="bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-0.5 rounded-full">{filtered.length}</span>
             </p>
+            <button onClick={() => setShowArchived(!showArchived)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                showArchived 
+                  ? "bg-indigo-100 text-indigo-700" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}>
+              {showArchived ? (
+                <>
+                  <Archive size={13} /> Archived Items
+                </>
+              ) : (
+                <>
+                  <Package size={13} /> Active Items
+                </>
+              )}
+            </button>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                {["Item Name", "Category", "Price per Unit", "Stock", "Total Price (Max)", "Total Price (Current)", "Level", "Status", "Actions"].map(h => (
+                {["Item Name", "SKU", "Category", "Price per Unit", "Stock", "Total Price (Max)", "Total Price (Current)", "Status", "Date Added", "Last Activity", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0
-                ? <tr><td colSpan={9} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
+                ? <tr><td colSpan={12} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
                 : filtered.map(item => (
                   <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-bold text-gray-900">{item.name}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
+                        {item.sku || "—"}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500">
@@ -635,34 +1127,53 @@ function InventorySystemContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-900 tabular-nums">{item.stock}</span>
-                      <span className="text-slate-400 text-xs"> / {item.max} {item.unit}</span>
+                      <span className="text-slate-400 text-xs"> {item.unit}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt((item.max || 0) * (item.unitPrice || 0))}</span>
+                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
                     </td>
-                    <td className="px-4 py-3 w-36"><StockBar item={item} /></td>
+
                     <td className="px-4 py-3"><StatusBadge status={getStatus(item)} /></td>
                     <td className="px-4 py-3">
+                      <span className="text-xs text-slate-500">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-slate-500">
+                        {item.lastActivityDate ? formatActivityTime(new Date(item.lastActivityDate)) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setAdjModal({ item, type: "increase" })}
-                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Add Stock">
-                          <ArrowUpCircle size={14} />
-                        </button>
-                        <button onClick={() => setAdjModal({ item, type: "decrease" })}
-                          className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Remove Stock">
-                          <ArrowDownCircle size={14} />
-                        </button>
-                        <button onClick={() => setEditMaxModal(item)}
-                          className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit Max Capacity">
-                          <Pencil size={14} />
-                        </button>
-                        <button onClick={() => handleDelete(item)}
-                          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Delete">
-                          <Trash2 size={14} />
-                        </button>
+                        {!showArchived ? (
+                          <>
+                            <button onClick={() => setAdjModal({ item, type: "increase" })}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Add Stock">
+                              <ArrowUpCircle size={14} />
+                            </button>
+                            <button onClick={() => setAdjModal({ item, type: "decrease" })}
+                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Remove Stock">
+                              <ArrowDownCircle size={14} />
+                            </button>
+                            <button onClick={() => setUpdateModal(item)}
+                              className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => handleArchive(item._id, false)}
+                              className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Archive">
+                              <Archive size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => handleArchive(item._id, true)}
+                            className="flex-1 p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-semibold flex items-center justify-center gap-1" title="Restore">
+                            <RotateCcw size={14} /> Restore
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -728,19 +1239,49 @@ function InventorySystemContent() {
           onClose={() => setAdjModal(null)}
         />
       )}
-      {editMaxModal && (
-        <EditMaxModal
-          item={editMaxModal}
-          onConfirm={newMax => handleEditMax(editMaxModal._id, newMax)}
-          onClose={() => setEditMaxModal(null)}
-        />
-      )}
       {addModal && (
         <AddItemModal
           onConfirm={handleAddItem}
           onClose={() => setAddModal(false)}
+          inventory={inventory}
         />
       )}
+      {updateModal && (
+        <UpdateModal
+          item={updateModal}
+          onConfirm={handleUpdate}
+          onClose={() => setUpdateModal(null)}
+        />
+      )}
+      {duplicateModal && (
+        <DuplicateItemModal
+          existingItem={duplicateModal.existingItem}
+          newData={duplicateModal.newData}
+          onUpdateExisting={handleUpdateFromDuplicate}
+          onClose={() => {
+            setDuplicateModal(null);
+            setPendingAddData(null);
+          }}
+        />
+      )}
+      {similarModal && (
+        <SimilarItemModal
+          similarItem={similarModal}
+          onUseSimilar={handleUseSimilarItem}
+          onCreateNew={handleCreateNewAnyway}
+          onClose={() => {
+            setSimilarModal(null);
+            setPendingAddData(null);
+          }}
+        />
+      )}
+
+      {/* Archive/Restore Confirmation Modal */}
+      <ArchiveConfirmModal 
+        archiveConfirm={archiveConfirm}
+        onConfirm={handleArchiveConfirm}
+        onCancel={handleArchiveCancel} 
+      />
     </div>
   );
 }

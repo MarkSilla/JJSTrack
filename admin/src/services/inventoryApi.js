@@ -88,13 +88,24 @@ export const inventoryApi = {
     }
   },
 
-  // Delete inventory item
-  deleteInventory: async (id) => {
+  // Archive inventory item
+  archiveInventory: async (id) => {
     try {
-      const response = await api.delete(`/inventory/${id}`);
+      const response = await api.patch(`/inventory/${id}/archive`);
       return response.data;
     } catch (error) {
-      console.error('Error deleting inventory item:', error);
+      console.error('Error archiving inventory item:', error);
+      throw error;
+    }
+  },
+
+  // Restore inventory item
+  restoreInventory: async (id) => {
+    try {
+      const response = await api.patch(`/inventory/${id}/restore`);
+      return response.data;
+    } catch (error) {
+      console.error('Error restoring inventory item:', error);
       throw error;
     }
   },

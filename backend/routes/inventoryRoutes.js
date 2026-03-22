@@ -7,6 +7,8 @@ import {
   updateInventory,
   adjustStock,
   deleteInventory,
+  archiveInventory,
+  restoreInventory,
   getInventoryStats,
   searchInventory,
 } from "../controllers/inventoryController.js";
@@ -25,6 +27,8 @@ router.get("/:id", getInventoryById);
 router.post("/", createInventory);
 router.put("/:id", updateInventory);
 router.patch("/:id/adjust", adjustStock);
+router.patch("/:id/archive", archiveInventory);
+router.patch("/:id/restore", restoreInventory);
 router.delete("/:id", deleteInventory);
 
 export default router;

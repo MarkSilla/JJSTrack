@@ -7,6 +7,20 @@ const inventorySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    sku: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      uppercase: true,
+    },
+    normalizedName: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
     category: {
       type: String,
       enum: ["Sewing", "Fabric", "Fastener", "Tool", "Notions"],
@@ -18,11 +32,17 @@ const inventorySchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    max: {
+    initialStock: {
       type: Number,
       required: true,
-      default: 100,
-      min: 1,
+      default: 0,
+      min: 0,
+    },
+    minStock: {
+      type: Number,
+      required: true,
+      default: 5,
+      min: 0,
     },
     unit: {
       type: String,
@@ -42,6 +62,14 @@ const inventorySchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
+    },
+    lastActivityDate: {
+      type: Date,
+      default: Date.now,
+    },
+    archived: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

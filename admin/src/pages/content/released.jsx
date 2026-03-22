@@ -33,15 +33,8 @@ function OrderDetailsModal({ booking, isOpen, onClose }) {
     if (!isOpen || !booking) return null;
 
     return (
-        <>
-            {/* Backdrop */}
-            <div 
-                className={`fixed inset-0 bg-black transition-opacity duration-300 z-40 ${isOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}`}
-                onClick={onClose}
-            />
-            
-            {/* Drawer */}
-            <div className={`fixed top-0 right-0 h-screen w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto fade-in">
                 {/* Header */}
                 <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
                     <div>
@@ -90,7 +83,7 @@ function OrderDetailsModal({ booking, isOpen, onClose }) {
                     {/* Booking Info */}
                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                         <h3 className="text-sm font-bold text-gray-900 mb-3">Booking Information</h3>
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-xs text-gray-500 font-semibold mb-1">Type</p>
                                 <TypeBadge type={booking.type} />
@@ -181,11 +174,19 @@ function OrderDetailsModal({ booking, isOpen, onClose }) {
                             )}
                         </div>
                     )}
+                </div>
 
-                    <div className="pb-6" />
+                {/* Footer */}
+                <div className="sticky bottom-0 px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-sm font-semibold text-gray-700 hover:bg-slate-50 transition-colors"
+                    >
+                        Close
+                    </button>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 
