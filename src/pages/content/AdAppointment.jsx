@@ -464,7 +464,6 @@ const AdAppointment = () => {
                             </div>
                         )}
 
-                        {/* Scrollable list — takes all remaining height inside the panel */}
                         <div className="overflow-y-auto p-4 sm:p-6 lg:p-8 pt-4 space-y-3 sm:space-y-4 max-h-[60vh]">
                             {filteredAppointments.length > 0 ? (
                                 filteredAppointments.map(app => {

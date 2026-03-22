@@ -1,43 +1,16 @@
-/**
- * OrderDetailPage.jsx
- *
- * Standalone page for /orders/:orderId
- *
- * Responsibilities:
- *  - Reads `orderId` from the URL via `useParams`
- *  - Fetches all orders + bookings (same logic as AdOrder)
- *  - Finds the matching order using (order.id || order._id) === orderId
- *  - Renders <OrderDetail> in full-page mode (no side panel)
- *  - Back button navigates to /orders
- */
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
 import { EMPLOYEE_POOL, SERVICE_STEPS, PIECE_RATES } from './AdOrder/Constants.js';
-
 import OrderDetail from './AdOrder/Orderdetail';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
-
-// ─── Re-use helpers exported from AdOrder ────────────────────────────────────
-// If you have a shared utils/helpers.js, import from there instead.
-import {
-    getDerivedStatus,
-    getActiveStepIndex,
-    computeOrderEarnings,
-    convertBooking,
-} from './AdOrder.jsx';
-
-// ─── Page Component ───────────────────────────────────────────────────────────
+import {getDerivedStatus,getActiveStepIndex,computeOrderEarnings,convertBooking,} from './AdOrder.jsx';
 
 export default function OrderDetailPage() {
-    const { orderId } = useParams();   // /order/:orderId
+    const { orderId } = useParams();   
     const navigate = useNavigate();
-
-    // ── State ──────────────────────────────────────────────────────────────────
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -54,8 +27,6 @@ export default function OrderDetailPage() {
     });
 
     const [assignConfirm, setAssignConfirm] = useState({ show: false, orderId: null, empId: null });
-
-    // ── Fetch orders (identical logic to AdOrder) ──────────────────────────────
     useEffect(() => {
         const fetchAll = async () => {
             try {
@@ -91,8 +62,6 @@ export default function OrderDetailPage() {
 
         fetchAll();
     }, []);
-
-    // ── Find the active order using (order.id || order._id) === orderId ────────
     const activeOrder = useMemo(
         () => orders.find(o => (o.id || o._id) === orderId) ?? null,
         [orders, orderId]
@@ -122,7 +91,7 @@ export default function OrderDetailPage() {
         return computeOrderEarnings(activeOrder, assignments[activeOrder.id || activeOrder._id]);
     }, [activeOrder, assignments]);
 
-    // ── Handlers ───────────────────────────────────────────────────────────────
+    // Handlers
 
     const handleStepClick = (targetOrderId, stepIndex) => {
         setOrders(prev =>
@@ -226,9 +195,6 @@ export default function OrderDetailPage() {
             })
         );
     };
-
-    // ── Render ─────────────────────────────────────────────────────────────────
-
     if (loading) {
         return (
             <div className="font-inter min-h-screen bg-slate-50 flex items-center justify-center">
@@ -250,7 +216,7 @@ export default function OrderDetailPage() {
             <div className="font-inter min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
                 <p className="text-gray-500 font-medium">Order not found: <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{orderId}</code></p>
                 <button
-                    onClick={() => navigate('/orders')}
+                    onClick={() => navigate('admin/orders')}
                     className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 bg-transparent border-none cursor-pointer"
                 >
                     <ArrowLeft size={16} /> Back to Orders
@@ -261,18 +227,15 @@ export default function OrderDetailPage() {
 
     return (
         <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
-            {/* ── Page-level back navigation ─────────────────────────────── */}
             <div className="mb-4">
                 <button
-                    onClick={() => navigate('/orders')}
+                    onClick={() => navigate('/admin/orders')}
                     className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 bg-transparent border-none cursor-pointer transition-colors"
                 >
                     <ArrowLeft size={16} />
                     Back to Orders
                 </button>
             </div>
-
-            {/* ── Full-page detail panel ─────────────────────────────────── */}
             <div className="flex-1 flex flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 <OrderDetail
                     activeOrder={activeOrder}
@@ -283,18 +246,12 @@ export default function OrderDetailPage() {
                     assignments={assignments}
                     isMenuOpen={isMenuOpen}
                     setIsMenuOpen={setIsMenuOpen}
-                    /*
-                     * setActiveOrderId is replaced by navigate('/orders').
-                     * OrderDetail calls setActiveOrderId(null) when the user hits the
-                     * back arrow inside the header. We map that to navigate('/orders').
-                     */
                     setActiveOrderId={() => navigate('/orders')}
                     handleStepClick={handleStepClick}
                     handleAssign={handleAssign}
                     handleApprovePickupDate={handleApprovePickupDate}
                 />
             </div>
-
             <AssignConfirmationModal
                 assignConfirm={assignConfirm}
                 onConfirm={confirmAssign}
