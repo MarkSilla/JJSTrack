@@ -54,6 +54,30 @@ const monthlyFinancials = [
     { month: "Dec", revenue: 61000, expenses: 24500, profit: 36500 },
 ];
 
+const dailyFinancials = [
+    { day: "Mar 1", revenue: 1800, expenses: 900, profit: 900 },
+    { day: "Mar 2", revenue: 2100, expenses: 1050, profit: 1050 },
+    { day: "Mar 3", revenue: 1900, expenses: 950, profit: 950 },
+    { day: "Mar 4", revenue: 2200, expenses: 1100, profit: 1100 },
+    { day: "Mar 5", revenue: 2400, expenses: 1200, profit: 1200 },
+    { day: "Mar 6", revenue: 2600, expenses: 1300, profit: 1300 },
+    { day: "Mar 7", revenue: 2000, expenses: 1000, profit: 1000 },
+];
+
+const weeklyFinancials = [
+    { week: "Week 1", revenue: 14900, expenses: 7450, profit: 7450 },
+    { week: "Week 2", revenue: 16500, expenses: 8250, profit: 8250 },
+    { week: "Week 3", revenue: 15800, expenses: 7900, profit: 7900 },
+    { week: "Week 4", revenue: 19400, expenses: 9700, profit: 9700 },
+    { week: "Week 5", revenue: 17200, expenses: 8600, profit: 8600 },
+];
+
+const yearlyFinancials = [
+    { year: "2023", revenue: 420000, expenses: 210000, profit: 210000 },
+    { year: "2024", revenue: 520000, expenses: 260000, profit: 260000 },
+    { year: "2025", revenue: 580000, expenses: 290000, profit: 290000 },
+];
+ 
 const INITIAL_BILLS = [
     { id: 1, name: "Internet", icon: "wifi", amount: 1899, paid: true, dueDate: "Mar 15" },
     { id: 2, name: "Electricity", icon: "zap", amount: 4200, paid: false, dueDate: "Mar 18" },
@@ -143,6 +167,20 @@ export default function AdAnalytics() {
     const [newBillName, setNewBillName] = useState("");
     const [newBillAmt, setNewBillAmt] = useState("");
     const [addingBill, setAddingBill] = useState(false);
+    const [timeRange, setTimeRange] = useState("Monthly");
+
+    const getChartData = () => {
+        switch (timeRange) {
+            case "Daily":
+                return dailyFinancials;
+            case "Weekly":
+                return weeklyFinancials;
+            case "Yearly":
+                return yearlyFinancials;
+            default:
+                return monthlyFinancials;
+        }
+    };
 
     const toggleBill = (id) => setBills(p => p.map(b => b.id === id ? { ...b, paid: !b.paid } : b));
     const removeBill = (id) => setBills(p => p.filter(b => b.id !== id));
@@ -204,49 +242,66 @@ export default function AdAnalytics() {
 
                     <div className="lg:col-span-9">
                         <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col" style={{ minHeight: 450 }}>
-                            <div className="mb-3 shrink-0">
-                                <h2 className="m-0 text-[15px] font-bold text-gray-900">Revenue &amp; Expense Breakdown</h2>
-                                <p className="mt-0.5 text-[11px] text-gray-400">Monthly revenue, expenses &amp; net profit overview</p>
+                            <div className="mb-3 shrink-0 flex items-end justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="m-0 text-[15px] font-bold text-gray-900">Revenue &amp; Expense Breakdown</h2>
+                                    <p className="mt-0.5 text-[11px] text-gray-400">Monthly revenue, expenses &amp; net profit overview</p>
+                                </div>
+                                <select
+                                    value={timeRange}
+                                    onChange={(e) => setTimeRange(e.target.value)}
+                                    className="px-3 py-2 text-[12px] font-medium text-gray-700 bg-white border border-slate-200 rounded-lg hover:border-slate-300 cursor-pointer transition-colors focus:outline-none focus:border-blue-500 shrink-0"
+                                    style={{ minWidth: "95px" }}
+                                >
+                                    <option value="Daily">Daily</option>
+                                    <option value="Weekly">Weekly</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Yearly">Yearly</option>
+                                </select>
                             </div>
-                            <div style={{ flex: 1, minHeight: 450 }}>
-                                <ResponsiveContainer width="100%" height={450}>
-                                    <AreaChart data={monthlyFinancials} margin={{ top: 8, right: 12, left: -4, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
-                                                <stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} />
-                                            </linearGradient>
-                                            <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.20} />
-                                                <stop offset="95%" stopColor="#EF4444" stopOpacity={0.02} />
-                                            </linearGradient>
-                                            <linearGradient id="gPro" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10B981" stopOpacity={0.22} />
-                                                <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                                        <YAxis tickFormatter={v => "₱" + (v / 1000) + "k"} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                                        <Tooltip content={<ChartTooltip />} />
-                                        <Legend
-                                            wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                                            formatter={(v) => <span style={{ color: "#64748b" }}>{v}</span>}
-                                        />
-                                        <Area type="monotone" dataKey="revenue" name="Revenue"
-                                            stroke="#2563EB" strokeWidth={2.5} fill="url(#gRev)"
-                                            dot={false} activeDot={{ r: 5, fill: "#2563EB", stroke: "#fff", strokeWidth: 2 }}
-                                        />
-                                        <Area type="monotone" dataKey="expenses" name="Expenses"
-                                            stroke="#EF4444" strokeWidth={2.5} strokeDasharray="5 3" fill="url(#gExp)"
-                                            dot={false} activeDot={{ r: 5, fill: "#EF4444", stroke: "#fff", strokeWidth: 2 }}
-                                        />
-                                        <Area type="monotone" dataKey="profit" name="Net Profit"
-                                            stroke="#10B981" strokeWidth={2.5} fill="url(#gPro)"
-                                            dot={false} activeDot={{ r: 5, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+
+                            <style>{`.hide-scrollbar::-webkit-scrollbar{display:none;} .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}`}</style>
+                            <div className="hide-scrollbar overflow-x-auto lg:overflow-x-visible" style={{ flex: 1, minHeight: 450, WebkitOverflowScrolling: "touch" }}>
+                                <div style={{ minWidth: timeRange === "Yearly" ? "auto" : "820px" }}>
+                                    <ResponsiveContainer width="100%" height={450}>
+                                        <AreaChart data={getChartData()} margin={{ top: 8, right: 12, left: -4, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
+                                                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0.03} />
+                                                </linearGradient>
+                                                <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.20} />
+                                                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0.02} />
+                                                </linearGradient>
+                                                <linearGradient id="gPro" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.22} />
+                                                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                            <XAxis dataKey={timeRange === "Daily" ? "day" : timeRange === "Weekly" ? "week" : timeRange === "Yearly" ? "year" : "month"} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                            <YAxis tickFormatter={v => "₱" + (v / 1000) + "k"} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                            <Tooltip content={<ChartTooltip />} />
+                                            <Legend
+                                                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                                                formatter={(v) => <span style={{ color: "#64748b" }}>{v}</span>}
+                                            />
+                                            <Area type="monotone" dataKey="revenue" name="Revenue"
+                                                stroke="#2563EB" strokeWidth={2.5} fill="url(#gRev)"
+                                                dot={false} activeDot={{ r: 5, fill: "#2563EB", stroke: "#fff", strokeWidth: 2 }}
+                                            />
+                                            <Area type="monotone" dataKey="expenses" name="Expenses"
+                                                stroke="#EF4444" strokeWidth={2.5} strokeDasharray="5 3" fill="url(#gExp)"
+                                                dot={false} activeDot={{ r: 5, fill: "#EF4444", stroke: "#fff", strokeWidth: 2 }}
+                                            />
+                                            <Area type="monotone" dataKey="profit" name="Net Profit"
+                                                stroke="#10B981" strokeWidth={2.5} fill="url(#gPro)"
+                                                dot={false} activeDot={{ r: 5, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
                         </div>
                     </div>
