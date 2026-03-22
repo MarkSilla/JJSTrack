@@ -129,6 +129,11 @@ const bookingSchema = new mongoose.Schema({
     default: false,
   },
   pickedUpAt: Date,
+  paid: {
+    type: Boolean,
+    default: false,
+  },
+  paidAt: Date,
 },
 {
   // ✅ timestamps:true replaces manual createdAt/updatedAt

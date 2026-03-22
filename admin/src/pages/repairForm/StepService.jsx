@@ -9,7 +9,7 @@ const SERVICES = [
 
 const StepService = ({ service, setService }) => (
     <section>
-        <div className="text-center mb-10">
+        <div className="text-center mb-5">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">What brings you in?</h2>
             <p className="text-gray-500 mt-2 text-sm">Select the service you need</p>
         </div>

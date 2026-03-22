@@ -40,9 +40,8 @@ export default function WorkflowProgress({ activeOrderSteps, currentStepIdx, onS
                     </span>
                 </div>
 
-                {/* Steps row — icons on top, labels below, connector line through icon centers */}
+                {/* Steps row — icons on top, connector line through icon centers */}
                 <div className="relative flex justify-between items-start px-4 pt-2">
-                    {/* Background line through center of icons (icons are w-8 h-8 = 32px, so center = 16px from top of icon row) */}
                     <div className="absolute left-8 right-8 h-0.5 bg-gray-100 rounded-full z-0" style={{ top: '16px' }} />
                     <div
                         className="absolute left-8 h-0.5 bg-gradient-to-r from-green-400 to-green-600 rounded-full z-0 transition-all duration-500"
@@ -57,17 +56,13 @@ export default function WorkflowProgress({ activeOrderSteps, currentStepIdx, onS
                         const isCompleted = idx < currentStepIdx;
                         const isCurrent = idx === currentStepIdx;
                         const label = step.label || step;
-                        const Icon = STEP_ICON[label.toLowerCase()] || null;
+                        const Icon = STEP_ICON ? STEP_ICON[label.toLowerCase()] : null;
                         return (
                             <div key={idx} className="relative z-10 flex flex-col items-center gap-1.5 flex-1">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ring-4 ring-white shadow-sm shrink-0
                                     ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white ring-blue-100' : 'bg-white text-gray-400 border-2 border-gray-200'}`}>
                                     {isCompleted ? <Check size={14} strokeWidth={3} /> : Icon ? <Icon size={14} /> : null}
                                 </div>
-                                <span className={`text-[10px] font-bold text-center leading-tight px-0.5 max-w-[60px] break-words
-                                    ${isCompleted ? 'text-green-600' : isCurrent ? 'text-blue-500' : 'text-gray-400'}`}>
-                                    {label}
-                                </span>
                             </div>
                         );
                     })}

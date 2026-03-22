@@ -83,8 +83,8 @@ export default function OrderDetail({
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="p-5 lg:px-8 lg:py-6 border-b border-gray-50 shrink-0">
-                <div className="flex justify-between items-start mb-4">
+            <div className="p-4 lg:px-6 lg:py-4 border-b border-gray-50 shrink-0">
+                <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setActiveOrderId(null)}
@@ -142,12 +142,12 @@ export default function OrderDetail({
                         )}
                     </div>
                 </div>
-                <h1 className="text-xl lg:text-2xl font-black text-gray-900 tracking-tight flex items-baseline gap-2">
+                <h1 className="text-lg lg:text-xl font-black text-gray-900 tracking-tight flex items-baseline gap-2">
                     <span className="text-gray-400 font-bold capitalize">{activeOrder.serviceType}</span>
                     <span className="text-gray-300">-</span>
                     {activeOrder.item}
                 </h1>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-4 opacity-90">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-2 opacity-90">
                     <div className="flex items-center gap-2 text-sm font-semibold text-gray-600">
                         <User size={16} className="text-gray-400" />{activeOrder.invoice?.billTo?.name || activeOrder.customer}
                     </div>
@@ -158,9 +158,9 @@ export default function OrderDetail({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 lg:p-8 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                    <div className="col-span-2 flex flex-col gap-8">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+                    <div className="col-span-2 flex flex-col gap-5">
                         <WorkflowProgress
                             activeOrderSteps={activeOrderSteps}
                             currentStepIdx={currentStepIdx}
@@ -179,8 +179,8 @@ export default function OrderDetail({
                         />
                         <TeamRoster players={activeOrder.players} />
                     </div>
-                    <div className="col-span-1 flex flex-col gap-6 lg:gap-8">
-                        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex flex-col gap-3">
+                    <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
                             <h4 className="text-[11px] font-black tracking-wider uppercase mb-2 text-gray-400">Quick Actions</h4>
                             {canApprovePickup && (
                                 <button
@@ -190,12 +190,12 @@ export default function OrderDetail({
                                     Set Pickup Date & Time
                                 </button>
                             )}
-                            <button className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
+                            <button className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
                                 <Edit size={18} /> Edit Order Details
                             </button>
                             <button
                                 onClick={() => setShowRescheduleModal(true)}
-                                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
+                                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
                             >
                                 <CalendarClock size={18} /> Reschedule Delivery
                             </button>
@@ -219,6 +219,7 @@ export default function OrderDetail({
                         <OrderSummary
                             activeOrder={activeOrder}
                             assignedEmployee={assignedEmployee}
+                            earningsPreview={earningsPreview}
                         />
                     </div>
                 </div>

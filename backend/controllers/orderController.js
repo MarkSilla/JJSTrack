@@ -366,7 +366,16 @@ export const markAsReleased = async (req, res) => {
     order.isReleased = true;
     order.releasedAt = new Date();
     order.status = 'Released';  // Set status to Released when QR is scanned
+    order.paid = true;  // Mark as paid when scanned
+    order.paidAt = new Date();
     await order.save();
+
+    // Update associated invoice status to "Paid"
+    await invoiceModel.findOneAndUpdate(
+      { orderId: order._id },
+      { status: 'Paid', updatedAt: new Date() },
+      { new: true }
+    );
 
     res.json({
       success: true,

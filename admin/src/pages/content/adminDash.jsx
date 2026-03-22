@@ -29,7 +29,7 @@ const appointments = [
 ];
 // ITO HULA HULA LANG KASI PAG ACCURATE AMPANGIT TIGNAN NUNG GRAPH 
 const weeklyOrders = [
-  { day: "Mon", orders: 2, completed: 2, cancelled: 0 },
+  { day: "Mon", orders: 7, completed: 5, cancelled: 0 },
   { day: "Tue", orders: 3, completed: 3, cancelled: 1 },
   { day: "Wed", orders: 5, completed: 3, cancelled: 2 },
   { day: "Thu", orders: 3, completed: 1, cancelled: 2 },
@@ -84,7 +84,7 @@ const BADGE_CLASSES = {
 };
 
 const FILTER_OPTIONS = [
-  { label: "By Time (Today First)", value: "time" },
+  { label: "Today", value: "time" },
   { label: "By Date", value: "date" },
   { label: "In-Progress", value: "In-Progress" },
   { label: "Complete", value: "Complete" },
@@ -145,7 +145,7 @@ function FilterDropdown({ value, onChange }) {
 
 function ApptCard({ appt, showView = false, onViewOrder }) {
   return (
-    <div className="flex  gap-3 border border-slate-100 rounded-xl px-3.5 py-3 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-150 group">
+    <div className="flex  gap-3 border border-slate-100 rounded-xl px-2 py-2 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-150 group">
       <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
         <CalendarDays size={13} className="text-blue-500" />
       </div>
@@ -223,7 +223,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
   return (
     <div className="font-inter min-h-screen bg-slate-50">
-      <div className="lg:px-4 py-3">
+      <div className="px-2 py-2 lg:px-0 py-0 max-w-7xl mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend }) => (
             <div

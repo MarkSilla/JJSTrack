@@ -14,7 +14,7 @@ export default function AssignedTailorPanel({
 }) {
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-blue-50/60 px-5 py-4 border-b border-blue-100/60">
+            <div className="bg-blue-50/60 px-4 py-3 border-b border-blue-100/60">
                 <h4 className="text-[11px] font-black text-blue-900 tracking-wider uppercase flex items-center gap-2">
                     <UserCheck size={13} className="text-blue-600" />Assigned Tailor / Staff
                 </h4>

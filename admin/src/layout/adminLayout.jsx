@@ -28,7 +28,7 @@ const AdminLayout = () => {
             <div className={`flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
                     <AdminNav onToggleSidebar={handleBurgerClick} />
-                    <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-4">
                         <Outlet />
                     </main>
                 </div>

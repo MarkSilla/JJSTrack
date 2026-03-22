@@ -1,16 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
 import {
-  Package, AlertTriangle, TrendingDown, RefreshCw,
-  Search, Plus, ChevronDown, Pencil, Trash2,
-  ArrowUpCircle, ArrowDownCircle, X, Check,
-  Filter, BarChart3, Clock, ShoppingBag, Layers,
+  Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
   Tag, CheckCircle2, AlertCircle, XCircle,
   Wrench, Sparkles, Link2,
 } from "lucide-react";
 import { inventoryApi } from "../../services/inventoryApi";
 import { fmt } from "../../utils/helpers.js";
 
-const numberInputStyle = `
+const numberInputStyle = `../../services/inventoryApi.js
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -64,7 +61,7 @@ function StatusBadge({ status }) {
   };
   const { cls, Icon } = cfg[status];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
       <Icon size={11} /> {status}
     </span>
   );
@@ -277,9 +274,9 @@ function AddItemModal({ onConfirm, onClose }) {
         {fields.map(f => (
           <div key={f.key} className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">{f.label}</label>
-            <input 
-              type={f.type} 
-              value={form[f.key]} 
+            <input
+              type={f.type}
+              value={form[f.key]}
               onChange={e => set(f.key, e.target.value)}
               placeholder={f.placeholder}
               step={f.step || undefined}
@@ -422,7 +419,7 @@ function InventorySystemContent() {
   const lowCount = inventory.filter(i => getStatus(i) === "Low Stock").length;
   const outCount = inventory.filter(i => getStatus(i) === "Out of Stock").length;
   const inStockCount = inventory.filter(i => getStatus(i) === "In Stock").length;
-  
+
   const totalValue = useMemo(() => {
     return inventory.reduce((sum, item) => sum + ((item.max || 0) * (item.unitPrice || 0)), 0);
   }, [inventory]);
@@ -440,7 +437,7 @@ function InventorySystemContent() {
 
   const STAT_CARDS = [
     { label: "Total Items", value: inventory.length, sub: "All supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
-    { label: "Total Value (Max)", value: fmt(totalValue), sub: "Full capacity cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
+    { label: "Total Value", value: fmt(totalValue), sub: "Full capacity cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
     { label: "Current Value", value: fmt(currentValue), sub: "Current stock cost", icon: Layers, accent: "#8B5CF6", bgAccent: "#FAF5FF" },
     { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
@@ -507,10 +504,10 @@ function InventorySystemContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-inter">
-      <div className="px-3 lg:px-1 py-2 top-0 z-100">
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-black text-black tracking-tight">Inventory</h1>
-          <p className="text-sm text-slate-500 mt-1">Monitor and manage tailoring supplies</p>
+      <div className="px-4 lg:px-6 py-2 top-0 z-100">
+        <div className="mb-4">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-black tracking-tight">Inventory</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Monitor and manage tailoring supplies</p>
         </div>
 
         {/* ALERT 
@@ -529,27 +526,27 @@ function InventorySystemContent() {
         )} */}
 
         {/* STAT */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
           {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, }) => (
             <div
               key={label}
-              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+              className="bg-white rounded-2xl py-2.5 px-3 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
-              <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-                  <Icon size={16} color={accent} strokeWidth={2.2} />
+              <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
+                  <Icon size={15} color={accent} strokeWidth={2.2} />
                 </div>
-                <span className="text-[12px] font-semibold text-gray-500">{label}</span>
+                <span className="text-[11px] font-semibold text-gray-500">{label}</span>
               </div>
-              <div className=" mt-[-6px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">{value}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className="mt-[-4px] text-[14px] font-extrabold text-gray-900 leading-none tracking-tight pl-[40px]">{value}</div>
+              <div className="text-[10px] text-gray-400 mt-0.5 pl-[40px]">{sub}</div>
             </div>
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-5">
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
           <div className="flex flex-1 gap-2">
             {/* Search */}
             <div className="relative flex-1">
@@ -605,8 +602,8 @@ function InventorySystemContent() {
             ))
           }
         </div>
-        <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <BarChart3 size={15} className="text-blue-600" /> All Supplies
               <span className="bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-0.5 rounded-full">{filtered.length}</span>
@@ -616,7 +613,7 @@ function InventorySystemContent() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 {["Item Name", "Category", "Price per Unit", "Stock", "Total Price (Max)", "Total Price (Current)", "Level", "Status", "Actions"].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-5 py-3">{h}</th>
+                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -625,31 +622,31 @@ function InventorySystemContent() {
                 ? <tr><td colSpan={9} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
                 : filtered.map(item => (
                   <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <p className="font-bold text-gray-900">{item.name}</p>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                         <Tag size={10} /> {item.category}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(item.unitPrice || 0)}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="font-bold text-gray-900 tabular-nums">{item.stock}</span>
                       <span className="text-slate-400 text-xs"> / {item.max} {item.unit}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt((item.max || 0) * (item.unitPrice || 0))}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
                     </td>
-                    <td className="px-5 py-3.5 w-40"><StockBar item={item} /></td>
-                    <td className="px-5 py-3.5"><StatusBadge status={getStatus(item)} /></td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-4 py-3 w-36"><StockBar item={item} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={getStatus(item)} /></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
                         <button onClick={() => setAdjModal({ item, type: "increase" })}
                           className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Add Stock">
                           <ArrowUpCircle size={14} />
@@ -676,25 +673,25 @@ function InventorySystemContent() {
         </div>
 
         {/* RECENT ACTIVITY & CATEGORY BREAKDOWN */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* RECENT ACTIVITY */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <Clock size={14} className="text-blue-600" />
               <p className="text-sm font-bold text-gray-900">Recent Activity</p>
             </div>
-            <div className="px-5 divide-y divide-slate-100">
+            <div className="px-4 divide-y divide-slate-100">
               {activities.slice(0, 6).map(a => <ActivityItem key={a.id} item={a} />)}
             </div>
           </div>
 
           {/* CATEGORY BREAKDOWN */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <Layers size={14} className="text-purple-600" />
               <p className="text-sm font-bold text-gray-900">Category Breakdown</p>
             </div>
-            <div className="px-5 py-4">
+            <div className="px-4 py-3">
               {CATEGORIES.filter(c => c !== "All").map(category => {
                 const count = inventory.filter(item => item.category === category).length;
                 const categoryConfig = {

@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard,
-    Calendar,
-    ShoppingBag,
-    Users,
-    Package,
-    BarChart3,
-    QrCode,
-    ChevronLeft,
-    ChevronRight,
-    CircleDashed,
-    PackageCheck,
-    ChevronDown,
-    Settings,
-    LogOut,
+    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, CircleDashed, PackageCheck, ChevronDown, Settings,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -95,7 +82,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
     const toggleDesktop = () => {
         if (!isDesktopCollapsed) {
-            setExpandedMenus({}) // Auto-collapse dropdowns when collapsing sidebar
+            setExpandedMenus({})
         }
         setIsDesktopCollapsed(!isDesktopCollapsed)
     }
@@ -103,7 +90,6 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
     return (
         <>
-            {/* Mobile Backdrop */}
             {mobileExpanded && (
                 <div
                     className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
@@ -111,8 +97,6 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                     aria-hidden="true"
                 />
             )}
-
-            {/* Sidebar */}
             <aside
                 id="jjs-sidebar"
                 className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-300 ease-in-out z-50 shadow-xl border-r border-gray-800 flex flex-col
@@ -121,7 +105,6 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                         : isDesktopCollapsed ? 'w-20' : 'w-64'
                     }`}
             >
-                {/* Logo */}
                 <div className="p-4 border-b border-gray-800 flex items-center justify-between h-16 shrink-0">
                     <div className={`flex items-center ${isDesktopCollapsed && !isSmallScreen ? 'justify-center w-full' : ''}`}>
                         <div className={`flex items-center justify-center ${isDesktopCollapsed && !isSmallScreen ? 'w-8 h-8' : 'w-8 h-8 mr-2.5'}`}>
@@ -185,8 +168,6 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                                             </div>
                                         </Link>
                                     )}
-
-                                    {/* Sub Items Dropdown Menu (only if sidebar expanded) */}
                                     {item.subItems && isExpanded && showLabel && (
                                         <ul className="mt-1 space-y-1 px-3 ml-6 border-l border-gray-700">
                                             {item.subItems.map((subItem) => {
@@ -239,64 +220,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
                 {/* Footer with Settings and Logout */}
                 <div className={`border-t border-gray-800 py-3 shrink-0 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
-                    <ul className="space-y-1.5">
-                        {/* Settings Button */}
-                        <li>
-                            <button
-                                className={`flex items-center gap-3 w-full rounded-xl transition-all duration-200 group outline-none
-                                    ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
-                                    hover:bg-gray-800 text-gray-400 hover:text-white`}
-                                title="Settings"
-                                onMouseEnter={() => setHoveredItem('Settings')}
-                                onMouseLeave={() => setHoveredItem(null)}
-                            >
-                                <Settings
-                                    size={20}
-                                    className="transition-all duration-300 shrink-0 text-gray-400 group-hover:text-white group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
-                                />
-                                <div className={`${showLabel ? 'block' : 'hidden'}`}>
-                                    <span className="font-bold text-sm leading-none">Settings</span>
-                                </div>
 
-                                {/* Tooltip for collapsed desktop */}
-                                {isDesktopCollapsed && !isSmallScreen && hoveredItem === 'Settings' && (
-                                    <div className="fixed left-24 z-[100] bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs border border-gray-800 min-w-max">
-                                        <div className="font-bold">Settings</div>
-                                        <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
-                                    </div>
-                                )}
-                            </button>
-                        </li>
-
-                        {/* Logout Button */}
-                        <li>
-                            <button
-                                onClick={handleLogout}
-                                className={`flex items-center gap-3 w-full rounded-xl transition-all duration-200 group outline-none
-                                    ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
-                                    hover:bg-red-600/20 text-gray-400 hover:text-red-400`}
-                                title="Logout"
-                                onMouseEnter={() => setHoveredItem('Logout')}
-                                onMouseLeave={() => setHoveredItem(null)}
-                            >
-                                <LogOut
-                                    size={20}
-                                    className="transition-all duration-300 shrink-0 text-gray-400 group-hover:text-red-400 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]"
-                                />
-                                <div className={`${showLabel ? 'block' : 'hidden'}`}>
-                                    <span className="font-bold text-sm leading-none">Logout</span>
-                                </div>
-
-                                {/* Tooltip for collapsed desktop */}
-                                {isDesktopCollapsed && !isSmallScreen && hoveredItem === 'Logout' && (
-                                    <div className="fixed left-24 z-[100] bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs border border-gray-800 min-w-max">
-                                        <div className="font-bold">Logout</div>
-                                        <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
-                                    </div>
-                                )}
-                            </button>
-                        </li>
-                    </ul>
                 </div>
             </aside>
 

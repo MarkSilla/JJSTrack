@@ -754,7 +754,16 @@ export const markAsPickedUp = async (req, res) => {
     booking.isPickedUp = true;
     booking.pickedUpAt = new Date();
     booking.status = 'Released';  // Set status to Released when QR is scanned
+    booking.paid = true;  // Mark as paid when scanned
+    booking.paidAt = new Date();
     await booking.save();
+
+    // Update associated invoice status to "Paid"
+    await invoiceModel.findOneAndUpdate(
+      { orderId: booking._id },
+      { status: 'Paid', updatedAt: new Date() },
+      { new: true }
+    );
 
     res.json({
       success: true,

@@ -42,6 +42,11 @@ const orderSchema = new mongoose.Schema({
     default: false,
   },
   releasedAt: Date,
+  paid: {
+    type: Boolean,
+    default: false,
+  },
+  paidAt: Date,
   qrCode: String,
 
   steps: {

@@ -38,12 +38,12 @@ const Stepper = ({ currentStep, labels }) => (
                         <div className="flex flex-col items-center w-full relative">
                             {i > 0 && (
                                 <span
-                                    className={`absolute top-5 right-1/2 w-full h-[2px] -translate-y-1/2 transition-colors duration-500
+                                    className={`absolute top-4 right-1/2 w-full h-[2px] -translate-y-1/2 transition-colors duration-500
                     ${done ? 'bg-blue-500' : active ? 'bg-gradient-to-r from-blue-500 to-gray-300' : 'bg-gray-300'}`}
                                 />
                             )}
                             <span
-                                className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold tracking-wide transition-all duration-300
+                                className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tracking-wide transition-all duration-300
                   ${active
                                         ? 'bg-blue-600 text-white ring-[3px] ring-blue-500/30 shadow-lg shadow-blue-600/25'
                                         : done
@@ -54,7 +54,7 @@ const Stepper = ({ currentStep, labels }) => (
                                 {done ? <MdCheck size={18} /> : num}
                             </span>
                             <span
-                                className={`mt-2 text-[11px] font-semibold uppercase tracking-widest transition-colors
+                                className={`mt-2 text-[8px] font-semibold uppercase tracking-widest transition-colors
                   ${active ? 'text-blue-600' : done ? 'text-blue-500/70' : 'text-gray-400'}`}
                             >
                                 {label}
@@ -414,36 +414,38 @@ const BookingModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-3xl lg:my-14 lg:mx-2 sm:my-16 sm:mx-3 ">
-                <div className="bg-[#F8FAFC] lg:rounded-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-2 sm:p-4">
+            <div className="relative w-full max-w-2xl max-h-[96vh] flex flex-col">
+                <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
                     <button
                         onClick={handleClose}
-                        className="absolute top-4 right-4 z-10 w-9 h-9 rounded-xl bg-white/80 hover:bg-red-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer shadow-sm"
+                        className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/5 hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-600 transition-all cursor-pointer"
                     >
                         <MdClose size={18} />
                     </button>
 
                     {/* Header */}
-                    <div className="pt-6 pb-1 text-center select-none">
-                        <img src={img.JJS} alt="" className='h-14 mx-auto' />
-                        <p className="text-[8px] lg:text-[10px] uppercase tracking-[0.35em] text-blue-500/50 font-bold mt-1">
+                    <div className="pt-4 pb-2 text-center select-none shrink-0">
+                        <img src={img.JJS} alt="JJS" className="h-10 mx-auto" />
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-blue-500/60 font-bold mt-1.5">
                             Repair & Custom Jersey Service
                         </p>
                     </div>
 
                     {/* Stepper */}
-                    <div className="px-4 pt-2 pb-2">
+                    <div className="px-4 pb-1 shrink-0">
                         <Stepper currentStep={step} labels={labels} />
                     </div>
-                    <div className="px-4 sm:px-6 py-2">
-                        <div className="w-full max-w-2xl mx-auto relative">
-                            <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-                            <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl shadow-gray-200/50">
+
+                    {/* Main scrollable content area */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-6 py-1">
+                        <div className="w-full mx-auto relative h-full flex flex-col">
+                            {/* Inner transparent container replacing the white box */}
+                            <div className="py-2 flex-grow">
                                 {renderStep()}
 
                                 {error && (
-                                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                                         <p className="text-sm text-red-700">{error}</p>
                                     </div>
                                 )}
@@ -453,46 +455,46 @@ const BookingModal = ({ isOpen, onClose }) => {
                                     </div>
                                 )}
 
-                                <div className="border-t border-gray-200 mt-8 pt-5 flex items-center justify-between">
+                                <div className="mt-6 pt-4 flex items-center justify-between shrink-0 mb-2">
                                     {step > 1 ? (
                                         <button
                                             onClick={() => setStep((s) => s - 1)}
-                                            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-sm font-medium group"
+                                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back
+                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Back
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleClose}
-                                            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-sm font-medium group"
+                                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Cancel
+                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Cancel
                                         </button>
                                     )}
 
                                     {step < totalSteps ? (
                                         <button
                                             onClick={handleNext}
-                                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer shadow-sm
                                             ${canNext()
-                                                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
-                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 shadow-none'}`}
+                                                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
+                                                    : 'bg-gray-200 text-gray-400 hover:bg-gray-300 shadow-none'}`}
                                         >
-                                            Next <MdArrowForward size={16} />
+                                            Next <MdArrowForward size={18} />
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleSubmit}
                                             disabled={loading}
-                                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer shadow-sm
                                             ${loading
-                                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'}`}
+                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'}`}
                                         >
                                             {loading ? (
                                                 <>
                                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                                    Submitting...
+                                                    ...
                                                 </>
                                             ) : (
                                                 <>
@@ -507,8 +509,8 @@ const BookingModal = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Footer */}
-                    <div className="text-center pb-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+                    <div className="text-center py-2 shrink-0">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
                             Step {step} of {totalSteps}
                         </span>
                     </div>

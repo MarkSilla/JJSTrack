@@ -22,51 +22,6 @@ const AdminNav = ({ onToggleSidebar }) => {
     const navigate = useNavigate()
     const location = useLocation()
 
-    // Page titles and subtitles mapping
-    const pageConfig = {
-        '/admin/dashboard': {
-            title: 'Dashboard',
-            subtitle: 'Welcome back! Here\'s your business overview.'
-        },
-        '/admin/analytic': {
-            title: 'Analytics',
-            subtitle: 'Analyze your business performance and trends.'
-        },
-        '/admin/appointment': {
-            title: 'Appointments',
-            subtitle: 'Manage and track all appointments.'
-        },
-        '/admin/orders': {
-            title: 'Orders',
-            subtitle: 'View and manage all orders.'
-        },
-        '/admin/qr-scanner': {
-            title: 'QR Scanner',
-            subtitle: 'Scan and track items using QR codes.'
-        },
-        '/admin/released': {
-            title: 'Released Items',
-            subtitle: 'View all released items.'
-        },
-        '/admin/staff': {
-            title: 'Staff',
-            subtitle: 'Manage your team members.'
-        },
-        '/admin/payroll': {
-            title: 'Payroll',
-            subtitle: 'Process and manage payroll.'
-        },
-        '/admin/inventory': {
-            title: 'Inventory',
-            subtitle: 'Manage your inventory stock.'
-        }
-    }
-
-    const currentPageConfig = pageConfig[location.pathname] || {
-        title: 'Admin',
-        subtitle: 'Welcome to your admin dashboard.'
-    }
-
     const user = {
         fullName: 'Admin User',
         email: 'admin@jjstrack.com',
@@ -122,10 +77,6 @@ const AdminNav = ({ onToggleSidebar }) => {
                     >
                         <Menu size={22} />
                     </button>
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-900 leading-tight">{currentPageConfig.title}</h1>
-                        <p className="text-xs text-gray-500 font-medium">{currentPageConfig.subtitle}</p>
-                    </div>
                 </div>
                 <div className="flex  items-center gap-2 sm:gap-4">
                     <div className="hidden sm:flex flex-col items-end mr-2">

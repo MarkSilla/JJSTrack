@@ -114,7 +114,7 @@ const RateSettingsModal = ({ rates, onSave, onClose }) => {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl border border-gray-100">
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                    <div className="w-10 h-1 bg-gray-200 rounded-full" />
+                    <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
                 </div>
 
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -233,7 +233,7 @@ const PayrollCard = ({ row, isPaid, isExpanded, onToggleExpand, onTogglePaid }) 
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">{ord.orderId}</span>
-                                        <div className="text-[12px] font-bold text-gray-700 mt-1">{ord.customer}</div>
+                                        <div className="text-[12px] font-bold text-gray-700 mt-1 max-w-[200px] sm:max-w-none truncate">{ord.customer}</div>
                                         <div className="text-[10px] text-gray-400">{ord.date}</div>
                                     </div>
                                     <span className="text-[13px] font-black text-emerald-700 shrink-0">{formatPeso(ord.orderEarnings)}</span>
@@ -301,8 +301,8 @@ export default function AdPayroll({ onBack }) {
         <div className="font-inter min-h-screen bg-slate-50">
 
             {/* PAGE HEADER */}
-            <div className="px-4 sm:px-6 pt-4 pb-2">
-                <div className="flex items-center justify-between">
+            <div className="px-4 lg:px-6 pt-4 pb-2 z-10 relative">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         {onBack && (
                             <>
@@ -317,20 +317,20 @@ export default function AdPayroll({ onBack }) {
                             <p className="text-[11px] sm:text-sm text-gray-500 mt-0.5">Piece-based salary · {PAYROLL_PERIOD}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setShowRateModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-[12px] font-semibold rounded-xl cursor-pointer transition-colors border-solid">
-                            <Settings size={14} className="text-gray-400" />
-                            <span className="hidden sm:inline">Rate Table</span>
+                    <div className="flex items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+                        <button onClick={() => setShowRateModal(true)} className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2.5 sm:py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-[12px] font-semibold rounded-xl cursor-pointer transition-colors border-solid shadow-sm">
+                            <Settings size={14} className="text-gray-500" />
+                            <span>Rate Table</span>
                         </button>
-                        <button className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-[12px] font-semibold rounded-xl cursor-pointer transition-colors border-solid">
-                            <Download size={14} className="text-gray-400" />
-                            <span className="hidden sm:inline">Export</span>
+                        <button className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-2.5 sm:py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-[12px] font-semibold rounded-xl cursor-pointer transition-colors border-solid shadow-sm">
+                            <Download size={14} className="text-gray-500" />
+                            <span>Export</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="px-4 sm:px-6 py-3">
+            <div className="px-4 lg:px-6 py-2 sm:py-3">
 
                 {/* KPI CARDS */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
@@ -393,31 +393,39 @@ export default function AdPayroll({ onBack }) {
                             <Filter size={13} />
                         </button>
                     </div>
-                    <div className={`${showFilters ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100`}>
-                        <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1"><Filter size={11} /> Status:</span>
-                        {['All', 'Paid', 'Pending'].map(opt => (
-                            <button
-                                key={opt}
-                                onClick={() => setFilterPaid(opt)}
-                                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg border transition-all cursor-pointer
-                                    ${filterPaid === opt ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    <div className={`${showFilters ? 'flex' : 'hidden'} lg:flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mt-3 pt-3 border-t border-gray-100`}>
+                        <div className="flex flex-wrap items-center gap-2 flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto">
+                            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto mb-1 sm:mb-0">
+                                <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1"><Filter size={11} /> Status:</span>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                {['All', 'Paid', 'Pending'].map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => setFilterPaid(opt)}
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-bold rounded-lg border transition-all cursor-pointer text-center
+                                            ${filterPaid === opt ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="hidden sm:block w-px h-5 bg-gray-200 mx-1" />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto border-t sm:border-t-0 border-gray-100 pt-3 sm:pt-0">
+                            <span className="text-[11px] text-gray-400 font-semibold">Sort by:</span>
+                            <select
+                                value={sortField}
+                                onChange={e => setSortField(e.target.value)}
+                                className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-[11px] font-semibold bg-white border border-gray-200 text-gray-600 rounded-lg outline-none cursor-pointer focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
                             >
-                                {opt}
-                            </button>
-                        ))}
-                        <div className="hidden sm:block w-px h-4 bg-gray-200 mx-1" />
-                        <span className="text-[11px] text-gray-400 font-semibold">Sort:</span>
-                        <select
-                            value={sortField}
-                            onChange={e => setSortField(e.target.value)}
-                            className="flex-1 sm:flex-none px-3 py-1.5 text-[11px] font-semibold bg-white border border-gray-200 text-gray-600 rounded-lg outline-none cursor-pointer"
-                        >
-                            <option value="name">Name A–Z</option>
-                            <option value="earnings">Highest Earnings</option>
-                            <option value="pieces">Most Pieces</option>
-                            <option value="orders">Most Orders</option>
-                        </select>
-                        <span className="text-[11px] text-gray-400 sm:ml-auto">{filteredRows.length} of {EMPLOYEE_DB.length} tailors</span>
+                                <option value="name">Name A–Z</option>
+                                <option value="earnings">Highest Earnings</option>
+                                <option value="pieces">Most Pieces</option>
+                                <option value="orders">Most Orders</option>
+                            </select>
+                        </div>
+                        <span className="text-[11px] text-gray-400 sm:ml-auto text-center sm:text-right mt-2 sm:mt-0 font-medium w-full sm:w-auto">{filteredRows.length} of {EMPLOYEE_DB.length} tailors</span>
                     </div>
                 </div>
                 <div className="lg:hidden space-y-3">
@@ -443,8 +451,8 @@ export default function AdPayroll({ onBack }) {
                 </div>
 
                 <div className="hidden lg:block bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-sm">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full border-collapse text-sm min-w-[1250px]">
                             <thead>
                                 <tr className="border-b-2 border-gray-100 bg-gray-50/80">
                                     <th className="w-8 px-3 py-3.5" />
