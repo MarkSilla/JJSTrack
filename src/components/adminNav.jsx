@@ -53,7 +53,7 @@ const AdminNav = ({ onToggleSidebar }) => {
         // Clear authentication data from localStorage
         localStorage.removeItem('adminToken')
         localStorage.removeItem('rememberAdminEmail')
-        navigate('/')
+        navigate('/login')
     }
 
     const getUserInitials = (name) => {

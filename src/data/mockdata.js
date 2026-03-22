@@ -1,4 +1,4 @@
-export const mockAppointments = [
+    export const mockAppointments = [
     { id: 1, service: 'Suit Fitting', date: 'Feb 22, 2026', time: '10:00 AM', status: 'Confirmed' },
     { id: 2, service: 'Team Collection', date: 'Feb 25, 2026', time: '2:30 PM', status: 'Pending' },
 ]
