@@ -22,12 +22,12 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
 
     return (
         <section>
-            <div className="text-center mb-10">
+            <div className="text-center mb-10 font-inter">
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Review & Confirm</h2>
                 <p className="text-gray-500 mt-2 text-sm">Please verify your booking details before submitting</p>
             </div>
 
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-xl mx-auto font-inter">
                 <ReviewBlock title="Service Type">
                     <p className="text-gray-800 font-semibold">
                         {isRepair ? 'Custom Repair' : isJersey ? 'Team Jersey' : isOrg ? 'Organization' : 'Booking'}

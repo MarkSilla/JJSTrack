@@ -2,8 +2,7 @@ import React from 'react'
 import { MdEdit, MdLink, MdImage } from 'react-icons/md'
 
 const PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey', price: 500, needsShortSize: false },
-    { id: 'shorts', label: 'Shorts', price: 500, needsShortSize: true },
+    { id: 'shortjersey', label: 'Short Jersey (Jersey + Shorts)', price: 900, needsShortSize: true },
     { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
     { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
     { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
@@ -20,7 +19,7 @@ const getPlayerPrice = (player) => {
 }
 
 const ReviewBlock = ({ title, onEdit, children }) => (
-    <div className="mb-5">
+    <div className="mb-5 font-inter">
         <div className="flex items-center justify-between mb-3">
             <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-blue-600/70 flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-blue-500 inline-block" />

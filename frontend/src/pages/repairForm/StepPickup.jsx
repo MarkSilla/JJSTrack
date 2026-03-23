@@ -11,7 +11,7 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                 <p className="text-gray-500 mt-2 text-sm">When should we come to collect your items?</p>
             </div>
 
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-xl mx-auto font-inter">
                 <div className="flex items-center gap-2 mb-4">
                     <MdCalendarToday size={16} className="text-blue-500/70" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Select Date</span>

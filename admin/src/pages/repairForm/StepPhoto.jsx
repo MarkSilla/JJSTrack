@@ -21,7 +21,7 @@ const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
 
     return (
         <section>
-            <div className="text-center mb-5">
+            <div className="text-center mb-5 font-inter">
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Upload Photos</h2>
                 <p className="text-gray-500 mt-2 text-sm">Help us understand the repair needed</p>
             </div>

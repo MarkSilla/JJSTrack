@@ -1,125 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
-import { bookingApi } from '../../../services/bookingApi'
-import { pricingApi } from '../../../services/pricingApi'
 import img from '../../assets/img.js'
-import { REPAIR_OPTIONS, PRICING as DEFAULT_PRICING } from '../repairForm/constants'
 
 // Repair steps
-import StepService from '../repairForm/StepService'
-import StepOptions from '../repairForm/StepOptions'
-import StepPhoto from '../repairForm/StepPhoto'
-import StepDetails from '../repairForm/StepDetails'
-import StepPickup from '../repairForm/StepPickup'
-import StepReview from '../repairForm/StepReview'
+import StepService from '../repairForm/StepService.jsx'
+import StepOptions from '../repairForm/StepOptions.jsx'
+import StepPhoto from '../repairForm/StepPhoto.jsx'
+import StepDetails from '../repairForm/StepDetails.jsx'
+import StepPickup from '../repairForm/StepPickup.jsx'
+import StepReview from '../repairForm/StepReview.jsx'
 
 // Team steps
-import TeamStepPlayers from '../teamForm/TeamStepPlayers'
-import TeamStepDesign from '../teamForm/TeamStepDesign'
-import TeamStepContact from '../teamForm/TeamStepContact'
-import TeamStepConfirm from '../teamForm/TeamStepConfirm'
+import TeamStepPlayers from '../teamForm/TeamStepPlayers.jsx'
+import TeamStepDesign from '../teamForm/TeamStepDesign.jsx'
+import TeamStepContact from '../teamForm/TeamStepContact.jsx'
+import TeamStepConfirm from '../teamForm/TeamStepConfirm.jsx'
 
 // Org steps
-import OrgStepDetails from '../OrgTeam/OrgStepDetails'
-import OrgStepContact from '../OrgTeam/OrgStepContact'
-import OrgStepConfirm from '../OrgTeam/OrgStepConfirm'
+import OrgStepDetails from '../OrgTeam/OrgStepDetails.jsx'
+import OrgStepContact from '../OrgTeam/OrgStepContact.jsx'
+import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
 
 const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Confirm']
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
-
-const resolvePositivePrice = (value, fallback) => {
-    const numericValue = Number(value)
-    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback
-}
-
-const TEAM_PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey', price: 500, needsShortSize: false },
-    { id: 'shorts', label: 'Shorts', price: 500, needsShortSize: true },
-    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
-    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
-    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
-]
-
-const ORG_PRODUCT_TYPES = [
-    { id: 'tshirt', label: 'T-Shirt', price: 500 },
-    { id: 'polo', label: 'Polo Shirt', price: 650 },
-]
-
-const POCKET_PRICE = 100
-
-// Calculate prices based on selections
-const calculateBookingPrice = (bookingType, data, pricing = DEFAULT_PRICING) => {
-    let items = []
-
-    if (bookingType === 'repair') {
-        // Add base service fee
-        if (pricing.repair.baseFee > 0) {
-            items.push({
-                description: 'Service Base Fee',
-                qty: 1,
-                unitPrice: pricing.repair.baseFee,
-                addOnPrice: 0
-            })
-        }
-        
-        // Add selected options with prices
-        data.selectedOptions?.forEach(optionId => {
-            const option = REPAIR_OPTIONS.find(o => o.id === optionId)
-            if (option && option.price) {
-                const qty = data.quantities?.[optionId] || 1
-                items.push({
-                    description: option.label,
-                    qty: qty,
-                    unitPrice: option.price,
-                    addOnPrice: 0
-                })
-            }
-        })
-    } else if (bookingType === 'jersey') {
-        // Follow Team form pricing per player/product type.
-        const playerItems = (data.players || []).map((player, index) => {
-            const product = TEAM_PRODUCT_TYPES.find((p) => p.id === player.productType)
-            const unitPrice = product?.price || pricing.jersey.basePerPlayer || DEFAULT_PRICING.jersey.basePerPlayer
-            const hasPocket = Boolean(player.pockets && product?.needsShortSize)
-            const addOnPrice = hasPocket ? POCKET_PRICE : 0
-            const playerName = [player.firstName, player.surname].filter(Boolean).join(' ') || `Player ${index + 1}`
-
-            return {
-                description: `${product?.label || 'Jersey'} (${playerName}${player.number ? ` #${player.number}` : ''})`,
-                type: 'Custom',
-                qty: 1,
-                unitPrice,
-                size: player.jerseySize || '',
-                addOn: hasPocket ? `Pocket Short (+${POCKET_PRICE})` : 'None',
-                addOnPrice,
-            }
-        })
-
-        items.push(...playerItems)
-    } else if (bookingType === 'organizational') {
-        // Follow Organization form pricing per member/product type.
-        const memberItems = (data.members || []).map((member, index) => {
-            const product = ORG_PRODUCT_TYPES.find((p) => p.id === member.productType)
-            const unitPrice = product?.price || pricing.organizational.basePerItem || DEFAULT_PRICING.organizational.basePerItem
-            const memberName = member.surname || `Member ${index + 1}`
-
-            return {
-                description: `${product?.label || 'Organization Item'} (${memberName}${member.number ? ` #${member.number}` : ''})`,
-                type: 'Custom',
-                qty: 1,
-                unitPrice,
-                size: member.size || '',
-                addOn: 'None',
-                addOnPrice: 0,
-            }
-        })
-
-        items.push(...memberItems)
-    }
-
-    return items
-}
 
 // Stepper
 const Stepper = ({ currentStep, labels }) => (
@@ -134,12 +38,12 @@ const Stepper = ({ currentStep, labels }) => (
                         <div className="flex flex-col items-center w-full relative">
                             {i > 0 && (
                                 <span
-                                    className={`absolute top-5 right-1/2 w-full h-[2px] -translate-y-1/2 transition-colors duration-500
+                                    className={`absolute top-4 right-1/2 w-full h-[2px] -translate-y-1/2 transition-colors duration-500
                     ${done ? 'bg-blue-500' : active ? 'bg-gradient-to-r from-blue-500 to-gray-300' : 'bg-gray-300'}`}
                                 />
                             )}
                             <span
-                                className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold tracking-wide transition-all duration-300
+                                className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tracking-wide transition-all duration-300
                   ${active
                                         ? 'bg-blue-600 text-white ring-[3px] ring-blue-500/30 shadow-lg shadow-blue-600/25'
                                         : done
@@ -150,7 +54,7 @@ const Stepper = ({ currentStep, labels }) => (
                                 {done ? <MdCheck size={18} /> : num}
                             </span>
                             <span
-                                className={`mt-2 text-[11px] font-semibold uppercase tracking-widest transition-colors
+                                className={`mt-2 text-[8px] font-semibold uppercase tracking-widest transition-colors
                   ${active ? 'text-blue-600' : done ? 'text-blue-500/70' : 'text-gray-400'}`}
                             >
                                 {label}
@@ -200,7 +104,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [service, setService] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const [pricing, setPricing] = useState(DEFAULT_PRICING)
+    const [nextError, setNextError] = useState('')
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -210,7 +114,6 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [details, setDetails] = useState({ name: '', email: '', phone: '', address: '', city: '' })
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
-    // Note: pickupDate/slot only used for repair; jersey/org wait for admin approval
 
     // Team state
     const [teamName, setTeamName] = useState('')
@@ -225,46 +128,6 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
-
-    // Fetch pricing on mount
-    useEffect(() => {
-        const fetchPricing = async () => {
-            try {
-                const response = await pricingApi.getAllPricing()
-                if (response.success && response.pricing) {
-                    // Convert array to object format
-                    const pricingObj = {
-                        repair: { ...DEFAULT_PRICING.repair },
-                        jersey: { ...DEFAULT_PRICING.jersey },
-                        organizational: { ...DEFAULT_PRICING.organizational }
-                    }
-                    
-                    response.pricing.forEach(p => {
-                        if (p.serviceType === 'jersey') {
-                            pricingObj.jersey.baseFee = p.baseFee ?? pricingObj.jersey.baseFee
-                            pricingObj.jersey.basePerPlayer = resolvePositivePrice(
-                                p.basePerPlayer,
-                                pricingObj.jersey.basePerPlayer
-                            )
-                        } else if (p.serviceType === 'organizational') {
-                            pricingObj.organizational.baseFee = p.baseFee ?? pricingObj.organizational.baseFee
-                            pricingObj.organizational.basePerItem = resolvePositivePrice(
-                                p.basePerItem,
-                                pricingObj.organizational.basePerItem
-                            )
-                        }
-                    })
-                    
-                    setPricing(pricingObj)
-                }
-            } catch (err) {
-                console.error('Error fetching pricing:', err)
-                // Keep default pricing if fetch fails
-            }
-        }
-        
-        fetchPricing()
-    }, [])
 
     // Initialize contact data from user on component mount
     useEffect(() => {
@@ -356,11 +219,60 @@ const BookingModal = ({ isOpen, onClose }) => {
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
 
+    const isRepairDetailsComplete = () => {
+        return [details.name, details.email, details.phone, details.address, details.city].every((field) => field && field.trim().length > 0)
+    }
+
     const canNext = () => {
         if (step === 1) return !!service
-        if (isJersey && step === 2) return players.length > 0
-        if (isOrg && step === 2) return members.length > 0
+
+        if (isRepair) {
+            if (step === 2) return selectedOptions.length > 0
+            if (step === 3) return true // Photo is optional, can skip or add
+            if (step === 4) return isRepairDetailsComplete()
+            if (step === 5) return !!selectedDate && !!selectedSlot
+            return true
+        }
+
+        if (isJersey) {
+            if (step === 2) return players.length > 0
+            if (step === 3) return true // Design is optional, can skip or add
+            if (step === 4) return [contact.fullName, contact.phone, contact.email].every((field) => field && field.trim().length > 0)
+            return true
+        }
+
+        if (isOrg) {
+            if (step === 2) return members.length > 0
+            if (step === 3) return true // Design is optional, can skip or add
+            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email].every((field) => field && field.trim().length > 0)
+            return true
+        }
+
         return true
+    }
+
+    const getNextErrorMessage = () => {
+        if (step === 1) return 'Please select a service before continuing.'
+        if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
+        if (isRepair && step === 4) return 'Please complete all your delivery details before continuing.'
+        if (isRepair && step === 5) return 'Please select a pickup date and time slot.'
+
+        if (isJersey && step === 2) return 'Please add at least one player first.'
+        if (isJersey && step === 4) return 'Please fill in the contact information.'
+
+        if (isOrg && step === 2) return 'Please add at least one member first.'
+        if (isOrg && step === 4) return 'Please fill in the organization contact information.'
+
+        return 'Please complete the required fields before continuing.'
+    }
+
+    const handleNext = () => {
+        if (canNext()) {
+            setNextError('')
+            setStep((s) => s + 1)
+            return
+        }
+        setNextError(getNextErrorMessage())
     }
 
     const handleSubmit = async () => {
@@ -418,9 +330,9 @@ const BookingModal = ({ isOpen, onClose }) => {
             if (isRepair) {
                 // Repair booking
                 const optionsArray = selectedOptions.map(optId => ({
-                    name: REPAIR_OPTIONS.find(o => o.id === optId)?.label || optId,
+                    name: optId,
                     quantity: quantities[optId] || 1,
-                    price: REPAIR_OPTIONS.find(o => o.id === optId)?.price || 0
+                    price: 0 // Price would be fetched from options data if available
                 }))
 
                 bookingData.selectedOptions = optionsArray
@@ -429,25 +341,13 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
-                
-                // Calculate and add items with prices
-                bookingData.items = calculateBookingPrice('repair', {
-                    selectedOptions,
-                    quantities
-                }, pricing)
             } else if (isJersey) {
-                // Note: No pickup for jersey - admin will schedule after approval
                 // Team jersey booking
                 bookingData.teamName = teamName
                 bookingData.players = players
                 bookingData.designFile = designFile ? designFile.name : ''
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact
-                
-                // Calculate and add items with prices
-                bookingData.items = calculateBookingPrice('jersey', {
-                    players
-                }, pricing)
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
@@ -455,11 +355,6 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.orgDesignFile = orgDesignFile ? orgDesignFile.name : ''
                 bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
-                
-                // Calculate and add items with prices
-                bookingData.items = calculateBookingPrice('organizational', {
-                    members
-                }, pricing)
             }
 
             console.log('Submitting booking data:', bookingData)
@@ -506,6 +401,10 @@ const BookingModal = ({ isOpen, onClose }) => {
 
     const goToStep = (s) => setStep(s)
 
+    useEffect(() => {
+        if (nextError && canNext()) setNextError('')
+    }, [nextError, step, service, players.length, members.length])
+
     const renderStep = () => {
         if (step === 1) return <StepService service={service} setService={setService} />
 
@@ -518,10 +417,6 @@ const BookingModal = ({ isOpen, onClose }) => {
                 case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} />
                 default: return null
             }
-        } else if (!isRepair && step === 5) {
-            // For jersey/org: Use confirm step as review at step 5
-            const contactToPass = isJersey ? contact : orgContact
-            return <StepReview service={service} teamName={teamName} players={players} orgName={orgName} members={members} designFile={designFile || orgDesignFile} driveLink={driveLink || orgDriveLink} contact={contactToPass} />
         }
 
         if (isJersey) {
@@ -552,83 +447,87 @@ const BookingModal = ({ isOpen, onClose }) => {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-3xl mx-4 my-6 sm:my-10">
-                <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-2 sm:p-4">
+            <div className="relative w-full max-w-2xl max-h-[96vh] flex flex-col">
+                <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
                     <button
                         onClick={handleClose}
-                        className="absolute top-4 right-4 z-10 w-9 h-9 rounded-xl bg-white/80 hover:bg-red-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer shadow-sm"
+                        className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/5 hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-600 transition-all cursor-pointer"
                     >
                         <MdClose size={18} />
                     </button>
 
                     {/* Header */}
-                    <div className="pt-6 pb-2 text-center select-none">
-                        <img src={img.jjslogo1} alt="" className='h-20 mx-auto' />
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-blue-500/50 font-bold mt-1">
+                    <div className="pt-4 pb-2 text-center select-none shrink-0">
+                        <img src={img.jjslogo1} alt="JJS" className="h-10 mx-auto" />
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-blue-500/60 font-bold mt-1.5">
                             Repair & Custom Jersey Service
                         </p>
                     </div>
 
                     {/* Stepper */}
-                    <div className="px-6 pt-4 pb-2">
+                    <div className="px-4 pb-1 shrink-0">
                         <Stepper currentStep={step} labels={labels} />
                     </div>
 
-                    {/* Content */}
-                    <div className="px-4 sm:px-6 py-6">
-                        <div className="w-full max-w-2xl mx-auto relative">
-                            <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-                            <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl shadow-gray-200/50">
+                    {/* Main scrollable content area */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-6 py-1">
+                        <div className="w-full mx-auto relative h-full flex flex-col">
+                            {/* Inner transparent container replacing the white box */}
+                            <div className="py-2 flex-grow">
                                 {renderStep()}
 
                                 {error && (
-                                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                                         <p className="text-sm text-red-700">{error}</p>
                                     </div>
                                 )}
+                                {nextError && (
+                                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <p className="text-sm text-amber-700">{nextError}</p>
+                                    </div>
+                                )}
 
-                                <div className="border-t border-gray-200 mt-8 pt-5 flex items-center justify-between">
+                                <div className="mt-6 pt-4 flex items-center justify-between shrink-0 mb-2">
                                     {step > 1 ? (
                                         <button
                                             onClick={() => setStep((s) => s - 1)}
-                                            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-sm font-medium group"
+                                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back
+                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Back
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleClose}
-                                            className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-sm font-medium group"
+                                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Cancel
+                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Cancel
                                         </button>
                                     )}
 
                                     {step < totalSteps ? (
                                         <button
-                                            onClick={() => canNext() && setStep((s) => s + 1)}
-                                            disabled={!canNext()}
-                                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                            onClick={handleNext}
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer shadow-sm
                                             ${canNext()
-                                                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
-                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
+                                                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
+                                                    : 'bg-gray-200 text-gray-400 hover:bg-gray-300 shadow-none'}`}
                                         >
-                                            Next <MdArrowForward size={16} />
+                                            Next <MdArrowForward size={18} />
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleSubmit}
                                             disabled={loading}
-                                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer shadow-sm
                                             ${loading
-                                                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'}`}
+                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'}`}
                                         >
                                             {loading ? (
                                                 <>
                                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                                    Submitting...
+                                                    ...
                                                 </>
                                             ) : (
                                                 <>
@@ -643,8 +542,8 @@ const BookingModal = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Footer */}
-                    <div className="text-center pb-5">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">
+                    <div className="text-center py-2 shrink-0">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">
                             Step {step} of {totalSteps}
                         </span>
                     </div>

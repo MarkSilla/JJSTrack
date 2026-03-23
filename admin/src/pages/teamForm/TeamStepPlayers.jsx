@@ -5,13 +5,17 @@ import { FaTshirt } from 'react-icons/fa'
 const JERSEY_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 const SHORT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 
-const PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey', price: 500, needsShortSize: false },
-    { id: 'shorts', label: 'Shorts', price: 500, needsShortSize: true },
+const BASE_PRODUCT_TYPES = [
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: true },
     { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+]
+
+const OPTIONAL_PRODUCT_TYPES = [
     { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
     { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
 ]
+
+const PRODUCT_TYPES = [...BASE_PRODUCT_TYPES, ...OPTIONAL_PRODUCT_TYPES]
 
 const POCKET_PRICE = 100
 
@@ -66,7 +70,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
 
     return (
         <section>
-            <div className="text-center mb-10">
+            <div className="text-center mb-10 font-inter">
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Team & Players</h2>
                 <p className="text-gray-500 mt-2 text-sm">Set up your team and add players</p>
             </div>
@@ -116,30 +120,60 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
 
 
                     {/* Product Type */}
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Product Type <span className="text-red-400">*</span></label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {PRODUCT_TYPES.map((pt) => {
-                                const selected = form.productType === pt.id
-                                return (
-                                    <button
-                                        key={pt.id}
-                                        type="button"
-                                        onClick={() => {
-                                            set('productType', pt.id)
-                                            if (!pt.needsShortSize) set('shortSize', '')
-                                            if (!pt.needsShortSize) set('pockets', false)
-                                        }}
-                                        className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 cursor-pointer
-                                            ${selected
-                                                ? 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-100'
-                                                : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                    >
-                                        <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
-                                        <span className={`text-sm font-bold tabular-nums ${selected ? 'text-blue-600' : 'text-gray-400'}`}>₱{pt.price}</span>
-                                    </button>
-                                )
-                            })}
+                    <div className="flex flex-col gap-4">
+                        <div>
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 mb-2 block">Product Type <span className="text-red-400">*</span></label>
+                            <p className="text-xs text-gray-500 mb-2">Choose one main package:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {BASE_PRODUCT_TYPES.map((pt) => {
+                                    const selected = form.productType === pt.id
+                                    return (
+                                        <button
+                                            key={pt.id}
+                                            type="button"
+                                            onClick={() => {
+                                                set('productType', pt.id)
+                                                if (!pt.needsShortSize) set('shortSize', '')
+                                                if (!pt.needsShortSize) set('pockets', false)
+                                            }}
+                                            className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 cursor-pointer
+                                                ${selected
+                                                    ? 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-100'
+                                                    : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                        >
+                                            <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
+                                            <span className={`text-sm font-bold tabular-nums ${selected ? 'text-blue-600' : 'text-gray-400'}`}>₱{pt.price}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Optional add-ons</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {OPTIONAL_PRODUCT_TYPES.map((pt) => {
+                                    const selected = form.productType === pt.id
+                                    return (
+                                        <button
+                                            key={pt.id}
+                                            type="button"
+                                            onClick={() => {
+                                                set('productType', pt.id)
+                                                if (!pt.needsShortSize) set('shortSize', '')
+                                                if (!pt.needsShortSize) set('pockets', false)
+                                            }}
+                                            className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 cursor-pointer
+                                                ${selected
+                                                    ? 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-100'
+                                                    : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                        >
+                                            <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
+                                            <span className={`text-sm font-bold tabular-nums ${selected ? 'text-blue-600' : 'text-gray-400'}`}>₱{pt.price}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
 
