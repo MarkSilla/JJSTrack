@@ -239,13 +239,13 @@ const DetailsModal = ({ order, onClose }) => {
             </div>
 
             {/* Header - Payroll Style */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
                 <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
                         <FileText size={16} className="text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <h2 className="text-[15px] font-black text-gray-900 truncate">{displayName}</h2>
+                        <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
                         <p className="text-[10px] text-gray-400 mt-0.5">#{order.orderId || order._id?.slice(-8)}</p>
                     </div>
                 </div>
@@ -258,7 +258,7 @@ const DetailsModal = ({ order, onClose }) => {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white">
+            <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
                 <button
                     onClick={() => setActiveTab('items')}
                     className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
@@ -286,7 +286,7 @@ const DetailsModal = ({ order, onClose }) => {
             </div>
 
             {/* Body — scrollable */}
-            <div className="overflow-y-auto p-5 flex-1 space-y-5">
+            <div className="overflow-y-auto p-5 flex-1 space-y-5 font-inter">
                 {activeTab === 'items' ? (
                     <>
                         {/* Details Section */}
@@ -767,7 +767,7 @@ const Order = () => {
                 </div>
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                     <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-white mb-0.5">My Orders</h2>
+                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-0.5">My Orders</h2>
                         <p className="text-slate-400 text-xs sm:text-sm">Track and manage your tailoring orders.</p>
                     </div>
                     {/* Stats — full width grid, no scroll */}

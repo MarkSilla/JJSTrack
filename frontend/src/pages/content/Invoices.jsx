@@ -112,7 +112,7 @@ const Invoices = () => {
     const totalAmount = invoices.reduce((sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0), 0)
 
     return (
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 font-inter">
             {loading ? (
                 <div className="flex items-center justify-center h-80">
                     <div className="text-center">

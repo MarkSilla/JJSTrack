@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import img from '../assets/img.js'
-import { MdDashboard, MdCalendarToday, MdLogout, MdShoppingBag, MdReceipt, MdSettings } from 'react-icons/md'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Calendar, LogOut, ShoppingBag, Receipt, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const navItems = [
-  { icon: MdDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/home' },
-  { icon: MdCalendarToday, label: 'Appointment', description: 'Manage appointments', path: '/appointment' },
-  { icon: MdShoppingBag, label: 'Orders', description: 'View all orders', path: '/order' },
-  { icon: MdReceipt, label: 'Invoices', description: 'Billing & invoices', path: '/invoices' },
+  { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/home' },
+  { icon: Calendar, label: 'Appointment', description: 'Manage appointments', path: '/appointment' },
+  { icon: ShoppingBag, label: 'Orders', description: 'View all orders', path: '/order' },
+  { icon: Receipt, label: 'Invoices', description: 'Billing & invoices', path: '/invoices' },
 ]
 
 const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
@@ -67,37 +66,28 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
       {/* Sidebar */}
       <aside
         id="jjs-sidebar"
-        className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-300 ease-in-out z-40 shadow-xl border-r border-gray-700 flex flex-col
+        className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-300 ease-in-out z-40 shadow-xl border-r border-gray-700 flex flex-col font-inter
           ${isSmallScreen
             ? mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'
-            : isDesktopCollapsed ? 'w-16' : 'w-64'
+            : isDesktopCollapsed ? 'w-20' : 'w-64'
           }`}
       >
         {/* Logo */}
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <div className={`flex items-center ${isDesktopCollapsed && !isSmallScreen ? 'justify-center w-full' : ''}`}>
-            <div className={`flex items-center justify-center ${isDesktopCollapsed && !isSmallScreen ? 'w-7 h-7' : 'w-7 h-7 mr-2.5'}`}>
-              <img src={img.jjslogo1} alt="JJS Logo" className="object-contain w-7 h-7" />
+            <div className={`flex items-center justify-center ${isDesktopCollapsed && !isSmallScreen ? 'w-8 h-8' : 'w-8 h-8 mr-2.5'}`}>
+              <img src={img.jjslogo1} alt="JJS Logo" className="object-contain w-8 h-8" />
             </div>
             <div className={showLabel ? 'block' : 'hidden'}>
-              <h1 className="text-xl font-bold text-white">JJS-Track</h1>
-              <p className="text-gray-400 text-xs">Management App</p>
+              <h1 className="text-xl font-bold text-white tracking-tight">JJS-Track</h1>
+              <p className="text-gray-400 text-[8px] uppercase font-bold tracking-widest">Management App</p>
             </div>
           </div>
-          {!isSmallScreen && !isDesktopCollapsed && (
-            <button
-              onClick={toggleDesktop}
-              className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors duration-200"
-              aria-label="Collapse sidebar"
-            >
-              <ChevronLeft size={18} className="text-gray-300" />
-            </button>
-          )}
         </div>
 
         {/* Nav Items */}
         <nav className="flex-1 py-4 overflow-y-auto">
-          <ul className={`space-y-1 ${isDesktopCollapsed && !isSmallScreen ? 'px-2' : 'px-3'}`}>
+          <ul className={`space-y-1 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
             {navItems.map((item) => {
               const isActive = location.pathname === item.path
               return (
@@ -110,17 +100,17 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                   <Link
                     to={item.path}
                     onClick={() => isSmallScreen && setMobileExpanded(false)}
-                    className={`flex items-center gap-2.5 w-full rounded-lg transition-all duration-200 group
-                      ${isDesktopCollapsed && !isSmallScreen ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5'}
-                      ${isActive ? 'bg-[#2563EB]/20 text-[#60A5FA]' : 'hover:bg-gray-700/60 text-gray-400 hover:text-white'}`}
+                    className={`flex items-center gap-3 w-full rounded-lg transition-all duration-200 group
+                      ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
+                      ${isActive ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
                   >
                     <item.icon
-                      size={19}
-                      className={`transition-all duration-300 flex-shrink-0 group-hover:scale-110 ${isActive ? 'text-[#60A5FA] drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
+                      size={20}
+                      className={`transition-all duration-300 flex-shrink-0 group-hover:scale-110 ${isActive ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
                     />
                     <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
                       <span className="font-medium text-sm leading-tight">{item.label}</span>
-                      <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-blue-300' : 'text-gray-500'}`}>
+                      <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-white' : 'text-gray-500'}`}>
                         {item.description}
                       </span>
                     </div>
@@ -144,85 +134,21 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
             </div>
           </div>
         )}
-
-        {/* Footer */}
-        <div className={`mt-1 mb-3 border-t border-gray-700 pt-2 ${isDesktopCollapsed && !isSmallScreen ? 'px-2' : 'px-3'}`}>
-          {/* Settings */}
-          <div
-            className="relative"
-            onMouseEnter={() => setHoveredItem('settings')}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <button
-              aria-label="Settings"
-              className={`flex items-center gap-2.5 w-full rounded-lg text-gray-400 hover:bg-gray-700/60 hover:text-white transition-all duration-200 group mb-1
-                ${isDesktopCollapsed && !isSmallScreen ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5'}`}
-            >
-              <MdSettings size={19} className="text-gray-400 flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
-              <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
-                <span className="font-medium text-sm leading-tight">Settings</span>
-                <span className="text-[10px] text-gray-500 leading-tight mt-0.5">Manage preferences</span>
-              </div>
-            </button>
-
-            {isDesktopCollapsed && !isSmallScreen && hoveredItem === 'settings' && (
-              <div
-                className="fixed left-[4.5rem] z-[200] pointer-events-none"
-                style={{ top: `${document.querySelector('button[aria-label="Settings"]')?.getBoundingClientRect().top || 0}px` }}
-              >
-                <div className="bg-gray-900 text-white px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap text-xs">
-                  <div className="font-semibold">Settings</div>
-                  <div className="text-[10px] text-gray-300 mt-0.5">Manage preferences</div>
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Logout */}
-          <div
-            className="relative"
-            onMouseEnter={() => setHoveredItem('logout')}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <button
-              onClick={handleLogout}
-              aria-label="Logout"
-              className={`flex items-center gap-2.5 w-full rounded-lg text-red-400 hover:bg-red-500/10 transition-all duration-200 group
-                ${isDesktopCollapsed && !isSmallScreen ? 'px-2 py-2.5 justify-center' : 'px-3 py-2.5'}`}
-            >
-              <MdLogout size={19} className="text-red-400 flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-              <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
-                <span className="font-medium text-sm leading-tight">Logout</span>
-                <span className="text-[10px] text-red-500 leading-tight mt-0.5">Sign out securely</span>
-              </div>
-            </button>
-
-            {isDesktopCollapsed && !isSmallScreen && hoveredItem === 'logout' && (
-              <div
-                className="fixed left-[4.5rem] z-[200] pointer-events-none"
-                style={{ top: `${document.querySelector('button[aria-label="Logout"]')?.getBoundingClientRect().top || 0}px` }}
-              >
-                <div className="bg-gray-900 text-white px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap text-xs">
-                  <div className="font-semibold">Logout</div>
-                  <div className="text-[10px] text-gray-300 mt-0.5">Sign out securely</div>
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </aside>
-      {!isSmallScreen && isDesktopCollapsed && (
-        <button
-          onClick={toggleDesktop}
-          style={{ left: '52px', top: '20px' }}
-          className="fixed w-6 h-6 bg-[#0F172A] border-2 border-gray-500 rounded-full flex items-center justify-center hover:bg-gray-700 hover:border-gray-300 transition-all duration-200 shadow-lg z-[50]"
-          aria-label="Expand sidebar"
-        >
-          <ChevronRight className="w-3 h-3 text-gray-300" />
-        </button>
-      )}
+        {!isSmallScreen && (
+          <button
+            onClick={toggleDesktop}
+            style={{ left: isDesktopCollapsed ? '70px' : '246px', top: '24px' }}
+            className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-[60] group"
+            aria-label={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+            {isDesktopCollapsed ? (
+              <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                ) : (
+              <ChevronLeft className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                )}
+            </button>
+        )}
     </>
   )
 }
