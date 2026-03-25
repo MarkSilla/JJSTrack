@@ -19,7 +19,6 @@ function App() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Check if token exists in localStorage
         const token = localStorage.getItem('adminToken')
         if (token) {
             setIsAuthenticated(true)

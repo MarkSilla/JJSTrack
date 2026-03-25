@@ -228,7 +228,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isRepair) {
             if (step === 2) return selectedOptions.length > 0
-            if (step === 3) return true // Photo is optional, can skip or add
+            if (step === 3) return true
             if (step === 4) return isRepairDetailsComplete()
             if (step === 5) return !!selectedDate && !!selectedSlot
             return true
@@ -236,14 +236,14 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isJersey) {
             if (step === 2) return players.length > 0
-            if (step === 3) return true // Design is optional, can skip or add
+            if (step === 3) return true 
             if (step === 4) return [contact.fullName, contact.phone, contact.email].every((field) => field && field.trim().length > 0)
             return true
         }
 
         if (isOrg) {
             if (step === 2) return members.length > 0
-            if (step === 3) return true // Design is optional, can skip or add
+            if (step === 3) return true 
             if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email].every((field) => field && field.trim().length > 0)
             return true
         }

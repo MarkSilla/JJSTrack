@@ -1,16 +1,3 @@
-/**
- * OrderDetailPage.jsx
- *
- * Standalone page for /orders/:orderId
- *
- * Responsibilities:
- *  - Reads `orderId` from the URL via `useParams`
- *  - Fetches all orders + bookings (same logic as AdOrder)
- *  - Finds the matching order using (order.id || order._id) === orderId
- *  - Renders <OrderDetail> in full-page mode (no side panel)
- *  - Back button navigates to /orders
- */
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -250,7 +237,7 @@ export default function OrderDetailPage() {
             <div className="font-inter min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
                 <p className="text-gray-500 font-medium">Order not found: <code className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{orderId}</code></p>
                 <button
-                    onClick={() => navigate('/orders')}
+                    onClick={() => navigate('/admin/orders')}
                     className="flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 bg-transparent border-none cursor-pointer"
                 >
                     <ArrowLeft size={16} /> Back to Orders
