@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
 import img from '../../assets/img.js'
+import { bookingApi } from '../../../services/bookingApi.js';
 
 // Repair steps
 import StepService from '../repairForm/StepService.jsx'
