@@ -86,107 +86,110 @@ const LandingNavbar = () => {
       `}</style>
 
       <div className="container mx-auto px-6 py-2 2xl:mx-24 py-2 px-0">
-        <div className="flex justify-between items-center">
-          <ul className="hidden xl:flex gap-6 items-center md:gap-3">
-            <li>
-              <a
-                href="#home"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                Home
-              </a>
-            </li>
-            <li>
-              <a
-                href="#features"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                Features
-              </a>
-            </li>
-            <li>
-              <a
-                href="#about"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                About
-              </a>
-            </li>
-            <li>
-              <a
-                href="#location"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                Location
-              </a>
-            </li>
-            <li>
-              <a
-                href="#testimonials"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                Testimonials
-              </a>
-            </li>
-            <li>
-              <a
-                href="#FAQ"
-                className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                  }`}
-              >
-                FAQ
-              </a>
-            </li>
-          </ul>
-          <div className={`z-50 flex items-center transition-all duration-500 ease-in-out
-             ${scrolled ? "flex-row items-center " : "flex-col items-center "}
-                `} >
-            <img src={img.jjslogo1} alt="logo" className={`w-10 h-10
-              ${scrolled ? "w-12 h-12" : "w-14 h-14"}
-            `} />
-            <div className={`flex flex-col transition-all duration-500
-            ${scrolled ? "ml-3 items-start" : "items-center mt-2"}
-            `}>
-              <h1 className={`font-playfair font-bold transition-all duration-500
-            ${scrolled ? "text-lg text-[#1E293B]" : "text-xl text-white"}
-            `}>
-                JJS Track
-              </h1>
+        <div className="flex justify-between items-center w-full">
+          {/* Nav Links (Left Side) */}
+          <div className="flex-1 flex justify-start">
+            <ul className="hidden xl:flex gap-6 items-center md:gap-3">
+              <li>
+                <a
+                  href="#home"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  Home
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#features"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  Features
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#about"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  About
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#location"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  Location
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#testimonials"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  Testimonials
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#FAQ"
+                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                    }`}
+                >
+                  FAQ
+                </a>
+              </li>
+            </ul>
+          </div>
 
-              <span
-                className={`text-xs font-inter font-light transition-all duration-500
-        ${scrolled ? "text-slate-900" : "text-slate-300"}
-      `}
-              >
-                Jennoel-Jennyl Sportswear
-              </span>
+          {/* Logo (Centered) */}
+          <div className="flex-shrink-0 flex justify-center">
+            <div className={`z-50 flex items-center transition-all duration-500 ease-in-out
+               ${scrolled ? "flex-row items-center " : "flex-col items-center "}
+                  `} >
+              <img src={img.jjslogo1} alt="logo" className={`w-10 h-10
+                ${scrolled ? "w-12 h-12" : "w-14 h-14"}
+              `} />
+              <div className={`flex flex-col transition-all duration-500
+              ${scrolled ? "ml-3 items-start" : "items-center mt-2"}
+              `}>
+                <span
+                  className={`text-xs font-inter font-light transition-all duration-900
+          ${scrolled ? "opacity-100" : "opacity-0"}
+        `}
+                >
+                  Jennoel-Jennyl Sportswear
+                </span>
+              </div>
             </div>
           </div>
-          <button
-            onClick={handleSignIn}
-            className={`hidden xl:block px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
-              }`}
-          >
-            Sign In
-          </button>
-          <div
-            className={` xl:hidden flex w-10 h-10 cursor-pointer items-center justify-center rounded-lg transition-all duration-500 ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
-              }`}
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <span
-              className={`material-symbols-outlined transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
+          <div className="flex-1 flex justify-end items-center">
+            <button
+              onClick={handleSignIn}
+              className={`hidden xl:block px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
-              {isOpen ? 'close' : 'menu'}
-            </span>
+              Sign In
+            </button>
+            <div
+              className={` xl:hidden flex w-10 h-10 cursor-pointer items-center justify-center rounded-lg transition-all duration-500 ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
+                }`}
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <span
+                className={`material-symbols-outlined transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
+                  }`}
+              >
+                {isOpen ? 'close' : 'menu'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
