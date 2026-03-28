@@ -181,7 +181,7 @@ const SignupPage = () => {
 
       {/* Left Panel */}
       <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.shop})` }} />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.front})` }} />
         <div className="absolute inset-0 bg-slate-900/90" />
         <img src={img.line1} alt="lineTop" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none" />
         <img src={img.line2} alt="lineRight" className="absolute xl:right-10 md:right-[-10px] top-0 h-full w-auto opacity-40 pointer-events-none origin-center" />
@@ -300,16 +300,6 @@ const SignupPage = () => {
             </div>
 
             <div className="mb-4">
-              <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter password (min 6 characters)"
-                disabled={loading}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
-              />
               <div className="relative">
                 <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Password</label>
                 <input
