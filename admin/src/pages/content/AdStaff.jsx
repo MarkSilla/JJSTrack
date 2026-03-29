@@ -1,27 +1,88 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, } from "lucide-react";
 import StatCard from "./Staff/StatCard";
 import AddEmployeeModal from "./Staff/AddEmployeeModal";
 import ProfilePanel from "./Staff/ProfilePanel";
-
-// Mock Data
-const MOCK_EMPLOYEES = [
-    { id: "EMP-001", name: "Jane Smith", email: "jane.s@jjs.com", contact: "+63 912 345 6789", type: "Full Time", position: "Tailor", status: "Active", hired: "2022-03-15", dob: "1990-07-22", gender: "Female", address: "123 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-03-10 09:14", created: "2022-03-15", avatar: "JS", color: "#2563EB", orders: 142, productivity: 94, tasks: ["Suit tailoring", "Gown fitting", "Fabric cutting"], emergencyContact: { name: "John Smith", relationship: "Spouse", contact: "+63 912 000 0001" } },
-    { id: "EMP-002", name: "Marco Rossi", email: "marco.r@jjs.com", contact: "+63 917 234 5678", type: "Part Time", position: "Tailor", status: "Active", hired: "2023-01-08", dob: "1988-11-04", gender: "Male", address: "456 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-03-10 08:52", created: "2023-01-08", avatar: "MR", color: "#0891B2", orders: 98, productivity: 87, tasks: ["Shirt repairs", "Pants repair"], emergencyContact: { name: "Anna Rossi", relationship: "Sister", contact: "+63 917 000 0002" } },
-    { id: "EMP-003", name: "Remy Cruz", email: "remy.c@jjs.com", contact: "+63 918 876 5432", type: "Full Time", position: "Tailor", status: "Active", hired: "2023-06-20", dob: "1993-04-15", gender: "Male", address: "789 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-03-09 17:30", created: "2023-06-20", avatar: "RC", color: "#7C3AED", orders: 76, productivity: 82, tasks: ["Jersey printing", "Team uniforms"], emergencyContact: { name: "Elena Cruz", relationship: "Mother", contact: "+63 918 000 0003" } },
-    { id: "EMP-004", name: "Lina Torres", email: "lina.t@jjs.com", contact: "+63 919 765 4321", type: "Full Time", position: "Presser", status: "Active", hired: "2023-09-01", dob: "1995-02-28", gender: "Female", address: "321 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-03-10 07:45", created: "2023-09-01", avatar: "LT", color: "#059669", orders: 0, productivity: 91, tasks: ["Customer intake", "Order processing", "Scheduling"], emergencyContact: { name: "Mark Torres", relationship: "Husband", contact: "+63 919 000 0004" } },
-    { id: "EMP-005", name: "Ben Aquino", email: "ben.a@jjs.com", contact: "+63 920 654 3210", type: "Part Time", position: "Presser", status: "Active", hired: "2024-02-14", dob: "1998-09-10", gender: "Male", address: "654 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-03-08 16:22", created: "2024-02-14", avatar: "BA", color: "#D97706", orders: 34, productivity: 78, tasks: ["Fabric cutting", "Basic repairs"], emergencyContact: { name: "Sarah Aquino", relationship: "Mother", contact: "+63 920 000 0005" } },
-    { id: "EMP-006", name: "Sofia Villanueva", email: "sofia.v@jjs.com", contact: "+63 921 543 2109", type: "Full Time", position: "Layout Artist", status: "Active", hired: "2022-11-03", dob: "1991-06-18", gender: "Female", address: "987 Gordon Heights, Olongapo City", role: "Manager", lastLogin: "2026-03-10 10:01", created: "2022-11-03", avatar: "SV", color: "#BE185D", orders: 58, productivity: 96, tasks: ["Jersey layout", "Design proofing", "Client mockups"], emergencyContact: { name: "Jose Villanueva", relationship: "Father", contact: "+63 921 000 0006" } },
-    { id: "EMP-007", name: "Carlos Mendez", email: "carlos.m@jjs.com", contact: "+63 922 432 1098", type: "Contractual", position: "Presser", status: "Inactive", hired: "2023-04-17", dob: "1987-12-05", gender: "Male", address: "147 Gordon Heights, Olongapo City", role: "Employee", lastLogin: "2026-02-28 14:10", created: "2023-04-17", avatar: "CM", color: "#64748B", orders: 61, productivity: 72, tasks: ["Screen printing", "Heat transfer"], emergencyContact: { name: "Maria Mendez", relationship: "Wife", contact: "+63 922 000 0007" } },
-    { id: "EMP-008", name: "Rita Guzman", email: "rita.g@jjs.com", contact: "+63 923 321 0987", type: "Full Time", position: "Bookkeeper", status: "Active", hired: "2021-08-09", dob: "1985-03-14", gender: "Female", address: "258 Gordon Heights, Olongapo City", role: "Manager", lastLogin: "2026-03-10 11:30", created: "2021-08-09", avatar: "RG", color: "#1D4ED8", orders: 0, productivity: 99, tasks: ["Staff management", "Quality control", "Reporting"], emergencyContact: { name: "Luis Guzman", relationship: "Brother", contact: "+63 923 000 0008" } },
-    { id: "EMP-009", name: "Danny Pascual", email: "danny.p@jjs.com", contact: "+63 924 210 9876", type: "Contractual", position: "Repair Technician", status: "Suspended", hired: "2023-07-22", dob: "1992-08-30", gender: "Male", address: "369 Aurora Blvd, Cubao", role: "Employee", lastLogin: "2026-01-15 09:00", created: "2023-07-22", avatar: "DP", color: "#64748B", orders: 22, productivity: 55, tasks: ["Zipper repair", "Stitching fixes"], emergencyContact: { name: "Nina Pascual", relationship: "Sister", contact: "+63 924 000 0009" } },
-    { id: "EMP-010", name: "Grace Lim", email: "grace.lim@jjs.com", contact: "+63 925 109 8765", type: "Full Time", position: "Bookkeeper", status: "Active", hired: "2022-05-30", dob: "1994-01-07", gender: "Female", address: "741 Ortigas Ave, Pasig", role: "Employee", lastLogin: "2026-03-09 15:45", created: "2022-05-30", avatar: "GL", color: "#0F766E", orders: 0, productivity: 88, tasks: ["Invoice processing", "Payroll tracking"], emergencyContact: { name: "Robert Lim", relationship: "Father", contact: "+63 925 000 0010" } },
-];
+import { staffApi } from "../../services/staffApi";
 
 const EMP_TYPES = ["All Types", "Full Time", "Part Time", "Contractual"];
 const STATUSES = ["All Status", "Active", "Inactive", "Suspended"];
-const SORT_OPTS = ["Newest", "Oldest", "Name A–Z"];
-const POSITIONS = ["Tailor", "Layout Artist", "Bookkeeper", "Presser", "Repair Technician"];
+const SORT_OPTS = ["Newest", "Oldest", "Name A-Z"];
+
+const COLOR_PALETTE = ["#2563EB", "#0891B2", "#7C3AED", "#059669", "#D97706", "#BE185D", "#1D4ED8", "#0F766E", "#EA580C", "#64748B"];
+
+const toDateOnly = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+};
+
+const toDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+};
+
+const getInitials = (name = "") => {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "EM";
+    return parts.map(part => part[0]).join("").toUpperCase().slice(0, 2);
+};
+
+const pickColor = (seed = "") => {
+    if (!seed) return COLOR_PALETTE[0];
+    const index = [...String(seed)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % COLOR_PALETTE.length;
+    return COLOR_PALETTE[index];
+};
+
+const mapStaffToEmployee = (staff, index = 0) => {
+    const sequence = String(index + 1).padStart(3, "0");
+    const id = staff.employeeId || `EMP-${sequence}`;
+    const fullName = staff.fullName || `${staff.firstName || ""} ${staff.lastName || ""}`.replace(/\s+/g, " ").trim();
+    const safeName = fullName || "Unnamed Staff";
+    return {
+        ...staff,
+        _id: staff._id,
+        id,
+        firstName: staff.firstName || "",
+        lastName: staff.lastName || "",
+        name: safeName,
+        email: staff.email || "",
+        contact: staff.phoneNumber || "",
+        type: staff.employmentType || "Full Time",
+        position: staff.position || "Tailor",
+        status: staff.accountStatus || "Active",
+        hired: toDateOnly(staff.hiredDate || staff.createdAt) || "-",
+        dob: toDateOnly(staff.dob) || "-",
+        gender: staff.gender || "Male",
+        address: staff.address || "-",
+        role: staff.systemRole || "Employee",
+        lastLogin: toDateTime(staff.lastLoginAt),
+        created: toDateOnly(staff.createdAt) || "-",
+        avatar: getInitials(safeName),
+        color: pickColor(staff._id || id),
+        orders: Number.isFinite(Number(staff.ordersCompleted)) ? Number(staff.ordersCompleted) : 0,
+        productivity: Number.isFinite(Number(staff.productivityScore)) ? Number(staff.productivityScore) : 0,
+        tasks: Array.isArray(staff.tasks) ? staff.tasks : [],
+        emergencyContact: staff.emergencyContact || { name: "", relationship: "", contact: "" },
+        regionCode: staff.regionCode || "",
+        regionName: staff.regionName || "",
+        provinceCode: staff.provinceCode || "",
+        provinceName: staff.provinceName || "",
+        cityCode: staff.cityCode || "",
+        cityName: staff.cityName || "",
+        brgyCode: staff.brgyCode || "",
+        brgyName: staff.brgyName || "",
+        street: staff.street || "",
+    };
+};
 
 // Helpers
 const STATUS_CONFIG = {
@@ -35,13 +96,6 @@ const TYPE_CONFIG = {
     "Part Time": { bg: "bg-cyan-50", text: "text-cyan-700" },
     "Contractual": { bg: "bg-orange-50", text: "text-orange-700" },
 };
-
-const genPassword = () => {
-    const chars = "ABCDEFGHJKMNPQRSTWXYZabcdefghjkmnpqrstwxyz23456789!@#$";
-    return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-};
-
-const genId = () => "EMP-" + String(Math.floor(Math.random() * 900) + 100);
 
 const Avatar = ({ initials, color, size = 36 }) => (
     <div style={{ width: size, height: size, background: color + "18", border: `1.5px solid ${color}30`, borderRadius: size * 0.3, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -130,8 +184,6 @@ const UsersIcon = ({ size, className, style }) => (
 );
 
 const EmployeeCard = ({ emp, onView, onDeactivate }) => {
-    const [menuOpen, setMenuOpen] = useState(false);
-
     return (
         <div
             className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 cursor-pointer active:bg-slate-50 transition-colors"
@@ -167,7 +219,9 @@ const EmployeeCard = ({ emp, onView, onDeactivate }) => {
 };
 
 const AdStaff = () => {
-    const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
+    const [employees, setEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [apiError, setApiError] = useState("");
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("All Types");
     const [statusFilter, setStatusFilter] = useState("All Status");
@@ -176,7 +230,32 @@ const AdStaff = () => {
     const [editingEmp, setEditingEmp] = useState(null);
     const [selected, setSelected] = useState(null);
 
-    //  edit
+    const readErrorMessage = (error, fallback = "Request failed") =>
+        error?.response?.data?.message || error?.message || fallback;
+
+    const fetchEmployees = useCallback(async () => {
+        try {
+            setLoading(true);
+            setApiError("");
+            const response = await staffApi.getAllStaff();
+            const rawStaff = Array.isArray(response?.staff) ? response.staff : Array.isArray(response) ? response : [];
+            const mapped = rawStaff.map((staff, index) => mapStaffToEmployee(staff, index));
+            setEmployees(mapped);
+            setSelected(prev => (prev ? mapped.find(item => item._id === prev._id) || null : null));
+        } catch (error) {
+            console.error("Failed to fetch staff:", error);
+            setApiError(readErrorMessage(error, "Failed to load staff list"));
+            setEmployees([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchEmployees();
+    }, [fetchEmployees]);
+
+    // edit
     useEffect(() => {
         const handleEdit = (e) => {
             setEditingEmp(e.detail);
@@ -193,7 +272,7 @@ const AdStaff = () => {
         if (statusFilter !== "All Status") list = list.filter(e => e.status === statusFilter);
         if (sortBy === "Newest") list.sort((a, b) => new Date(b.hired) - new Date(a.hired));
         if (sortBy === "Oldest") list.sort((a, b) => new Date(a.hired) - new Date(b.hired));
-        if (sortBy === "Name A–Z") list.sort((a, b) => a.name.localeCompare(b.name));
+        if (sortBy === "Name A-Z") list.sort((a, b) => a.name.localeCompare(b.name));
         return list;
     }, [employees, search, typeFilter, statusFilter, sortBy]);
 
@@ -204,8 +283,47 @@ const AdStaff = () => {
         { label: "Suspended", value: employees.filter(e => e.status === "Suspended").length, icon: XCircle, color: "#DC2626" },
     ]), [employees]);
 
-    const deactivate = (id) => setEmployees(p => p.map(e => e.id === id ? { ...e, status: "Inactive" } : e));
-    const activeFiltersCount = [typeFilter !== "All Types", statusFilter !== "All Status", sortBy !== "Newest"].filter(Boolean).length;
+    const deactivate = async (id) => {
+        const target = employees.find(emp => emp.id === id);
+        if (!target?._id) return;
+
+        try {
+            const response = await staffApi.deactivateStaff(target._id);
+            const updatedRaw = response?.staff || response;
+            setEmployees(prev => prev.map((emp, index) => (
+                emp._id === target._id ? mapStaffToEmployee(updatedRaw, index) : emp
+            )));
+            setSelected(prev => (prev && prev._id === target._id ? mapStaffToEmployee(updatedRaw) : prev));
+        } catch (error) {
+            console.error("Failed to deactivate staff:", error);
+            setApiError(readErrorMessage(error, "Failed to deactivate staff account"));
+        }
+    };
+
+    const saveEmployee = async (emp) => {
+        setApiError("");
+        try {
+            if (editingEmp?._id) {
+                const response = await staffApi.updateStaff(editingEmp._id, emp);
+                const updatedRaw = response?.staff || response;
+                setEmployees(prev => prev.map((item, index) => (
+                    item._id === editingEmp._id ? mapStaffToEmployee(updatedRaw, index) : item
+                )));
+                setSelected(prev => (prev && prev._id === editingEmp._id ? mapStaffToEmployee(updatedRaw) : prev));
+                setEditingEmp(null);
+                return;
+            }
+
+            const response = await staffApi.createStaff(emp);
+            const createdRaw = response?.staff || response;
+            setEmployees(prev => [mapStaffToEmployee(createdRaw, prev.length), ...prev]);
+        } catch (error) {
+            console.error("Failed to save staff:", error);
+            const message = readErrorMessage(error, "Failed to save staff account");
+            setApiError(message);
+            throw new Error(message);
+        }
+    };
 
     return (
         <div className="font-inter min-h-screen overflow-x-hidden">
@@ -216,13 +334,18 @@ const AdStaff = () => {
                         <p className="text-[11px] sm:text-[13px] text-slate-500 mt-0.5">Manage employee accounts, roles, and system access.</p>
                     </div>
                     <button
-                        onClick={() => setShowModal(true)}
+                        onClick={() => { setEditingEmp(null); setShowModal(true); }}
                         className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all shadow-md active:scale-95 shrink-0"
                     >
                         <Plus size={15} />
                         <span className="hidden xs:inline sm:inline">Add Employee</span>
                     </button>
                 </div>
+                {apiError && (
+                    <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] font-medium text-red-700">
+                        {apiError}
+                    </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                     {stats.map((s, i) => (
                         <StatCard key={i} {...s} />
@@ -235,7 +358,7 @@ const AdStaff = () => {
                             <input
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                placeholder="Search by name or ID…"
+                                placeholder="Search by name or ID..."
                                 className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[12px] text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
                             />
                         </div>
@@ -253,7 +376,14 @@ const AdStaff = () => {
                     </div>
                 </div>
                 <div className="lg:hidden space-y-3">
-                    {filtered.length === 0 ? (
+                    {loading ? (
+                        <div className="bg-white rounded-2xl border border-slate-100 py-16 flex flex-col items-center gap-3 text-slate-400">
+                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
+                                <Search size={22} className="text-slate-200" />
+                            </div>
+                            <span className="text-[13px] font-medium">Loading staff...</span>
+                        </div>
+                    ) : filtered.length === 0 ? (
                         <div className="bg-white rounded-2xl border border-slate-100 py-16 flex flex-col items-center gap-3 text-slate-400">
                             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
                                 <Search size={22} className="text-slate-200" />
@@ -287,7 +417,18 @@ const AdStaff = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.length === 0 ? (
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-20 text-slate-400">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
+                                                    <Search size={24} className="text-slate-200" />
+                                                </div>
+                                                <span className="text-[13px] font-medium">Loading staff list...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : filtered.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="text-center py-20 text-slate-400">
                                             <div className="flex flex-col items-center gap-3">
@@ -348,16 +489,19 @@ const AdStaff = () => {
                 </div>
             </div>
 
-            {showModal && <AddEmployeeModal initialData={editingEmp} onClose={() => { setShowModal(false); setEditingEmp(null); }} onAdd={(emp) => {
-                if (editingEmp) {
-                    setEmployees(p => p.map(e => e.id === emp.id ? emp : e));
-                } else {
-                    setEmployees(p => [emp, ...p]);
-                }
-            }} />}
+            {showModal && (
+                <AddEmployeeModal
+                    employees={employees}
+                    initialData={editingEmp}
+                    onClose={() => { setShowModal(false); setEditingEmp(null); }}
+                    onAdd={saveEmployee}
+                />
+            )}
             {selected && <ProfilePanel emp={selected} onClose={() => setSelected(null)} />}
         </div>
     );
 };
 
 export default AdStaff;
+
+

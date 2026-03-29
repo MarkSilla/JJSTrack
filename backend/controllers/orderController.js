@@ -304,8 +304,12 @@ export const getOrderStats = async (req, res) => {
 
     const totalOrders = await orderModel.countDocuments(query);
     const inProgress = await orderModel.countDocuments({ ...query, status: 'In Progress' });
-    const completed = await orderModel.countDocuments({ ...query, status: 'Completed' });
+    const completed = await orderModel.countDocuments({
+      ...query,
+      status: { $in: ['Completed', 'Released'] }
+    });
     const pending = await orderModel.countDocuments({ ...query, status: 'Pending' });
+    const cancelled = await orderModel.countDocuments({ ...query, status: 'Cancelled' });
 
     // Optimized total spent calculation
     const invoices = await invoiceModel.find();
@@ -322,6 +326,7 @@ export const getOrderStats = async (req, res) => {
         inProgress,
         completed,
         pending,
+        cancelled,
         spent: totalSpent,
       },
     });

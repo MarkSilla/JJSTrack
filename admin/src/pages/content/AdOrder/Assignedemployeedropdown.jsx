@@ -1,13 +1,35 @@
-import React, { useState, useRef, useEffect } from 'react';
+ aport React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, UserCheck, X, Check } from 'lucide-react';
-import { ASSIGNABLE_EMPLOYEES } from './Constants.js';
+import { staffApi } from '../../../services/staffApi';
+import { mapStaffToEmployee } from '../../../utils/mapStaffToEmployee.js';
 
 export default function AssignEmployeeDropdown({ currentId, onAssign }) {
+    const [employees, setEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [dropdownStyle, setDropdownStyle] = useState({});
     const ref = useRef(null);
     const buttonRef = useRef(null);
-    const current = ASSIGNABLE_EMPLOYEES.find(e => e.id === currentId);
+    const current = employees.find(e => e.employeeId === currentId || e.id === currentId);
+
+    const fetchMyStaff = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await staffApi.getMyStaff();
+            const rawStaff = Array.isArray(response?.staff) ? response.staff : [];
+            const mapped = rawStaff.map((staff, index) => mapStaffToEmployee(staff, index));
+            setEmployees(mapped);
+        } catch (error) {
+            console.error("Failed to fetch my staff:", error);
+            setEmployees([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchMyStaff();
+    }, [fetchMyStaff]);
 
     // Calculate fixed position from button's bounding rect
     const handleOpen = () => {
@@ -86,7 +108,7 @@ export default function AssignEmployeeDropdown({ currentId, onAssign }) {
                             </div>
                             <span className="font-medium">Unassigned</span>
                         </button>
-                        {ASSIGNABLE_EMPLOYEES.map(emp => (
+                        {employees.map(emp => (
                             <button
                                 key={emp.id}
                                 onClick={() => { onAssign(emp.id); setOpen(false); }}

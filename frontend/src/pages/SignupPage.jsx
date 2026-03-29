@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, googleProvider } from '../../config/firebase.js';
@@ -20,7 +20,41 @@ const SignupPage = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmedPassword, setConfirmedPassword] = useState(false)
+  const [activeLegalDoc, setActiveLegalDoc] = useState(null)
   const navigate = useNavigate();
+
+  const legalDocuments = {
+    privacy: {
+      title: 'Privacy Policy',
+      href: '/privacy-policy',
+    },
+    terms: {
+      title: 'Terms of Use',
+      href: '/terms-of-use',
+    },
+  };
+
+  const openLegalModal = (docKey) => setActiveLegalDoc(docKey);
+  const closeLegalModal = () => setActiveLegalDoc(null);
+  const selectedDocument = activeLegalDoc ? legalDocuments[activeLegalDoc] : null;
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        closeLegalModal();
+      }
+    };
+
+    if (activeLegalDoc) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [activeLegalDoc]);
 
   const isFormValid = () => {
     return (
@@ -38,10 +72,10 @@ const SignupPage = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
     setError('');
   };
@@ -346,17 +380,36 @@ const SignupPage = () => {
                 </button>
               </div>
             </div>
-            <div className="flex mb-6 mt-6 justify-center ">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex mb-6 mt-6 justify-center">
+              <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="checkbox"
                   name="agreedToTerms"
+                  id="agreedToTerms"
                   checked={formData.agreedToTerms}
                   onChange={handleChange}
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-xs text-gray-600">By using this app, you agree to our <span className="underline hover:text-blue-600 transition-colors cursor-pointer">Privacy Policy</span> and <span className="underline hover:text-blue-600 transition-colors cursor-pointer">Terms of Use</span>.</span>
-              </label>
+                <label htmlFor="agreedToTerms" className="text-xs text-gray-600 cursor-pointer">
+                  By using this app, you agree to our
+                </label>
+                <button
+                  type="button"
+                  onClick={() => openLegalModal('privacy')}
+                  className="text-xs underline hover:text-blue-600 transition-colors"
+                >
+                  Privacy Policy
+                </button>
+                <span className="text-xs text-gray-600">and</span>
+                <button
+                  type="button"
+                  onClick={() => openLegalModal('terms')}
+                  className="text-xs underline hover:text-blue-600 transition-colors"
+                >
+                  Terms of Use
+                </button>
+                <span className="text-xs text-gray-600">.</span>
+              </div>
             </div>
             <button
               type="submit"
@@ -384,6 +437,42 @@ const SignupPage = () => {
           </button>
         </div>
       </div>
+
+      {selectedDocument && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close legal document modal"
+            className="absolute inset-0 bg-black/65"
+            onClick={closeLegalModal}
+          />
+          <div
+            className="relative z-10 w-full max-w-6xl h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200"
+            role="dialog"
+            aria-modal="true"
+            aria-label={selectedDocument.title}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+              <h2 className="text-base md:text-lg font-semibold text-slate-800">
+                {selectedDocument.title}
+              </h2>
+              <button
+                type="button"
+                onClick={closeLegalModal}
+                className="rounded-md px-3 py-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+
+            <iframe
+              title={selectedDocument.title}
+              src={selectedDocument.href}
+              className="w-full h-[calc(90vh-57px)] border-0"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

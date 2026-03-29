@@ -30,6 +30,17 @@ export const orderApi = {
     }
   },
 
+  // Get aggregated order stats
+  getOrderStats: async () => {
+    try {
+      const response = await api.get('/orders/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching order stats:', error);
+      throw error;
+    }
+  },
+
   // Get order by ID
   getOrderById: async (id) => {
     try {

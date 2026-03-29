@@ -1,13 +1,26 @@
-import { useState, useEffect } from "react";
-import { Plus, X, RefreshCw, Copy } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, X, Copy } from "lucide-react";
 import { regions, provinces, cities, barangays } from "select-philippines-address";
 
-const genPassword = () => {
-    const chars = "ABCDEFGHJKMNPQRSTWXYZabcdefghjkmnpqrstwxyz123456789";
-    return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+const parseEmpSequence = (id = "") => {
+    const match = /^EMP-(\d+)(?:-(\d{4}))?$/.exec(String(id).trim());
+    return match ? Number(match[1]) : null;
 };
 
-const genId = () => "EMP-" + String(Math.floor(Math.random() * 100) + 10);
+const splitName = (name = "") => {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return { firstName: "", lastName: "" };
+    if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+    return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+};
+
+const formatPasswordBase = (lastName = "") => {
+    const clean = String(lastName).trim().replace(/\s+/g, "").replace(/[^a-zA-Z0-9]/g, "");
+    if (!clean) return "Employee";
+    return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+};
+
+const buildPassword = (lastName, sequenceLabel) => `${formatPasswordBase(lastName)}${sequenceLabel}`;
 
 const EMP_TYPES = ["Full Time", "Part Time", "Contractual"];
 const ROLES = ["Tailor", "Layout Artist", "Bookkeeper", "Presser", "Repair Technician"];
@@ -24,27 +37,84 @@ const Field = ({ label, error, children, cls = "" }) => (
     </div>
 );
 
-const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
+const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
+    const currentYear = new Date().getFullYear();
+    const existingName = useMemo(() => splitName(initialData?.name || ""), [initialData?.name]);
+
+    const nextSequence = useMemo(() => {
+        if (initialData?.id) {
+            const currentSequence = parseEmpSequence(initialData.id);
+            if (currentSequence) return currentSequence;
+        }
+
+        const maxSequence = employees.reduce((max, employee) => {
+            const seq = parseEmpSequence(employee.id);
+            if (!seq) return max;
+            return Math.max(max, seq);
+        }, 0);
+
+        return maxSequence + 1;
+    }, [employees, initialData?.id]);
+
+    const sequenceLabel = String(nextSequence).padStart(3, "0");
+    const generatedId = `EMP-${sequenceLabel}-${currentYear}`;
+
     const [form, setForm] = useState(() => {
         const init = initialData || {};
         return {
-            name: init.name || "", id: init.id || genId(), email: init.email || "", contact: init.contact || "",
-            type: init.type || "Full Time", position: init.position || "Tailor", hired: init.hired || new Date().toISOString().split("T")[0],
-            status: init.status || "Active", role: init.role || "Employee", password: init.password || genPassword(), dob: init.dob || "", gender: init.gender || "Male",
-            emergencyName: init.emergencyContact?.name || "", emergencyRelation: init.emergencyContact?.relationship || "", emergencyContactNum: init.emergencyContact?.contact || "",
+            firstName: init.firstName || existingName.firstName,
+            lastName: init.lastName || existingName.lastName,
+            id: init.id || generatedId,
+            email: init.email || "",
+            contact: init.contact || "",
+            type: init.type || "Full Time",
+            position: init.position || "Tailor",
+            hired: init.hired || new Date().toISOString().split("T")[0],
+            status: init.status || "Active",
+            role: init.role || "Employee",
+            password: init.password || (initialData ? "********" : buildPassword(init.lastName || existingName.lastName, sequenceLabel)),
+            dob: init.dob || "",
+            gender: init.gender || "Male",
+            emergencyName: init.emergencyContact?.name || "",
+            emergencyRelation: init.emergencyContact?.relationship || "",
+            emergencyContactNum: init.emergencyContact?.contact || "",
 
             // Address parts
-            regionCode: init.regionCode || "", regionName: init.regionName || "",
-            provinceCode: init.provinceCode || "", provinceName: init.provinceName || "",
-            cityCode: init.cityCode || "", cityName: init.cityName || "",
-            brgyCode: init.brgyCode || "", brgyName: init.brgyName || "",
+            regionCode: init.regionCode || "",
+            regionName: init.regionName || "",
+            provinceCode: init.provinceCode || "",
+            provinceName: init.provinceName || "",
+            cityCode: init.cityCode || "",
+            cityName: init.cityName || "",
+            brgyCode: init.brgyCode || "",
+            brgyName: init.brgyName || "",
             street: init.street || init.address || ""
         };
     });
     const [errors, setErrors] = useState({});
     const [copied, setCopied] = useState(false);
+    const [submitError, setSubmitError] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (initialData) return;
+
+        setForm((current) => {
+            const nextPassword = buildPassword(current.lastName, sequenceLabel);
+            if (current.id === generatedId && current.password === nextPassword) return current;
+            return { ...current, id: generatedId, password: nextPassword };
+        });
+    }, [generatedId, initialData, sequenceLabel]);
+
     const set = (k, v) => {
-        setForm(f => ({ ...f, [k]: v }));
+        setForm((current) => {
+            const updated = { ...current, [k]: v };
+            if (!initialData && k === "lastName") {
+                updated.password = buildPassword(v, sequenceLabel);
+            }
+            return updated;
+        });
+        if (submitError) setSubmitError("");
         if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
     };
 
@@ -89,9 +159,10 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
         setForm(f => ({ ...f, brgyCode: code, brgyName: code ? name : "" }));
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const newErrors = {};
-        if (!form.name.trim()) newErrors.name = "Required";
+        if (!form.firstName.trim()) newErrors.firstName = "Required";
+        if (!form.lastName.trim()) newErrors.lastName = "Required";
         if (!form.dob) newErrors.dob = "Required";
         if (!form.email.trim()) newErrors.email = "Required";
         if (!form.contact.trim()) newErrors.contact = "Required";
@@ -110,17 +181,21 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
             return;
         }
 
+        const fullName = `${form.firstName} ${form.lastName}`.replace(/\s+/g, " ").trim();
         const addrParts = [form.street, form.brgyName, form.cityName, form.provinceName, form.regionName].filter(Boolean);
         const newEmp = {
             ...initialData,
             ...form,
+            name: fullName,
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
             address: addrParts.join(", "),
-            avatar: form.name.split(" ").map(n => n[0]).toUpperCase().join("").slice(0, 2),
+            avatar: fullName.split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2),
             color: initialData?.color || "#2563EB",
             orders: initialData?.orders ?? 0,
             productivity: initialData?.productivity ?? 0,
             tasks: initialData?.tasks ?? [],
-            lastLogin: initialData?.lastLogin ?? "—",
+            lastLogin: initialData?.lastLogin ?? "-",
             created: initialData?.created || form.hired,
             emergencyContact: {
                 name: form.emergencyName,
@@ -132,8 +207,16 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
         delete newEmp.emergencyRelation;
         delete newEmp.emergencyContactNum;
 
-        onAdd(newEmp);
-        onClose();
+        try {
+            setIsSubmitting(true);
+            setSubmitError("");
+            await onAdd(newEmp);
+            onClose();
+        } catch (error) {
+            setSubmitError(error?.message || "Failed to save employee account");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -154,16 +237,14 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
                         <div>
                             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Personal Information</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Full Name *" placeholder="Name" error={errors.name}>
-                                    <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Name" />
+                                <Field label="First Name *" error={errors.firstName}>
+                                    <input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First name" />
                                 </Field>
-                                <Field label="Employee ID">
-                                    <div className="flex gap-2">
-                                        <input value={form.id} onChange={e => set("id", e.target.value)} />
-                                        <button onClick={() => set("id", genId())} className="px-2.5 py-0 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border-none cursor-pointer text-[11px] font-medium transition-colors shrink-0 flex items-center gap-1">
-                                            <RefreshCw size={11} /> Auto
-                                        </button>
-                                    </div>
+                                <Field label="Last Name *" error={errors.lastName}>
+                                    <input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last name" />
+                                </Field>
+                                <Field label="Employee ID" cls="col-span-2">
+                                    <input value={form.id} readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
                                 </Field>
                                 <Field label="Date of Birth *" error={errors.dob}>
                                     <input type="date" value={form.dob} onChange={e => set("dob", e.target.value)} />
@@ -271,24 +352,38 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
                                 <code className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[13px] font-mono text-slate-800 tracking-wider">
                                     {form.password}
                                 </code>
-                                <button onClick={() => set("password", genPassword())} className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-600 cursor-pointer transition-colors border-solid">
-                                    <RefreshCw size={11} /> Regenerate
-                                </button>
                                 <button onClick={() => { navigator.clipboard?.writeText(form.password); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-medium cursor-pointer transition-colors border-none">
                                     <Copy size={11} /> {copied ? "Copied!" : "Copy"}
                                 </button>
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-2">The employee must change this password on first login.</p>
+                            <p className="text-[10px] text-slate-400 mt-2">
+                                {initialData ? "The employee must change this password on first login." : "Auto-generated from Last Name + sequence (example: Silla001)."}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
-                    <button onClick={onClose} className="px-4 py-2 text-[13px] font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition-colors border-solid">Cancel</button>
-                    <button onClick={handleSubmit} className="px-5 py-2 text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors border-none flex items-center gap-2">
-                        <Plus size={14} /> {initialData ? "Save Changes" : "Create Employee"}
-                    </button>
+                <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100">
+                    <div className="text-[11px] text-red-600 font-medium">
+                        {submitError}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="px-4 py-2 text-[13px] font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg cursor-pointer transition-colors border-solid disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="px-5 py-2 text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors border-none flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <Plus size={14} /> {isSubmitting ? "Saving..." : initialData ? "Save Changes" : "Create Employee"}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -296,3 +391,4 @@ const AddEmployeeModal = ({ initialData, onClose, onAdd }) => {
 };
 
 export default AddEmployeeModal;
+

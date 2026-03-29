@@ -9,6 +9,16 @@ const normalizeName = (name) => {
     .replace(/[^a-z0-9]/g, ""); // Keep only letters and numbers (remove all special chars, accents, etc)
 };
 
+// Resolve per-item stock ceiling used for current/max tracking
+const resolveStockCap = (item = {}) => {
+  const cap = Math.max(
+    Number(item.maxStock) || 0,
+    Number(item.initialStock) || 0,
+    Number(item.stock) || 0
+  );
+  return Number.isFinite(cap) && cap > 0 ? cap : 0;
+};
+
 // Helper function to generate SKU
 const generateSKU = async (category) => {
   // Get category abbreviation (first 3 letters, uppercase)
@@ -89,6 +99,7 @@ export const createInventory = async (req, res) => {
       // Item exists - update stock instead of creating new one
       const newStock = existingItem.stock + stockValue;
       existingItem.stock = newStock;
+      existingItem.maxStock = Math.max(resolveStockCap(existingItem), newStock);
       existingItem.lastActivityDate = new Date();
       
       const updatedInventory = await existingItem.save();
@@ -110,6 +121,7 @@ export const createInventory = async (req, res) => {
       category,
       stock: stockValue,
       initialStock: stockValue,
+      maxStock: stockValue,
       minStock: minStockValue,
       unit,
       description: description || "",
@@ -143,7 +155,9 @@ export const updateInventory = async (req, res) => {
     if (name) inventory.name = name;
     if (category) inventory.category = category;
     if (stock != null) {
-      inventory.stock = Math.max(0, stock);
+      const nextStock = Math.max(0, Number(stock) || 0);
+      inventory.stock = nextStock;
+      inventory.maxStock = Math.max(resolveStockCap(inventory), nextStock);
       inventory.lastActivityDate = new Date();
     }
     if (minStock != null) inventory.minStock = minStock;
@@ -173,11 +187,15 @@ export const adjustStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
-    // Only adjust current stock, not initialStock
+    // Adjust current stock and keep maxStock as highest reached value
+    const currentCap = resolveStockCap(inventory);
+
     if (type === "increase") {
       inventory.stock = inventory.stock + amount;
+      inventory.maxStock = Math.max(currentCap, inventory.stock);
     } else if (type === "decrease") {
       inventory.stock = Math.max(0, inventory.stock - amount);
+      inventory.maxStock = currentCap;
     } else {
       return res.status(400).json({ message: "Invalid adjustment type" });
     }
@@ -246,7 +264,10 @@ export const getInventoryStats = async (req, res) => {
     const inventory = await Inventory.find();
 
     const totalItems = inventory.length;
-    const lowStock = inventory.filter((item) => item.stock / item.max < 0.2).length;
+    const lowStock = inventory.filter((item) => {
+      const stockCap = Math.max(1, resolveStockCap(item));
+      return item.stock > 0 && item.stock / stockCap < 0.2;
+    }).length;
     const outOfStock = inventory.filter((item) => item.stock === 0).length;
     const totalValue = inventory.reduce((sum, item) => sum + item.stock * item.unitPrice, 0);
 
@@ -281,9 +302,10 @@ export const searchInventory = async (req, res) => {
     let filtered = results;
     if (status && status !== "All") {
       filtered = results.filter((item) => {
+        const stockCap = Math.max(1, resolveStockCap(item));
         if (status === "Out of Stock") return item.stock === 0;
-        if (status === "Low Stock") return item.stock > 0 && item.stock / item.max < 0.2;
-        if (status === "In Stock") return item.stock / item.max >= 0.2;
+        if (status === "Low Stock") return item.stock > 0 && item.stock / stockCap < 0.2;
+        if (status === "In Stock") return item.stock / stockCap >= 0.2;
         return true;
       });
     }

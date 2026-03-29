@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     AreaChart, Area, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -9,6 +9,7 @@ import {
     CheckSquare, Square, CheckCircle2, Package,
     Wifi, Zap, Droplets, Phone, ShieldCheck, Trash2, Plus, Eye,
 } from "lucide-react";
+import { bookingApi } from "../../services/bookingApi";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,14 @@ const calcOrderTotal = (o) =>
 
 const fmt = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 0 });
 const todayStr = () => new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+const normalizeBookingStatus = (status) => {
+    const text = String(status || "").toLowerCase();
+    if (text.includes("cancel")) return "cancelled";
+    if (text.includes("released") || text.includes("complete")) return "completed";
+    if (text.includes("progress")) return "inProgress";
+    if (text.includes("approved")) return "approved";
+    return "pending";
+};
 
 const totalSale = orders.reduce((s, o) => s + calcOrderTotal(o), 0);
 const revenue = orders.filter(o => o.invoice.status === "Paid").reduce((s, o) => s + calcOrderTotal(o), 0);
@@ -152,7 +161,7 @@ const ChartTooltip = ({ active, payload, label }) => {
             {payload.map((p, i) => (
                 <div key={i} className="flex items-center gap-2 mb-0.5">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-                    <span>{p.name}: <span className="font-bold">{fmt(p.value)}</span></span>
+                    <span>{p.name}: <span className="font-bold">{p.value}</span></span>
                 </div>
             ))}
         </div>
@@ -168,19 +177,129 @@ export default function AdAnalytics() {
     const [newBillAmt, setNewBillAmt] = useState("");
     const [addingBill, setAddingBill] = useState(false);
     const [timeRange, setTimeRange] = useState("Monthly");
+    const [analyticsBookings, setAnalyticsBookings] = useState([]);
+    const [chartError, setChartError] = useState(null);
 
-    const getChartData = () => {
-        switch (timeRange) {
-            case "Daily":
-                return dailyFinancials;
-            case "Weekly":
-                return weeklyFinancials;
-            case "Yearly":
-                return yearlyFinancials;
-            default:
-                return monthlyFinancials;
+    useEffect(() => {
+        let active = true;
+
+        const fetchBookings = async () => {
+            try {
+                setChartError(null);
+                const response = await bookingApi.getAllBookings();
+                const list = Array.isArray(response?.bookings) ? response.bookings : [];
+                if (!active) return;
+                setAnalyticsBookings(list);
+            } catch (error) {
+                console.error("Failed to fetch bookings for analytics:", error);
+                if (!active) return;
+                setAnalyticsBookings([]);
+                setChartError("Unable to load live analytics data.");
+            }
+        };
+
+        fetchBookings();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const xAxisKey = timeRange === "Daily"
+        ? "day"
+        : timeRange === "Weekly"
+            ? "week"
+            : timeRange === "Yearly"
+                ? "year"
+                : "month";
+
+    const chartData = useMemo(() => {
+        const parseBookingDate = (booking) => {
+            const value = booking?.pickupDate || booking?.createdAt;
+            if (!value) return null;
+            if (typeof value === "string") {
+                const ymd = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (ymd) {
+                    const [, y, m, d] = ymd;
+                    return new Date(Number(y), Number(m) - 1, Number(d));
+                }
+            }
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        const normalized = analyticsBookings
+            .map((booking) => {
+                const date = parseBookingDate(booking);
+                if (!date) return null;
+                date.setHours(0, 0, 0, 0);
+                return {
+                    date,
+                    status: normalizeBookingStatus(booking.status),
+                };
+            })
+            .filter(Boolean);
+
+        const buildPoint = (labelKey, label, from, to) => {
+            const point = {
+                [labelKey]: label,
+                bookings: 0,
+                completed: 0,
+                cancelled: 0,
+            };
+
+            normalized.forEach((row) => {
+                if (row.date < from || row.date >= to) return;
+                point.bookings += 1;
+                if (row.status === "completed") point.completed += 1;
+                if (row.status === "cancelled") point.cancelled += 1;
+            });
+
+            return point;
+        };
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        if (timeRange === "Daily") {
+            return Array.from({ length: 7 }, (_, idx) => {
+                const date = new Date(now);
+                date.setDate(now.getDate() - (6 - idx));
+                const next = new Date(date);
+                next.setDate(date.getDate() + 1);
+                const label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                return buildPoint("day", label, date, next);
+            });
         }
-    };
+
+        if (timeRange === "Weekly") {
+            return Array.from({ length: 8 }, (_, idx) => {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - (7 * (7 - idx)));
+                const next = new Date(weekStart);
+                next.setDate(weekStart.getDate() + 7);
+                const label = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+                return buildPoint("week", label, weekStart, next);
+            });
+        }
+
+        if (timeRange === "Yearly") {
+            const currentYear = now.getFullYear();
+            return Array.from({ length: 4 }, (_, idx) => {
+                const year = currentYear - (3 - idx);
+                const from = new Date(year, 0, 1);
+                const to = new Date(year + 1, 0, 1);
+                return buildPoint("year", String(year), from, to);
+            });
+        }
+
+        const currentYear = now.getFullYear();
+        return Array.from({ length: 12 }, (_, idx) => {
+            const from = new Date(currentYear, idx, 1);
+            const to = new Date(currentYear, idx + 1, 1);
+            const label = from.toLocaleDateString("en-US", { month: "short" });
+            return buildPoint("month", label, from, to);
+        });
+    }, [analyticsBookings, timeRange]);
 
     const toggleBill = (id) => setBills(p => p.map(b => b.id === id ? { ...b, paid: !b.paid } : b));
     const removeBill = (id) => setBills(p => p.filter(b => b.id !== id));
@@ -244,8 +363,8 @@ export default function AdAnalytics() {
                         <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col" style={{ minHeight: 450 }}>
                             <div className="mb-3 shrink-0 flex items-end justify-between gap-3">
                                 <div className="min-w-0 flex-1">
-                                    <h2 className="m-0 text-[15px] font-bold text-gray-900">Revenue &amp; Expense Breakdown</h2>
-                                    <p className="mt-0.5 text-[11px] text-gray-400">Monthly revenue, expenses &amp; net profit overview</p>
+                                    <h2 className="m-0 text-[15px] font-bold text-gray-900">Bookings Trend</h2>
+                                    <p className="mt-0.5 text-[11px] text-gray-400">Live data from booking API (total, completed, cancelled)</p>
                                 </div>
                                 <select
                                     value={timeRange}
@@ -259,12 +378,17 @@ export default function AdAnalytics() {
                                     <option value="Yearly">Yearly</option>
                                 </select>
                             </div>
+                            {chartError && (
+                                <div className="mb-2 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                                    {chartError}
+                                </div>
+                            )}
 
                             <style>{`.hide-scrollbar::-webkit-scrollbar{display:none;} .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}`}</style>
                             <div className="hide-scrollbar overflow-x-auto lg:overflow-x-visible" style={{ flex: 1, minHeight: 450, WebkitOverflowScrolling: "touch" }}>
                                 <div style={{ minWidth: timeRange === "Yearly" ? "auto" : "820px" }}>
                                     <ResponsiveContainer width="100%" height={450}>
-                                        <AreaChart data={getChartData()} margin={{ top: 8, right: 12, left: -4, bottom: 0 }}>
+                                        <AreaChart data={chartData} margin={{ top: 8, right: 12, left: -4, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
@@ -280,22 +404,22 @@ export default function AdAnalytics() {
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                                            <XAxis dataKey={timeRange === "Daily" ? "day" : timeRange === "Weekly" ? "week" : timeRange === "Yearly" ? "year" : "month"} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                                            <YAxis tickFormatter={v => "₱" + (v / 1000) + "k"} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                            <XAxis dataKey={xAxisKey} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                                            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                                             <Tooltip content={<ChartTooltip />} />
                                             <Legend
                                                 wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                                                 formatter={(v) => <span style={{ color: "#64748b" }}>{v}</span>}
                                             />
-                                            <Area type="monotone" dataKey="revenue" name="Revenue"
+                                            <Area type="monotone" dataKey="bookings" name="Bookings"
                                                 stroke="#2563EB" strokeWidth={2.5} fill="url(#gRev)"
                                                 dot={false} activeDot={{ r: 5, fill: "#2563EB", stroke: "#fff", strokeWidth: 2 }}
                                             />
-                                            <Area type="monotone" dataKey="expenses" name="Expenses"
+                                            <Area type="monotone" dataKey="completed" name="Completed"
                                                 stroke="#EF4444" strokeWidth={2.5} strokeDasharray="5 3" fill="url(#gExp)"
                                                 dot={false} activeDot={{ r: 5, fill: "#EF4444", stroke: "#fff", strokeWidth: 2 }}
                                             />
-                                            <Area type="monotone" dataKey="profit" name="Net Profit"
+                                            <Area type="monotone" dataKey="cancelled" name="Cancelled"
                                                 stroke="#10B981" strokeWidth={2.5} fill="url(#gPro)"
                                                 dot={false} activeDot={{ r: 5, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }}
                                             />
@@ -458,3 +582,4 @@ export default function AdAnalytics() {
         </div>
     );
 }
+

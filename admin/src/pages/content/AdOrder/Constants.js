@@ -12,7 +12,7 @@ export const EMPLOYEE_POOL = [
 ];
 
 export const ASSIGNABLE_ROLES = ['Tailor', 'Sewing Staff', 'Production Staff'];
-export const ASSIGNABLE_EMPLOYEES = EMPLOYEE_POOL.filter(e => ASSIGNABLE_ROLES.includes(e.role));
+// ASSIGNABLE_EMPLOYEES deprecated - use dynamic staffApi.getMyStaff() instead
 
 export const STATUS_CONFIG = {
     "For Approval":      { color: "bg-violet-100 text-violet-700",      label: "For Approval" },

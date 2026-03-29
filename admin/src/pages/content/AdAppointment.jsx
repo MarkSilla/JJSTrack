@@ -213,9 +213,7 @@ const AdAppointment = () => {
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toDateString(year, month, d);
-            const dateObj = new Date(year, month, d);
             const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
-            const isPastDate = dateObj < today && !isToday; // Disable dates before today
             const isSelected = selectedDateStr === dateStr;
             const marks = marksByDate[dateStr] || {};
             const activeTypes = Object.keys(marks).sort();
@@ -224,13 +222,12 @@ const AdAppointment = () => {
             cells.push(
                 <div
                     key={d}
-                    onClick={() => !isPastDate && handleDayClick(dateStr)}
+                    onClick={() => handleDayClick(dateStr)}
                     className={`
                         relative transition-all duration-200 border rounded-xl flex flex-col
                         aspect-square sm:aspect-auto sm:min-h-[90px]
                         p-1.5 sm:p-2.5
-                        ${isPastDate ? 'opacity-40 cursor-not-allowed bg-gray-50 border-gray-100'
-                        : isSelected
+                        ${isSelected
                             ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-md cursor-pointer'
                             : totalCount >= 8
                                 ? 'bg-red-50 border-red-200 hover:shadow-md cursor-pointer'
@@ -244,13 +241,13 @@ const AdAppointment = () => {
                 >
                     <div className={`
                         w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full font-bold shrink-0 text-[11px] sm:text-sm
-                        ${isPastDate ? 'bg-gray-300 text-gray-500' : isSelected ? 'bg-blue-600 text-white shadow-sm' : totalCount >= 8 ? 'bg-red-500 text-white shadow-sm' : totalCount >= 5 ? 'bg-yellow-400 text-gray-800 shadow-sm' : isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'}
+                        ${isSelected ? 'bg-blue-600 text-white shadow-sm' : totalCount >= 8 ? 'bg-red-500 text-white shadow-sm' : totalCount >= 5 ? 'bg-yellow-400 text-gray-800 shadow-sm' : isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'}
                     `}>
                         {d}
                     </div>
 
                     <div className="mt-auto">
-                        {activeTypes.length > 0 && !isPastDate && (
+                        {activeTypes.length > 0 && (
                             <>
                                 <div className="hidden sm:flex flex-col gap-1 w-full mt-1">
                                     {activeTypes.map(type => (

@@ -10,6 +10,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
 
 import dns from 'dns';
 dotenv.config();
@@ -55,5 +56,8 @@ app.use('/api/inventory', inventoryRoutes);
 
 // Pricing Routes
 app.use('/api/pricing', pricingRoutes);
+
+// Staff Routes
+app.use('/api/staff', staffRoutes);
 
 app.listen(port, () => console.log('Server started on Port: ' + port));

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import TableOfContents from "../components/toc";
 import Section from "../components/legalsection";
 import img from "../assets/img";
@@ -244,7 +243,34 @@ const privacySections = [
 ];
 
 export default function PrivacyPolicy() {
-    const [activeSection, setActiveSection] = useState(null);
+    const [activeSection, setActiveSection] = useState(privacySections[0].id);
+
+    useEffect(() => {
+        const sectionIds = privacySections.map((section) => section.id);
+
+        const updateActiveSectionFromScroll = () => {
+            const currentOffset = window.scrollY + 140;
+            let currentSectionId = sectionIds[0];
+
+            sectionIds.forEach((id) => {
+                const sectionElement = document.getElementById(id);
+                if (sectionElement && sectionElement.offsetTop <= currentOffset) {
+                    currentSectionId = id;
+                }
+            });
+
+            setActiveSection((prev) => (prev === currentSectionId ? prev : currentSectionId));
+        };
+
+        updateActiveSectionFromScroll();
+        window.addEventListener("scroll", updateActiveSectionFromScroll, { passive: true });
+        window.addEventListener("resize", updateActiveSectionFromScroll);
+
+        return () => {
+            window.removeEventListener("scroll", updateActiveSectionFromScroll);
+            window.removeEventListener("resize", updateActiveSectionFromScroll);
+        };
+    }, []);
 
     const scrollTo = (id) => {
         setActiveSection(id);

@@ -55,6 +55,12 @@ function getStatus(item) {
   return "In Stock";
 }
 
+function getMaxStock(item) {
+  const currentStock = Number(item?.stock) || 0;
+  const trackedMax = Number(item?.maxStock ?? item?.initialStock ?? 0) || 0;
+  return Math.max(currentStock, trackedMax, 0);
+}
+
 // Calculate string similarity using Levenshtein distance
 function stringSimilarity(str1, str2) {
   const s1 = str1.toLowerCase().trim();
@@ -193,7 +199,7 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
       <div className="mb-3">
         <div className="flex justify-between text-xs text-slate-500 mb-1.5">
           <span>Stock Level</span>
-          <span className="font-semibold text-gray-800 tabular-nums">{item.stock} {item.unit}</span>
+          <span className="font-semibold text-gray-800 tabular-nums">{item.stock}/{getMaxStock(item)} {item.unit}</span>
         </div>
         <StockBar item={item} />
       </div>
@@ -437,7 +443,9 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 
         <div className="bg-slate-50 rounded-xl px-4 py-3 my-4 flex items-center justify-between">
           <span className="text-sm text-slate-500">Current Stock</span>
-          <span className="text-xl font-black text-gray-900 tabular-nums">{item.stock} <span className="text-sm font-normal text-slate-400">{item.unit}</span></span>
+          <span className="text-xl font-black text-gray-900 tabular-nums">
+            {item.stock}/{getMaxStock(item)} <span className="text-sm font-normal text-slate-400">{item.unit}</span>
+          </span>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -493,7 +501,7 @@ function SimilarItemModal({ similarItem, onUseSimilar, onCreateNew, onClose }) {
             <span className="text-slate-400">Unit:</span> {similarItem.unit}
           </p>
           <p className="text-xs text-slate-500">
-            <span className="text-slate-400">Current Stock:</span> {similarItem.stock} {similarItem.unit}
+            <span className="text-slate-400">Current Stock:</span> {similarItem.stock}/{getMaxStock(similarItem)} {similarItem.unit}
           </p>
         </div>
 
@@ -683,7 +691,7 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           <button onClick={handleConfirm} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-            <Plus size={15} /> Add Item
+            <Plus size={15} /> Add New Item
           </button>
         </div>
       </div>
@@ -766,7 +774,7 @@ const [sortBy, setSortBy] = useState('newest');
   const inStockCount = activeInventory.filter(i => getStatus(i) === "In Stock").length;
 
   const totalValue = useMemo(() => {
-    return activeInventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
+    return activeInventory.reduce((sum, item) => sum + (getMaxStock(item) * (item.unitPrice || 0)), 0);
   }, [activeInventory]);
 
   const currentValue = useMemo(() => {
@@ -1106,7 +1114,7 @@ const STAT_CARDS = [
           {/* Add */}
           <button onClick={() => setAddModal(true)}
             className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
-            <Plus size={15} /> Add Item
+            <Plus size={15} /> Add New Item
           </button>
         </div>
 
@@ -1198,11 +1206,11 @@ const STAT_CARDS = [
                       <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(item.unitPrice || 0)}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900 tabular-nums">{item.stock}</span>
+                      <span className="font-bold text-gray-900 tabular-nums">{item.stock}/{getMaxStock(item)}</span>
                       <span className="text-slate-400 text-xs"> {item.unit}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
+                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt(getMaxStock(item) * (item.unitPrice || 0))}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
