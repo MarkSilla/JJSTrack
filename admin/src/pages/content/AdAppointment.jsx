@@ -9,10 +9,9 @@ import {
     Scissors,
     Briefcase,
     Plus,
-    X,
-    Filter
+    X
 } from 'lucide-react';
-import BookingModal from './Bookingforms';
+import BookingModal from './Bookingforms.jsx';
 import { bookingApi } from '../../services/bookingApi.js';
 
 const TYPE_CONFIG = {
@@ -111,7 +110,6 @@ const AdAppointment = () => {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const today = new Date();
     const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
     const [selectedDateStr, setSelectedDateStr] = useState(toDateString(today.getFullYear(), today.getMonth(), today.getDate()));
@@ -215,7 +213,9 @@ const AdAppointment = () => {
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toDateString(year, month, d);
+            const dateObj = new Date(year, month, d);
             const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+            const isPastDate = dateObj < today && !isToday; // Disable dates before today
             const isSelected = selectedDateStr === dateStr;
             const marks = marksByDate[dateStr] || {};
             const activeTypes = Object.keys(marks).sort();
@@ -224,32 +224,33 @@ const AdAppointment = () => {
             cells.push(
                 <div
                     key={d}
-                    onClick={() => handleDayClick(dateStr)}
+                    onClick={() => !isPastDate && handleDayClick(dateStr)}
                     className={`
-                        relative cursor-pointer transition-all duration-200 border rounded-xl flex flex-col
+                        relative transition-all duration-200 border rounded-xl flex flex-col
                         aspect-square sm:aspect-auto sm:min-h-[90px]
                         p-1.5 sm:p-2.5
-                        ${isSelected
-                            ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-md'
+                        ${isPastDate ? 'opacity-40 cursor-not-allowed bg-gray-50 border-gray-100'
+                        : isSelected
+                            ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-md cursor-pointer'
                             : totalCount >= 8
-                                ? 'bg-red-50 border-red-200 hover:shadow-md'
+                                ? 'bg-red-50 border-red-200 hover:shadow-md cursor-pointer'
                                 : totalCount >= 5
-                                    ? 'bg-yellow-50 border-yellow-200 hover:shadow-md'
+                                    ? 'bg-yellow-50 border-yellow-200 hover:shadow-md cursor-pointer'
                                     : isToday
-                                        ? 'bg-blue-50 border-blue-200 hover:shadow-md'
-                                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 hover:shadow-sm'
+                                        ? 'bg-blue-50 border-blue-200 hover:shadow-md cursor-pointer'
+                                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 hover:shadow-sm cursor-pointer'
                         }
                     `}
                 >
                     <div className={`
                         w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full font-bold shrink-0 text-[11px] sm:text-sm
-                        ${isSelected ? 'bg-blue-600 text-white shadow-sm' : totalCount >= 8 ? 'bg-red-500 text-white shadow-sm' : totalCount >= 5 ? 'bg-yellow-400 text-gray-800 shadow-sm' : isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'}
+                        ${isPastDate ? 'bg-gray-300 text-gray-500' : isSelected ? 'bg-blue-600 text-white shadow-sm' : totalCount >= 8 ? 'bg-red-500 text-white shadow-sm' : totalCount >= 5 ? 'bg-yellow-400 text-gray-800 shadow-sm' : isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'}
                     `}>
                         {d}
                     </div>
 
                     <div className="mt-auto">
-                        {activeTypes.length > 0 && (
+                        {activeTypes.length > 0 && !isPastDate && (
                             <>
                                 <div className="hidden sm:flex flex-col gap-1 w-full mt-1">
                                     {activeTypes.map(type => (
@@ -406,60 +407,39 @@ const AdAppointment = () => {
                             </div>
                         </div>
 
-                        {/* Filter dropdown — only shows when 2+ types on this date */}
+                        {/* Filter navbar — only shows when 2+ types on this date */}
                         {typesOnSelectedDate.length > 1 && (
                             <div className="shrink-0 px-4 sm:px-6 lg:px-8 pb-3 border-b border-gray-100">
-                                <div className="relative">
+                                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                                     <button
-                                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-all border-none cursor-pointer"
+                                        onClick={() => setActiveFilter('all')}
+                                        className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all border-none cursor-pointer ${activeFilter === 'all'
+                                                ? 'bg-gray-800 text-white shadow-sm'
+                                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                            }`}
                                     >
-                                        <Filter size={16} />
-                                        <span>Filter by Type</span>
+                                        All {selectedAppointments.length}
                                     </button>
-
-                                    {/* Dropdown menu */}
-                                    {isFilterOpen && (
-                                        <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-10 min-w-[200px]">
+                                    {typesOnSelectedDate.map(type => {
+                                        const conf = TYPE_CONFIG[type];
+                                        const TypeIcon = conf.icon;
+                                        const isActive = activeFilter === type;
+                                        const count = selectedAppointments.filter(a => a.type === type).length;
+                                        return (
                                             <button
-                                                onClick={() => {
-                                                    setActiveFilter('all');
-                                                    setIsFilterOpen(false);
+                                                key={type}
+                                                onClick={() => setActiveFilter(type)}
+                                                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all border-none cursor-pointer"
+                                                style={{
+                                                    backgroundColor: isActive ? conf.hex : `${conf.hex}18`,
+                                                    color: isActive ? '#fff' : conf.hex,
                                                 }}
-                                                className={`w-full text-left px-4 py-3 text-sm font-semibold border-none cursor-pointer transition-all ${activeFilter === 'all'
-                                                    ? 'bg-gray-100 text-gray-900'
-                                                    : 'text-gray-700 hover:bg-gray-50'
-                                                    }`}
                                             >
-                                                All {selectedAppointments.length}
+                                                <TypeIcon size={11} />
+                                                {conf.label} {count}
                                             </button>
-                                            {typesOnSelectedDate.map(type => {
-                                                const conf = TYPE_CONFIG[type];
-                                                const TypeIcon = conf.icon;
-                                                const isActive = activeFilter === type;
-                                                const count = selectedAppointments.filter(a => a.type === type).length;
-                                                return (
-                                                    <button
-                                                        key={type}
-                                                        onClick={() => {
-                                                            setActiveFilter(type);
-                                                            setIsFilterOpen(false);
-                                                        }}
-                                                        className={`w-full text-left px-4 py-3 text-sm font-semibold border-none cursor-pointer transition-all flex items-center gap-2 ${isActive
-                                                            ? 'text-white'
-                                                            : 'text-gray-700 hover:bg-gray-50'
-                                                            }`}
-                                                        style={{
-                                                            backgroundColor: isActive ? conf.hex : 'transparent',
-                                                        }}
-                                                    >
-                                                        <TypeIcon size={14} />
-                                                        <span>{conf.label} {count}</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
