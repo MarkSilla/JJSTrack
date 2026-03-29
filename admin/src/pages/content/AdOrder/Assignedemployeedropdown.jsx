@@ -1,4 +1,4 @@
- aport React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, UserCheck, X, Check } from 'lucide-react';
 import { staffApi } from '../../../services/staffApi';
 import { mapStaffToEmployee } from '../../../utils/mapStaffToEmployee.js';
