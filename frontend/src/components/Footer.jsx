@@ -55,8 +55,8 @@ const Footer = () => {
           <div className=" flex flex-col md:flex-row sm:flex-row border-t border-gray-700 mt-8 pt-8 flex justify-between items-center text-gray text-sm">
             <p>&copy; 2026 JJS Track. All rights reserved.</p>
             <ul className="flex space-x-6">
-              <li><a href="#" className="hover:text-blue-400">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-blue-400">Terms of Use</a></li>
+              <li><a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">Privacy Policy</a></li>
+              <li><a href="/terms-of-use" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">Terms of Use</a></li>
             </ul>
           </div>
         </div >
