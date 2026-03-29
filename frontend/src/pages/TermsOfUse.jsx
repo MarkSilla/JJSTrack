@@ -89,11 +89,13 @@ const termsSections = [
                 <ListItem num="4.1" title="Full Payment Required Prior to Production">All jersey orders must be paid in full before the production process commences. JJS Track will not begin manufacturing or processing any order until complete payment has been received and confirmed.</ListItem>
                 <ListItem num="4.2" title="No Release Without Full Payment">Completed orders will not be released, dispatched, or made available for pickup until full payment has been settled. Partial payments do not entitle a user to claim any portion of an order.</ListItem>
                 <ListItem num="4.3" title="Payment Confirmation">Users will receive a payment confirmation notification upon successful processing. It is your responsibility to retain proof of payment.</ListItem>
+                <ListItem num="4.4" title="Price Variability:">The prices for jerseys, additional items, or services are subject to change depending on market conditions, material costs, or other operational factors. JJS Track reserves the right to adjust pricing accordingly, and any changes will be communicated to the user before order confirmation. Users are encouraged to verify the final price at the time of placing the order.</ListItem>
+
 
                 <div className="mt-6 p-5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 shadow-sm flex items-start gap-4">
                     <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                        <strong className="block text-amber-800 mb-2">4.4 Minimum Downpayment Requirement</strong>
+                        <strong className="block text-amber-800 mb-2">4.5 Minimum Downpayment Requirement</strong>
                         <p className="mb-0 text-sm leading-relaxed text-amber-800 font-medium">
                             A minimum downpayment of fifty percent (50%) of the total order value is required for an order to be accepted and scheduled for processing. Orders without the required downpayment shall not be processed under any circumstances.
                         </p>
@@ -133,7 +135,7 @@ const termsSections = [
                     <p className="text-sm text-stone-600 leading-relaxed">Once an order has been confirmed and production has begun, cancellation requests will not be entertained. JJS Track will not be obligated to issue refunds for orders that have entered the production phase at the time of cancellation request.</p>
                 </div>
 
-                <p className="mt-4 text-sm text-stone-500 italic">To submit a cancellation request, please contact JJS Track support through the Platform as early as possible after placing the order.</p>
+                <p className="mt-4 text-sm text-stone-500 italic">To submit a cancellation request, please contact JJS Track admin through the Platform as early as possible after placing the order.</p>
             </>
         ),
     },
@@ -185,10 +187,21 @@ const termsSections = [
         icon: Truck,
         content: (
             <>
-                <p className="mb-5">JJS Track strives to fulfill all orders within the estimated timelines communicated at the time of order confirmation. However, you acknowledge and agree that:</p>
-                <ListItem num="9.1">Delivery timelines may be affected by high order volumes, production capacity constraints, or unforeseen operational disruptions.</ListItem>
-                <ListItem num="9.2">JJS Track shall not be held liable for delays caused by force majeure events, including but not limited to natural disasters, public health emergencies, government-imposed restrictions, or other circumstances beyond our reasonable control.</ListItem>
-                <ListItem num="9.3">In the event of a delay, JJS Track will make reasonable efforts to communicate revised timelines to affected users through the Platform.</ListItem>
+                <p className="mb-5">
+                    All orders are primarily for <strong>pickup at the JJS Track shop</strong>. In cases where delivery is requested, JJS Track strives to fulfill all orders within the estimated timelines communicated at the time of order confirmation. However, you acknowledge and agree that:
+                </p>
+                <ListItem num="9.1">
+                    Pickup and delivery timelines may be affected by high order volumes, production capacity constraints, or unforeseen operational disruptions.
+                </ListItem>
+                <ListItem num="9.2">
+                    JJS Track shall not be held liable for delays caused by <strong>force majeure events</strong>, including but not limited to natural disasters, public health emergencies, government-imposed restrictions, or other circumstances beyond our reasonable control.
+                </ListItem>
+                <ListItem num="9.3">
+                    In the event of a delay, JJS Track will make reasonable efforts to <strong>inform affected users of revised pickup or delivery timelines</strong> through the Platform.
+                </ListItem>
+                <ListItem num="9.4">
+                    Users are encouraged to <strong>plan orders well in advance</strong> of their required pickup or delivery dates to account for potential delays.
+                </ListItem>
 
                 <p className="mt-5 text-sm italic text-stone-500">Users are encouraged to plan orders well in advance of required delivery dates to account for potential delays.</p>
             </>
