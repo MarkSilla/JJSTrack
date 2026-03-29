@@ -219,17 +219,50 @@ const BookingModal = ({ isOpen, onClose }) => {
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
 
+    const isRepairDetailsComplete = () => {
+        return [details.name, details.email, details.phone, details.address, details.city].every((field) => field && field.trim().length > 0)
+    }
+
     const canNext = () => {
         if (step === 1) return !!service
-        if (isJersey && step === 2) return players.length > 0
-        if (isOrg && step === 2) return members.length > 0
+
+        if (isRepair) {
+            if (step === 2) return selectedOptions.length > 0
+            if (step === 3) return true
+            if (step === 4) return isRepairDetailsComplete()
+            if (step === 5) return !!selectedDate && !!selectedSlot
+            return true
+        }
+
+        if (isJersey) {
+            if (step === 2) return players.length > 0
+            if (step === 3) return true 
+            if (step === 4) return [contact.fullName, contact.phone, contact.email].every((field) => field && field.trim().length > 0)
+            return true
+        }
+
+        if (isOrg) {
+            if (step === 2) return members.length > 0
+            if (step === 3) return true 
+            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email].every((field) => field && field.trim().length > 0)
+            return true
+        }
+
         return true
     }
 
     const getNextErrorMessage = () => {
         if (step === 1) return 'Please select a service before continuing.'
+        if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
+        if (isRepair && step === 4) return 'Please complete all your delivery details before continuing.'
+        if (isRepair && step === 5) return 'Please select a pickup date and time slot.'
+
         if (isJersey && step === 2) return 'Please add at least one player first.'
+        if (isJersey && step === 4) return 'Please fill in the contact information.'
+
         if (isOrg && step === 2) return 'Please add at least one member first.'
+        if (isOrg && step === 4) return 'Please fill in the organization contact information.'
+
         return 'Please complete the required fields before continuing.'
     }
 
@@ -299,12 +332,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                 const optionsArray = selectedOptions.map(optId => ({
                     name: optId,
                     quantity: quantities[optId] || 1,
-                    price: 0 // Price would be fetched from options data if available
+                    price: 0 
                 }))
 
                 bookingData.selectedOptions = optionsArray
                 bookingData.repairDescription = repairDescription
-                bookingData.photos = photos // Array of file paths/URLs
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
@@ -312,15 +344,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                 // Team jersey booking
                 bookingData.teamName = teamName
                 bookingData.players = players
-                bookingData.designFile = designFile ? designFile.name : ''
-                bookingData.driveLink = driveLink
                 bookingData.contact = contact
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
                 bookingData.members = members
-                bookingData.orgDesignFile = orgDesignFile ? orgDesignFile.name : ''
-                bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
             }
 
@@ -332,7 +360,6 @@ const BookingModal = ({ isOpen, onClose }) => {
             console.log('Booking response:', response)
 
             if (response.success || response._id || response.booking) {
-                // Show success message
                 alert('Booking submitted successfully! We will contact you soon.')
                 resetForm()
                 onClose()

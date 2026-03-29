@@ -115,7 +115,7 @@ const LoginPage = () => {
 
       {/* Left Panel */}
       <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.shop})` }} />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.front})` }} />
         <div className="absolute inset-0 bg-slate-900/90" />
         <img src={img.line1} alt="lineTop" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none " />
         <img src={img.line2} alt="lineRight" className="absolute xl:right-10 md:right-[-10px]  top-0 h-full w-auto opacity-40 pointer-events-none origin-center" />

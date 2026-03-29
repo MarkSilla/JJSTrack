@@ -10,7 +10,7 @@ const Field = ({ label, ...props }) => (
 
 const StepDetails = ({ details, setDetail }) => (
     <section>
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 font-inter">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">Your Details</h2>
             <p className="text-gray-500 mt-2 text-sm">Where should we pick up and deliver your items?</p>
         </div>

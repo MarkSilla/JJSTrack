@@ -11,7 +11,6 @@ function Login() {
     const navigate = useNavigate()
 
     useEffect(() => {
-        // Initialize email from localStorage if remembered
         const rememberedEmail = localStorage.getItem('rememberAdminEmail')
         if (rememberedEmail) {
             setEmail(rememberedEmail)
@@ -81,6 +80,7 @@ function Login() {
                     localStorage.removeItem('rememberAdminEmail')
                 }
 
+                // Redirect to dashboard
                 navigate('/admin/dashboard')
             }
         } catch (err) {
@@ -93,7 +93,7 @@ function Login() {
 
     return (
         <div className="flex min-h-screen w-full font-sans bg-slate-50 overflow-hidden">
-            <div className="hidden md:flex xl:w-[55 %] lg:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
+            <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10 pointer-events-none"
                     style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
                 </div>
@@ -180,8 +180,8 @@ function Login() {
 
                             <div className="flex items-center">
                                 <label className="flex items-center gap-2 text-slate-400 text-sm cursor-pointer select-none">
-                                    <input
-                                        type="checkbox"
+                                    <input 
+                                        type="checkbox" 
                                         className="w-4 h-4 rounded border-slate-800 bg-[#0f172a] text-blue-600 focus:ring-blue-500/20"
                                         checked={rememberMe}
                                         onChange={(e) => setRememberMe(e.target.checked)}
@@ -191,8 +191,8 @@ function Login() {
                                 </label>
                             </div>
 
-                            <button
-                                type="submit"
+                            <button 
+                                type="submit" 
                                 disabled={loading}
                                 className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >

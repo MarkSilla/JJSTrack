@@ -10,7 +10,6 @@ import OrderDetailPage from './pages/content/Orderdetailage'
 import QRScanner from './pages/content/qrscanner'
 import ReleasedItems from './pages/content/released'
 import AdStaff from './pages/content/AdStaff'
-import AdPayroll from './pages/content/AdPayroll'
 import AdInventory from './pages/content/AdInventory'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
@@ -19,7 +18,6 @@ function App() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Check if token exists in localStorage
         const token = localStorage.getItem('adminToken')
         if (token) {
             setIsAuthenticated(true)
@@ -52,7 +50,6 @@ function App() {
                     <Route path="qr-scanner" element={<QRScanner />} />
                     <Route path="released" element={<ReleasedItems />} />
                     <Route path="staff" element={<AdStaff />} />
-                    <Route path="payroll" element={<AdPayroll />} />
                     <Route path="inventory" element={<AdInventory />} />
                 </Route>
             </Routes>

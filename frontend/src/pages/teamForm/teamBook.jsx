@@ -11,7 +11,7 @@ const STEP_LABELS = ['Team & Players', 'Design', 'Contact', 'Confirm']
 
 //Stepper
 const Stepper = ({ currentStep }) => (
-    <nav className="w-full max-w-2xl mx-auto" aria-label="Progress">
+    <nav className="w-full max-w-2xl mx-auto font-inter" aria-label="Progress">
         <ol className="hidden sm:flex items-center">
             {STEP_LABELS.map((label, i) => {
                 const num = i + 1

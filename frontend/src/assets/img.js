@@ -9,6 +9,8 @@ import google from './google.svg'
 import ruler from './ruler.svg'
 import clip from './jjsclip.mp4'
 import panorama from './panoramajjs.png'
+import manikin from './maniq.jpg'
+import front from './shop1.png'
 
 const img = {
     invoice,
@@ -21,7 +23,9 @@ const img = {
     google,
     ruler,
     clip,
-    panorama
+    panorama,
+    manikin,
+    front
 }
 
 export default img

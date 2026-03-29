@@ -11,10 +11,17 @@ import serviceRoutes from './routes/serviceRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
 
+import dns from 'dns';
+dotenv.config();
+
+dns.setServers(['1.1.1.1', '8.8.8.8']);
+
 // App Config
 const app = express();
 const port = process.env.PORT || 4000;
 connectDB();
+
+
 
 // Middlewares
 app.use(express.json());

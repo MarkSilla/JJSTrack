@@ -24,12 +24,9 @@ const StatusBadge = ({ status }) => {
 
 const TypeBadge = ({ type }) => {
     const TYPE_CONFIG = {
-        "Tailor": { bg: "bg-blue-50", text: "text-blue-700" },
-        "Printer": { bg: "bg-cyan-50", text: "text-cyan-700" },
-        "Layout Artist": { bg: "bg-violet-50", text: "text-violet-700" },
-        "Repair Specialist": { bg: "bg-orange-50", text: "text-orange-700" },
-        "Staff": { bg: "bg-slate-100", text: "text-slate-600" },
-        "Manager": { bg: "bg-indigo-50", text: "text-indigo-700" },
+        "Full Time": { bg: "bg-blue-50", text: "text-blue-700" },
+        "Part Time": { bg: "bg-cyan-50", text: "text-cyan-700" },
+        "Contractual": { bg: "bg-orange-50", text: "text-orange-700" }
     };
     const c = TYPE_CONFIG[type] ?? { bg: "bg-slate-100", text: "text-slate-600" };
     return (
@@ -69,7 +66,7 @@ const ProfilePanel = ({ emp, onClose }) => {
                         <ArrowLeft size={14} /> Back to list
                     </button>
                     <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border-none cursor-pointer transition-colors flex items-center gap-1.5">
+                        <button onClick={() => { window.dispatchEvent(new CustomEvent('edit-staff', { detail: emp })); onClose(); }} className="px-3 py-1.5 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border-none cursor-pointer transition-colors flex items-center gap-1.5">
                             <Pencil size={11} /> Edit
                         </button>
                         <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 bg-transparent border-none cursor-pointer">
@@ -90,7 +87,7 @@ const ProfilePanel = ({ emp, onClose }) => {
                                     </span>
                                 )}
                             </div>
-                            <div className="text-[12px] text-slate-500 mt-0.5">{emp.position} · {emp.dept}</div>
+                            <div className="text-[12px] text-slate-500 mt-0.5">{emp.position}</div>
                             <div className="flex items-center gap-3 mt-2">
                                 <StatusBadge status={emp.status} />
                                 <TypeBadge type={emp.type} />
@@ -136,6 +133,11 @@ const ProfilePanel = ({ emp, onClose }) => {
                                 <InfoRow icon={Calendar} label="Birthday" value={emp.dob || "—"} />
                                 <InfoRow icon={User} label="Gender" value={emp.gender} />
                             </Section>
+                            <Section title="Emergency Contact" icon={Shield}>
+                                <InfoRow icon={User} label="Name" value={emp.emergencyContact?.name || "—"} />
+                                <InfoRow icon={User} label="Relationship" value={emp.emergencyContact?.relationship || "—"} />
+                                <InfoRow icon={Phone} label="Number" value={emp.emergencyContact?.contact || "—"} />
+                            </Section>
                             <Section title="Recent Tasks" icon={Activity}>
                                 {emp.tasks.length > 0 ? emp.tasks.map((t, i) => (
                                     <div key={i} className="flex items-center gap-2 py-1.5">
@@ -161,7 +163,6 @@ const ProfilePanel = ({ emp, onClose }) => {
                         <div className="space-y-5">
                             <Section title="Employment Details" icon={Briefcase}>
                                 <InfoRow icon={Briefcase} label="Type" value={emp.type} />
-                                <InfoRow icon={Building2} label="Department" value={emp.dept} />
                                 <InfoRow icon={Star} label="Position" value={emp.position} />
                                 <InfoRow icon={Calendar} label="Date Hired" value={emp.hired} />
                                 <InfoRow icon={CheckCircle2} label="Status" value={emp.status} />

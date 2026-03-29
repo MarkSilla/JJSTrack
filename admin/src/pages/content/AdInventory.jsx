@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Archive, RotateCcw, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
   Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown,
@@ -230,6 +230,8 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
 }
 
 function UpdateModal({ item, onConfirm, onClose }) {
+  const categoryButtonRef = useRef(null);
+  const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
   const [form, setForm] = useState({
     name: item.name || "",
     category: item.category || "Sewing",
@@ -290,7 +292,70 @@ function UpdateModal({ item, onConfirm, onClose }) {
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
           </div>
 
-          {fields.map(f => (
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={e => set("name", e.target.value)}
+              placeholder="e.g. Sewing Needles"
+              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500" />
+          </div>
+
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+            <div className="relative">
+              <button
+                ref={categoryButtonRef}
+                onClick={() => {
+                  const next = !showCategoryModal;
+                  if (!next) {
+                    setShowCategoryModal(false);
+                    return;
+                  }
+                  const rect = categoryButtonRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setCategoryMenuStyle({
+                      position: 'fixed',
+                      top: rect.bottom + window.scrollY + 6,
+                      left: rect.left + window.scrollX,
+                      minWidth: rect.width,
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                      zIndex: 9999,
+                      backgroundColor: 'white',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                    });
+                  }
+                  setShowCategoryModal(true);
+                }}
+                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.category}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+              </button>
+              {showCategoryModal && (
+                <div style={categoryMenuStyle}>
+                  {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        set("category", c);
+                        setShowCategoryModal(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {fields.filter(f => f.key !== "name").map(f => (
             <div key={f.key} className="mb-4">
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                 {f.label}
@@ -304,35 +369,6 @@ function UpdateModal({ item, onConfirm, onClose }) {
                 className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
             </div>
           ))}
-
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-            <div className="relative">
-              <button
-                onClick={() => setShowCategoryModal((v) => !v)}
-                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-              >
-                <span className="truncate">{form.category}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
-              </button>
-{showCategoryModal && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] py-1 w-full max-h-48 overflow-y-auto">
-                  {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => { 
-                        set("category", c); 
-                        setShowCategoryModal(false); 
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
 
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
@@ -513,6 +549,8 @@ function DuplicateItemModal({ existingItem, newData, onUpdateExisting, onClose }
 }
 
 function AddItemModal({ onConfirm, onClose, inventory = [] }) {
+  const categoryButtonRef = useRef(null);
+  const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
   const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", minStock: "", unit: "pcs", unitPrice: "" });
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -564,7 +602,70 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
         </div>
 
-        {fields.map(f => (
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={e => set("name", e.target.value)}
+            placeholder="e.g. Sewing Needles"
+            className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500" />
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+          <div className="relative">
+            <button
+              ref={categoryButtonRef}
+              onClick={() => {
+                const next = !showCategoryModal;
+                if (!next) {
+                  setShowCategoryModal(false);
+                  return;
+                }
+                const rect = categoryButtonRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setCategoryMenuStyle({
+                    position: 'fixed',
+                    top: rect.bottom + window.scrollY + 6,
+                    left: rect.left + window.scrollX,
+                    minWidth: rect.width,
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                    zIndex: 9999,
+                    backgroundColor: 'white',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                  });
+                }
+                setShowCategoryModal(true);
+              }}
+              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+            >
+              <span className="truncate">{form.category}</span>
+              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+            </button>
+            {showCategoryModal && (
+              <div style={categoryMenuStyle}>
+                {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      set("category", c);
+                      setShowCategoryModal(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {fields.filter(f => f.key !== "name").map(f => (
           <div key={f.key} className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               {f.label}
@@ -578,35 +679,6 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
               className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
           </div>
         ))}
-
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-          <div className="relative">
-            <button
-              onClick={() => setShowCategoryModal((v) => !v)}
-              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-            >
-              <span className="truncate">{form.category}</span>
-              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
-            </button>
-{showCategoryModal && (
-              <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-[60] max-h-48 overflow-y-auto w-full">
-                {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
-                  <button
-                    key={c}
-                    onClick={() => { 
-                      set("category", c); 
-                      setShowCategoryModal(false); 
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
@@ -948,7 +1020,7 @@ const STAT_CARDS = [
             {/* Filters */}
             <div className="flex gap-1">
               {/* Category Filter */}
-              <div className="relative">
+              <div className="relative inline-block">
                 <button
                   onClick={() => setShowCategory(v => !v)}
                   className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[100px]"
@@ -1275,8 +1347,6 @@ const STAT_CARDS = [
           }}
         />
       )}
-
-      {/* Archive/Restore Confirmation Modal */}
       <ArchiveConfirmModal 
         archiveConfirm={archiveConfirm}
         onConfirm={handleArchiveConfirm}

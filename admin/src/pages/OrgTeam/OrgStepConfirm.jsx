@@ -12,7 +12,7 @@ const getMemberPrice = (member) => {
 }
 
 const ReviewBlock = ({ title, onEdit, children }) => (
-    <div className="mb-5">
+    <div className="mb-5 font-inter">
         <div className="flex items-center justify-between mb-3">
             <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-blue-600/70 flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-blue-500 inline-block" />

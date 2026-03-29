@@ -59,7 +59,7 @@ const StepIcon = ({ step }) => {
 const ProgressTracker = ({ steps }) => (
     <>
         {/* Desktop */}
-        <div className="hidden md:flex items-center w-full mt-3">
+        <div className="hidden md:flex items-center w-full mt-3 font-inter">
             {steps.map((step, i) => (
                 <React.Fragment key={step.label + i}>
                     <div className="flex flex-col items-center min-w-[60px]">

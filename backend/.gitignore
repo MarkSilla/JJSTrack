@@ -1,0 +1,15 @@
+# Ignore dependencies
+node_modules/
+package-lock.json
+
+# Logs
+logs
+*.log
+
+# Build outputs
+dist/
+build/
+
+# System files
+.DS_Store
+Thumbs.db

@@ -16,13 +16,7 @@ const navItems = [
         ]
     },
     { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/admin/inventory' },
-    {
-        icon: Users, label: 'Staff', description: 'Manage staff',
-        subItems: [
-            { label: 'All Staff', path: '/admin/staff' },
-            { label: 'Payroll', path: '/admin/payroll' },
-        ]
-    },
+    { icon: Users, label: 'Staff', description: 'Manage staff', path: '/admin/staff' },
     { icon: BarChart3, label: 'Analytics', description: 'View Data', path: '/admin/analytic' },
     { icon: QrCode, label: 'QR Scanner', description: 'Scan QR codes', path: '/admin/qr-scanner' },
 ]
