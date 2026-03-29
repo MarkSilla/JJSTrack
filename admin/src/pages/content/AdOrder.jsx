@@ -284,10 +284,7 @@ export default function AdOrder() {
             <KPICards counts={counts} />
 
             <div className="flex gap-6">
-                {/*
-                 * OrderList now takes up the full width on this page.
-                 * The `onOrderClick` prop replaces `setActiveOrderId` — it navigates to /orders/:orderId.
-                 */}
+
                 <OrderList
                     filteredOrders={filteredOrders}
                     activeOrderId={null}           /* No active selection on the list page */

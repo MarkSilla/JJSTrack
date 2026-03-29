@@ -360,7 +360,6 @@ const BookingModal = ({ isOpen, onClose }) => {
             console.log('Booking response:', response)
 
             if (response.success || response._id || response.booking) {
-                // Show success message
                 alert('Booking submitted successfully! We will contact you soon.')
                 resetForm()
                 onClose()

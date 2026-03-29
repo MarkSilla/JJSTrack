@@ -88,14 +88,11 @@ const LandingPage = () => {
       <main className="flex-grow">
         <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-black to-indigo-600 opacity-100"></div>
-          <video src={img.clip} autoPlay loop muted className="absolute inset-0 w-full h-full object-cover opacity-40"></video>
+          <img src={img.shop} alt="JJS shop" className="absolute inset-0 w-full h-full object-cover opacity-40" />
           <div className="relative z-10 text-center px-4">
 
-            <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Master Your Craft.
-            </h1>
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r bg-clip-text text-transparent from-blue-600 to-blue-100 mb-9 leading-tight">
-              Manage Your Business.
+            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r bg-clip-text text-transparent bg-gradient-to-r from-blue-900 via-blue-300 to-blue-500 mb-9 leading-tight">
+              JJS TRACK
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
               All-in-one web application. Track orders, manage clients, and grow your business with precision and style.
@@ -247,7 +244,7 @@ const LandingPage = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-6">
                     <img src={img.jjslogo1} alt="google" className="w-6 h-6" />
-                    <span className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">JJS Sportswear</span>
+                    <span className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">JJSportswear</span>
                   </div>
 
                   <h3 className="text-2xl font-playfair font-bold text-white mb-4">Jennoel-Jennyl Sportswear</h3>
