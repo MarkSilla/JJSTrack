@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, CircleDashed, PackageCheck, ChevronDown, Settings,
+    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown, Settings,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
 const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/admin/dashboard' },
-    { icon: Calendar, label: 'Appointment', description: 'Manage appointments', path: '/admin/appointment' },
+    { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/staff/dashboard' },
     {
         icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
         subItems: [
-            { label: 'All Orders', path: '/admin/orders' },
-            { label: 'Released', path: '/admin/released' },
+            { label: 'All Orders', path: '/staff/orders' },
+            { label: 'Released', path: '/staff/released' },
         ]
     },
-    { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/admin/inventory' },
-    { icon: Users, label: 'Staff', description: 'Manage staff', path: '/admin/staff' },
-    { icon: BarChart3, label: 'Report', description: 'View Data', path: '/admin/report' },
-    { icon: QrCode, label: 'QR Scanner', description: 'Scan QR codes', path: '/admin/qr-scanner' },
+    { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/staff/inventory' },
 ]
 
-const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
+const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
     const location = useLocation()
     const navigate = useNavigate()
     const [isSmallScreen, setIsSmallScreen] = useState(false)
@@ -69,8 +65,8 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
     const handleLogout = () => {
         // Clear authentication data from localStorage
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('rememberAdminEmail')
+        localStorage.removeItem('staffToken')
+        localStorage.removeItem('rememberStaffEmail')
         navigate('/')
     }
 
@@ -106,7 +102,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                         </div>
                         <div className={showLabel ? 'block' : 'hidden'}>
                             <h1 className="text-xl font-bold text-white tracking-tight">JJS-Track</h1>
-                            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Admin</p>
+                            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Staff</p>
                         </div>
                     </div>
                 </div>
@@ -237,4 +233,4 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
     )
 }
 
-export default HomeSidebar
+export default StaffSidebar

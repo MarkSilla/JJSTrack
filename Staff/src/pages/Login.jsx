@@ -42,7 +42,7 @@ function Login() {
             <div className="flex-1 flex items-center justify-center mt-16 md:mt-14 p-1 md:p-12 ">
                 <div className="w-full max-w-xs md:max-w-md">
                     <div className="rounded-2xl md:rounded-3xl p-3 md:p-8 relative">
-                        <div className="absolute -top-14 md:-top-12 left-1/2 -translate-x-1/2 flex items-center justify-center">
+                        <div className="absolute -top-14 md:-top-18 left-1/2 -translate-x-1/2 flex items-center justify-center">
                             <img src={image.JJS} alt="Logo" className="w-20 h-20 md:w-20 md:h-20" />
                         </div>
 
@@ -51,7 +51,7 @@ function Login() {
                             <p className="text-slate-600 text-sm md:text-xs">Enter your credentials to access your staff portal</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <label className="block text-slate-700 text-sm md:text-xs font-semibold">Email Address</label>
                                 <div className="relative">
@@ -76,7 +76,7 @@ function Login() {
                                     </div>
                                     <input
                                         type={showPassword ? 'text' : 'password'}
-                                        placeholder="•••••••••"
+                                        placeholder="Your Password"
                                         className="w-full  border border-blue-200 rounded-lg md:rounded-xl py-3 md:py-3 pl-11 pr-11 text-slate-900 text-base md:text-sm focus:outline-none focus:border-[#4ca9df] focus:ring-4 focus:ring-blue-400/20 focus:bg-white transition-all placeholder:text-slate-400"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -97,9 +97,9 @@ function Login() {
                                 </a>
                             </div>
 
-                            <button 
-                                type="submit" 
-                                className="w-full bg-gradient-to-r from-[#4ca9df] to-[#292e91] hover:from-[#3fa3d8] hover:to-[#1f2875] text-white font-semibold py-3 md:py-2.5 rounded-lg md:rounded-xl shadow-lg shadow-blue-500/30 transform transition-all active:scale-[0.98] mt-4 text-base md:text-base"
+                            <button
+                                type="submit"
+                                className="w-full bg-gradient-to-r from-[#4ca9df] to-[#292e91] hover:from-[#3fa3d8] hover:to-[#1f2875] text-white font-semibold py-3 md:py-5 rounded-lg md:rounded-xl shadow-lg shadow-blue-500/30 transform transition-all active:scale-[0.98] mt-4 text-base md:text-base"
                             >
                                 Sign In
                             </button>

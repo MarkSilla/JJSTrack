@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Login from './pages/login'
 import AdminLayout from './layout/adminLayout'
 import Dash from './pages/content/adminDash'
-import AdAnalytics from './pages/content/adAnalytics'
+import AdAnalytics from './pages/content/adreport'
 import AdAppointment from './pages/content/AdAppointment'
 import AdOrder from './pages/content/AdOrder'
 import OrderDetailPage from './pages/content/Orderdetailage'
@@ -43,7 +43,7 @@ function App() {
                     </ProtectedRoute>
                 }>
                     <Route path="dashboard" element={<Dash />} />
-                    <Route path="analytic" element={<AdAnalytics />} />
+                    <Route path="report" element={<AdAnalytics />} />
                     <Route path="appointment" element={<AdAppointment />} />
                     <Route path="orders" element={<AdOrder />} />
                     <Route path="orders/:orderId" element={<OrderDetailPage />} />
