@@ -1,15 +1,15 @@
 import React, { useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
-import HomeSidebar from '../components/adminsidebar'
-import AdminNav from '../components/adminNav'
-import AdminChatWidget from '../components/AdminChatWidget'
+import StaffSidebar from '../components/staffsidenav'
+import StaffNav from '../components/staffnav'
+import StaffChatWidget from '../components/staffchat'
+import StaffCalendarDrawer from '../components/StaffCalendarDrawer'
 
-const AdminLayout = () => {
+const StaffLayout = () => {
     const [collapsed, setCollapsed] = useState(true)
     const [isMobileExpanded, setIsMobileExpanded] = useState(false)
-    const location = useLocation()
-    const pageMeta = getPageMeta(location.pathname)
+    const [calendarOpen, setCalendarOpen] = useState(false)
 
     const handleBurgerClick = () => {
         if (window.innerWidth < 1024) {
@@ -21,7 +21,7 @@ const AdminLayout = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
-            <HomeSidebar
+            <StaffSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 isMobileExpanded={isMobileExpanded}
@@ -30,19 +30,22 @@ const AdminLayout = () => {
 
             <div className={`flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
-                    <AdminNav
-                        onToggleSidebar={handleBurgerClick}
-                        pageTitle={pageMeta.title}
-                        pageSubtitle={pageMeta.subtitle}
+                    <StaffNav 
+                        onToggleSidebar={handleBurgerClick} 
                     />
                     <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-4">
-                        <Outlet />
+                        <Outlet context={{ toggleCalendar: () => setCalendarOpen(true) }} />
+                        <StaffChatWidget />
                     </main>
                 </div>
             </div>
-            <AdminChatWidget />
+
+            <StaffCalendarDrawer 
+                isOpen={calendarOpen} 
+                onClose={() => setCalendarOpen(false)} 
+            />
         </div>
     )
 }
 
-export default AdminLayout
+export default StaffLayout

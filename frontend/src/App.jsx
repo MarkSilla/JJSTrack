@@ -14,9 +14,10 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ProtectedRoute from './components/ProtectedRoute'
-import HomeLayout from './layouts/HomeLayout' 
+import HomeLayout from './layouts/HomeLayout'
 import TermsOfUse from './pages/TermsOfUse'
 import PrivacyPolicy from './pages/PrivacyPolicy'
+import ChatWidget from './components/ChatWidget'
 
 const App = () => {
   return (
@@ -44,6 +45,7 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Routes>
+        <ChatWidget />
       </Router>
     </Context>
   )
