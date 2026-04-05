@@ -1,5 +1,23 @@
 import invoiceModel from '../models/invoiceModel.js';
 import orderModel from '../models/orderModel.js';
+import userModel from '../models/userModel.js';
+
+const getRequestAccess = async (userId) => {
+  if (userId === 'admin') {
+    return { user: null, isAdminStaff: true };
+  }
+
+  try {
+    const user = await userModel.findById(userId).select('role');
+    const isAdminStaff = !!user && (user.role === 'admin' || user.role === 'staff');
+    return { user, isAdminStaff };
+  } catch (error) {
+    if (error?.name === 'CastError') {
+      return { user: null, isAdminStaff: false };
+    }
+    throw error;
+  }
+};
 
 // Create a new invoice
 export const createInvoice = async (req, res) => {
@@ -58,8 +76,8 @@ export const getInvoices = async (req, res) => {
     let query = {};
 
     // If not admin/staff, only return user's invoices
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
+    const { isAdminStaff } = await getRequestAccess(req.userId);
+    if (!isAdminStaff) {
       query.userId = req.userId;
     }
 
@@ -98,8 +116,8 @@ export const getInvoiceById = async (req, res) => {
     }
 
     // Check if user owns the invoice or is admin/staff
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff' && invoice.userId.toString() !== req.userId) {
+    const { isAdminStaff } = await getRequestAccess(req.userId);
+    if (!isAdminStaff && invoice.userId?.toString() !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -207,11 +225,11 @@ export const deleteInvoice = async (req, res) => {
 // Get invoice statistics
 export const getInvoiceStats = async (req, res) => {
   try {
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
+    const { isAdminStaff } = await getRequestAccess(req.userId);
     let query = {};
 
     // If not admin/staff, only return user's invoices
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
+    if (!isAdminStaff) {
       query.userId = req.userId;
     }
 

@@ -610,55 +610,84 @@ export const adminLogin = async (req, res) => {
       });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+
     // Get admin credentials from environment variables
     const ADMIN_EMAIL = process.env.ADMIN_USERNAME;
     const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-    // Validation: Check if admin credentials are configured
-    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-      console.error('Admin credentials not configured in .env');
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Admin login is not properly configured' 
-      });
+    // 1) Admin login via .env credentials
+    if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+      const isAdminEmailMatch = normalizedEmail === String(ADMIN_EMAIL).trim().toLowerCase();
+      const isAdminPasswordMatch = password === ADMIN_PASSWORD;
+
+      if (isAdminEmailMatch && isAdminPasswordMatch) {
+        const token = jwt.sign(
+          { 
+            id: 'admin',
+            email: ADMIN_EMAIL,
+            role: 'admin'
+          },
+          process.env.JWT_SECRET || 'secret_key',
+          { expiresIn: '24h' }
+        );
+
+        return res.json({
+          success: true,
+          message: 'Admin login successful',
+          token,
+          admin: {
+            id: 'admin',
+            email: ADMIN_EMAIL,
+            role: 'admin',
+          },
+        });
+      }
     }
 
-    // Validation: Check email match with case-insensitive comparison
-    if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    // 2) Admin login via DB credentials (admin accounts only)
+    const adminAccount = await userModel.findOne({
+      email: normalizedEmail,
+      role: 'admin',
+    });
+
+    if (!adminAccount || !adminAccount.password) {
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid email or password' 
       });
     }
 
-    // Validation: Check password match (plain text comparison since .env stores plain password)
-    if (password !== ADMIN_PASSWORD) {
+    const isPasswordValid = await bcrypt.compare(password, adminAccount.password);
+    if (!isPasswordValid) {
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid email or password' 
       });
     }
 
-    // Generate JWT token for admin
+    adminAccount.lastLoginAt = new Date();
+    await adminAccount.save();
+
     const token = jwt.sign(
       { 
-        id: 'admin',
-        email: ADMIN_EMAIL,
-        role: 'admin'
+        id: adminAccount._id,
+        email: adminAccount.email,
+        role: adminAccount.role
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '24h' }
     );
 
-    // Send successful response
-    res.json({
+    return res.json({
       success: true,
       message: 'Admin login successful',
       token,
       admin: {
-        id: 'admin',
-        email: ADMIN_EMAIL,
-        role: 'admin',
+        id: adminAccount._id,
+        email: adminAccount.email,
+        role: adminAccount.role,
+        fullName: adminAccount.fullName,
       },
     });
   } catch (error) {
@@ -666,6 +695,94 @@ export const adminLogin = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Admin login failed. Please try again.' 
+    });
+  }
+};
+
+// Staff Login with Email & Password validation
+export const staffLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const staffAccount = await userModel.findOne({
+      email: normalizedEmail,
+      role: 'staff',
+    });
+
+    if (!staffAccount || !staffAccount.password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    if (staffAccount.accountStatus && staffAccount.accountStatus !== 'Active') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your staff account is not active. Please contact admin.'
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, staffAccount.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    staffAccount.lastLoginAt = new Date();
+    await staffAccount.save();
+
+    const token = jwt.sign(
+      {
+        id: staffAccount._id,
+        email: staffAccount.email,
+        role: 'staff'
+      },
+      process.env.JWT_SECRET || 'secret_key',
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Staff login successful',
+      token,
+      staff: {
+        id: staffAccount._id,
+        email: staffAccount.email,
+        role: staffAccount.role,
+        fullName: staffAccount.fullName,
+      },
+    });
+  } catch (error) {
+    console.error('Staff Login Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Staff login failed. Please try again.'
     });
   }
 };
@@ -704,6 +821,27 @@ export const verifyAdminToken = async (req, res) => {
       return res.status(403).json({ 
         success: false, 
         message: 'Not authorized as admin' 
+      });
+    }
+
+    if (decoded.id !== 'admin') {
+      const account = await userModel.findById(decoded.id).select('email role fullName accountStatus');
+      if (!account || account.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Account no longer has admin access' 
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Token verified',
+        admin: {
+          id: account._id,
+          email: account.email,
+          role: account.role,
+          fullName: account.fullName,
+        }
       });
     }
 

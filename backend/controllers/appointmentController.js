@@ -1,4 +1,22 @@
 import appointmentModel from '../models/appointmentModel.js';
+import userModel from '../models/userModel.js';
+
+const getRequestAccess = async (userId) => {
+  if (userId === 'admin') {
+    return { user: null, isAdminStaff: true };
+  }
+
+  try {
+    const user = await userModel.findById(userId).select('role');
+    const isAdminStaff = !!user && (user.role === 'admin' || user.role === 'staff');
+    return { user, isAdminStaff };
+  } catch (error) {
+    if (error?.name === 'CastError') {
+      return { user: null, isAdminStaff: false };
+    }
+    throw error;
+  }
+};
 
 // Create a new appointment
 export const createAppointment = async (req, res) => {
@@ -33,8 +51,8 @@ export const getAppointments = async (req, res) => {
     let query = {};
 
     // If not admin/staff, only return user's appointments
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
+    const { isAdminStaff } = await getRequestAccess(req.userId);
+    if (!isAdminStaff) {
       query.userId = req.userId;
     }
 
@@ -69,8 +87,8 @@ export const getAppointmentById = async (req, res) => {
     }
 
     // Check if user owns the appointment or is admin/staff
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff' && appointment.userId.toString() !== req.userId) {
+    const { isAdminStaff } = await getRequestAccess(req.userId);
+    if (!isAdminStaff && appointment.userId?.toString() !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -203,11 +221,11 @@ export const getAvailableSlots = async (req, res) => {
 // Get appointment statistics
 export const getAppointmentStats = async (req, res) => {
   try {
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
+    const { isAdminStaff } = await getRequestAccess(req.userId);
     let query = {};
 
     // If not admin/staff, only return user's appointments
-    if (user && user.role !== 'admin' && user.role !== 'staff') {
+    if (!isAdminStaff) {
       query.userId = req.userId;
     }
 

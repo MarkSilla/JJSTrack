@@ -12,6 +12,7 @@ import {
   resetPassword,
   completeGoogleProfile,
   adminLogin,
+  staffLogin,
   adminLogout,
   verifyAdminToken,
 } from '../controllers/userController.js';
@@ -33,6 +34,7 @@ router.post('/reset-password', resetPassword);
 
 // Admin routes
 router.post('/admin/login', adminLogin);
+router.post('/staff/login', staffLogin);
 router.post('/admin/logout', adminLogout);
 router.post('/admin/verify-token', verifyAdminToken);
 

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import image from '../assets/img'
 
@@ -6,10 +7,61 @@ function Login() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const navigate = useNavigate()
 
-    const handleSubmit = (e) => {
+    useEffect(() => {
+        const rememberedEmail = localStorage.getItem('rememberStaffEmail')
+        if (rememberedEmail) {
+            setEmail(rememberedEmail)
+        }
+    }, [])
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        console.log('Login attempt:', { email, password })
+        setError('')
+
+        const normalizedEmail = String(email).replace(/\s+/g, '').trim().toLowerCase()
+        const rawPassword = String(password)
+
+        if (!normalizedEmail || !rawPassword) {
+            setError('Please enter your email and password.')
+            return
+        }
+
+        setLoading(true)
+        try {
+            const response = await fetch('http://localhost:4000/api/users/staff/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: normalizedEmail,
+                    password: rawPassword,
+                }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok || !data.success) {
+                throw new Error(data?.message || 'Login failed')
+            }
+
+            if (!data?.staff || data.staff.role !== 'staff') {
+                throw new Error('This account has no staff portal access.')
+            }
+
+            localStorage.setItem('staffToken', data.token)
+            localStorage.setItem('rememberStaffEmail', normalizedEmail)
+            localStorage.setItem('staffUser', JSON.stringify(data.staff))
+            navigate('/staff/dashboard')
+        } catch (err) {
+            setError(err.message || 'Unable to login right now.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -52,6 +104,11 @@ function Login() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                            {error && (
+                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                                    {error}
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <label className="block text-slate-700 text-sm md:text-xs font-semibold">Email Address</label>
                                 <div className="relative">
@@ -64,6 +121,7 @@ function Login() {
                                         className="w-full border border-blue-200 rounded-lg md:rounded-xl py-3 md:py-3 pl-11 pr-4 text-slate-900 text-base md:text-sm focus:outline-none focus:border-[#4ca9df] focus:ring-4 focus:ring-blue-400/20 focus:bg-white transition-all placeholder:text-slate-400"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
@@ -80,11 +138,13 @@ function Login() {
                                         className="w-full  border border-blue-200 rounded-lg md:rounded-xl py-3 md:py-3 pl-11 pr-11 text-slate-900 text-base md:text-sm focus:outline-none focus:border-[#4ca9df] focus:ring-4 focus:ring-blue-400/20 focus:bg-white transition-all placeholder:text-slate-400"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        disabled={loading}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        disabled={loading}
                                     >
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </button>
@@ -99,9 +159,10 @@ function Login() {
 
                             <button
                                 type="submit"
+                                disabled={loading}
                                 className="w-full bg-gradient-to-r from-[#4ca9df] to-[#292e91] hover:from-[#3fa3d8] hover:to-[#1f2875] text-white font-semibold py-3 md:py-5 rounded-lg md:rounded-xl shadow-lg shadow-blue-500/30 transform transition-all active:scale-[0.98] mt-4 text-base md:text-base"
                             >
-                                Sign In
+                                {loading ? 'Signing In...' : 'Sign In'}
                             </button>
                         </form>
 
