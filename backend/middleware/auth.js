@@ -14,6 +14,7 @@ export const authMiddleware = (req, res, next) => {
     console.log('Auth: Token found, verifying...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     req.userId = decoded.id;
+    req.userRole = decoded.role;
     console.log('Auth Success: userId =', req.userId, '| Calling next()...');
     
     if (typeof next !== 'function') {

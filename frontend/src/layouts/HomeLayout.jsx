@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import HomeSidebar from '../components/HomeSidebar'
 import HomeNavbar from '../components/HomeNavbar'
 import GoogleProfileModal from '../components/GoogleProfileModal'
+import ChatWidget from '../components/ChatWidget'
 
 const HomeLayout = () => {
   const [collapsed, setCollapsed] = useState(true)
@@ -47,6 +48,7 @@ const HomeLayout = () => {
         onClose={() => setShowProfileModal(false)}
         onSuccess={handleProfileSuccess}
       />
+      <ChatWidget />
     </div>
   )
 }

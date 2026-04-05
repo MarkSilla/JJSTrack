@@ -10,6 +10,7 @@ export const authMiddleware = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     req.userId = decoded.id;
+    req.userRole = decoded.role;
     next();
   } catch (error) {
     console.error('Auth Middleware Error:', error);

@@ -1,10 +1,32 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck } from "lucide-react";
 import img from "../assets/img";
+import { chatApi } from "../../services/chatApi";
+
+const mapApiMessage = (raw) => {
+  const senderRole = String(raw?.senderRole || "").toLowerCase();
+  return {
+    id: raw?.id || raw?._id || Date.now(),
+    sender: raw?.sender || (senderRole === "user" ? "client" : "admin"),
+    message: raw?.message || "",
+    timestamp: raw?.timestamp || raw?.createdAt || new Date().toISOString(),
+    type: raw?.type || (raw?.imageUrl ? "image" : "text"),
+    imageUrl: raw?.imageUrl || null,
+    status: raw?.status || "sent",
+  };
+};
+
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const ChatBubble = ({ sender, message, timestamp, type, imageUrl, status }) => {
   const isClient = sender === "client";
-  const timeString = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeString = new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className={`flex w-full ${isClient ? "justify-end" : "justify-start"} mb-4`}>
@@ -20,7 +42,7 @@ const ChatBubble = ({ sender, message, timestamp, type, imageUrl, status }) => {
           </div>
         ) : null}
 
-        {message && <p className="text-sm leading-relaxed">{message}</p>}
+        {message && <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>}
 
         <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isClient ? "text-blue-200" : "text-slate-300"}`}>
           {timeString}
@@ -31,6 +53,7 @@ const ChatBubble = ({ sender, message, timestamp, type, imageUrl, status }) => {
     </div>
   );
 };
+
 const ImagePreview = ({ imageFile, onRemove }) => {
   if (!imageFile) return null;
   const objectUrl = URL.createObjectURL(imageFile);
@@ -42,6 +65,7 @@ const ImagePreview = ({ imageFile, onRemove }) => {
         <button
           onClick={onRemove}
           className="absolute -top-2 -right-2 bg-stone-800 text-white rounded-full p-1 shadow hover:bg-red-500 transition-colors"
+          type="button"
         >
           <X className="w-3 h-3" />
         </button>
@@ -49,26 +73,30 @@ const ImagePreview = ({ imageFile, onRemove }) => {
     </div>
   );
 };
-//text
+
 const InputArea = ({ onSendMessage }) => {
   const [text, setText] = useState("");
   const [imageFile, setImageFile] = useState(null);
+  const [sending, setSending] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!text.trim() && !imageFile) return;
+    if ((!text.trim() && !imageFile) || sending) return;
 
-    //Upload `imageFile` to your server/Supabase and use the public URL here instead of URL.createObjectURL
-    let messageObj = {
-      message: text.trim(),
-      type: imageFile ? "image" : "text",
-      imageUrl: imageFile ? URL.createObjectURL(imageFile) : null
-    };
-
-    onSendMessage(messageObj);
-    setText("");
-    setImageFile(null);
+    try {
+      setSending(true);
+      const imageUrl = imageFile ? await fileToDataUrl(imageFile) : null;
+      await onSendMessage({
+        message: text.trim(),
+        type: imageUrl ? "image" : "text",
+        imageUrl,
+      });
+      setText("");
+      setImageFile(null);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -105,7 +133,7 @@ const InputArea = ({ onSendMessage }) => {
 
         <button
           type="submit"
-          disabled={!text.trim() && !imageFile}
+          disabled={(!text.trim() && !imageFile) || sending}
           className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
         >
           <Send className="w-5 h-5 ml-0.5" />
@@ -115,7 +143,7 @@ const InputArea = ({ onSendMessage }) => {
   );
 };
 
-const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply }) => {
+const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoading, errorText }) => {
   const endOfMessagesRef = useRef(null);
 
   useEffect(() => {
@@ -123,26 +151,26 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply }) => 
   }, [messages, isTyping]);
 
   return (
-    <div className="flex-1 bg-stone-50 flex flex-col items-center justify-center text-center p-8">
-      <div className="w-20 h-20 bg-stone-200 text-stone-400 rounded-full flex items-center justify-center mb-5">
-        <MessageCircle className="w-10 h-10" />
-      </div>
-      {messages.length === 0 ? (
-        <div className="flex flex items-center justify-center text-stone-400 text-sm">
-          No messages yet. Say hi!
+    <div className="flex-1 bg-stone-50 overflow-y-auto p-4">
+      {isLoading ? (
+        <div className="h-full flex items-center justify-center text-stone-400 text-sm">Loading messages...</div>
+      ) : messages.length === 0 ? (
+        <div className="h-full flex flex-col items-center justify-center text-center px-4">
+          <div className="w-20 h-20 bg-stone-200 text-stone-400 rounded-full flex items-center justify-center mb-5">
+            <MessageCircle className="w-10 h-10" />
+          </div>
+          <div className="text-stone-400 text-sm">No messages yet. Say hi!</div>
         </div>
       ) : (
-        messages.map((msg) => (
-          <ChatBubble key={msg.id} {...msg} />
-        ))
+        messages.map((msg) => <ChatBubble key={msg.id} {...msg} />)
       )}
 
       {isTyping && (
         <div className="flex w-full justify-start mb-4">
           <div className="bg-gray-700 border border-gray-800 text-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1">
-            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
           </div>
         </div>
       )}
@@ -154,6 +182,7 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply }) => 
               key={idx}
               onClick={() => onSendQuickReply(qr)}
               className="text-xs font-semibold text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-full px-3 py-1.5 transition-colors shadow-sm"
+              type="button"
             >
               {qr}
             </button>
@@ -161,12 +190,16 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply }) => 
         </div>
       )}
 
+      {errorText && (
+        <div className="mt-2 text-xs text-red-500 text-center">{errorText}</div>
+      )}
+
       <div ref={endOfMessagesRef} />
     </div>
   );
 };
 
-const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies }) => {
+const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText }) => {
   return (
     <div
       className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-300 ${isFullScreen
@@ -174,16 +207,15 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
         : "bottom-0 right-0 w-full h-[80vh] md:bottom-24 md:right-8 md:w-[380px] md:h-[600px] md:rounded-2xl rounded-t-2xl"
         }`}
     >
-      {/* Header */}
       <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 flex items-center justify-center overflow-hidden shadow-sm">
-            <img src={img.jjslogo1} alt="JJS" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+            <img src={img.jjslogo1} alt="JJS" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; }} />
           </div>
           <div>
             <h3 className="font-semibold text-sm">JJS-Admin</h3>
             <p className="text-[10px] text-blue-200 flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block shadow-sm"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block shadow-sm" />
               {isTyping ? "Admin is typing..." : "Active"}
             </p>
           </div>
@@ -192,12 +224,14 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
           <button
             onClick={toggleFullScreen}
             className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors hidden md:block"
+            type="button"
           >
             {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
           <button
             onClick={onClose}
             className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors"
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -209,6 +243,8 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
         isTyping={isTyping}
         quickReplies={quickReplies}
         onSendQuickReply={(text) => onSendMessage({ message: text, type: "text", imageUrl: null })}
+        isLoading={isLoading}
+        errorText={errorText}
       />
       <InputArea onSendMessage={onSendMessage} />
     </div>
@@ -220,6 +256,7 @@ const ChatLauncher = ({ onClick, unreadCount }) => {
     <button
       onClick={onClick}
       className="fixed bottom-6 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all z-[9999] ring-4 ring-blue-600/20"
+      type="button"
     >
       <MessageCircle className="w-7 h-7" />
       {unreadCount > 0 && (
@@ -231,72 +268,111 @@ const ChatLauncher = ({ onClick, unreadCount }) => {
   );
 };
 
-//widget
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  // Fetch initial chat history from the database here
+  const [isTyping] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorText, setErrorText] = useState("");
 
   const QUICK_REPLIES = ["Track my order", "Pricing details", "Talk to an agent"];
 
-  const handleSendMessage = (msgObj) => {
-    // Optimistic UI update for client message
-    const newMessage = {
-      id: Date.now(),
+  const loadConversationSummary = useCallback(async () => {
+    try {
+      const response = await chatApi.getConversations();
+      const conversation = response?.conversations?.[0];
+      setUnreadCount(Number(conversation?.unreadCount || 0));
+    } catch (error) {
+      console.error("Load conversation summary error:", error);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true);
+      const response = await chatApi.getMessages();
+      const nextMessages = Array.isArray(response?.messages)
+        ? response.messages.map(mapApiMessage)
+        : [];
+
+      setMessages(nextMessages);
+      setUnreadCount(0);
+      setErrorText("");
+    } catch (error) {
+      console.error("Load messages error:", error);
+      setErrorText(error?.response?.data?.message || "Failed to load chat messages");
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  }, []);
+
+  const handleSendMessage = useCallback(async (msgObj) => {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
       sender: "client",
-      message: msgObj.message,
+      message: msgObj.message || "",
       timestamp: new Date().toISOString(),
       type: msgObj.type,
-      //Replace local object URL with your backend-hosted URL string
-      imageUrl: msgObj.imageUrl,
-      status: "sent"
+      imageUrl: msgObj.imageUrl || null,
+      status: "sent",
     };
 
-    setMessages((prev) => [...prev, newMessage]);
-    setIsTyping(true);
+    setMessages((prev) => [...prev, optimisticMessage]);
+    setErrorText("");
 
+    try {
+      const response = await chatApi.sendMessage(msgObj);
+      const persisted = mapApiMessage(response?.chatMessage || {});
 
-    // REMOVE THIS SIMULATION BLOCK BELOW
-    // Replace this with your actual WebSocket / API listener for Admin replies
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map(m => m.id === newMessage.id ? { ...m, status: "read" } : m)
-      );
+      setMessages((prev) => prev.map((message) => (message.id === tempId ? persisted : message)));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Send message error:", error);
+      setMessages((prev) => prev.filter((message) => message.id !== tempId));
+      setErrorText(error?.response?.data?.message || "Failed to send message");
+    }
+  }, []);
 
-      setTimeout(() => {
-        setIsTyping(false);
-        setMessages((prev) => [...prev, {
-          id: Date.now() + 1,
-          sender: "admin",
-          message: "hello",
-          timestamp: new Date().toISOString(),
-          type: "text",
-          status: "read"
-        }]);
-      }, 1000);
-    }, 1500);
-  };
+  useEffect(() => {
+    loadConversationSummary();
+    const intervalId = setInterval(loadConversationSummary, 5000);
+    return () => clearInterval(intervalId);
+  }, [loadConversationSummary]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    loadMessages(false);
+    const intervalId = setInterval(() => {
+      loadMessages(true);
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [isOpen, loadMessages]);
 
   useEffect(() => {
     if (!isOpen) setIsFullScreen(false);
   }, [isOpen]);
 
+  const isSmallScreen = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+
   return (
     <>
-      {!isOpen && <ChatLauncher onClick={() => setIsOpen(true)} unreadCount={0} />}
+      {!isOpen && <ChatLauncher onClick={() => setIsOpen(true)} unreadCount={unreadCount} />}
 
       {isOpen && (
         <>
           <div
-            className={`fixed inset-0 bg-stone-900/40 z-[9998] transition-opacity ${isFullScreen || window.innerWidth < 768 ? "opacity-100" : "opacity-0 pointer-events-none"
+            className={`fixed inset-0 bg-stone-900/40 z-[9998] transition-opacity ${isFullScreen || isSmallScreen ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
             onClick={() => setIsOpen(false)}
+            aria-hidden="true"
           />
 
           <ChatWindow
-            isOpen={isOpen}
             onClose={() => setIsOpen(false)}
             isFullScreen={isFullScreen}
             toggleFullScreen={() => setIsFullScreen(!isFullScreen)}
@@ -304,6 +380,8 @@ export default function ChatWidget() {
             onSendMessage={handleSendMessage}
             isTyping={isTyping}
             quickReplies={QUICK_REPLIES}
+            isLoading={isLoading}
+            errorText={errorText}
           />
         </>
       )}
