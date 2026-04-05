@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import BookingModal from './Bookingforms'
-import CalendarComponent, { toKey, MAX_SLOTS, SLOT_MAP, USER_BOOKINGS } from '../../components/calendar'
+import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
     MdDesktopWindows, MdPrint, MdMoveToInbox, MdLocalShipping, MdLocalPrintshop,
@@ -8,7 +8,6 @@ import {
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { bookingApi } from '../../../services/bookingApi'
-import { appointmentApi } from '../../../services/appointmentApi'
 import '../../styles/calendar.css'
 
 const useUser = () => {
@@ -27,6 +26,13 @@ const getGreeting = () => {
     if (h >= 5 && h < 12) return 'Good morning'
     if (h >= 12 && h < 18) return 'Good afternoon'
     return 'Good evening'
+}
+
+const normalizeDateKey = (value) => {
+    if (!value) return null
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
 }
 
 // ─── Step icons — lowercase keys to match .toLowerCase() ───
@@ -158,57 +164,137 @@ const Dashboard = () => {
 
     useEffect(() => { fetchData() }, [])
 
+    const handleDateClick = useCallback((arg) => {
+        const dateKey = arg?.dateStr || toKey(arg.date)
+        setSelectedDate(dateKey)
+    }, [])
+
+    const orderSlotsByDate = useMemo(() => {
+        return orders.reduce((acc, order) => {
+            // Calendar is based on when order was placed (createdAt), not pickup date.
+            const dateKey = normalizeDateKey(order.createdAt || order.orderDate || order.date)
+            if (!dateKey) return acc
+            const prev = acc[dateKey] || { used: 0, max: MAX_SLOTS, isFull: false }
+            const used = prev.used + 1
+            acc[dateKey] = { used, max: prev.max, isFull: used >= prev.max }
+            return acc
+        }, {})
+    }, [orders])
+
+    const userBookingDateSet = useMemo(() => new Set(Object.keys(orderSlotsByDate)), [orderSlotsByDate])
+
     const name = user?.fullName || 'Guest'
 
     const dayCellClassNames = useCallback((arg) => {
         const key = toKey(arg.date)
-        const now = new Date(); now.setHours(0, 0, 0, 0)
         const classes = []
-        if (arg.date < now) return classes
-        const used = SLOT_MAP[key] || 0
-        const isFull = used >= MAX_SLOTS
-        const isNearFull = used >= 7
-        if (isFull) classes.push('day-full')
-        else if (isNearFull) classes.push('day-near-full')
-        if (USER_BOOKINGS.some((b) => b.date === key)) classes.push('day-user-booking')
+        const now = new Date()
+        now.setHours(0, 0, 0, 0)
+        if (arg.date < now) classes.push('day-past-clickable')
+
+        const slotInfo = orderSlotsByDate[key]
+        const ratio = slotInfo?.max > 0 ? slotInfo.used / slotInfo.max : 0
+        if (slotInfo?.isFull) classes.push('day-full')
+        else if (slotInfo && ratio >= 0.7) classes.push('day-near-full')
+        else if (slotInfo) classes.push('day-available')
+
+        if (userBookingDateSet.has(key)) classes.push('day-user-booking')
         if (selectedDate === key) classes.push('day-selected')
         return classes
-    }, [selectedDate])
+    }, [orderSlotsByDate, selectedDate, userBookingDateSet])
 
     const dayCellContent = useCallback((arg) => {
         const key = toKey(arg.date)
-        const now = new Date(); now.setHours(0, 0, 0, 0)
-        const isPast = arg.date < now
-        const used = SLOT_MAP[key] || 0
-        const isFull = used >= MAX_SLOTS
-        const ratio = used / MAX_SLOTS
-        const ub = USER_BOOKINGS.find((b) => b.date === key)
+
+        const slotInfo = orderSlotsByDate[key]
+        const hasSlotInfo = Boolean(slotInfo)
+        const used = slotInfo?.used ?? 0
+        const max = slotInfo?.max ?? MAX_SLOTS
+        const isFull = slotInfo?.isFull ?? false
+        const ratio = max > 0 ? used / max : 0
+
+        const hasUserBooking = userBookingDateSet.has(key)
         const isSelected = selectedDate === key
         let fillColor = 'green'
         if (ratio >= 1) fillColor = 'red'
-        else if (used >= 7) fillColor = 'orange'
+        else if (ratio >= 0.7) fillColor = 'orange'
         else if (ratio >= 0.5) fillColor = 'yellow'
         return (
             <div className="day-cell-inner">
                 <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
                 <div className="day-cell-spacer" />
-                {ub && !isSelected && <span className="pickup-badge">Pickup</span>}
-                {isFull && !isPast && <span className="full-badge">Full</span>}
-                {!isPast && !isFull && used > 0 && !isSelected && (
+                {hasUserBooking && !isSelected && <span className="pickup-badge">Order</span>}
+                {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
+                {hasSlotInfo && !isFull && used > 0 && !isSelected && (
                     <div className="slot-badge">
                         <div className="slot-bar">
                             <div className={`slot-bar-fill ${fillColor}`} style={{ width: `${ratio * 100}%` }} />
                         </div>
-                        <span className="slot-text">{used}/{MAX_SLOTS}</span>
+                        <span className="slot-text">{used}/{max}</span>
                     </div>
                 )}
             </div>
         )
-    }, [selectedDate])
+    }, [orderSlotsByDate, selectedDate, userBookingDateSet])
 
     return (
         <>
-            <main className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <style>{`
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
+                    pointer-events: auto;
+                    opacity: 1;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
+                    color: #94a3b8;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number:hover {
+                    color: #334155 !important;
+                    background: #e2e8f0 !important;
+                    opacity: 1 !important;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-past-clickable .fc-daygrid-day-frame:hover {
+                    background: #f8fafc;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame {
+                    background: linear-gradient(135deg, #ecfdf5, #dcfce7);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame:hover {
+                    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-available:not(.day-selected) .fc-daygrid-day-frame {
+                    background: linear-gradient(135deg, #ecfdf5, #dcfce7);
+                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-near-full:not(.day-selected) .fc-daygrid-day-frame {
+                    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-full:not(.day-selected) .fc-daygrid-day-frame {
+                    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .fc-daygrid-day-number,
+                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .fc-daygrid-day-number:hover {
+                    color: #ffffff !important;
+                    background: transparent !important;
+                    opacity: 1 !important;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past.day-selected .fc-daygrid-day-number,
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past.day-selected .fc-daygrid-day-number:hover {
+                    color: #ffffff !important;
+                    background: transparent !important;
+                    opacity: 1 !important;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .slot-text {
+                    color: #e2e8f0;
+                }
+                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .slot-bar {
+                    background: rgba(255, 255, 255, 0.35);
+                }
+            `}</style>
+            <main className="dashboard-interactive-past p-3 sm:p-4 md:p-6 lg:p-8">
 
                 {/* ── Hero Banner ── */}
                 <div className="bg-[#0F172A] rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-2xl relative overflow-hidden mb-6 sm:mb-8">
@@ -280,8 +366,22 @@ const Dashboard = () => {
                                 <CalendarComponent
                                     dayCellClassNames={dayCellClassNames}
                                     dayCellContent={dayCellContent}
-                                    dateClick={(arg) => setSelectedDate(toKey(arg.date))}
+                                    dateClick={handleDateClick}
                                 />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4 mt-4 px-1">
+                                {[
+                                    { gradient: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Selected Date' },
+                                    { gradient: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-2 ring-blue-400/30', label: 'May Booking/Order Ka' },
+                                    { gradient: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available Slots' },
+                                    { gradient: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
+                                    { gradient: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },
+                                ].map(({ gradient, label }) => (
+                                    <div key={label} className="flex items-center gap-2">
+                                        <span className={`w-3.5 h-3.5 rounded-md ${gradient}`} />
+                                        <span className="text-[11px] text-gray-500 font-semibold tracking-wide">{label}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>

@@ -125,6 +125,17 @@ const StatusBadge = ({ status }) => {
 const DetailsModal = ({ order, onClose }) => {
     const navigate  = useNavigate()
     const isBooking = !!order.bookingType
+    const bookingRefId = typeof order.bookingId === 'string'
+        ? order.bookingId
+        : order.bookingId?._id
+    const normalizedStatus = String(order.status || '').toLowerCase()
+    const canViewInvoice = !isBooking && (
+        order.paid === true ||
+        order.isReleased === true ||
+        Boolean(order.paidAt || order.releasedAt || order.pickedUpAt) ||
+        normalizedStatus === 'completed' ||
+        normalizedStatus === 'released'
+    )
     const displayName = isBooking
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
@@ -408,10 +419,10 @@ const DetailsModal = ({ order, onClose }) => {
             </div>
 
             {/* Footer */}
-            {!isBooking && order.status === 'Completed' && (
+            {canViewInvoice && (
                 <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0">
                     <button
-                        onClick={() => { navigate('/invoices'); onClose() }}
+                        onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
                         className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
                     >
                         <FileText size={14} /> View Invoice

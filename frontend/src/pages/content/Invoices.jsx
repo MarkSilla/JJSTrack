@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MdPictureAsPdf, MdEmail, MdPhone, MdLocationOn, MdReceipt, MdCheckCircle, MdAccessTime } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
-import { orderApi } from '../../../services/orderApi'
+import { bookingApi } from '../../../services/bookingApi'
 import img from '../../assets/img.js'
 import { useParams } from 'react-router-dom'
 
@@ -42,6 +42,91 @@ const typeBadge = (type) => {
     )
 }
 
+const toNumeric = (value) => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : 0
+}
+
+const normalizeInvoiceStatus = (booking) => {
+    const invoiceStatus = String(booking?.invoice?.status || '').toLowerCase()
+    if (invoiceStatus === 'paid') return 'Paid'
+    if (invoiceStatus === 'overdue') return 'Overdue'
+    if (invoiceStatus === 'pending') return 'Pending'
+
+    const bookingStatus = String(booking?.status || '').toLowerCase()
+    if (booking?.paid || booking?.isPickedUp || bookingStatus === 'released' || bookingStatus.includes('scan')) return 'Paid'
+    return 'Pending'
+}
+
+const shouldShowInvoice = (booking) => {
+    const bookingStatus = String(booking?.status || '').toLowerCase()
+    return Boolean(
+        booking?.paid ||
+        booking?.isPickedUp ||
+        booking?.pickedUpAt ||
+        booking?.paidAt ||
+        bookingStatus === 'released' ||
+        bookingStatus.includes('scan') ||
+        bookingStatus === 'completed'
+    )
+}
+
+const mapBookingTypeToItemType = (bookingType) => {
+    const type = String(bookingType || '').toLowerCase()
+    if (type === 'repair') return 'Repair'
+    if (type === 'jersey' || type === 'organizational') return 'Custom'
+    return 'Service'
+}
+
+const toInvoiceItems = (booking) => {
+    const invoiceItems = Array.isArray(booking?.invoice?.items) ? booking.invoice.items : []
+    const bookingItems = Array.isArray(booking?.items) ? booking.items : []
+    const sourceItems = invoiceItems.length > 0 ? invoiceItems : bookingItems
+
+    if (sourceItems.length > 0) {
+        return sourceItems.map((item) => ({
+            description: item?.description || booking?.service || 'Service',
+            type: item?.type || mapBookingTypeToItemType(booking?.bookingType),
+            qty: toNumeric(item?.qty) || 1,
+            unitPrice: toNumeric(item?.unitPrice),
+            addOnPrice: toNumeric(item?.addOnPrice),
+            size: item?.size || '',
+            addOn: item?.addOn || 'None',
+        }))
+    }
+
+    const selectedOptions = Array.isArray(booking?.selectedOptions) ? booking.selectedOptions : []
+    if (selectedOptions.length > 0) {
+        return selectedOptions.map((option) => ({
+            description: `${booking?.service || 'Service'} - ${option?.name || 'Option'}`,
+            type: mapBookingTypeToItemType(booking?.bookingType),
+            qty: toNumeric(option?.quantity) || 1,
+            unitPrice: toNumeric(option?.price),
+            addOnPrice: 0,
+            size: '',
+            addOn: 'None',
+        }))
+    }
+
+    return [{
+        description: booking?.service || 'Service',
+        type: mapBookingTypeToItemType(booking?.bookingType),
+        qty: 1,
+        unitPrice: toNumeric(booking?.totalPrice ?? booking?.amount),
+        addOnPrice: 0,
+        size: '',
+        addOn: 'None',
+    }]
+}
+
+const calculateItemsTotal = (items) =>
+    (items || []).reduce((sum, item) => {
+        const qty = toNumeric(item?.qty) || 1
+        const unitPrice = toNumeric(item?.unitPrice)
+        const addOnPrice = toNumeric(item?.addOnPrice)
+        return sum + (qty * (unitPrice + addOnPrice))
+    }, 0)
+
 const Invoices = () => {
     const { id } = useParams()
     const { name } = useUser()
@@ -55,34 +140,50 @@ const Invoices = () => {
         const fetchInvoices = async () => {
             try {
                 setLoading(true)
-                const response = await orderApi.getOrders()
+                const response = await bookingApi.getBookings()
                 if (response.success) {
-                    // Transform API orders to invoice format
-                    const invoiceData = (response.orders || []).map((order) => ({
-                        id: order._id,
-                        invoiceNumber: order.invoiceNumber || `INV-${order._id.slice(-6).toUpperCase()}`,
-                        customerName: order.customerName || 'N/A',
-                        itemName: order.itemName || 'N/A',
-                        amount: order.amount || 0,
-                        status: order.status === 'Completed' ? 'Paid' : order.status === 'In Progress' ? 'Pending' : 'Pending',
-                        date: new Date(order.createdAt).toLocaleDateString('en-PH'),
-                        orderId: order._id,
-                        items: [
-                            {
-                                desc: order.itemName || 'Service',
-                                qty: 1,
-                                unitPrice: order.amount || 0,
-                                addOnPrice: 0
+                    // Transform API bookings to invoice format
+                    const bookings = Array.isArray(response.bookings) ? response.bookings : (Array.isArray(response.data) ? response.data : [])
+                    const invoiceData = bookings
+                        .filter(shouldShowInvoice)
+                        .map((booking) => {
+                            const items = toInvoiceItems(booking)
+                            const amount = calculateItemsTotal(items)
+                            const billTo = {
+                                name: booking?.invoice?.billTo?.name || booking?.contact?.fullName || 'N/A',
+                                address: booking?.invoice?.billTo?.address || booking?.contact?.address || '',
+                                city: booking?.invoice?.billTo?.city || booking?.contact?.city || '',
+                                phone: booking?.invoice?.billTo?.phone || booking?.contact?.phone || '',
+                                email: booking?.invoice?.billTo?.email || booking?.contact?.email || '',
                             }
-                        ],
-                        taxRate: 0,
-                        discount: null
-                    }))
+
+                            return {
+                                id: booking._id,
+                                invoiceNumber: booking?.invoice?.invoiceNumber || `INV-${booking._id.slice(-6).toUpperCase()}`,
+                                customerName: billTo.name,
+                                itemName: booking?.service || 'N/A',
+                                orderItem: booking?.service || 'N/A',
+                                amount,
+                                status: normalizeInvoiceStatus(booking),
+                                date: booking?.invoice?.date || (booking?.createdAt ? new Date(booking.createdAt).toLocaleDateString('en-PH') : 'N/A'),
+                                dueDate: booking?.invoice?.dueDate || booking?.pickupDate || 'N/A',
+                                orderId: booking?.orderId || booking._id,
+                                items,
+                                billTo,
+                                taxRate: toNumeric(booking?.invoice?.taxRate),
+                                discount: booking?.invoice?.discount || null,
+                            }
+                        })
                     setInvoices(invoiceData)
+                    setSelectedIdx(0)
+                } else {
+                    setInvoices([])
+                    setSelectedIdx(0)
                 }
             } catch (error) {
-                console.error('Error fetching orders:', error)
+                console.error('Error fetching bookings:', error)
                 setInvoices([])
+                setSelectedIdx(0)
             } finally {
                 setLoading(false)
             }

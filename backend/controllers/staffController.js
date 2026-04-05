@@ -85,7 +85,10 @@ export const getMyStaff = async (req, res) => {
     const staff = await userModel
       .find({ 
         role: "staff", 
-        createdBy: req.userId,
+        $or: [
+          { createdBy: req.userId === "admin" ? { $exists: false } : req.userId },
+          { createdBy: null }
+        ],
         accountStatus: "Active"
       })
       .select(STAFF_FIELDS_TO_EXCLUDE)
@@ -142,9 +145,9 @@ export const createStaff = async (req, res) => {
     const hashedPassword = await bcrypt.hash(String(password), 10);
     const payload = compactObject(buildStaffPayload(req.body, { isCreate: true }));
 
-    const staff = await userModel.create({
+const staff = await userModel.create({
       ...payload,
-      createdBy: req.userId,
+      createdBy: req.userId === "admin" ? null : req.userId,
       password: hashedPassword,
       createdAt: new Date(),
     });

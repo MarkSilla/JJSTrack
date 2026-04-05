@@ -13,7 +13,7 @@ const PAGE_META = [
     },
     {
         match: /^\/admin\/analytic$/,
-        title: 'Analytics',
+        title: 'Reports',
         subtitle: 'Performance insights and key metrics.'
     },
     {

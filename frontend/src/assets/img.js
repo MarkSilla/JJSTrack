@@ -1,6 +1,7 @@
 import invoice from './invoice.png'
 import jersey from './jersey.jpg'
 import jjslogo1 from './jjs.png'
+import qrcode from './qrcode.png'
 import line1 from './line1.svg'
 import line2 from './line2.svg'
 import line3 from './line3.svg'
@@ -16,6 +17,7 @@ const img = {
     invoice,
     jersey,
     jjslogo1,
+    qrcode,
     line1,
     line2,
     line3,

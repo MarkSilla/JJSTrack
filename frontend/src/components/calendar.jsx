@@ -32,7 +32,7 @@ export const USER_BOOKINGS = [
 ]
 /* ───────────────────────────────────────────────────────────── */
 
-const CalendarComponent = ({ events = [], dateClick, dayCellClassNames, dayCellContent }) => {
+const CalendarComponent = ({ events = [], dateClick, dayCellClassNames, dayCellContent, datesSet }) => {
     return (
         <div className="calendar-wrapper">
             <FullCalendar
@@ -51,6 +51,7 @@ const CalendarComponent = ({ events = [], dateClick, dayCellClassNames, dayCellC
                 dateClick={dateClick}
                 dayCellClassNames={dayCellClassNames}
                 dayCellContent={dayCellContent}
+                datesSet={datesSet}
             />
         </div>
     )

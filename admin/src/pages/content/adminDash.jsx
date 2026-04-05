@@ -97,6 +97,32 @@ const FILTER_OPTIONS = [
   { label: "Pending", value: "Pending" },
 ];
 
+const BOOKING_VOLUME_OPTIONS = [
+  { label: "Weekly", value: "weekly" },
+  { label: "Monthly", value: "monthly" },
+  { label: "Quarterly", value: "quarterly" },
+  { label: "Yearly", value: "yearly" },
+];
+
+const BOOKING_VOLUME_META = {
+  weekly: {
+    title: "Weekly Booking Volume",
+    subtitle: "Bookings scheduled, completed & cancelled this week",
+  },
+  monthly: {
+    title: "Monthly Booking Volume",
+    subtitle: "Bookings scheduled, completed & cancelled this year",
+  },
+  quarterly: {
+    title: "Quarterly Booking Volume",
+    subtitle: "Bookings scheduled, completed & cancelled this year",
+  },
+  yearly: {
+    title: "Yearly Booking Volume",
+    subtitle: "Bookings scheduled, completed & cancelled in recent years",
+  },
+};
+
 const CustomDot = ({ cx, cy, fill }) => (
   <circle cx={cx} cy={cy} fill={fill} stroke="#fff" strokeWidth={2} />
 );
@@ -204,6 +230,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const navigate = useNavigate();
   const [activeServiceIdx, setActiveServiceIdx] = useState(null);
   const [apptFilter, setApptFilter] = useState("time");
+  const [bookingVolumeRange, setBookingVolumeRange] = useState("weekly");
   const [appointments, setAppointments] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -413,46 +440,88 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     };
   }, [inventory]);
 
-  const weeklyOrders = useMemo(() => {
-    const monday = new Date(todayDate);
-    const day = monday.getDay();
-    const diffToMonday = (day + 6) % 7;
-    monday.setDate(monday.getDate() - diffToMonday);
+  const bookingVolumeMeta = BOOKING_VOLUME_META[bookingVolumeRange] || BOOKING_VOLUME_META.weekly;
 
-    const week = Array.from({ length: 7 }, (_, i) => {
-      const current = new Date(monday);
-      current.setDate(monday.getDate() + i);
-      return {
-        date: current,
-        day: current.toLocaleDateString("en-US", { weekday: "short" }),
+  const bookingVolumeData = useMemo(() => {
+    const normalizedAppointments = appointments
+      .map((appointment) => {
+        const dateValue = appointment.dateObj || appointment.createdAtValue;
+        if (!dateValue) return null;
+
+        const normalizedDate = new Date(dateValue);
+        normalizedDate.setHours(0, 0, 0, 0);
+        return {
+          date: normalizedDate,
+          status: appointment.status,
+        };
+      })
+      .filter(Boolean);
+
+    const buildPoint = (label, from, to) => {
+      const point = {
+        label,
         orders: 0,
         completed: 0,
         cancelled: 0,
       };
+
+      normalizedAppointments.forEach((appointment) => {
+        if (appointment.date < from || appointment.date >= to) return;
+        point.orders += 1;
+        if (appointment.status === "Complete") point.completed += 1;
+        if (appointment.status === "Cancel/Incomplete") point.cancelled += 1;
+      });
+
+      return point;
+    };
+
+    const referenceDate = new Date(todayDate);
+    referenceDate.setHours(0, 0, 0, 0);
+
+    if (bookingVolumeRange === "monthly") {
+      const currentYear = referenceDate.getFullYear();
+      return Array.from({ length: 12 }, (_, idx) => {
+        const from = new Date(currentYear, idx, 1);
+        const to = new Date(currentYear, idx + 1, 1);
+        const label = from.toLocaleDateString("en-US", { month: "short" });
+        return buildPoint(label, from, to);
+      });
+    }
+
+    if (bookingVolumeRange === "quarterly") {
+      const currentYear = referenceDate.getFullYear();
+      return Array.from({ length: 4 }, (_, idx) => {
+        const quarter = idx + 1;
+        const from = new Date(currentYear, idx * 3, 1);
+        const to = new Date(currentYear, idx * 3 + 3, 1);
+        return buildPoint(`Q${quarter}`, from, to);
+      });
+    }
+
+    if (bookingVolumeRange === "yearly") {
+      const currentYear = referenceDate.getFullYear();
+      return Array.from({ length: 4 }, (_, idx) => {
+        const year = currentYear - (3 - idx);
+        const from = new Date(year, 0, 1);
+        const to = new Date(year + 1, 0, 1);
+        return buildPoint(String(year), from, to);
+      });
+    }
+
+    const monday = new Date(referenceDate);
+    const day = monday.getDay();
+    const diffToMonday = (day + 6) % 7;
+    monday.setDate(monday.getDate() - diffToMonday);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const from = new Date(monday);
+      from.setDate(monday.getDate() + i);
+      const to = new Date(from);
+      to.setDate(from.getDate() + 1);
+      const label = from.toLocaleDateString("en-US", { weekday: "short" });
+      return buildPoint(label, from, to);
     });
-
-    appointments.forEach((appointment) => {
-      const dateValue = appointment.dateObj || appointment.createdAtValue;
-      if (!dateValue) return;
-
-      const normalizedDate = new Date(dateValue);
-      normalizedDate.setHours(0, 0, 0, 0);
-
-      const idx = Math.floor((normalizedDate - monday) / (1000 * 60 * 60 * 24));
-      if (idx < 0 || idx > 6) return;
-
-      week[idx].orders += 1;
-      if (appointment.status === "Complete") week[idx].completed += 1;
-      if (appointment.status === "Cancel/Incomplete") week[idx].cancelled += 1;
-    });
-
-    return week.map(({ day: dayLabel, orders: total, completed, cancelled }) => ({
-      day: dayLabel,
-      orders: total,
-      completed,
-      cancelled,
-    }));
-  }, [appointments, todayDate]);
+  }, [appointments, bookingVolumeRange, todayDate]);
 
   const serviceMix = useMemo(() => {
     const counts = {
@@ -699,18 +768,33 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
           <div className="lg:col-span-9">
             <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col" style={{ minHeight: 290 }}>
-              <div className="mb-2 shrink-0">
-                <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Weekly Booking Volume</h2>
-                <p className="mt-0.5 text-[11px] text-gray-400">
-                  Bookings scheduled, completed &amp; cancelled this week
-                </p>
+              <div className="mb-2 shrink-0 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="m-0 text-[15px] font-extrabold text-gray-900">{bookingVolumeMeta.title}</h2>
+                  <p className="mt-0.5 text-[11px] text-gray-400">{bookingVolumeMeta.subtitle}</p>
+                </div>
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 flex-wrap w-fit">
+                  {BOOKING_VOLUME_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setBookingVolumeRange(option.value)}
+                      className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg border-none cursor-pointer transition-colors ${
+                        bookingVolumeRange === option.value
+                          ? "bg-white text-blue-700 shadow-sm"
+                          : "bg-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div style={{ flex: 1, minHeight: 230 }}>
                 <ResponsiveContainer width="100%" height={230}>
-                  <LineChart data={weeklyOrders} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+                  <LineChart data={bookingVolumeData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis
-                      dataKey="day"
+                      dataKey="label"
                       tick={{ fontSize: 11, fill: "#94a3b8" }}
                       axisLine={false}
                       tickLine={false}
