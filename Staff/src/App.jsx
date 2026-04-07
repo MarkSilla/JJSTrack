@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Login from './pages/Login'
 import StaffLayout from './layout/Stafflayout'
 import Dashboard from './pages/dashboard'
+import OrderPage from './pages/order/pages/OrderPage'
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -30,6 +31,7 @@ function App() {
 
                 <Route path="/staff" element={<StaffLayout />}>
                     <Route path="dashboard" element={<Dashboard />} />
+                    <Route path="orders" element={<OrderPage />} />
                 </Route>
             </Routes>
         </Router>
