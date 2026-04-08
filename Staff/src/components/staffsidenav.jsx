@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown, Settings,
+    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown, Settings, Archive,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -10,11 +10,12 @@ const navItems = [
     {
         icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
         subItems: [
-            { label: 'All Orders', path: '/staff/orders' },
+            { label: 'Job Orders', path: '/staff/orders' },
             { label: 'Released', path: '/staff/released' },
         ]
     },
     { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/staff/inventory' },
+    { icon: Archive, label: 'Archives', description: 'Completed orders', path: '/staff/archives' },
 ]
 
 const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {

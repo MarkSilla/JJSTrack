@@ -202,7 +202,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                 className="self-start flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 bg-transparent border-none cursor-pointer transition-colors group"
             >
                 <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
-                Back to Orders
+                Back to Job Orders
             </button>
 
             <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden"

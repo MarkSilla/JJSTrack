@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Inbox } from 'lucide-react';
-import useOrders from '../hooks/useOrders';
-import OrderFilters from '../components/OrderFilters';
-import OrderTable from '../components/OrderTable';
-import OrderCard from '../components/OrderCard';
-import OrderDetails from '../components/OrderDetails';
+import useOrders from './order/hooks/useOrders';
+import OrderFilters from './order/components/OrderFilters';
+import OrderTable from './order/components/OrderTable';
+import OrderCard from './order/components/OrderCard';
+import OrderDetails from './order/components/OrderDetails';
 
 const OrderPage = () => {
     const {
@@ -48,7 +48,7 @@ const OrderPage = () => {
                         <ShoppingBag size={20} className="text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">My Orders</h1>
+                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">Job Orders</h1>
                         <p className="text-xs text-gray-500 font-medium">Orders assigned to you</p>
                     </div>
                 </div>
