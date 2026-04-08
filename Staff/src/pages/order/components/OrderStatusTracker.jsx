@@ -18,7 +18,7 @@ const STEP_STATUS = {
         label: 'text-emerald-700 font-bold',
     },
     active: {
-        dot: 'bg-blue-600 text-white ring-4 ring-blue-100 animate-pulse cursor-pointer hover:scale-110 transition-transform',
+        dot: 'bg-blue-600 text-white ring-4 ring-blue-100 cursor-pointer hover:scale-110 transition-transform',
         line: 'bg-blue-200',
         label: 'text-blue-700 font-bold',
     },
