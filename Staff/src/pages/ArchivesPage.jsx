@@ -2,9 +2,11 @@ import React, { useState, useMemo } from 'react';
 import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
-    ArrowLeft, User, Phone, CheckCheck, Activity, Building, Image as ImageIcon
+    ArrowLeft, User, Phone, CheckCheck, Activity, Scissors,
+    FileText, Image as ImageIcon
 } from 'lucide-react';
 import { ARCHIVED_ORDERS, ARCHIVE_ACTIVITY } from './order/mock/mockData';
+import img from '../assets/img';
 
 const fmtDate = (str) => {
     if (!str || str === '—') return '—';
@@ -17,7 +19,7 @@ const fmtDate = (str) => {
 
 const TYPE_CONFIG = {
     TEAM_JERSEY: { label: 'Team Jersey', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', icon: Package },
-    ORGANIZATIONAL: { label: 'Organizational', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200', icon: Building },
+    ORGANIZATIONAL: { label: 'Organizational', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200', icon: Users },
     REPAIR: { label: 'Repair', bg: 'bg-violet-50', text: 'text-violet-800', border: 'border-violet-200', icon: Wrench },
 };
 
@@ -43,7 +45,7 @@ const ItemIcon = ({ name = '' }) => {
         </span>;
     if (n.includes('short') || n.includes('pant'))
         return <span className={`${base} bg-sky-50 border-sky-200`}>
-            <Shirt size={15} className="text-sky-700" />
+            <Scissors size={15} className="text-sky-700" />
         </span>;
     if (n.includes('sleeve') || n.includes('jersey') || n.includes('polo'))
         return <span className={`${base} bg-fuchsia-50 border-fuchsia-200`}>
@@ -54,18 +56,44 @@ const ItemIcon = ({ name = '' }) => {
     </span>;
 };
 
+const MediaRenderer = ({ image, text, className = '' }) => {
+    if (image) {
+        return (
+            <div className={`border border-gray-200 rounded-xl overflow-hidden shadow-sm ${className}`}>
+                <img src={img.sample} className="w-full h-48 object-cover" />
+            </div>
+        );
+    }
+    if (text) {
+        return <div className={`text-sm text-gray-700 ${className}`}>{text}</div>;
+    }
+    return null;
+};
+
 const ArchiveDetail = ({ order, onBack }) => {
-    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
+    const [orgImageIdx, setOrgImageIdx] = useState(0);
+    const [zoomType, setZoomType] = useState(null);
+    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
     const customerName = order.customerName || order.customer;
     const items = order.items || [];
     const steps = order.productionProgress || [];
+    const teamRoster = order.teamRoster || [];
     const TypeIcon = tc.icon;
 
+    const orgImages = order.designImages || (order.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
+
+    const ROWS_PER_PAGE = 7;
+    const [rosterPage, setRosterPage] = useState(0);
+    const paginatedRoster = teamRoster.slice(rosterPage * ROWS_PER_PAGE, (rosterPage + 1) * ROWS_PER_PAGE);
+    const totalPages = Math.ceil(teamRoster.length / ROWS_PER_PAGE);
+    const startIndex = rosterPage * ROWS_PER_PAGE;
+    const emptyRowsCount = ROWS_PER_PAGE - paginatedRoster.length;
+
     return (
-        <div className="font-sans flex flex-col gap-4">
+        <div className="font-inter flex flex-col gap-4">
             <button
                 onClick={onBack}
-                className="self-start inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-slate-100 hover:text-slate-800"
+                className="self-start inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 bg-slate-50 px-3.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150 hover:text-slate-800"
             >
                 <ArrowLeft size={14} /> Back to Archives
             </button>
@@ -120,46 +148,340 @@ const ArchiveDetail = ({ order, onBack }) => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4 items-start">
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex-1 w-full">
-                    <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
-                        <CheckCheck size={15} className="text-emerald-500" />
-                        <span className="text-[13px] font-bold text-slate-800">Production Timeline</span>
-                        <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-200" className="ml-auto text-[10px]">
-                            All steps done
-                        </Pill>
-                    </div>
-                    <div className="p-5 px-6">
-                        {steps.map((step, idx) => (
-                            <div key={idx} className="flex gap-4 relative">
-                                {idx < steps.length - 1 && (
-                                    <div className="absolute left-[15px] top-[34px] bottom-0 w-0.5 bg-gradient-to-b from-emerald-100 to-slate-200 rounded-sm" />
-                                )}
-                                <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-400 flex items-center justify-center shadow-[0_0_0_4px_#ECFDF5,0_2px_8px_rgba(16,185,129,0.25)] z-10">
-                                    <CheckCircle2 size={15} className="text-white" strokeWidth={2.5} />
+                <div className="flex-1 min-w-0 flex flex-col gap-4">
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
+                        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
+                            <CheckCheck size={15} className="text-emerald-500" />
+                            <span className="text-[13px] font-bold text-slate-800">Production Timeline</span>
+                            <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-200" className="ml-auto text-[10px]">
+                                All steps done
+                            </Pill>
+                        </div>
+                        <div className="p-5 px-6">
+                            {steps.map((step, idx) => (
+                                <div key={idx} className="flex gap-4 relative">
+                                    {idx < steps.length - 1 && (
+                                        <div className="absolute left-[15px] top-[34px] bottom-0 w-0.5 bg-gradient-to-b from-emerald-100 to-slate-200 rounded-sm" />
+                                    )}
+                                    <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-400 flex items-center justify-center shadow-[0_0_0_4px_#ECFDF5,0_2px_8px_rgba(16,185,129,0.25)] z-10">
+                                        <CheckCircle2 size={15} className="text-white" strokeWidth={2.5} />
+                                    </div>
+                                    <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-6' : ''}`}>
+                                        <div className="text-[13px] font-bold text-slate-900 leading-snug">{step.step}</div>
+                                        <div className="flex gap-3.5 mt-1 flex-wrap">
+                                            {step.date && (
+                                                <span className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
+                                                    <Calendar size={10} /> {step.date}
+                                                </span>
+                                            )}
+                                            {step.worker && (
+                                                <span className="flex items-center gap-2 text-[11px] text-slate-400 font-semibold">
+                                                    <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                                                        <User size={8} />
+                                                    </div> {step.worker}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-6' : ''}`}>
-                                    <div className="text-[13px] font-bold text-slate-900 leading-snug">{step.step}</div>
-                                    <div className="flex gap-3.5 mt-1 flex-wrap">
-                                        {step.date && (
-                                            <span className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
-                                                <Calendar size={10} /> {step.date}
-                                            </span>
-                                        )}
-                                        {step.worker && (
-                                            <span className="flex items-center gap-2 text-[11px] text-slate-400 font-semibold">
-                                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                                                    <User size={8} />
-                                                </div> {step.worker}
-                                            </span>
-                                        )}
+                            ))}
+                        </div>
+                    </div>
+
+                    {order.type === 'TEAM_JERSEY' && teamRoster.length > 0 && (
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                <Users size={15} className="text-indigo-500 shrink-0" />
+                                <span className="text-[13px] font-bold text-slate-800">Team Roster</span>
+                                <span className="ml-auto text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full tracking-wide">
+                                    {teamRoster.length} players
+                                </span>
+                            </div>
+
+                            <div className="max-w-full overflow-x-auto">
+                                <table className="w-full min-w-[560px] border-collapse relative">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-100">
+                                            {['Surname', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
+                                                <th
+                                                    key={col}
+                                                    className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap
+                                                        ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedRoster.map((player, idx) => {
+                                            const hasPockets = player.addOns?.some(a => a?.toLowerCase().includes('pocket'));
+                                            const otherAddons = player.addOns?.filter(a => !a?.toLowerCase().includes('pocket')) || [];
+                                            return (
+                                                <tr
+                                                    key={idx}
+                                                    className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                                                >
+                                                    <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player.surname || '—'}</td>
+                                                    <td className="px-3 text-center">
+                                                        {player.number !== undefined ? (
+                                                            <span className="inline-block min-w-[2rem] text-slate-600 px-1.5 text-[11px] font-black tracking-wide">
+                                                                #{player.number}
+                                                            </span>
+                                                        ) : <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="px-3 text-center text-[13px] font-semibold text-slate-700">
+                                                        {player.jerseySize || <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="px-3 text-center text-[12px] font-semibold text-slate-700">
+                                                        {player.shortSize && player.shortSize !== '-' ? (
+                                                            <div className="flex flex-row items-center justify-center gap-1">
+                                                                <span>{player.shortSize}</span>
+                                                                {hasPockets && <span className="text-[9px] font-black text-slate-900 uppercase tracking-tight">/ pockets</span>}
+                                                            </div>
+                                                        ) : <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="px-3 pr-5 text-center">
+                                                        {otherAddons.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1 justify-center">
+                                                                {otherAddons.map((addon, aIdx) => (
+                                                                    <span key={aIdx} className="text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100 rounded px-1.5 py-0.5">
+                                                                        {addon}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+
+                                        {[...Array(emptyRowsCount)].map((_, i) => {
+                                            const isLastPage = rosterPage === totalPages - 1;
+                                            if (isLastPage && i === 0) {
+                                                return (
+                                                    <tr key="end-divider" className="h-[52px] border-b border-slate-100">
+                                                        <td colSpan="5" className="px-5">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="h-px flex-1 bg-slate-100" />
+                                                                <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">
+                                                                    All items are listed above
+                                                                </span>
+                                                                <div className="h-px flex-1 bg-slate-100" />
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+                                            return (
+                                                <tr key={`empty-${i}`} className="h-[52px] border-b border-slate-100">
+                                                    <td colSpan="5" className="px-3">&nbsp;</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+
+                                <div className="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setRosterPage(p => Math.max(0, p - 1))}
+                                            disabled={rosterPage === 0}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30"
+                                        >
+                                            <ChevronRight size={14} className="rotate-180" />
+                                        </button>
+                                        {[...Array(totalPages)].map((_, pi) => (
+                                            <button
+                                                key={pi}
+                                                onClick={() => setRosterPage(pi)}
+                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all border ${rosterPage === pi
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                    : 'bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600'
+                                                    }`}
+                                            >
+                                                {pi + 1}
+                                            </button>
+                                        ))}
+                                        <button
+                                            onClick={() => setRosterPage(p => Math.min(totalPages - 1, p + 1))}
+                                            disabled={rosterPage === totalPages - 1}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30"
+                                        >
+                                            <ChevronRight size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="text-[11px] font-bold text-slate-400">
+                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
+
+                    {order.type === 'REPAIR' && (
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                <Wrench size={15} className="text-blue-500 shrink-0" />
+                                <span className="text-[13px] font-bold text-slate-800">Repair Specification</span>
+                                <span className="ml-auto text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full tracking-wide">
+                                    {items.length} Tasks
+                                </span>
+                            </div>
+
+                            <div className="p-6 flex flex-col gap-6">
+                                {(order.notes || order.repairImage) && (
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        {order.notes && (
+                                            <div className="flex-1 bg-amber-50/50 rounded-xl p-4 border border-amber-100">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <FileText size={13} className="text-amber-500" />
+                                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Repair Notes</span>
+                                                </div>
+                                                <div className="text-[12px] font-medium text-slate-700 leading-relaxed">
+                                                    {order.notes}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {order.repairImage && (
+                                            <div className="w-full md:w-64 h-40 shrink-0 relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center">
+                                                <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
+                                                    <img src={order.repairImage} alt="Repair Reference" className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]" onError={e => { e.currentTarget.src = img.sample; }} />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                                        <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                            <Eye size={13} /> Click to expand
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <Scissors size={13} className="text-slate-400" />
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Task Breakdown</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {items.map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 bg-white shadow-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-emerald-500">
+                                                        <CheckCircle2 size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-slate-800">{item.name}</div>
+                                                        <div className="text-[10px] font-semibold text-slate-400">Quantity: {item.qty}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-tighter rounded-md">
+                                                    Completed
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {order.attachmentImage && (
+                                    <MediaRenderer image={order.attachmentImage} text="Repair attachment" />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {order.type === 'ORGANIZATIONAL' && (
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                <Shirt size={15} className="text-teal-500 shrink-0" />
+                                <span className="text-[13px] font-bold text-slate-800">Organization Lineup</span>
+                                <div className="ml-auto flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-teal-600 bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full tracking-wide">
+                                        {orgImageIdx + 1} / {orgImages.length}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50/50">
+                                <div className="relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center aspect-square md:aspect-[4/3]">
+                                    <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('ORG')}>
+                                        <img
+                                            src={orgImages[orgImageIdx] || img.sample}
+                                            alt={`Lineup ${orgImageIdx + 1}`}
+                                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
+                                            onError={e => { e.currentTarget.src = img.sample; }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                            <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                <Eye size={13} /> Click to expand
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {orgImages.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={() => setOrgImageIdx((prev) => (prev - 1 + orgImages.length) % orgImages.length)}
+                                                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
+                                            >
+                                                <ChevronRight size={18} className="rotate-180" />
+                                            </button>
+                                            <button
+                                                onClick={() => setOrgImageIdx((prev) => (prev + 1) % orgImages.length)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/30 backdrop-blur-md">
+                                                {orgImages.map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setOrgImageIdx(i)}
+                                                        className={`w-1.5 h-1.5 rounded-full transition-all ${i === orgImageIdx ? 'bg-white w-3' : 'bg-white/50 hover:bg-white/80'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Right Side - Order Items */}
+                {zoomType && (
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 sm:p-8 animate-in fade-in"
+                        onClick={() => setZoomType(null)}
+                    >
+                        <button
+                            className="absolute top-6 right-6 lg:top-8 lg:right-8 w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all shadow-lg hover:scale-110 z-50 text-xl cursor-pointer ring-1 ring-white/20"
+                            onClick={() => setZoomType(null)}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img
+                            src={zoomType === 'REPAIR' ? order.repairImage : (orgImages[orgImageIdx] || img.sample)}
+                            alt="Zoomed"
+                            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 cursor-auto"
+                            onClick={(e) => e.stopPropagation()}
+                            onError={e => { e.currentTarget.src = img.sample; }}
+                        />
+                        {zoomType === 'ORG' && orgImages.length > 1 && (
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20">
+                                {orgImages.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={(e) => { e.stopPropagation(); setOrgImageIdx(i); }}
+                                        className={`w-2 h-2 rounded-full transition-all ${i === orgImageIdx ? 'bg-white w-5' : 'bg-white/40 hover:bg-white/80'}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex flex-col gap-4 w-full lg:w-[40%] xl:w-[35%] lg:min-w-[340px]">
                     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
                         <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
@@ -173,7 +495,11 @@ const ArchiveDetail = ({ order, onBack }) => {
                         {items.map((item, idx) => (
                             <div key={idx} className={`flex items-center px-5 h-[54px] border-b border-slate-100/60 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
                                 <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                                    <ItemIcon name={item.name || item.description} />
+                                    {item.image ? (
+                                        <img src={img.sample} alt={item.name} className="w-[34px] h-[34px] rounded-xl object-cover border border-slate-200 shrink-0" />
+                                    ) : (
+                                        <ItemIcon name={item.name || item.description} />
+                                    )}
                                     <span className="text-[13px] font-semibold text-slate-800 overflow-hidden text-ellipsis whitespace-nowrap">
                                         {item.name || item.description}
                                     </span>
@@ -191,82 +517,6 @@ const ArchiveDetail = ({ order, onBack }) => {
                 </div>
             </div>
 
-            {/* Bottom Section - Full Width Roster or Lineup */}
-            {order.lineupImage ? (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
-                    <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50">
-                        <ImageIcon size={16} className="text-indigo-500" />
-                        <span className="text-[14px] font-black text-slate-800 uppercase tracking-tight">Organizational Lineup Image</span>
-                    </div>
-                    <div className="p-8 flex flex-col items-center">
-                        <div className="w-full max-w-4xl aspect-[16/9] bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4 relative overflow-hidden group shadow-inner">
-                            <ImageIcon size={48} className="opacity-20 transition-transform group-hover:scale-110" />
-                            <div className="text-center p-4">
-                                <p className="text-xl font-black text-slate-500 mb-2 uppercase tracking-wide">Lineup Image Provided</p>
-                                <p className="text-sm mt-1 text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
-                                    This organizational order uses a digital lineup record. Click to expand and view the full document archive.
-                                </p>
-                            </div>
-                            <div className="absolute inset-0 bg-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                <span className="bg-white/90 backdrop-blur px-6 py-3 rounded-2xl text-[13px] font-black text-indigo-600 shadow-2xl border border-indigo-100 pointer-events-auto cursor-pointer flex items-center gap-2">
-                                    <Eye size={16} /> VIEW FULL RECORD
-                                </span>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-5 font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
-                            DATA SOURCE: {order.lineupImage}
-                        </p>
-                    </div>
-                </div>
-            ) : order.teamRoster?.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
-                    <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50">
-                        <Users size={18} className="text-indigo-500" />
-                        <span className="text-[16px] font-black text-slate-800 uppercase tracking-tight px-1">Full Team Roster Details</span>
-                        <Pill bg="bg-indigo-50" text="text-indigo-800" border="border-indigo-200" className="ml-auto px-4 py-1 text-xs">
-                            {order.teamRoster.length} Players Listed
-                        </Pill>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    {['Surname', 'No.', 'Jersey Size', 'Short Size', 'Custom Add-ons'].map((col, ci) => (
-                                        <th key={col} className={`py-4 px-6 text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap ${ci === 0 ? 'text-left' : 'text-center'}`}>
-                                            {col}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {order.teamRoster.map((player, idx) => (
-                                    <tr key={idx} className={`h-[68px] border-b border-slate-100 last:border-0 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
-                                        <td className="px-6 text-[15px] font-black text-slate-900">{player.surname || '—'}</td>
-                                        <td className="px-6 text-center font-mono text-[16px] font-black text-indigo-600 bg-indigo-50/40">#{player.number}</td>
-                                        <td className="px-6 text-center text-[14px] font-bold text-slate-700">{player.jerseySize || '—'}</td>
-                                        <td className="px-6 text-center text-[14px] font-bold text-slate-700">{player.shortSize !== '-' ? player.shortSize : '—'}</td>
-                                        <td className="px-6 text-center whitespace-nowrap">
-                                            {player.addOns?.length > 0 ? (
-                                                <div className="flex flex-wrap justify-center gap-1.5">
-                                                    {player.addOns.map((addon, ai) => (
-                                                        <span key={ai} className="inline-block px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-black border border-indigo-100 uppercase tracking-tight">
-                                                            {addon}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-300 font-bold italic opacity-60">None</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* Footer Status Banner */}
             <div className="flex items-center justify-between gap-4 p-5 md:px-7 md:py-5 rounded-3xl bg-gradient-to-br from-emerald-50 via-emerald-50 to-emerald-100/50 border border-emerald-200 shadow-sm flex-wrap">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl shrink-0 bg-white flex items-center justify-center shadow-sm border border-emerald-100">
@@ -352,55 +602,7 @@ const ActivityTimeline = ({ activities }) => (
     </div>
 );
 
-const OrganizationView = ({ orders, onSelect }) => {
-    const orgs = useMemo(() => {
-        const groups = {};
-        orders.forEach(o => {
-            const name = o.teamName || 'General / Individual';
-            if (!groups[name]) groups[name] = { name, count: 0, items: 0, last: null, orders: [] };
-            groups[name].count++;
-            groups[name].items += o.totalQty || 0;
-            if (!groups[name].last || new Date(o.completedAt) > new Date(groups[name].last)) {
-                groups[name].last = o.completedAt;
-            }
-            groups[name].orders.push(o);
-        });
-        return Object.values(groups);
-    }, [orders]);
 
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {orgs.map(org => (
-                <div key={org.name} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                            {org.name === 'General / Individual' ? <User size={24} /> : <Building size={24} />}
-                        </div>
-                        <div className="text-right">
-                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Orders</div>
-                            <div className="text-2xl font-black text-slate-800 leading-none">{org.count}</div>
-                        </div>
-                    </div>
-                    <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-1">{org.name}</h3>
-                    <p className="text-xs text-slate-400 font-medium mb-4">Produced {org.items} items to date</p>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Last Order</span>
-                            <span className="text-[11px] font-bold text-slate-600">{fmtDate(org.last)}</span>
-                        </div>
-                        <button
-                            onClick={() => onSelect(org.orders[0].id)}
-                            className="bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors"
-                        >
-                            View Active
-                        </button>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
 
 const ArchivesPage = () => {
     const [selectedId, setSelectedId] = useState(null);
@@ -447,7 +649,7 @@ const ArchivesPage = () => {
     const kpiCards = [
         { label: 'Total Records', value: stats.total, icon: Archive, color: '#059669', filter: 'All', sub: 'Production history' },
         { label: 'Team Jerseys', value: stats.jerseys, icon: Shirt, color: '#3B82F6', filter: 'TEAM_JERSEY', sub: 'Custom sports' },
-        { label: 'Organizational', value: stats.orgs, icon: Building, color: '#6366F1', filter: 'ORGANIZATIONAL', sub: 'Corporate/Large' },
+        { label: 'Organizational', value: stats.orgs, icon: Users, color: '#6366F1', filter: 'ORGANIZATIONAL', sub: 'Corporate/Large' },
         { label: 'Repair Jobs', value: stats.repair, icon: Wrench, color: '#7C3AED', filter: 'REPAIR', sub: 'Maintenance' },
     ];
 
@@ -455,17 +657,14 @@ const ArchivesPage = () => {
         <div className="font-sans flex flex-col gap-4 md:gap-5">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center shadow-[0_4px_14px_rgba(16,185,129,0.3)] text-white">
-                        <Archive size={21} strokeWidth={2} />
-                    </div>
                     <div>
-                        <h1 className="text-[21px] font-extrabold text-slate-900 tracking-tight leading-snug">Archives</h1>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900">Archives</h1>
                         <p className="text-xs text-slate-400 font-medium mt-0.5">Production history and records</p>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {kpiCards.map((k, idx) => {
                     const isActive = typeFilter === k.filter;
                     const accent = k.color;
@@ -492,11 +691,9 @@ const ArchivesPage = () => {
                 })}
             </div>
 
-            {/* Tab Switcher */}
             <div className="flex items-center bg-slate-100/50 p-1 rounded-xl self-start">
                 {[
                     { id: 'list', label: 'Order List', icon: Archive },
-                    { id: 'orgs', label: 'Organizations', icon: Building },
                     { id: 'activity', label: 'Activity Log', icon: Activity },
                 ].map(tab => (
                     <button
@@ -580,7 +777,7 @@ const ArchivesPage = () => {
                             </table>
                         )}
                         {filtered.length > 0 && (
-                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{ARCHIVED_ORDERS.length}</strong> archived orders</span><Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />All Completed</Pill></div>
+                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{ARCHIVED_ORDERS.length}</strong> archived orders</span></div>
                         )}
                     </div>
 
@@ -594,9 +791,7 @@ const ArchivesPage = () => {
                 </>
             )}
 
-            {activeTab === 'orgs' && (
-                <OrganizationView orders={ARCHIVED_ORDERS} onSelect={setSelectedId} />
-            )}
+
 
             {activeTab === 'activity' && (
                 <ActivityTimeline activities={ARCHIVE_ACTIVITY} />

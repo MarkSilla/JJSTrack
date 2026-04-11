@@ -21,13 +21,13 @@ const OrderTable = ({ orders, selectedOrderId, onOrderClick, getDerivedStatus, g
             <table className="w-full text-left">
                 <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/50">
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden md:table-cell">Type</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden lg:table-cell">Item</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden xl:table-cell">Current Step</th>
-                        <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hidden sm:table-cell">Due Date</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest hidden md:table-cell">Type</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest hidden lg:table-cell">Item</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest">Status</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest hidden xl:table-cell">Current Step</th>
+                        <th className="px-4 py-3 text-xs font-black text-gray-400 uppercase tracking-widest hidden sm:table-cell">Due Date</th>
                     </tr>
                 </thead>
                 <tbody>

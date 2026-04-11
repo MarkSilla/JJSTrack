@@ -1,60 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, User, Phone, Check, Users, AlertTriangle,
-    Package, Calendar, Shirt, ChevronRight, X, Wrench, Scissors, FileText, CheckCircle2
+    Package, Shirt, ChevronRight, Wrench, Scissors, FileText, CheckCircle2, Inbox, Image as ImageIcon, Eye, X
 } from 'lucide-react';
 import OrderStatusTracker from './OrderStatusTracker';
 import useOrderDetails from '../hooks/useOrderDetails';
+import img from '../../../assets/img';
 
 const STATUS_CONFIG = {
-    Completed: { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0', dot: '#10b981', label: 'Completed' },
-    'In Progress': { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', dot: '#3b82f6', label: 'In Progress' },
-    Pending: { bg: '#fffbeb', text: '#92400e', border: '#fde68a', dot: '#f59e0b', label: 'Pending' },
-    Overdue: { bg: '#fef2f2', text: '#991b1b', border: '#fecaca', dot: '#ef4444', label: 'Overdue' },
-    OVERDUE: { bg: '#fef2f2', text: '#991b1b', border: '#fecaca', dot: '#ef4444', label: 'Overdue' },
+    Completed: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Completed' },
+    'In Progress': { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: 'bg-blue-500', label: 'In Progress' },
+    Pending: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500', label: 'Pending' },
+    Overdue: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', dot: 'bg-red-500', label: 'Overdue' },
+    OVERDUE: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-200', dot: 'bg-red-500', label: 'Overdue' },
 };
 
 const ItemIcon = ({ name = '' }) => {
     const n = name.toLowerCase();
-    const wrap = (color, children) => (
-        <span
-            className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
-            style={{ background: color + '18', border: `1px solid ${color}30` }}
-        >
-            {children}
-        </span>
-    );
     if (n.includes('hoodie'))
-        return wrap('#6366f1',
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 4 L3 9 L6 9 L6 20 L18 20 L18 9 L21 9 L19 4 L14 6 Q12 8 10 6 Z" />
-                <path d="M10 6 Q12 10 14 6" />
-            </svg>
-        );
+        return <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 bg-indigo-50 border border-indigo-100"><Shirt size={15} className="text-indigo-500" /></span>;
     if (n.includes('short') || n.includes('pant'))
-        return wrap('#0ea5e9',
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4 L6 18 L12 14 L18 18 L20 4 Z" />
-            </svg>
-        );
+        return <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 bg-sky-50 border border-sky-100"><Scissors size={15} className="text-sky-500" /></span>;
     if (n.includes('sleeve'))
-        return wrap('#8b5cf6', <Shirt size={15} color="#8b5cf6" />);
+        return <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 bg-violet-50 border border-violet-100"><Shirt size={15} className="text-violet-500" /></span>;
     if (n.includes('pocket'))
-        return wrap('#f59e0b',
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-                <path d="M9 4 v5 a3 3 0 0 0 6 0 V4" />
-            </svg>
-        );
-    return wrap('#3b82f6', <Shirt size={15} color="#3b82f6" />);
+        return <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 bg-amber-50 border border-amber-100"><Inbox size={15} className="text-amber-500" /></span>;
+    return <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 bg-blue-50 border border-blue-100"><Shirt size={15} className="text-blue-500" /></span>;
 };
 
 const StatusBadge = ({ conf, label }) => (
-    <span
-        className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg"
-        style={{ background: conf.bg, color: conf.text, border: `1px solid ${conf.border}` }}
-    >
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: conf.dot }} />
+    <span className={`inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${conf.bg} ${conf.text} ${conf.border}`}>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${conf.dot}`} />
         {label}
     </span>
 );
@@ -108,8 +84,11 @@ const OrderDetails = ({ orderId, onBack }) => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [pendingIdx, setPendingIdx] = useState(null);
     const [rosterPage, setRosterPage] = useState(0);
+    const [orgImageIdx, setOrgImageIdx] = useState(0);
+    const [zoomType, setZoomType] = useState(null);
 
     const ROWS_PER_PAGE = 7;
+    const orgImages = order?.designImages || (order?.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
 
     useEffect(() => {
         if (initialSteps?.length > 0) {
@@ -201,7 +180,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                 onClick={onBack}
                 className="self-start flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 bg-transparent border-none cursor-pointer transition-colors group"
             >
-                <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+                <ArrowLeft size={15} />
                 Back to Job Orders
             </button>
 
@@ -271,7 +250,7 @@ const OrderDetails = ({ orderId, onBack }) => {
             <div className="flex flex-col lg:flex-row gap-5 items-start">
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
                     {teamRoster.length > 0 && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden w-full min-w-0"
                             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
                                 <Users size={15} className="text-indigo-500 shrink-0" />
@@ -281,7 +260,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                 </span>
                             </div>
 
-                            <div style={{ overflowX: 'auto', overflowY: 'auto' }} className="scrollbar-hide">
+                            <div className="max-w-full overflow-x-auto">
                                 <table style={{ width: '100%', minWidth: '560px', borderCollapse: 'collapse' }}>
                                     <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
@@ -374,10 +353,8 @@ const OrderDetails = ({ orderId, onBack }) => {
                                             );
                                         })}
 
-                                        {/* Placeholder rows for consistent height */}
                                         {[...Array(emptyRowsCount)].map((_, i) => {
                                             const isLastPage = rosterPage === totalPages - 1;
-                                            // Show the divider in the first empty row slot of the last page
                                             if (isLastPage && i === 0) {
                                                 return (
                                                     <tr key="end-divider" style={{ height: '52px', borderBottom: '1px solid #f1f5f9' }}>
@@ -453,29 +430,33 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
 
                             <div className="p-6 flex flex-col gap-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <Shirt size={13} className="text-gray-400" />
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Garment Overview</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="text-sm font-bold text-gray-800">{order.category || 'Uniform'}</div>
-                                            <div className="text-[11px] font-medium text-gray-500 line-clamp-2">Standard issue production garment requiring technical maintenance.</div>
-                                        </div>
+                                {(order.notes || order.repairImage) && (
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        {order.notes && (
+                                            <div className="flex-1 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <FileText size={13} className="text-gray-500" />
+                                                    <span className="text-md font-black text-black uppercase tracking-widest">Repair Notes</span>
+                                                </div>
+                                                <div className="text-[12px] font-medium text-gray-700 leading-relaxed">
+                                                    {order.notes}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {order.repairImage && (
+                                            <div className="w-full md:w-64 h-40 shrink-0 relative group rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+                                                <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
+                                                    <img src={order.repairImage} alt="Repair Reference" className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]" onError={e => { e.currentTarget.src = img.sample; }} />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                                        <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                            <Eye size={13} /> Click to expand
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <FileText size={13} className="text-gray-400" />
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Condition Notes</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="text-sm font-bold text-gray-800">Standard Wear</div>
-                                            <div className="text-[11px] font-medium text-gray-500 truncate">Proceed with standard repair protocol.</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
 
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2 px-1">
@@ -504,9 +485,66 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
 
                             <div className="mt-auto px-5 py-3 bg-gray-50/30 border-t border-gray-100">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-gray-400 italic">Technical specification provided by Admin</span>
-                                    <span className="text-[10px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-tighter">Read Only</span>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {(order.type === 'ORGANIZATION' || order.type === 'ORGANIZATIONAL' || order.serviceType === 'Organization') && (
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col"
+                            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                                <Shirt size={15} className="text-teal-500 shrink-0" />
+                                <h2 className="text-sm font-bold text-gray-800">Organization Lineup</h2>
+                                <div className="ml-auto flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-teal-600 bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full tracking-wide">
+                                        {orgImageIdx + 1} / {orgImages.length}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-gray-50/50">
+                                <div className="relative group rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center aspect-square flex-shrink-0">
+                                    <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('ORG')}>
+                                        <img
+                                            src={orgImages[orgImageIdx] || img.sample}
+                                            alt={`Lineup ${orgImageIdx + 1}`}
+                                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02] relative z-10"
+                                            onError={e => { e.currentTarget.src = img.sample; }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-[15]">
+                                            <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                <Eye size={13} /> Click to expand
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {orgImages.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={() => setOrgImageIdx((prev) => (prev - 1 + orgImages.length) % orgImages.length)}
+                                                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600 z-20"
+                                            >
+                                                <ChevronRight size={18} className="rotate-180" />
+                                            </button>
+                                            <button
+                                                onClick={() => setOrgImageIdx((prev) => (prev + 1) % orgImages.length)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600 z-20"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900/30 backdrop-blur-md z-20">
+                                                {orgImages.map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setOrgImageIdx(i)}
+                                                        className={`w-1.5 h-1.5 rounded-full transition-all ${i === orgImageIdx ? 'bg-white w-3' : 'bg-white/50 hover:bg-white/80'}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -554,29 +592,38 @@ const OrderDetails = ({ orderId, onBack }) => {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div
-                className="rounded-2xl p-5 flex items-center justify-between gap-4"
-                style={{
-                    background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
-                    border: '1px solid #c7d2fe',
-                }}
-            >
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl  flex items-center justify-center ">
-                        <AlertTriangle size={18} className="text-indigo-600" />
+                {zoomType && (
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/95 backdrop-blur-sm p-4 sm:p-8 animate-in fade-in"
+                        onClick={() => setZoomType(null)}
+                    >
+                        <button
+                            className="absolute top-6 right-6 lg:top-8 lg:right-8 w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all shadow-lg hover:scale-110 z-50 text-xl cursor-pointer ring-1 ring-white/20"
+                            onClick={() => setZoomType(null)}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img
+                            src={zoomType === 'REPAIR' ? order.repairImage : (orgImages[orgImageIdx] || img.sample)}
+                            alt="Zoomed"
+                            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 cursor-auto"
+                            onClick={(e) => e.stopPropagation()}
+                            onError={e => { e.currentTarget.src = img.sample; }}
+                        />
+                        {zoomType === 'ORG' && orgImages.length > 1 && (
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20">
+                                {orgImages.map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={(e) => { e.stopPropagation(); setOrgImageIdx(i); }}
+                                        className={`w-2 h-2 rounded-full transition-all ${i === orgImageIdx ? 'bg-white w-5' : 'bg-white/40 hover:bg-white/80'}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <h4 className="text-[10px] font-black text-indigo-800 uppercase tracking-widest mb-0.5">Staff Reminder</h4>
-                        <p className="text-[11px] text-indigo-700 leading-relaxed font-medium">
-                            Follow the production timeline. Ensure items printed match the total count in the group roster.
-                        </p>
-                    </div>
-                </div>
-                <div className="hidden sm:block px-4 py-1.5 bg-white/50 backdrop-blur-sm rounded-lg border border-indigo-100/50">
-                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Quality Check Required</span>
-                </div>
+                )}
             </div>
 
             <ConfirmationModal

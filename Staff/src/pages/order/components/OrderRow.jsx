@@ -1,5 +1,4 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
 
 const STATUS_CONFIG = {
     "Completed": { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
@@ -25,48 +24,36 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
     return (
         <tr
             onClick={() => onClick(orderId)}
-            className={`cursor-pointer transition-all duration-200 group border-b border-gray-50
-                ${isSelected
-                    ? 'bg-blue-50/50'
-                    : 'hover:bg-gray-50/70'}`}
+            className={`cursor-pointer transition-all duration-200 border-b border-gray-50
+                ${isSelected ? 'bg-blue-50/50' : 'hover:bg-gray-50/70'}`}
         >
-            {/* Order ID */}
             <td className="px-4 py-3.5">
-                <span className="text-[11px] font-bold text-gray-500 tracking-wider">{orderId}</span>
+                <span className="text-xs font-bold text-gray-500 tracking-wider">{orderId}</span>
             </td>
 
-            {/* Customer */}
             <td className="px-4 py-3.5">
-                <div>
-                    <span className="text-sm font-bold text-gray-900 block">{order.customer || order.customerName}</span>
-                    <span className="text-[10px] font-medium text-gray-400 mt-0.5 block">{order.phone || order.contact}</span>
-                </div>
+                <span className="text-sm font-bold text-gray-900 block">{order.customer || order.customerName}</span>
+                <span className="text-xs font-medium text-gray-400 mt-0.5 block">{order.phone || order.contact}</span>
             </td>
 
-            {/* Type */}
             <td className="px-4 py-3.5 hidden md:table-cell">
-                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${typeConf?.color}`}>
+                <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${typeConf?.color}`}>
                     {order.serviceType || order.serviceTitle}
                 </span>
             </td>
 
-            {/* Item */}
             <td className="px-4 py-3.5 hidden lg:table-cell">
-                <span className="text-xs font-medium text-gray-600 truncate max-w-[180px] block" title={order.item || order.category}>
+                <span className="text-xs font-medium text-gray-600 truncate max-w-xs block" title={order.item || order.category}>
                     {order.item || order.category}
                 </span>
             </td>
 
-            {/* Status */}
             <td className="px-4 py-3.5">
-                <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
-                        {statusConf.label}
-                    </span>
-                </div>
+                <span className={`text-xs font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
+                    {statusConf.label}
+                </span>
             </td>
 
-            {/* Current Step */}
             <td className="px-4 py-3.5 hidden xl:table-cell">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
                     <div className={`w-2 h-2 rounded-full ${derivedStatus === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
@@ -74,9 +61,8 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
                 </div>
             </td>
 
-            {/* Due Date */}
             <td className="px-4 py-3.5 hidden sm:table-cell">
-                <span className="text-[11px] font-bold text-gray-500">
+                <span className="text-xs font-bold text-gray-500">
                     {order.dueDate || order.estimatedCompletion || order.invoice?.dueDate || 'N/A'}
                 </span>
             </td>

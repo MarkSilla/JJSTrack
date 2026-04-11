@@ -14,7 +14,6 @@ const OrderFilters = ({
 }) => {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-            {/* Search + Filter Row */}
             <div className="flex gap-2 items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -49,14 +48,12 @@ const OrderFilters = ({
                         )}
                     </button>
                     {isFilterOpen && (
-                        <div 
-                            className="absolute right-0 top-12 w-64 bg-white border border-gray-100 shadow-[0_10px_40px_rgba(0,0,0,0.12)] rounded-2xl p-4 z-[9999]"
-                        >
+                        <div className="absolute right-0 top-12 w-64 bg-white border border-gray-100 shadow-xl rounded-2xl p-4 z-50">
                             <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
-                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Filter by Status</h3>
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Filter by Status</h3>
                                 <button
                                     onClick={() => { setFilterStatus('All'); setIsFilterOpen(false); }}
-                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer"
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer"
                                 >
                                     Reset
                                 </button>
@@ -66,13 +63,13 @@ const OrderFilters = ({
                                     <button
                                         key={tab}
                                         onClick={() => { setFilterStatus(tab); setIsFilterOpen(false); }}
-                                        className={`px-3 py-2 text-[11px] font-bold rounded-lg border transition-all flex items-center justify-between cursor-pointer
+                                        className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-between cursor-pointer
                                             ${filterStatus === tab
                                                 ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                                                 : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300'}`}
                                     >
                                         {tab}
-                                        <span className={`px-1.5 py-0.5 rounded text-[9px] ${filterStatus === tab ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                        <span className={`px-1.5 py-0.5 rounded text-xs ${filterStatus === tab ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
                                             {counts[tab] ?? 0}
                                         </span>
                                     </button>

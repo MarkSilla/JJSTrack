@@ -1,5 +1,4 @@
-// Unified Mock Data Source
-// This file contains all mock data for both active orders and archived records.
+import img from '../../../assets/img';
 
 export const CURRENT_STAFF = "Marco Reyes";
 
@@ -61,6 +60,8 @@ export const MOCK_ORDERS = [
         assignedBy: "Admin",
         dropDate: "2026-04-05",
         dueDate: "2026-04-12",
+        notes: "baklasin mo buo, tas tapon",
+        repairImage: img.sample,
         items: [
             { name: "Zipper Replacement", qty: 2 },
             { name: "Hemming", qty: 1 }
@@ -92,7 +93,7 @@ export const MOCK_ORDERS = [
             { name: "Polo Shirt", qty: 30 }
         ],
         totalQty: 30,
-        lineupImage: "/mock/lineup-luzon.png", 
+        lineupImage: "/mock/lineup-luzon.png",
         teamRoster: [],
         productionProgress: [
             { step: "Dropped Off", date: "Apr 1, 2026", worker: "Ana V.", done: true },
@@ -195,7 +196,7 @@ export const ARCHIVED_ORDERS = [
             { name: "Polo Shirt", qty: 50 }
         ],
         totalQty: 50,
-        lineupImage: "/mock/sample-lineup.jpg", 
+        lineupImage: "/mock/sample-lineup.jpg",
         teamRoster: [],
         productionProgress: [
             { step: "Dropped Off", date: "Mar 15, 2026", worker: "Ana V." },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 const STATUS_CONFIG = {
     "Completed": { color: "bg-emerald-100 text-emerald-700", label: "Completed", dot: "bg-emerald-500" },
@@ -25,46 +25,37 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
     return (
         <div
             onClick={() => onClick(order.id)}
-            className="md:hidden bg-white rounded-3xl border border-gray-100 p-5 cursor-pointer transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 active:scale-[0.98] relative overflow-hidden group"
+            className="md:hidden bg-white rounded-3xl border border-gray-100 p-5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 relative overflow-hidden group"
         >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-3xl opacity-0 group-hover:opacity-40 transition-opacity duration-500 -z-0 translate-x-1/2 -translate-y-1/2" />
-
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-bold text-gray-400 tracking-wider font-mono">
+                <span className="text-xs font-bold text-gray-400 tracking-wider font-mono">
                     {order.id.slice(0, 10)}...
                 </span>
-                <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
-                        {statusConf.label}
-                    </span>
-                </div>
+                <span className={`text-xs font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
+                    {statusConf.label}
+                </span>
             </div>
 
-            {/* Customer + Item */}
             <h3 className="text-sm font-bold text-gray-900 mb-1 leading-tight">{order.customer}</h3>
             <div className="flex items-center gap-2 mb-3">
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${typeConf?.color}`}>
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${typeConf?.color}`}>
                     {order.serviceType}
                 </span>
-                <span className="text-xs font-medium text-gray-500 truncate max-w-[180px]">{order.item}</span>
+                <span className="text-xs font-medium text-gray-500 truncate max-w-xs">{order.item}</span>
             </div>
 
-            {/* Assigned By */}
             <div className="flex items-center gap-1.5 mb-3">
-                <span className="text-[10px] font-semibold text-gray-400">Assigned by</span>
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{order.assignedBy || 'Admin'}</span>
+                <span className="text-xs font-semibold text-gray-400">Assigned by</span>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{order.assignedBy || 'Admin'}</span>
             </div>
 
-            {/* Progress Bar */}
             <div className="mb-2">
                 <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
                         <div className={`w-2 h-2 rounded-full ${statusConf.dot}`} />
                         {typeof currentStep === 'string' ? currentStep : String(currentStep)}
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400">
-                        {progressPercent}%
-                    </span>
+                    <span className="text-xs font-bold text-gray-400">{progressPercent}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
@@ -74,9 +65,8 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
                 </div>
             </div>
 
-            {/* Bottom — Due date + Arrow */}
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                <span className="text-[10px] font-bold text-gray-400 uppercase">
+                <span className="text-xs font-bold text-gray-400 uppercase">
                     Due: {order.invoice?.dueDate
                         ? new Date(order.invoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                         : order.estimatedCompletion || 'N/A'}
