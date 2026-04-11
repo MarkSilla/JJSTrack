@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { MOCK_ORDERS, CURRENT_STAFF } from '../mock/mockOrders';
+import { MOCK_ORDERS, CURRENT_STAFF } from '../mock/mockData';
 
 const SERVICE_STEPS = {
     "Team Jersey": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MOCK_ORDERS, CURRENT_STAFF } from '../mock/mockOrders';
+import { MOCK_ORDERS, CURRENT_STAFF } from '../mock/mockData';
 
 const STATUS_FLOW = ['Pending', 'In Progress', 'Completed'];
 

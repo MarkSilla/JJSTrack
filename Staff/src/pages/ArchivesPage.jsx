@@ -2,14 +2,12 @@ import React, { useState, useMemo } from 'react';
 import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
-    ArrowLeft, User, Phone, CheckCheck,
+    ArrowLeft, User, Phone, CheckCheck, Activity, Building, Image as ImageIcon
 } from 'lucide-react';
-import { ARCHIVED_ORDERS } from './order/mock/mockArchives';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { ARCHIVED_ORDERS, ARCHIVE_ACTIVITY } from './order/mock/mockData';
 
 const fmtDate = (str) => {
-    if (!str || str === 'N/A') return '—';
+    if (!str || str === '—') return '—';
     try {
         const d = new Date(str);
         if (isNaN(d.getTime())) return str;
@@ -18,89 +16,43 @@ const fmtDate = (str) => {
 };
 
 const TYPE_CONFIG = {
-    BOOKING: { label: 'Booking', bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: Package },
-    REPAIR:  { label: 'Repair',  bg: '#F5F3FF', text: '#5B21B6', border: '#DDD6FE', icon: Wrench  },
+    TEAM_JERSEY: { label: 'Team Jersey', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', icon: Package },
+    ORGANIZATIONAL: { label: 'Organizational', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200', icon: Building },
+    REPAIR: { label: 'Repair', bg: 'bg-violet-50', text: 'text-violet-800', border: 'border-violet-200', icon: Wrench },
 };
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-
-const T = {
-    card: {
-        background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
-    },
-    sectionHead: {
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '12px 20px',
-        borderBottom: '1px solid #F1F5F9',
-        background: '#F8FAFC',
-    },
-    labelXs: {
-        fontSize: 10, fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.08em',
-        color: '#94A3B8',
-    },
-};
-
-// ─── Atoms ────────────────────────────────────────────────────────────────────
-
-const Pill = ({ bg, text, border, children, style = {} }) => (
-    <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        padding: '3px 10px', borderRadius: 20,
-        fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', lineHeight: 1.7,
-        background: bg, color: text, border: `1px solid ${border}`,
-        whiteSpace: 'nowrap',
-        ...style,
-    }}>
+const Pill = ({ bg, text, border, children, className = '' }) => (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide leading-relaxed ${bg} ${text} border ${border} whitespace-nowrap ${className}`}>
         {children}
     </span>
 );
 
-const MonoTag = ({ children, style = {} }) => (
-    <span style={{
-        fontFamily: "'JetBrains Mono','Fira Code',monospace",
-        fontSize: 11, fontWeight: 700, color: '#3B82F6',
-        background: '#EFF6FF', border: '1px solid #BFDBFE',
-        padding: '3px 9px', borderRadius: 7,
-        ...style,
-    }}>
+const MonoTag = ({ children, className = '' }) => (
+    <span className={`font-mono text-[11px] font-bold text-blue-500 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md ${className}`}>
         {children}
     </span>
 );
 
 const ItemIcon = ({ name = '' }) => {
     const n = name.toLowerCase();
-    const base = {
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-    };
+    const base = "inline-flex items-center justify-center w-[34px] h-[34px] rounded-xl shrink-0 border";
+
     if (n.includes('hoodie'))
-        return <span style={{ ...base, background: '#EEF2FF', border: '1px solid #C7D2FE' }}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 4 L3 9 L6 9 L6 20 L18 20 L18 9 L21 9 L19 4 L14 6 Q12 8 10 6 Z" />
-                <path d="M10 6 Q12 10 14 6" />
-            </svg>
+        return <span className={`${base} bg-indigo-50 border-indigo-200`}>
+            <Shirt size={15} className="text-indigo-600" />
         </span>;
     if (n.includes('short') || n.includes('pant'))
-        return <span style={{ ...base, background: '#F0F9FF', border: '1px solid #BAE6FD' }}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#0369A1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4 L6 18 L12 14 L18 18 L20 4 Z" />
-            </svg>
+        return <span className={`${base} bg-sky-50 border-sky-200`}>
+            <Shirt size={15} className="text-sky-700" />
         </span>;
-    if (n.includes('sleeve') || n.includes('jersey'))
-        return <span style={{ ...base, background: '#FDF4FF', border: '1px solid #E9D5FF' }}>
-            <Shirt size={15} color="#7C3AED" />
+    if (n.includes('sleeve') || n.includes('jersey') || n.includes('polo'))
+        return <span className={`${base} bg-fuchsia-50 border-fuchsia-200`}>
+            <Shirt size={15} className="text-violet-600" />
         </span>;
-    return <span style={{ ...base, background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-        <Shirt size={15} color="#64748B" />
+    return <span className={`${base} bg-slate-50 border-slate-200`}>
+        <Shirt size={15} className="text-slate-500" />
     </span>;
 };
-
-// ─── Archive Detail View ──────────────────────────────────────────────────────
 
 const ArchiveDetail = ({ order, onBack }) => {
     const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
@@ -110,267 +62,230 @@ const ArchiveDetail = ({ order, onBack }) => {
     const TypeIcon = tc.icon;
 
     return (
-        <div style={{
-            fontFamily: "'Inter','system-ui',sans-serif",
-            display: 'flex', flexDirection: 'column', gap: 16,
-        }}>
-            {/* Back */}
+        <div className="font-sans flex flex-col gap-4">
             <button
                 onClick={onBack}
-                style={{
-                    alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontSize: 13, fontWeight: 600, color: '#64748B',
-                    background: '#F8FAFC', border: '1px solid #E2E8F0',
-                    padding: '6px 14px', borderRadius: 10, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                }}
-                onMouseOver={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#1E293B'; }}
-                onMouseOut={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; }}
+                className="self-start inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-slate-100 hover:text-slate-800"
             >
                 <ArrowLeft size={14} /> Back to Archives
             </button>
 
-            {/* ── Order Header Card ── */}
-            <div style={{ ...T.card, position: 'relative' }}>
-                {/* Green accent bar */}
-                <div style={{ height: 4, background: 'linear-gradient(90deg,#10B981 0%,#34D399 60%,#6EE7B7 100%)' }} />
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm relative">
+                <div className="h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300" />
 
-                <div style={{ padding: '22px 24px 20px' }}>
-                    {/* Badge row */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-                        <MonoTag>#{order.id?.slice(-8).toUpperCase()}</MonoTag>
-                        <Pill bg="#ECFDF5" text="#065F46" border="#6EE7B7">
+                <div className="pt-5 px-6 pb-5">
+                    <div className="flex items-center gap-2 flex-wrap mb-3.5">
+                        <MonoTag>#{order.id?.toUpperCase()}</MonoTag>
+                        <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-300">
                             <CheckCircle2 size={10} /> Completed
                         </Pill>
                         <Pill bg={tc.bg} text={tc.text} border={tc.border}>
                             <TypeIcon size={10} /> {tc.label}
                         </Pill>
                     </div>
-
-                    {/* Title */}
-                    <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.4px', lineHeight: 1.2, marginBottom: 4 }}>
+                    <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
                         {order.teamName || order.category || order.serviceTitle}
                     </h1>
-                    <p style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500, marginBottom: 16 }}>
+                    <p className="text-xs text-slate-400 font-medium mb-4">
                         {order.serviceTitle}{order.category && order.teamName ? ` · ${order.category}` : ''}
                     </p>
-
-                    {/* Meta */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 22px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', fontWeight: 500 }}>
-                            <User size={13} color="#CBD5E1" /> {customerName}
+                    <div className="flex flex-wrap gap-y-1.5 gap-x-5">
+                        <span className="flex items-center gap-1.5 text-[13px] text-slate-600 font-medium">
+                            <User size={13} className="text-slate-300" /> {customerName}
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', fontWeight: 500 }}>
-                            <Phone size={13} color="#CBD5E1" /> {order.contact || 'N/A'}
+                        <span className="flex items-center gap-1.5 text-[13px] text-slate-600 font-medium">
+                            <Phone size={13} className="text-slate-300" /> {order.contact || '—'}
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#94A3B8' }}>
+                        <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
                             Assigned by
-                            <span style={{
-                                fontSize: 11, fontWeight: 700, color: '#6D28D9',
-                                background: '#F5F3FF', border: '1px solid #DDD6FE',
-                                padding: '2px 9px', borderRadius: 7,
-                            }}>{order.assignedBy || 'Admin'}</span>
+                            <span className="text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-md ml-1">
+                                {order.assignedBy || 'Admin'}
+                            </span>
                         </span>
                     </div>
                 </div>
 
-                {/* Dates — top right */}
-                <div style={{
-                    position: 'absolute', top: 24, right: 24,
-                    display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end',
-                }} className="detail-dates">
+                <div className="absolute top-6 right-6 hidden sm:flex flex-col gap-1.5 items-end">
                     {[
-                        { label: 'Drop off', value: fmtDate(order.dropDate), color: '#475569' },
-                        { label: 'Due date', value: fmtDate(order.dueDate), color: '#DC2626' },
-                        { label: 'Completed', value: fmtDate(order.completedAt), color: '#059669' },
+                        { label: 'Drop off', value: fmtDate(order.dropDate), color: 'text-slate-600' },
+                        { label: 'Due date', value: fmtDate(order.dueDate), color: 'text-red-600' },
+                        { label: 'Completed', value: fmtDate(order.completedAt), color: 'text-emerald-600' },
                     ].map(({ label, value, color }) => (
-                        <div key={label} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>{label}</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color }}>{value}</span>
+                        <div key={label} className="flex gap-2 items-center">
+                            <span className="text-[11px] text-slate-400 font-semibold">{label}</span>
+                            <span className={`text-xs font-bold ${color}`}>{value}</span>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* ── Production Timeline ── */}
-            <div style={T.card}>
-                <div style={T.sectionHead}>
-                    <CheckCheck size={15} color="#10B981" />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Production Timeline</span>
-                    <Pill bg="#ECFDF5" text="#065F46" border="#A7F3D0" style={{ marginLeft: 'auto', fontSize: 10 }}>
-                        All steps done
-                    </Pill>
-                </div>
-                <div style={{ padding: '22px 24px' }}>
-                    {steps.map((step, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 16, position: 'relative' }}>
-                            {idx < steps.length - 1 && (
-                                <div style={{
-                                    position: 'absolute', left: 15, top: 34, bottom: 0,
-                                    width: 2, background: 'linear-gradient(180deg, #D1FAE5 0%, #E2E8F0 100%)',
-                                    borderRadius: 2,
-                                }} />
-                            )}
-                            <div style={{
-                                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                                background: 'linear-gradient(135deg, #10B981, #34D399)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 0 0 4px #ECFDF5, 0 2px 8px rgba(16,185,129,0.25)',
-                                zIndex: 1,
-                            }}>
-                                <CheckCircle2 size={15} color="#fff" strokeWidth={2.5} />
-                            </div>
-                            <div style={{ paddingBottom: idx < steps.length - 1 ? 26 : 0, flex: 1 }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', lineHeight: 1.4 }}>{step.step}</div>
-                                <div style={{ display: 'flex', gap: 14, marginTop: 3, flexWrap: 'wrap' }}>
-                                    {step.date && (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
-                                            <Calendar size={10} /> {step.date}
-                                        </span>
-                                    )}
-                                    {step.worker && (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>
-                                            <User size={10} /> {step.worker}
-                                        </span>
-                                    )}
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex-1 w-full">
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
+                        <CheckCheck size={15} className="text-emerald-500" />
+                        <span className="text-[13px] font-bold text-slate-800">Production Timeline</span>
+                        <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-200" className="ml-auto text-[10px]">
+                            All steps done
+                        </Pill>
+                    </div>
+                    <div className="p-5 px-6">
+                        {steps.map((step, idx) => (
+                            <div key={idx} className="flex gap-4 relative">
+                                {idx < steps.length - 1 && (
+                                    <div className="absolute left-[15px] top-[34px] bottom-0 w-0.5 bg-gradient-to-b from-emerald-100 to-slate-200 rounded-sm" />
+                                )}
+                                <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-400 flex items-center justify-center shadow-[0_0_0_4px_#ECFDF5,0_2px_8px_rgba(16,185,129,0.25)] z-10">
+                                    <CheckCircle2 size={15} className="text-white" strokeWidth={2.5} />
+                                </div>
+                                <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-6' : ''}`}>
+                                    <div className="text-[13px] font-bold text-slate-900 leading-snug">{step.step}</div>
+                                    <div className="flex gap-3.5 mt-1 flex-wrap">
+                                        {step.date && (
+                                            <span className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
+                                                <Calendar size={10} /> {step.date}
+                                            </span>
+                                        )}
+                                        {step.worker && (
+                                            <span className="flex items-center gap-2 text-[11px] text-slate-400 font-semibold">
+                                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                                                    <User size={8} />
+                                                </div> {step.worker}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right Side - Order Items */}
+                <div className="flex flex-col gap-4 w-full lg:w-[40%] xl:w-[35%] lg:min-w-[340px]">
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
+                        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+                            <Package size={14} className="text-slate-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Order Items</span>
                         </div>
-                    ))}
+                        <div className="grid grid-cols-[1fr_auto] px-5 py-2 border-b border-slate-100 bg-slate-50/30">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Description</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Qty</span>
+                        </div>
+                        {items.map((item, idx) => (
+                            <div key={idx} className={`flex items-center px-5 h-[54px] border-b border-slate-100/60 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
+                                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                    <ItemIcon name={item.name || item.description} />
+                                    <span className="text-[13px] font-semibold text-slate-800 overflow-hidden text-ellipsis whitespace-nowrap">
+                                        {item.name || item.description}
+                                    </span>
+                                </div>
+                                <span className="font-mono text-[13px] font-bold text-slate-900">{item.qty}</span>
+                            </div>
+                        ))}
+                        <div className="flex justify-between items-center px-5 py-3 border-t border-slate-200 bg-slate-50/80">
+                            <span className="text-xs font-black text-slate-900 uppercase tracking-wider">Total Quantity</span>
+                            <span className="font-mono text-[16px] font-black text-slate-900">
+                                {order.totalQty || items.reduce((s, i) => s + (i.qty || 0), 0)}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* ── Items + Roster ── */}
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-
-                {/* Order Items */}
-                <div style={{ ...T.card, flex: '1 1 280px' }}>
-                    <div style={T.sectionHead}>
-                        <Package size={14} color="#64748B" />
-                        <span style={T.labelXs}>Order Items</span>
+            {/* Bottom Section - Full Width Roster or Lineup */}
+            {order.lineupImage ? (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
+                    <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50">
+                        <ImageIcon size={16} className="text-indigo-500" />
+                        <span className="text-[14px] font-black text-slate-800 uppercase tracking-tight">Organizational Lineup Image</span>
                     </div>
-                    {/* Column headers */}
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: '1fr auto',
-                        padding: '8px 20px', borderBottom: '1px solid #F1F5F9',
-                        background: '#FAFAFA',
-                    }}>
-                        <span style={T.labelXs}>Item</span>
-                        <span style={{ ...T.labelXs, textAlign: 'right' }}>Qty</span>
-                    </div>
-                    {items.map((item, idx) => (
-                        <div key={idx} style={{
-                            display: 'flex', alignItems: 'center',
-                            padding: '0 20px', height: 54,
-                            borderBottom: '1px solid #F8FAFC',
-                            background: idx % 2 === 0 ? '#fff' : '#FDFDFD',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, overflow: 'hidden' }}>
-                                <ItemIcon name={item.name || item.description} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {item.name || item.description}
+                    <div className="p-8 flex flex-col items-center">
+                        <div className="w-full max-w-4xl aspect-[16/9] bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4 relative overflow-hidden group shadow-inner">
+                            <ImageIcon size={48} className="opacity-20 transition-transform group-hover:scale-110" />
+                            <div className="text-center p-4">
+                                <p className="text-xl font-black text-slate-500 mb-2 uppercase tracking-wide">Lineup Image Provided</p>
+                                <p className="text-sm mt-1 text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
+                                    This organizational order uses a digital lineup record. Click to expand and view the full document archive.
+                                </p>
+                            </div>
+                            <div className="absolute inset-0 bg-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                <span className="bg-white/90 backdrop-blur px-6 py-3 rounded-2xl text-[13px] font-black text-indigo-600 shadow-2xl border border-indigo-100 pointer-events-auto cursor-pointer flex items-center gap-2">
+                                    <Eye size={16} /> VIEW FULL RECORD
                                 </span>
                             </div>
-                            <span style={{
-                                fontFamily: "'JetBrains Mono',monospace",
-                                fontSize: 13, fontWeight: 700, color: '#0F172A',
-                            }}>{item.qty}</span>
                         </div>
-                    ))}
-                    <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '12px 20px', borderTop: '1px solid #E2E8F0',
-                        background: '#F8FAFC',
-                    }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total</span>
-                        <span style={{
-                            fontFamily: "'JetBrains Mono',monospace",
-                            fontSize: 15, fontWeight: 800, color: '#0F172A',
-                        }}>{order.totalQty || items.reduce((s, i) => s + (i.qty || 0), 0)}</span>
-                    </div>
-                </div>
-
-                {/* Team Roster */}
-                {order.teamRoster?.length > 0 && (
-                    <div style={{ ...T.card, flex: '1 1 320px' }}>
-                        <div style={T.sectionHead}>
-                            <Users size={14} color="#6366F1" />
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Team Roster</span>
-                            <Pill bg="#EEF2FF" text="#3730A3" border="#C7D2FE" style={{ marginLeft: 'auto', fontSize: 10 }}>
-                                {order.teamRoster.length} players
-                            </Pill>
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                                        {['Surname', 'No.', 'Jersey', 'Short'].map((col, ci) => (
-                                            <th key={col} style={{
-                                                padding: ci === 0 ? '10px 14px 10px 20px' : '10px 14px',
-                                                ...T.labelXs,
-                                                textAlign: ci === 0 ? 'left' : 'center', whiteSpace: 'nowrap',
-                                            }}>{col}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {order.teamRoster.map((player, idx) => (
-                                        <tr key={idx} style={{
-                                            height: 50,
-                                            background: idx % 2 === 0 ? '#fff' : '#FAFAFA',
-                                            borderBottom: '1px solid #F1F5F9',
-                                        }}>
-                                            <td style={{ padding: '0 14px 0 20px', fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{player.surname || '—'}</td>
-                                            <td style={{ padding: '0 14px', textAlign: 'center', fontFamily: "'JetBrains Mono',monospace", fontSize: 12, fontWeight: 700, color: '#6366F1' }}>#{player.number}</td>
-                                            <td style={{ padding: '0 14px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569' }}>{player.jerseySize || '—'}</td>
-                                            <td style={{ padding: '0 14px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569' }}>{player.shortSize !== '-' ? player.shortSize : '—'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Archive Notice ── */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                padding: '16px 22px', borderRadius: 16,
-                background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
-                border: '1px solid #BBF7D0',
-                boxShadow: '0 1px 3px rgba(16,185,129,0.06)',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{
-                        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                        background: 'linear-gradient(135deg, #DCFCE7, #BBF7D0)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <Archive size={18} color="#16A34A" />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#14532D', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Archive Record</div>
-                        <p style={{ fontSize: 12, color: '#15803D', lineHeight: 1.5, fontWeight: 500 }}>
-                            This order has been completed and archived. All production stages finished successfully.
+                        <p className="text-[10px] text-slate-400 mt-5 font-black uppercase tracking-[0.2em] flex items-center gap-2 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
+                            DATA SOURCE: {order.lineupImage}
                         </p>
                     </div>
                 </div>
-                <div style={{
-                    flexShrink: 0, padding: '6px 16px', borderRadius: 10,
-                    background: '#fff', border: '1px solid #BBF7D0',
-                    fontSize: 10, fontWeight: 800, color: '#16A34A',
-                    textTransform: 'uppercase', letterSpacing: '0.09em',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}>
-                    Read Only
+            ) : order.teamRoster?.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
+                    <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50">
+                        <Users size={18} className="text-indigo-500" />
+                        <span className="text-[16px] font-black text-slate-800 uppercase tracking-tight px-1">Full Team Roster Details</span>
+                        <Pill bg="bg-indigo-50" text="text-indigo-800" border="border-indigo-200" className="ml-auto px-4 py-1 text-xs">
+                            {order.teamRoster.length} Players Listed
+                        </Pill>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    {['Surname', 'No.', 'Jersey Size', 'Short Size', 'Custom Add-ons'].map((col, ci) => (
+                                        <th key={col} className={`py-4 px-6 text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap ${ci === 0 ? 'text-left' : 'text-center'}`}>
+                                            {col}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {order.teamRoster.map((player, idx) => (
+                                    <tr key={idx} className={`h-[68px] border-b border-slate-100 last:border-0 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
+                                        <td className="px-6 text-[15px] font-black text-slate-900">{player.surname || '—'}</td>
+                                        <td className="px-6 text-center font-mono text-[16px] font-black text-indigo-600 bg-indigo-50/40">#{player.number}</td>
+                                        <td className="px-6 text-center text-[14px] font-bold text-slate-700">{player.jerseySize || '—'}</td>
+                                        <td className="px-6 text-center text-[14px] font-bold text-slate-700">{player.shortSize !== '-' ? player.shortSize : '—'}</td>
+                                        <td className="px-6 text-center whitespace-nowrap">
+                                            {player.addOns?.length > 0 ? (
+                                                <div className="flex flex-wrap justify-center gap-1.5">
+                                                    {player.addOns.map((addon, ai) => (
+                                                        <span key={ai} className="inline-block px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-600 text-[10px] font-black border border-indigo-100 uppercase tracking-tight">
+                                                            {addon}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-300 font-bold italic opacity-60">None</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Footer Status Banner */}
+            <div className="flex items-center justify-between gap-4 p-5 md:px-7 md:py-5 rounded-3xl bg-gradient-to-br from-emerald-50 via-emerald-50 to-emerald-100/50 border border-emerald-200 shadow-sm flex-wrap">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl shrink-0 bg-white flex items-center justify-center shadow-sm border border-emerald-100">
+                        <Archive size={22} className="text-emerald-500" />
+                    </div>
+                    <div>
+                        <div className="text-[12px] font-black text-emerald-900 uppercase tracking-[0.15em] mb-1">Authenticated Archive Record</div>
+                        <p className="text-xs text-emerald-700/80 leading-relaxed font-bold italic tracking-tight">
+                            This order was verified and finalized on {fmtDate(order.completedAt)}.
+                        </p>
+                    </div>
+                </div>
+                <div className="shrink-0 px-6 py-2 rounded-xl bg-white/80 backdrop-blur border border-emerald-200 text-[11px] font-black text-emerald-600 uppercase tracking-widest shadow-sm">
+                    Read Only History
                 </div>
             </div>
         </div>
     );
 };
-
-// ─── Mobile Archive Card ───────────────────────────────────────────────────────
 
 const ArchiveCard = ({ order, onClick }) => {
     const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
@@ -378,34 +293,25 @@ const ArchiveCard = ({ order, onClick }) => {
     return (
         <button
             onClick={() => onClick(order.id)}
-            style={{
-                width: '100%', textAlign: 'left',
-                background: '#fff', border: '1px solid #E2E8F0',
-                borderRadius: 14, padding: '16px 18px',
-                cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'box-shadow 0.15s, transform 0.1s',
-            }}
-            onMouseOver={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.09)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-            onMouseOut={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; e.currentTarget.style.transform = 'none'; }}
+            className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer flex flex-col gap-3 shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-0.5"
         >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <MonoTag>#{order.id?.slice(-8).toUpperCase()}</MonoTag>
+            <div className="flex items-center justify-between gap-2">
+                <MonoTag>#{order.id?.toUpperCase().slice(-8)}</MonoTag>
                 <Pill bg={tc.bg} text={tc.text} border={tc.border}>
                     <TypeIcon size={9} /> {tc.label}
                 </Pill>
             </div>
             <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', lineHeight: 1.3 }}>
+                <div className="text-[15px] font-extrabold text-slate-900 leading-snug">
                     {order.teamName || order.category || order.serviceTitle}
                 </div>
-                <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500, marginTop: 3 }}>{order.customerName}</div>
+                <div className="text-xs text-slate-400 font-medium mt-1">{order.customerName}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748B', fontWeight: 600 }}>
-                    <CheckCircle2 size={12} color="#34D399" /> Completed {fmtDate(order.completedAt)}
+            <div className="flex items-center justify-between mt-1">
+                <span className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                    <CheckCircle2 size={12} className="text-emerald-400" /> Completed {fmtDate(order.completedAt)}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#4F46E5' }}>
+                <span className="flex items-center gap-1 text-xs font-bold text-indigo-600">
                     View <ChevronRight size={12} />
                 </span>
             </div>
@@ -413,14 +319,95 @@ const ArchiveCard = ({ order, onClick }) => {
     );
 };
 
-// ─── Main Archives Page ────────────────────────────────────────────────────────
+const ActivityTimeline = ({ activities }) => (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <Activity size={16} className="text-blue-500" />
+                <h3 className="text-[13px] font-bold text-slate-800">Archive Activity Log</h3>
+            </div>
+        </div>
+        <div className="p-6">
+            <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
+                {activities.map((activity, idx) => (
+                    <div key={idx} className="relative">
+                        <div className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-white border-2 border-blue-500 shadow-[0_0_0_4px_white]" />
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-black text-slate-900">{activity.action}</span>
+                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                                    {activity.target}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400">
+                                <span className="flex items-center gap-1"><User size={10} /> {activity.staffName}</span>
+                                <span className="flex items-center gap-1"><Calendar size={10} /> {fmtDate(activity.timestamp)}</span>
+                                <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-500" /> Success</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+const OrganizationView = ({ orders, onSelect }) => {
+    const orgs = useMemo(() => {
+        const groups = {};
+        orders.forEach(o => {
+            const name = o.teamName || 'General / Individual';
+            if (!groups[name]) groups[name] = { name, count: 0, items: 0, last: null, orders: [] };
+            groups[name].count++;
+            groups[name].items += o.totalQty || 0;
+            if (!groups[name].last || new Date(o.completedAt) > new Date(groups[name].last)) {
+                groups[name].last = o.completedAt;
+            }
+            groups[name].orders.push(o);
+        });
+        return Object.values(groups);
+    }, [orders]);
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {orgs.map(org => (
+                <div key={org.name} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                            {org.name === 'General / Individual' ? <User size={24} /> : <Building size={24} />}
+                        </div>
+                        <div className="text-right">
+                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Orders</div>
+                            <div className="text-2xl font-black text-slate-800 leading-none">{org.count}</div>
+                        </div>
+                    </div>
+                    <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors mb-1">{org.name}</h3>
+                    <p className="text-xs text-slate-400 font-medium mb-4">Produced {org.items} items to date</p>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Last Order</span>
+                            <span className="text-[11px] font-bold text-slate-600">{fmtDate(org.last)}</span>
+                        </div>
+                        <button
+                            onClick={() => onSelect(org.orders[0].id)}
+                            className="bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors"
+                        >
+                            View Active
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
 
 const ArchivesPage = () => {
     const [selectedId, setSelectedId] = useState(null);
+    const [activeTab, setActiveTab] = useState('list');
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('All');
     const [sortOrder, setSortOrder] = useState('newest');
-    const [tableHover, setTableHover] = useState(null);
 
     const filtered = useMemo(() => {
         let list = [...ARCHIVED_ORDERS];
@@ -431,7 +418,7 @@ const ArchivesPage = () => {
                 (o.teamName || '').toLowerCase().includes(q) ||
                 (o.customerName || '').toLowerCase().includes(q) ||
                 (o.serviceTitle || '').toLowerCase().includes(q) ||
-                o.id?.slice(-8).toLowerCase().includes(q)
+                o.id?.toLowerCase().includes(q)
             );
         }
         list.sort((a, b) => {
@@ -441,105 +428,63 @@ const ArchivesPage = () => {
         return list;
     }, [search, typeFilter, sortOrder]);
 
+    const stats = useMemo(() => {
+        const total = ARCHIVED_ORDERS.length;
+        const jerseys = ARCHIVED_ORDERS.filter(o => o.type === 'TEAM_JERSEY').length;
+        const orgs = ARCHIVED_ORDERS.filter(o => o.type === 'ORGANIZATIONAL').length;
+        const repair = ARCHIVED_ORDERS.filter(o => o.type === 'REPAIR').length;
+        return { total, jerseys, orgs, repair };
+    }, []);
+
     const selectedOrder = ARCHIVED_ORDERS.find(o => o.id === selectedId);
 
     if (selectedOrder) return (
-        <div style={{ minHeight: 'calc(100vh - 80px)' }}>
+        <div className="min-h-[calc(100vh-80px)]">
             <ArchiveDetail order={selectedOrder} onBack={() => setSelectedId(null)} />
         </div>
     );
 
-    const totalBooking = ARCHIVED_ORDERS.filter(o => o.type === 'BOOKING').length;
-    const totalRepair = ARCHIVED_ORDERS.filter(o => o.type === 'REPAIR').length;
-
     const kpiCards = [
-        { label: 'Total Archived', value: ARCHIVED_ORDERS.length, icon: Archive, color: '#059669', light: '#ECFDF5', border: '#A7F3D0', filter: 'All' },
-        { label: 'Team Bookings', value: totalBooking, icon: Package, color: '#2563EB', light: '#EFF6FF', border: '#BFDBFE', filter: 'BOOKING' },
-        { label: 'Repair Jobs', value: totalRepair, icon: Wrench, color: '#7C3AED', light: '#F5F3FF', border: '#DDD6FE', filter: 'REPAIR' },
+        { label: 'Total Records', value: stats.total, icon: Archive, color: '#059669', filter: 'All', sub: 'Production history' },
+        { label: 'Team Jerseys', value: stats.jerseys, icon: Shirt, color: '#3B82F6', filter: 'TEAM_JERSEY', sub: 'Custom sports' },
+        { label: 'Organizational', value: stats.orgs, icon: Building, color: '#6366F1', filter: 'ORGANIZATIONAL', sub: 'Corporate/Large' },
+        { label: 'Repair Jobs', value: stats.repair, icon: Wrench, color: '#7C3AED', filter: 'REPAIR', sub: 'Maintenance' },
     ];
 
     return (
-        <div style={{ fontFamily: "'Inter','system-ui',sans-serif", display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-            {/* ── Page Header ── */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{
-                        width: 44, height: 44, borderRadius: 13,
-                        background: 'linear-gradient(135deg, #059669, #10B981)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
-                    }}>
-                        <Archive size={21} color="#fff" strokeWidth={2} />
+        <div className="font-sans flex flex-col gap-4 md:gap-5">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center shadow-[0_4px_14px_rgba(16,185,129,0.3)] text-white">
+                        <Archive size={21} strokeWidth={2} />
                     </div>
                     <div>
-                        <h1 style={{ fontSize: 21, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.4px', lineHeight: 1.2 }}>
-                            Archives
-                        </h1>
-                        <p style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500, marginTop: 2 }}>
-                            Completed orders &amp; production history
-                        </p>
+                        <h1 className="text-[21px] font-extrabold text-slate-900 tracking-tight leading-snug">Archives</h1>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Production history and records</p>
                     </div>
                 </div>
-                <Pill bg="#ECFDF5" text="#065F46" border="#A7F3D0">
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', animation: 'pulse 2s infinite' }} />
-                    {ARCHIVED_ORDERS.length} records
-                </Pill>
             </div>
 
-            {/* ── KPI Cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-                {kpiCards.map(k => {
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {kpiCards.map((k, idx) => {
                     const isActive = typeFilter === k.filter;
+                    const accent = k.color;
                     return (
                         <button
-                            key={k.label}
+                            key={idx}
                             onClick={() => setTypeFilter(k.filter)}
-                            style={{
-                                background: isActive ? k.light : '#fff',
-                                border: isActive ? `2px solid ${k.border}` : '1px solid #E2E8F0',
-                                borderRadius: 16, padding: '18px 20px',
-                                cursor: 'pointer', textAlign: 'left',
-                                position: 'relative', overflow: 'hidden',
-                                boxShadow: isActive
-                                    ? `0 4px 20px rgba(0,0,0,0.08), 0 0 0 3px ${k.light}`
-                                    : '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                                transition: 'all 0.18s ease',
-                                transform: 'translateY(0)',
-                            }}
-                            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
-                            onMouseOut={e => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = isActive
-                                    ? `0 4px 20px rgba(0,0,0,0.08), 0 0 0 3px ${k.light}`
-                                    : '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)';
-                            }}
+                            className={`bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-slate-200/50'}`}
+                            style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
                         >
-                            {/* Decorative circle */}
-                            <div style={{
-                                position: 'absolute', top: -20, right: -16,
-                                width: 80, height: 80, borderRadius: '50%',
-                                background: k.color, opacity: isActive ? 0.1 : 0.05,
-                                transition: 'opacity 0.2s',
-                            }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                                    background: isActive ? k.color : k.light,
-                                    border: `1px solid ${k.border}`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    boxShadow: isActive ? `0 4px 12px ${k.color}44` : 'none',
-                                    transition: 'all 0.18s',
-                                }}>
-                                    <k.icon size={20} color={isActive ? '#fff' : k.color} strokeWidth={2} />
+                            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}>
+                                    <k.icon size={20} color={accent} strokeWidth={2.2} />
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? k.color : '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
-                                        {k.label}
-                                    </div>
-                                    <div style={{ fontSize: 26, fontWeight: 800, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.8px' }}>
-                                        {k.value}
-                                    </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">{k.label}</div>
+                                    <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">{k.value}</div>
+                                    <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">{k.sub}</div>
                                 </div>
                             </div>
                         </button>
@@ -547,263 +492,115 @@ const ArchivesPage = () => {
                 })}
             </div>
 
-            {/* ── Filters Bar ── */}
-            <div style={{
-                ...T.card,
-                padding: '12px 16px',
-                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10,
-            }}>
-                {/* Search */}
-                <div style={{ flex: '1 1 200px', position: 'relative' }}>
-                    <Search size={14} color="#CBD5E1" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                    <input
-                        type="text"
-                        placeholder="Search by name, team, or order ID…"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        style={{
-                            width: '100%', paddingLeft: 34, paddingRight: search ? 34 : 12,
-                            paddingTop: 9, paddingBottom: 9,
-                            fontSize: 13, fontWeight: 500, color: '#1E293B',
-                            background: '#F8FAFC', border: '1px solid #E2E8F0',
-                            borderRadius: 10, outline: 'none', fontFamily: 'inherit',
-                            transition: 'border-color 0.15s, box-shadow 0.15s',
-                            boxSizing: 'border-box',
-                        }}
-                        onFocus={e => { e.target.style.borderColor = '#93C5FD'; e.target.style.boxShadow = '0 0 0 3px #EFF6FF'; }}
-                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
-                    />
-                    {search && (
-                        <button
-                            onClick={() => setSearch('')}
-                            style={{
-                                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                                background: 'none', border: 'none', cursor: 'pointer',
-                                color: '#94A3B8', lineHeight: 1, padding: 2,
-                            }}
-                        >
-                            <X size={13} />
-                        </button>
-                    )}
-                </div>
-
-                {/* Divider */}
-                <div style={{ width: 1, height: 24, background: '#E2E8F0', flexShrink: 0 }} className="hidden sm:block" />
-
-                {/* Type chips */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                    {[['All', 'All'], ['BOOKING', 'Booking'], ['REPAIR', 'Repair']].map(([val, label]) => {
-                        const active = typeFilter === val;
-                        return (
-                            <button
-                                key={val}
-                                onClick={() => setTypeFilter(val)}
-                                style={{
-                                    padding: '6px 14px', borderRadius: 9,
-                                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                                    border: active ? '1px solid transparent' : '1px solid #E2E8F0',
-                                    background: active ? '#0F172A' : '#F8FAFC',
-                                    color: active ? '#fff' : '#64748B',
-                                    transition: 'all 0.15s',
-                                    letterSpacing: '0.02em',
-                                }}
-                                onMouseOver={e => { if (!active) { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#1E293B'; } }}
-                                onMouseOut={e => { if (!active) { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#64748B'; } }}
-                            >
-                                {label}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Sort dropdown */}
-                <div style={{ position: 'relative', marginLeft: 'auto' }}>
-                    <select
-                        value={sortOrder}
-                        onChange={e => setSortOrder(e.target.value)}
-                        style={{
-                            appearance: 'none',
-                            paddingLeft: 12, paddingRight: 30, paddingTop: 7, paddingBottom: 7,
-                            fontSize: 12, fontWeight: 600, letterSpacing: '0.02em',
-                            background: '#F8FAFC', color: '#475569',
-                            border: '1px solid #E2E8F0', borderRadius: 9,
-                            outline: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                        }}
+            {/* Tab Switcher */}
+            <div className="flex items-center bg-slate-100/50 p-1 rounded-xl self-start">
+                {[
+                    { id: 'list', label: 'Order List', icon: Archive },
+                    { id: 'orgs', label: 'Organizations', icon: Building },
+                    { id: 'activity', label: 'Activity Log', icon: Activity },
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                    </select>
-                    <ChevronDown size={12} color="#94A3B8" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                </div>
+                        <tab.icon size={14} /> {tab.label}
+                    </button>
+                ))}
             </div>
 
-            {/* ── Desktop Table ── */}
-            <div className="hidden md:block" style={T.card}>
-                {/* Table header strip */}
-                <div style={{ ...T.sectionHead, gap: 10 }}>
-                    <Filter size={12} color="#94A3B8" />
-                    <span style={T.labelXs}>Results</span>
-                    <span style={{
-                        fontSize: 11, fontWeight: 700, color: '#475569',
-                        background: '#EEF2FF', border: '1px solid #C7D2FE',
-                        padding: '1px 9px', borderRadius: 20,
-                    }}>{filtered.length}</span>
-                </div>
-
-                {filtered.length === 0 ? (
-                    <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
-                        <div style={{
-                            width: 56, height: 56, borderRadius: 16,
-                            background: '#F8FAFC', border: '1px solid #E2E8F0',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            margin: '0 auto 16px',
-                        }}>
-                            <Archive size={24} color="#CBD5E1" />
+            {activeTab === 'list' && (
+                <>
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center gap-2.5 shadow-sm">
+                        <div className="flex-1 min-w-[200px] relative w-full md:w-auto">
+                            <Search size={14} className="text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Search by name, team, or order ID…"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full pl-8 pr-8 py-2 text-[13px] font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-lg outline-none transition-all focus:border-blue-300 focus:ring-[3px] focus:ring-blue-50 box-border"
+                            />
+                            {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer bg-transparent border-none"><X size={13} /></button>}
                         </div>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: '#94A3B8' }}>No archived orders found</p>
-                        <p style={{ fontSize: 12, color: '#CBD5E1', marginTop: 6 }}>Try adjusting your search or filter criteria</p>
+                        <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0 mx-1" />
+                        <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto" style={{ scrollbarWidth: 'none' }}>
+                            {[
+                                ['All', 'All'],
+                                ['TEAM_JERSEY', 'Team Jersey'],
+                                ['ORGANIZATIONAL', 'Organizational'],
+                                ['REPAIR', 'Repair']
+                            ].map(([val, label]) => (
+                                <button key={val} onClick={() => setTypeFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all tracking-wide whitespace-nowrap ${typeFilter === val ? 'bg-slate-900 border-transparent text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'} border`}>{label}</button>
+                            ))}
+                        </div>
+                        <div className="relative ml-auto w-full sm:w-auto">
+                            <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full sm:w-auto appearance-none pl-3 pr-8 py-1.5 text-xs font-semibold tracking-wide bg-slate-50 text-slate-600 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                            </select>
+                            <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                     </div>
-                ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #F1F5F9' }}>
-                                {[
-                                    { label: 'Order ID', w: '130px' },
-                                    { label: 'Type', w: '120px' },
-                                    { label: 'Client / Team', w: 'auto' },
-                                    { label: 'Service', w: '170px' },
-                                    { label: 'Completed', w: '150px' },
-                                    { label: 'Items', w: '80px' },
-                                    { label: '', w: '90px' },
-                                ].map(({ label, w }, ci) => (
-                                    <th key={label + ci} style={{
-                                        padding: ci === 0 ? '11px 14px 11px 22px' : '11px 14px',
-                                        width: w,
-                                        ...T.labelXs,
-                                        textAlign: 'left', whiteSpace: 'nowrap',
-                                    }}>{label}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map((order, idx) => {
-                                const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
-                                const TypeIcon = tc.icon;
-                                const isHovered = tableHover === order.id;
-                                return (
-                                    <tr
-                                        key={order.id}
-                                        onClick={() => setSelectedId(order.id)}
-                                        onMouseOver={() => setTableHover(order.id)}
-                                        onMouseOut={() => setTableHover(null)}
-                                        style={{
-                                            height: 62, cursor: 'pointer',
-                                            background: isHovered ? '#EFF6FF' : (idx % 2 === 0 ? '#fff' : '#FAFAFA'),
-                                            borderBottom: '1px solid #F1F5F9',
-                                            transition: 'background 0.12s',
-                                        }}
-                                    >
-                                        {/* Order ID */}
-                                        <td style={{ padding: '0 14px 0 22px' }}>
-                                            <MonoTag>#{order.id?.slice(-8).toUpperCase()}</MonoTag>
-                                        </td>
-                                        {/* Type */}
-                                        <td style={{ padding: '0 14px' }}>
-                                            <Pill bg={tc.bg} text={tc.text} border={tc.border}>
-                                                <TypeIcon size={9} /> {tc.label}
-                                            </Pill>
-                                        </td>
-                                        {/* Client / Team */}
-                                        <td style={{ padding: '0 14px' }}>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
-                                                {order.teamName || order.customerName}
-                                            </div>
-                                            {order.teamName && (
-                                                <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500, marginTop: 2 }}>
-                                                    {order.customerName}
-                                                </div>
-                                            )}
-                                        </td>
-                                        {/* Service */}
-                                        <td style={{ padding: '0 14px', fontSize: 12, fontWeight: 600, color: '#64748B' }}>
-                                            {order.serviceTitle}
-                                        </td>
-                                        {/* Completed */}
-                                        <td style={{ padding: '0 14px' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#059669' }}>
-                                                <CheckCircle2 size={13} color="#34D399" strokeWidth={2.5} />
-                                                {fmtDate(order.completedAt)}
-                                            </span>
-                                        </td>
-                                        {/* Items */}
-                                        <td style={{ padding: '0 14px' }}>
-                                            <span style={{
-                                                fontFamily: "'JetBrains Mono',monospace",
-                                                fontSize: 13, fontWeight: 700, color: '#334155',
-                                            }}>
-                                                {order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0)}
-                                                <span style={{ fontSize: 10, fontWeight: 600, color: '#94A3B8', marginLeft: 3 }}>pcs</span>
-                                            </span>
-                                        </td>
-                                        {/* Action */}
-                                        <td style={{ padding: '0 22px 0 14px' }}>
-                                            <button
-                                                onClick={e => { e.stopPropagation(); setSelectedId(order.id); }}
-                                                style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                    fontSize: 12, fontWeight: 700, color: '#3B82F6',
-                                                    background: isHovered ? '#DBEAFE' : '#EFF6FF',
-                                                    border: '1px solid #BFDBFE',
-                                                    padding: '6px 14px', borderRadius: 9, cursor: 'pointer',
-                                                    transition: 'background 0.12s',
-                                                }}
-                                            >
-                                                <Eye size={13} /> View
-                                            </button>
-                                        </td>
+
+                    <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2.5 px-5 py-3 border-b border-slate-100 bg-slate-50">
+                            <Filter size={12} className="text-slate-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Results</span>
+                            <span className="text-[11px] font-bold text-slate-600 bg-indigo-50 border border-indigo-200 px-2.5 py-px rounded-full">{filtered.length}</span>
+                        </div>
+                        {filtered.length === 0 ? (
+                            <div className="py-20 px-8 text-center"><Archive size={24} className="text-slate-300 mx-auto mb-4" /><p className="text-sm font-bold text-slate-400">No archived orders found</p></div>
+                        ) : (
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b-2 border-slate-100">
+                                        {[{ label: 'Order ID', w: '130px', cls: 'pl-6' }, { label: 'Type', w: '120px' }, { label: 'Client / Team', w: 'auto' }, { label: 'Service', w: '170px' }, { label: 'Completed', w: '150px' }, { label: 'Items', w: '80px' }, { label: '', w: '90px' }].map(({ label, w, cls = '' }, ci) => (
+                                            <th key={ci} className={`py-3 px-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap ${cls}`} style={{ width: w }}>{label}</th>
+                                        ))}
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                )}
-
-                {/* Table Footer */}
-                {filtered.length > 0 && (
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '11px 22px', borderTop: '1px solid #F1F5F9',
-                        background: '#FAFAFA',
-                    }}>
-                        <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>
-                            Showing{' '}
-                            <strong style={{ color: '#1E293B', fontWeight: 700 }}>{filtered.length}</strong>
-                            {' '}of{' '}
-                            <strong style={{ color: '#1E293B', fontWeight: 700 }}>{ARCHIVED_ORDERS.length}</strong>
-                            {' '}archived orders
-                        </span>
-                        <Pill bg="#ECFDF5" text="#065F46" border="#A7F3D0">
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', flexShrink: 0 }} />
-                            All Completed
-                        </Pill>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((order, idx) => {
+                                        const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
+                                        const TypeIcon = tc.icon;
+                                        return (
+                                            <tr key={order.id} onClick={() => setSelectedId(order.id)} className={`h-[62px] cursor-pointer border-b border-slate-100 transition-colors duration-150 hover:bg-blue-50 group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                                <td className="px-3.5 pl-6"><MonoTag>#{order.id?.toUpperCase().slice(-8)}</MonoTag></td>
+                                                <td className="px-3.5"><Pill bg={tc.bg} text={tc.text} border={tc.border}><TypeIcon size={9} /> {tc.label}</Pill></td>
+                                                <td className="px-3.5"><div className="text-[13px] font-bold text-slate-900 leading-snug">{order.teamName || order.customerName}</div>{order.teamName && <div className="text-[11px] font-medium text-slate-400 mt-0.5">{order.customerName}</div>}</td>
+                                                <td className="px-3.5 text-xs font-semibold text-slate-500">{order.serviceTitle}</td>
+                                                <td className="px-3.5"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600"><CheckCircle2 size={13} className="text-emerald-400" strokeWidth={2.5} />{fmtDate(order.completedAt)}</span></td>
+                                                <td className="px-3.5"><span className="font-mono text-[13px] font-bold text-slate-700">{order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0)}<span className="text-[10px] font-semibold text-slate-400 ml-1">pcs</span></span></td>
+                                                <td className="px-3.5 pr-6 text-right"><button onClick={e => { e.stopPropagation(); setSelectedId(order.id); }} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-500 bg-blue-50 border border-blue-200 px-3.5 py-1.5 rounded-lg transition-colors duration-150 group-hover:bg-blue-100"><Eye size={13} /> View</button></td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                        {filtered.length > 0 && (
+                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{ARCHIVED_ORDERS.length}</strong> archived orders</span><Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />All Completed</Pill></div>
+                        )}
                     </div>
-                )}
-            </div>
 
-            {/* ── Mobile Cards ── */}
-            <div className="md:hidden flex flex-col gap-2.5">
-                {filtered.length === 0 ? (
-                    <div style={{ ...T.card, padding: '4rem 2rem', textAlign: 'center' }}>
-                        <Archive size={28} color="#E2E8F0" style={{ margin: '0 auto 12px', display: 'block' }} />
-                        <p style={{ fontSize: 13, fontWeight: 700, color: '#CBD5E1' }}>No archived orders found</p>
-                        <p style={{ fontSize: 11, color: '#E2E8F0', marginTop: 4 }}>Try adjusting your search or filter</p>
+                    <div className="md:hidden flex flex-col gap-2.5">
+                        {filtered.length === 0 ? (
+                            <div className="bg-white border border-slate-200 rounded-2xl py-16 px-8 text-center shadow-sm"><Archive size={28} className="text-slate-200 mx-auto mb-3" /><p className="text-[13px] font-bold text-slate-400">No archived orders found</p></div>
+                        ) : (
+                            filtered.map(order => <ArchiveCard key={order.id} order={order} onClick={setSelectedId} />)
+                        )}
                     </div>
-                ) : (
-                    filtered.map(order => (
-                        <ArchiveCard key={order.id} order={order} onClick={setSelectedId} />
-                    ))
-                )}
-            </div>
+                </>
+            )}
+
+            {activeTab === 'orgs' && (
+                <OrganizationView orders={ARCHIVED_ORDERS} onSelect={setSelectedId} />
+            )}
+
+            {activeTab === 'activity' && (
+                <ActivityTimeline activities={ARCHIVE_ACTIVITY} />
+            )}
         </div>
     );
 };

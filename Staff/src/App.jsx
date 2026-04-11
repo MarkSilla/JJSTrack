@@ -5,6 +5,7 @@ import StaffLayout from './layout/Stafflayout'
 import Dashboard from './pages/dashboard'
 import OrderPage from './pages/OrderPage'
 import ArchivesPage from './pages/ArchivesPage'
+import StaffInventoryPage from './pages/inventory/StaffInventoryPage'
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -34,6 +35,7 @@ function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="orders" element={<OrderPage />} />
                     <Route path="archives" element={<ArchivesPage />} />
+                    <Route path="inventory" element={<StaffInventoryPage />} />
                 </Route>
             </Routes>
         </Router>

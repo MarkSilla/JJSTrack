@@ -11,11 +11,10 @@ const navItems = [
         icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
         subItems: [
             { label: 'Job Orders', path: '/staff/orders' },
-            { label: 'Released', path: '/staff/released' },
+            { label: 'Archives', path: '/staff/archives' },
         ]
     },
     { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/staff/inventory' },
-    { icon: Archive, label: 'Archives', description: 'Completed orders', path: '/staff/archives' },
 ]
 
 const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {

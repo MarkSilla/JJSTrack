@@ -55,35 +55,41 @@ const OrderPage = () => {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
                 {[
-                    { label: 'All', value: counts.All, icon: Inbox, color: '#2563EB', sub: 'Total assigned' },
-                    { label: 'Pending', value: counts['Pending'] || 0, icon: Clock, color: '#D97706', sub: 'Awaiting start' },
+                    { label: 'All', value: counts.All, icon: Inbox, color: '#3B82F6', sub: 'Total assigned' },
+                    { label: 'Pending', value: counts['Pending'] || 0, icon: Clock, color: '#F59E0B', sub: 'Awaiting start' },
                     { label: 'In Progress', value: counts['In Progress'] || 0, icon: AlertCircle, color: '#7C3AED', sub: 'Currently active' },
                     { label: 'Completed', value: counts['Completed'] || 0, icon: CheckCircle2, color: '#059669', sub: 'Finished orders' },
-                ].map(card => (
-                    <button
-                        key={card.label}
-                        onClick={() => setFilterStatus(card.label)}
-                        className={`bg-white rounded-2xl py-3.5 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none
-                            ${filterStatus === card.label ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : ''}`}
-                        style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                    >
-                        <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.06] group-hover:opacity-[0.10] transition-opacity duration-500" style={{ background: card.color }} />
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
-                                style={{ background: card.color + "15", border: `1.5px solid ${card.color}25` }}
-                            >
-                                <card.icon size={18} color={card.color} strokeWidth={2.5} />
+                ].map(card => {
+                    const accent = card.color;
+                    const isActive = filterStatus === card.label;
+                    return (
+                        <button
+                            key={card.label}
+                            onClick={() => setFilterStatus(card.label)}
+                            className={`bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-slate-200/50'}`}
+                            style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+                        >
+                            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div 
+                                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" 
+                                    style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}
+                                >
+                                    <card.icon size={20} color={accent} strokeWidth={2.2} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">{card.label}</div>
+                                    <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">{card.value}</div>
+                                    <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">
+                                        {card.sub}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="min-w-0">
-                                <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">{card.label}</div>
-                                <div className="text-xl font-black text-gray-900 tracking-tighter leading-none">{card.value}</div>
-                            </div>
-                        </div>
-                    </button>
-                ))}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Filters */}

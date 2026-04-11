@@ -2,11 +2,20 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Archive, RotateCcw, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
   Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown,
-  Wrench, Sparkles, Link2,
+  Wrench, Sparkles, Link2, Box, History,
 } from "lucide-react";
 import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
 import { inventoryApi } from "../../services/inventoryApi";
 import { fmt } from "../../utils/helpers.js";
+// PARA SA FIFO YAN — i-import ang FIFO utilities
+import {
+  getBatches,
+  addBatch,
+  deductFIFO,
+  previewFIFO,
+  initBatchesIfEmpty,
+  clearBatches,
+} from "../../utils/fifoUtils";
 
 const numberInputStyle = `../../services/inventoryApi.js
   input[type="number"]::-webkit-outer-spin-button,
@@ -416,19 +425,50 @@ function UpdateModal({ item, onConfirm, onClose }) {
   );
 }
 
+// PARA SA FIFO YAN — pinalitan ang AdjustModal para may FIFO batch awareness
+// Kapag Increase: gumagawa ng bagong batch (hindi pinagsasama sa luma)
+// Kapag Decrease: ginagamit ang FIFO order (pinaka-matanda muna)
 function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   const [adjType, setAdjType] = useState(initialType);
   const [amount, setAmount] = useState("");
 
+  // PARA SA FIFO YAN — i-preview ang FIFO breakdown habang nagta-type ang user
+  const fifoPreview = useMemo(() => {
+    const n = parseInt(amount);
+    if (!n || n < 1 || adjType !== "decrease") return null;
+    return previewFIFO(item._id, n);
+  }, [amount, adjType, item._id]);
+
+  // PARA SA FIFO YAN — kuhanin ang kasalukuyang batches para sa display
+  const batches = useMemo(() => getBatches(item._id), [item._id]);
+
   const handleConfirm = () => {
     const n = parseInt(amount);
     if (!n || n < 1) return;
+
+    if (adjType === "increase") {
+      // PARA SA FIFO YAN — dagdag ng bagong batch (HINDI pinagsasama sa luma)
+      // TODO (BACKEND): Dito dapat mag-call ng POST /api/inventory/:id/batches
+      // sa ngayon localStorage lang muna habang wala pang backend batch support
+      addBatch(item._id, n);
+    } else {
+      // PARA SA FIFO YAN — i-deduct gamit ang FIFO (pinaka-matanda muna)
+      // TODO (BACKEND): Dito dapat mag-call ng PATCH /api/inventory/:id/fifo-deduct
+      // sa ngayon localStorage lang muna
+      const result = deductFIFO(item._id, n);
+      if (!result.success) {
+        alert(`Hindi sapat ang stock. Kulang pa ng ${result.shortfall} ${item.unit}.`);
+        return;
+      }
+    }
     onConfirm(item._id, adjType, n);
   };
 
+  const currentBatchTotal = batches.reduce((s, b) => s + b.quantity, 0);
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
 
         <div className="flex items-start justify-between mb-1">
@@ -448,6 +488,14 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           </span>
         </div>
 
+        {/* PARA SA FIFO YAN — ipakita ang batch count summary */}
+        {batches.length > 0 && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between">
+            <span className="text-xs text-blue-700 font-semibold">{batches.length} active batch{batches.length !== 1 ? 'es' : ''}</span>
+            <span className="text-xs text-blue-500">{currentBatchTotal} {item.unit} total</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 mb-4">
           <button onClick={() => setAdjType("increase")}
             className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "increase" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
@@ -459,22 +507,129 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           </button>
         </div>
 
-        <div className="mb-5">
+        {adjType === "increase" && (
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5 mb-4">
+            {/* PARA SA FIFO YAN — ipaliwanag na bagong batch ang gagawin */}
+            <p className="text-xs text-emerald-700 font-semibold">✦ Gagawa ng bagong batch — hindi pinagsasama sa lumang stock</p>
+            <p className="text-[11px] text-emerald-600 mt-0.5">TODO (BACKEND): i-save ito bilang bagong batch record sa database</p>
+          </div>
+        )}
+
+        <div className="mb-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
           <input type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)}
             placeholder="Enter amount…"
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
         </div>
 
+        {/* PARA SA FIFO YAN — ipakita ang FIFO batch breakdown preview kapag decrease */}
+        {adjType === "decrease" && fifoPreview && fifoPreview.breakdown.length > 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-100 rounded-xl p-4">
+            <p className="text-xs font-bold text-amber-800 mb-2 flex items-center gap-1.5">
+              {/* PARA SA FIFO YAN — FIFO breakdown label */}
+              <Box size={13} /> FIFO Batch Breakdown
+            </p>
+            <div className="space-y-1.5">
+              {fifoPreview.breakdown.map((b, i) => (
+                <div key={b.batchId} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-[10px]">{i + 1}</span>
+                    <span className="text-slate-600">Batch #{b.batchId}</span>
+                    <span className="text-slate-400">{new Date(b.dateAdded).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</span>
+                  </div>
+                  <span className="font-semibold text-amber-700">-{b.willUse} <span className="text-slate-400 font-normal">{item.unit}</span></span>
+                </div>
+              ))}
+            </div>
+            {!fifoPreview.canFulfill && (
+              <p className="text-xs text-red-600 font-semibold mt-2">⚠ Hindi sapat ang stock (kulang pa ng {fifoPreview.shortfall})</p>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button onClick={handleConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={handleConfirm}
+            disabled={adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+              adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
+                ? "bg-slate-300 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}>
             <Check size={15} /> Confirm
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// PARA SA FIFO YAN — modal para ipakita ang lahat ng batches ng isang item
+// TODO (BACKEND): Ang data dito ay galing sa localStorage muna
+//                 Kapag may backend na, palitan ng API call na GET /api/inventory/:id/batches
+function BatchInfoModal({ item, onClose }) {
+  const batches = getBatches(item._id); // PARA SA FIFO YAN — sorted oldest first
+  const totalBatchStock = batches.reduce((s, b) => s + b.quantity, 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-black text-gray-900">Batch Info</h3>
+            <p className="text-sm text-slate-500">{item.name}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
+
+        {/* PARA SA FIFO YAN — notice na localStorage lang muna ito */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 mb-4">
+          <p className="text-[11px] text-blue-600 font-medium">
+            💡 Batch data dito ay naka-store sa browser localStorage.
+            TODO (BACKEND): I-integrate ang GET /api/inventory/{item._id}/batches
+          </p>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+          <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total (batches)</span>
+          <span className="text-lg font-black text-gray-900 tabular-nums">{totalBatchStock} <span className="text-sm font-normal text-slate-400">{item.unit}</span></span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {batches.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">
+              <Box size={24} className="mx-auto mb-2 opacity-30" />
+              Walang batch data pa. Mag-adjust ng stock para lumikha ng batch.
+            </div>
+          ) : (
+            batches.map((batch, i) => (
+              <div key={batch.batchId} className={`rounded-xl border px-4 py-3 flex items-center justify-between ${
+                i === 0 ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-white"
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    {i === 0 && <span className="text-[10px] font-bold bg-amber-400 text-white px-2 py-0.5 rounded-full">NEXT (FIFO)</span>}
+                    <span className="text-sm font-bold text-gray-900">Batch #{batch.batchId}</span>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {new Date(batch.dateAdded).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
+                  </span>
+                </div>
+                <span className="text-base font-black text-blue-600 tabular-nums">
+                  {batch.quantity} <span className="text-xs font-normal text-slate-400">{item.unit}</span>
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <button onClick={onClose} className="mt-4 w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+          Close
+        </button>
       </div>
     </div>
   );
@@ -722,7 +877,7 @@ function InventorySystemContent() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
-const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('newest');
   const [showSort, setShowSort] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
@@ -737,6 +892,8 @@ const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  // PARA SA FIFO YAN — state para sa Batch Info modal
+  const [batchModal, setBatchModal] = useState(null);
 
   // Save activities to localStorage whenever they change
   useEffect(() => {
@@ -758,6 +915,16 @@ const [sortBy, setSortBy] = useState('newest');
       const data = await inventoryApi.getAllInventory();
       setInventory(data);
       setError(null);
+
+      // PARA SA FIFO YAN — i-initialize ang batches para sa bawat item kung wala pa
+      // Ginagawa ito habang walang dedicated batch API sa backend.
+      // TODO (BACKEND): Alisin na ito kapag nag-support na ng batches ang API.
+      //                  Ang batches ay manggagaling na sa response ng GET /api/inventory
+      data.forEach(item => {
+        if (!item.archived) {
+          initBatchesIfEmpty(item._id, item.stock);
+        }
+      });
     } catch (err) {
       console.error("Failed to fetch inventory:", err);
       setError("Failed to load inventory");
@@ -815,14 +982,22 @@ const STAT_CARDS = [
 
   const handleAdjust = async (itemId, type, amount) => {
     try {
+      // PARA SA FIFO YAN — ang FIFO batch update (addBatch / deductFIFO) ay
+      // nangyayari na sa loob ng AdjustModal bago pa man matawag ang function na ito.
+      // TODO (BACKEND): Kapag may batch API na, ilipat ang FIFO logic dito
+      //                  at i-call ang backend endpoint para consistent ang data.
+      //                  Hal: await inventoryApi.adjustStockFIFO(itemId, type, amount)
+      //                  — kung Increase: mag-POST ng bagong batch
+      //                  — kung Decrease: mag-PATCH gamit FIFO order
       const updatedItem = await inventoryApi.adjustStock(itemId, type, amount);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
-      
+
+      const item = inventory.find(i => i._id === itemId);
       pushActivity(
         type === "increase" ? "add" : "dec",
         type === "increase"
-          ? `+${amount} added`
-          : `Stock decreased by ${amount}`
+          ? `+${amount} ${item?.unit || ''} added to "${item?.name}" (new batch created)`
+          : `${amount} ${item?.unit || ''} deducted from "${item?.name}" (FIFO order)`
       );
       setAdjModal(null);
     } catch (err) {
@@ -1239,6 +1414,11 @@ const STAT_CARDS = [
                               className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Remove Stock">
                               <ArrowDownCircle size={14} />
                             </button>
+                            {/* PARA SA FIFO YAN — button para makita ang batch info ng item */}
+                            <button onClick={() => setBatchModal(item)}
+                              className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors" title="Batch Info (FIFO)">
+                              <Box size={14} />
+                            </button>
                             <button onClick={() => setUpdateModal(item)}
                               className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
                               <Pencil size={14} />
@@ -1355,11 +1535,18 @@ const STAT_CARDS = [
           }}
         />
       )}
-      <ArchiveConfirmModal 
+      <ArchiveConfirmModal
         archiveConfirm={archiveConfirm}
         onConfirm={handleArchiveConfirm}
-        onCancel={handleArchiveCancel} 
+        onCancel={handleArchiveCancel}
       />
+      {/* PARA SA FIFO YAN — Batch Info modal */}
+      {batchModal && (
+        <BatchInfoModal
+          item={batchModal}
+          onClose={() => setBatchModal(null)}
+        />
+      )}
     </div>
   );
 }
