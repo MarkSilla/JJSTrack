@@ -1,0 +1,92 @@
+import React from 'react';
+
+const STATUS_CONFIG = {
+    "Completed": { color: "bg-emerald-50 text-emerald-700 border border-emerald-200", dot: "bg-emerald-500", label: "Completed" },
+    "In Progress": { color: "bg-blue-50 text-blue-700 border border-blue-200", dot: "bg-blue-500", label: "In Progress" },
+    "Pending": { color: "bg-amber-50 text-amber-700 border border-amber-200", dot: "bg-amber-500", label: "Pending" },
+    "Overdue": { color: "bg-red-50 text-red-700 border border-red-200", dot: "bg-red-500", label: "Overdue" },
+};
+
+const TYPE_CONFIG = {
+    "Jersey": { color: "bg-indigo-50 text-indigo-700 border border-indigo-200" },
+    "Organizational": { color: "bg-teal-50 text-teal-700 border border-teal-200" },
+    "Repair": { color: "bg-orange-50 text-orange-700 border border-orange-200" },
+};
+
+const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepIndex }) => {
+    const orderId = order.id;
+    const derivedStatus = getDerivedStatus(order);
+    const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
+    const typeConf = TYPE_CONFIG[order.serviceType] || { color: "bg-gray-50 text-gray-600 border border-gray-200" };
+    const stepIdx = getActiveStepIndex(order);
+    const steps = order.steps || order.productionProgress || [];
+    const currentStep = steps[stepIdx]?.step || steps[stepIdx]?.label || steps[stepIdx] || 'Pending';
+    const rawDueDate = order.dueDate || order.estimatedCompletion || order.invoice?.dueDate || order.pickupDate || 'N/A';
+    const formattedDueDate = rawDueDate === 'N/A' ? 'N/A' : new Date(rawDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return (
+        <tr
+            onClick={() => onClick(orderId)}
+            className={`cursor-pointer transition-all duration-150 border-b border-gray-100 group
+                ${isSelected ? 'bg-blue-50/60 ring-1 ring-inset ring-blue-200' : 'hover:bg-gray-50/80'}`}
+        >
+            {/* Order ID */}
+            <td className="px-5 py-4">
+                <span className="font-mono text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg tracking-wider">
+                    #{orderId?.slice(-8).toUpperCase()}
+                </span>
+            </td>
+
+            {/* Customer */}
+            <td className="px-5 py-4">
+                <div className="text-sm font-bold text-gray-900 leading-tight">{order.customer || order.customerName}</div>
+                <div className="text-[11px] font-medium text-gray-400 mt-0.5">{order.phone || order.contact?.phone || order.contact || 'N/A'}</div>
+            </td>
+
+            {/* Service Type */}
+            <td className="px-5 py-4 hidden md:table-cell">
+                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg tracking-wider ${typeConf.color}`}>
+                    {order.serviceType || order.serviceTitle || '—'}
+                </span>
+            </td>
+
+            {/* Item / Category */}
+            <td className="px-5 py-4 hidden lg:table-cell">
+                <span className="text-xs font-semibold text-gray-700 truncate max-w-[180px] block" title={order.item || order.category}>
+                    {order.item || order.category || '—'}
+                </span>
+            </td>
+
+            {/* Status */}
+            <td className="px-5 py-4">
+                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg tracking-wider ${statusConf.color}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConf.dot}`} />
+                    {statusConf.label}
+                </span>
+            </td>
+
+            {/* Current Step */}
+            <td className="px-5 py-4 hidden xl:table-cell">
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${derivedStatus === 'Completed' ? 'bg-emerald-500' : 'bg-blue-400'}`} />
+                    <span className="text-xs font-semibold text-gray-600 truncate max-w-[140px]">
+                        {typeof currentStep === 'string' ? currentStep : String(currentStep)}
+                    </span>
+                </div>
+            </td>
+
+            {/* Due Date */}
+            <td className="px-5 py-4 hidden sm:table-cell">
+                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                    formattedDueDate === 'N/A'
+                        ? 'text-gray-400 bg-gray-50 border border-gray-100'
+                        : 'text-red-600 bg-red-50 border border-red-100'
+                }`}>
+                    {formattedDueDate}
+                </span>
+            </td>
+        </tr>
+    );
+};
+
+export default OrderRow;

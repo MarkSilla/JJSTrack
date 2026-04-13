@@ -251,7 +251,7 @@ const ActiveConversation = ({ client, messages, onSendMessage, onBack, isLoading
               <span className="capitalize">{client.status}</span>
               {!!client.lastOrder && (
                 <>
-                  <span className="text-stone-300">•</span>
+                  <span className="text-stone-300">ï¿½</span>
                   <span className="font-mono text-stone-400">{client.lastOrder}</span>
                 </>
               )}
@@ -318,6 +318,7 @@ const AdminDualPaneDashboard = ({ onClose, isFullScreen, toggleFullScreen, onUnr
   }, [clients, filter, searchQuery]);
 
   const loadConversations = useCallback(async (silent = false) => {
+    if (!localStorage.getItem('adminToken')) return;
     try {
       if (!silent) setIsLoadingClients(true);
       const response = await chatApi.getConversations();
@@ -344,7 +345,7 @@ const AdminDualPaneDashboard = ({ onClose, isFullScreen, toggleFullScreen, onUnr
   }, [activeClientId, onUnreadChange]);
 
   const loadMessages = useCallback(async (conversationId, silent = false) => {
-    if (!conversationId) return;
+    if (!conversationId || !localStorage.getItem('adminToken')) return;
 
     try {
       if (!silent) setIsLoadingMessages(true);
@@ -420,13 +421,14 @@ const AdminDualPaneDashboard = ({ onClose, isFullScreen, toggleFullScreen, onUnr
   }, [activeClientId, loadConversations]);
 
   useEffect(() => {
+    if (!localStorage.getItem('adminToken')) return;
     loadConversations(false);
     const intervalId = setInterval(() => loadConversations(true), 5000);
     return () => clearInterval(intervalId);
   }, [loadConversations]);
 
   useEffect(() => {
-    if (!activeClientId) return undefined;
+    if (!activeClientId || !localStorage.getItem('adminToken')) return undefined;
 
     loadMessages(activeClientId, false);
     const intervalId = setInterval(() => {

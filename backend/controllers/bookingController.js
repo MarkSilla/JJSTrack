@@ -5,6 +5,45 @@ import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
 
+const normalizePositiveNumber = (value, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const normalizeCurrency = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+const normalizeBookingItems = (items = []) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      description: item?.description || 'Service Item',
+      type: item?.type || 'Service',
+      qty: normalizePositiveNumber(item?.qty, 1),
+      unitPrice: normalizeCurrency(item?.unitPrice),
+      size: item?.size || '',
+      addOn: item?.addOn || 'None',
+      addOnPrice: normalizeCurrency(item?.addOnPrice),
+    }))
+    .filter((item) => item.unitPrice >= 0);
+
+const normalizeSelectedOptions = (selectedOptions = []) =>
+  (Array.isArray(selectedOptions) ? selectedOptions : []).map((option) => ({
+    name: String(option?.name || 'Repair Service').trim() || 'Repair Service',
+    price: normalizeCurrency(option?.price),
+    quantity: normalizePositiveNumber(option?.quantity, 1),
+  }));
+
+const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
+  const fullName = [participant.firstName, participant.surname]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return fullName || String(participant.name || fallback).trim() || fallback;
+};
+
 // Create a new booking (from repair form, team jersey, or organizational)
 export const createBooking = async (req, res) => {
   try {
@@ -32,6 +71,33 @@ export const createBooking = async (req, res) => {
       notes,
       items,
     } = req.body;
+
+    const normalizeStringArray = (value) => {
+      if (Array.isArray(value)) {
+        return value
+          .flat(Infinity)
+          .map((item) => (item == null ? '' : String(item).trim()))
+          .filter(Boolean)
+      }
+
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value)
+          if (Array.isArray(parsed)) {
+            return parsed
+              .flat(Infinity)
+              .map((item) => (item == null ? '' : String(item).trim()))
+              .filter(Boolean)
+          }
+        } catch (err) {
+          return [value.trim()].filter(Boolean)
+        }
+      }
+
+      return []
+    }
+
+    const normalizedPhotos = normalizeStringArray(photos)
 
     // Log request data
     console.log('Creating booking with data:', {
@@ -154,19 +220,53 @@ export const createBooking = async (req, res) => {
     const orgPrice = pricingOrg?.basePerItem || 650;
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
 
-    const normalizedItems = Array.isArray(items)
-      ? items
-          .map((item) => ({
-            description: item?.description || 'Service Item',
-            type: item?.type || 'Service',
-            qty: Number(item?.qty) > 0 ? Number(item.qty) : 1,
-            unitPrice: Number(item?.unitPrice) || 0,
-            size: item?.size || '',
-            addOn: item?.addOn || 'None',
-            addOnPrice: Number(item?.addOnPrice) || 0,
-          }))
-          .filter((item) => item.unitPrice >= 0)
-      : [];
+    const normalizedSelectedOptions = normalizeSelectedOptions(selectedOptions);
+    let normalizedItems = normalizeBookingItems(items);
+
+    if (normalizedItems.length === 0 && bookingType === 'repair' && normalizedSelectedOptions.length > 0) {
+      normalizedItems = normalizedSelectedOptions.map((option) => ({
+        description:
+          option.name.toLowerCase() === 'others'
+            ? String(repairDescription || 'Other Repair').trim() || 'Other Repair'
+            : option.name,
+        type: 'Repair',
+        qty: option.quantity,
+        unitPrice: option.price,
+        size: '',
+        addOn: 'None',
+        addOnPrice: 0,
+      }));
+    } else if (normalizedItems.length === 0 && bookingType === 'jersey' && players) {
+      const playerArray = Array.isArray(players) ? players : [players];
+      normalizedItems = playerArray.map((player, index) => {
+        const hasPocket = Boolean(player?.hasPocketShorts || player?.pockets);
+        const playerName = getParticipantLabel(player, `Player ${index + 1}`);
+        return {
+          description: `Jersey (${playerName}${player?.number ? ` #${player.number}` : ''})`,
+          type: 'Custom',
+          qty: 1,
+          unitPrice: jerseyPrice,
+          size: player?.jerseySize || player?.size || '',
+          addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
+          addOnPrice: hasPocket ? pocketPrice : 0,
+        };
+      });
+    } else if (normalizedItems.length === 0 && bookingType === 'organizational' && members) {
+      const memberArray = Array.isArray(members) ? members : [members];
+      normalizedItems = memberArray.map((member, index) => {
+        const hasPocket = Boolean(member?.hasPocketShorts || member?.pockets);
+        const memberName = getParticipantLabel(member, `Member ${index + 1}`);
+        return {
+          description: `Uniform (${memberName}${member?.number ? ` #${member.number}` : ''})`,
+          type: 'Custom',
+          qty: 1,
+          unitPrice: orgPrice,
+          size: member?.size || member?.jerseySize || '',
+          addOn: hasPocket ? `Pocket Short (+${orgPocketPrice})` : 'None',
+          addOnPrice: hasPocket ? orgPocketPrice : 0,
+        };
+      });
+    }
 
     // Calculate total price based on provided items first, then fallback logic.
     let totalPrice = 0;
@@ -175,9 +275,9 @@ export const createBooking = async (req, res) => {
       totalPrice = normalizedItems.reduce((sum, item) => {
         return sum + ((item.unitPrice * item.qty) + ((item.addOnPrice || 0) * item.qty));
       }, 0);
-    } else if (bookingType === 'repair' && selectedOptions && Array.isArray(selectedOptions)) {
-      totalPrice = selectedOptions.reduce((sum, option) => {
-        return sum + ((option.price || 0) * (option.quantity || 1));
+    } else if (bookingType === 'repair' && normalizedSelectedOptions.length > 0) {
+      totalPrice = normalizedSelectedOptions.reduce((sum, option) => {
+        return sum + (option.price * option.quantity);
       }, 0);
     } else if (bookingType === 'jersey' && players) {
       const playerArray = Array.isArray(players) ? players : [players];
@@ -197,9 +297,9 @@ export const createBooking = async (req, res) => {
       userId: req.userId,
       bookingType,
       service,
-      selectedOptions,
+      selectedOptions: normalizedSelectedOptions,
       repairDescription,
-      photos,
+      photos: normalizedPhotos,
       teamName,
       players,
       designFile,
@@ -272,17 +372,33 @@ export const getBookings = async (req, res) => {
       try {
         const userModel = (await import('../models/userModel.js')).default;
         const user = await userModel.findById(userId);
-        if (user && user.role !== 'admin' && user.role !== 'staff') {
+        if (user) {
+          if (user.role === 'staff') {
+            const tailorName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.replace(/\s+/g, ' ').trim();
+            console.log('🔍 Staff Booking Query:', {
+              userId: userId,
+              fullName: user.fullName,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              constructedName: tailorName,
+              searching_for_assignedTailor: tailorName
+            });
+            if (tailorName) {
+              query.assignedTailor = tailorName;
+            }
+          } else if (user.role !== 'admin') {
+            query.userId = userId;
+          }
+        } else {
+          // If user not found, filter by userId (for customers)
           query.userId = userId;
         }
       } catch (err) {
-        // If user lookup fails, still proceed - filter by userId
+        // If user lookup fails, filter by userId (for customers)
         query.userId = userId;
       }
     }
     // If userId is 'admin', no filtering - show all bookings
-
-    console.log('getBookings called with userId:', req.userId, 'query:', query, 'params:', req.query);
 
     if (status) {
       query.status = status;
@@ -292,7 +408,31 @@ export const getBookings = async (req, res) => {
       query.bookingType = bookingType;
     }
 
+    console.log('getBookings called with userId:', userId, 'query:', query);
+
     const bookings = await bookingModel.find(query).sort({ createdAt: -1 });
+
+    // Debug: Check all bookings if none found for staff member
+    if (bookings.length === 0 && query.assignedTailor) {
+      const allBookings = await bookingModel.find({}).select('_id service assignedTailor status').limit(10);
+      console.log('⚠️  No bookings found with query. All bookings in DB:', allBookings.map(b => ({
+        id: b._id,
+        service: b.service,
+        assignedTailor: b.assignedTailor || '[EMPTY]',
+        status: b.status
+      })));
+    }
+
+    console.log('📊 Booking Query Results:', {
+      query: query,
+      bookingsFound: bookings.length,
+      bookingDetails: bookings.slice(0, 5).map(b => ({
+        id: b._id,
+        service: b.service,
+        assignedTailor: b.assignedTailor,
+        status: b.status
+      }))
+    });
 
     res.json({
       success: true,
@@ -336,6 +476,8 @@ export const updateBooking = async (req, res) => {
     const { id } = req.params;
     const { status, adminNotes, contact, pickupDate, pickupSlot, steps, assignedTailor } = req.body;
 
+    console.log('📝 UpdateBooking request:', { id, assignedTailor, status, hasAssignedTailor: !!assignedTailor });
+
     const booking = await bookingModel.findById(id);
 
     if (!booking) {
@@ -348,9 +490,14 @@ export const updateBooking = async (req, res) => {
     if (pickupDate) booking.pickupDate = pickupDate;
     if (pickupSlot) booking.pickupSlot = pickupSlot;
     if (steps) booking.steps = steps;
-    if (assignedTailor) booking.assignedTailor = assignedTailor;
+    if (assignedTailor) {
+      console.log('🎯 Setting assignedTailor:', assignedTailor);
+      booking.assignedTailor = assignedTailor;
+    }
 
     await booking.save();
+
+    console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
 
     res.json({
       success: true,

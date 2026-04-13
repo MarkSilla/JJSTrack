@@ -30,6 +30,17 @@ export const inventoryApi = {
     }
   },
 
+  // Get recent inventory activity
+  getInventoryActivity: async (limit = 20) => {
+    try {
+      const response = await api.get(`/inventory/activity?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching inventory activity:', error);
+      throw error;
+    }
+  },
+
   // Get inventory by ID
   getInventoryById: async (id) => {
     try {

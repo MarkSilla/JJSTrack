@@ -14,8 +14,12 @@ export const getOrders = async (req, res) => {
     if (userId !== 'admin') {
       try {
         const user = await userModel.findById(userId);
-        if (user && user.role !== 'admin' && user.role !== 'staff') {
-          query.userId = userId;
+        if (user) {
+          if (user.role === 'staff') {
+            query.assignedTailor = user.fullName;
+          } else if (user.role !== 'admin') {
+            query.userId = userId;
+          }
         }
       } catch (err) {
         // If user lookup fails, still proceed- filter by userId

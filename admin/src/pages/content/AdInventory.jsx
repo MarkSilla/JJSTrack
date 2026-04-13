@@ -48,6 +48,16 @@ function formatActivityTime(date) {
   }
 }
 
+function mapActivityRecord(activity) {
+  const createdAt = activity?.createdAt ? new Date(activity.createdAt) : new Date();
+  return {
+    id: activity?._id || `${activity?.inventoryId || "activity"}-${createdAt.getTime()}`,
+    type: activity?.type || "warn",
+    text: activity?.text || "Inventory updated",
+    time: formatActivityTime(createdAt),
+  };
+}
+
 // HELPERS 
 function getStatus(item) {
   if (item.stock === 0) return "Out of Stock";
@@ -710,15 +720,7 @@ export default function InventorySystem() {
 
 function InventorySystemContent() {
   const [inventory, setInventory] = useState([]);
-  const [activities, setActivities] = useState(() => {
-    try {
-      const saved = localStorage.getItem("inventoryActivities");
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to load activities from localStorage:", e);
-      return [];
-    }
-  });
+  const [activities, setActivities] = useState([]);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
@@ -738,32 +740,36 @@ const [sortBy, setSortBy] = useState('newest');
   const [error, setError] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
 
-  // Save activities to localStorage whenever they change
   useEffect(() => {
-    try {
-      localStorage.setItem("inventoryActivities", JSON.stringify(activities));
-    } catch (e) {
-      console.error("Failed to save activities to localStorage:", e);
-    }
-  }, [activities]);
+    const loadInventoryPage = async () => {
+      try {
+        setLoading(true);
+        const [inventoryData, activityData] = await Promise.all([
+          inventoryApi.getAllInventory(),
+          inventoryApi.getInventoryActivity(20),
+        ]);
+        setInventory(inventoryData);
+        setActivities(activityData.map(mapActivityRecord));
+        setError(null);
+      } catch (err) {
+        console.error("Failed to load inventory page:", err);
+        setError("Failed to load inventory");
+        setInventory([]);
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Fetch inventory data on component mount
-  useEffect(() => {
-    fetchInventory();
+    loadInventoryPage();
   }, []);
 
-  const fetchInventory = async () => {
+  const fetchActivities = async () => {
     try {
-      setLoading(true);
-      const data = await inventoryApi.getAllInventory();
-      setInventory(data);
-      setError(null);
+      const data = await inventoryApi.getInventoryActivity(20);
+      setActivities(data.map(mapActivityRecord));
     } catch (err) {
-      console.error("Failed to fetch inventory:", err);
-      setError("Failed to load inventory");
-      setInventory([]);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch inventory activity:", err);
     }
   };
 
@@ -810,20 +816,11 @@ const STAT_CARDS = [
     { label: "Archived", value: archivedInventory.length, sub: "Out of service", icon: Archive, accent: "#6366F1", bgAccent: "#EEF2FF" }
   ];
 
-  const pushActivity = (type, text) =>
-    setActivities(a => [{ id: Date.now(), type, text, time: formatActivityTime(new Date()) }, ...a]);
-
   const handleAdjust = async (itemId, type, amount) => {
     try {
       const updatedItem = await inventoryApi.adjustStock(itemId, type, amount);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
-      
-      pushActivity(
-        type === "increase" ? "add" : "dec",
-        type === "increase"
-          ? `+${amount} added`
-          : `Stock decreased by ${amount}`
-      );
+      await fetchActivities();
       setAdjModal(null);
     } catch (err) {
       console.error("Failed to adjust stock:", err);
@@ -867,11 +864,10 @@ const STAT_CARDS = [
       
       if (result.isUpdate) {
         setInventory(inv => inv.map(i => i._id === result._id ? result : i));
-        pushActivity("add", `Stock updated for "${result.name}" (+${data.stock} ${result.unit})`);
       } else {
         setInventory(inv => [...inv, result]);
-        pushActivity("add", `New item "${result.name}" added to inventory`);
       }
+      await fetchActivities();
       setAddModal(false);
     } catch (err) {
       console.error("Failed to add item:", err);
@@ -887,24 +883,23 @@ const STAT_CARDS = [
     setUpdateModal(similarItem);
   };
 
-  const handleCreateNewAnyway = () => {
+  const handleCreateNewAnyway = async () => {
     // Proceed to create the new item despite similar item existing
     setSimilarModal(null);
     if (pendingAddData) {
-      // Continue with adding the item
-      inventoryApi.createInventory(pendingAddData).then(result => {
+      try {
+        const result = await inventoryApi.createInventory(pendingAddData);
         if (result.isUpdate) {
           setInventory(inv => inv.map(i => i._id === result._id ? result : i));
-          pushActivity("add", `Stock updated for "${result.name}" (+${pendingAddData.stock} ${result.unit})`);
         } else {
           setInventory(inv => [...inv, result]);
-          pushActivity("add", `New item "${result.name}" added to inventory`);
         }
+        await fetchActivities();
         setAddModal(false);
-      }).catch(err => {
+      } catch (err) {
         console.error("Failed to add item:", err);
         alert("Failed to add item");
-      });
+      }
       setPendingAddData(null);
     }
   };
@@ -921,7 +916,7 @@ const STAT_CARDS = [
     try {
       const updatedItem = await inventoryApi.updateInventory(itemId, data);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
-      pushActivity("edit", `"${data.name}" details updated`);
+      await fetchActivities();
       setUpdateModal(null);
     } catch (err) {
       console.error("Failed to update item:", err);
@@ -952,12 +947,7 @@ const STAT_CARDS = [
         : await inventoryApi.archiveInventory(id);
       
       setInventory(inv => inv.map(i => i._id === id ? updatedItem : i));
-      pushActivity(
-        isRestore ? "add" : "warn", 
-        isRestore 
-          ? `"${item.name}" restored to active inventory`
-          : `"${item.name}" archived`
-      );
+      await fetchActivities();
       setArchiveConfirm({ show: false, id: null, isRestore: false, itemName: '' });
     } catch (err) {
       console.error("Failed to archive/restore item:", err);

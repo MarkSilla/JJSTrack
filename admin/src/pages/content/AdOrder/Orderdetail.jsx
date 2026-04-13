@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon } from 'lucide-react';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';
@@ -29,15 +29,68 @@ export default function OrderDetail({
     const [approvalMode, setApprovalMode] = useState(false);
     const [cancelLoading, setCancelLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [bookingExtras, setBookingExtras] = useState(null);
 
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
     const isCancelled = useMemo(() => getDerivedStatus(activeOrder) === 'Cancelled', [activeOrder]);
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
 
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadBookingExtras = async () => {
+            const bookingId = activeOrder?.bookingId || activeOrder?.booking?._id || activeOrder?.booking?.id;
+            if (!bookingId) {
+                setBookingExtras(null);
+                return;
+            }
+
+            try {
+                const response = await bookingApi.getBookingById(bookingId);
+                if (isMounted) {
+                    setBookingExtras(response.booking || null);
+                }
+            } catch (error) {
+                console.error('Failed to load booking extras:', error);
+                if (isMounted) {
+                    setBookingExtras(null);
+                }
+            }
+        };
+
+        loadBookingExtras();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [activeOrder]);
+
     const hasSchedule = useMemo(() =>
         Boolean(activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion),
         [activeOrder]
     );
+
+    const imageUrls = useMemo(() => {
+        const urls = [];
+        const append = (value) => {
+            if (Array.isArray(value)) {
+                value.forEach((item) => {
+                    if (typeof item === 'string' && item) urls.push(item);
+                });
+            } else if (typeof value === 'string' && value) {
+                urls.push(value);
+            }
+        };
+
+        append(activeOrder?.photos);
+        append(activeOrder?.designFile);
+        append(activeOrder?.orgDesignFile);
+        append(bookingExtras?.photos);
+        append(bookingExtras?.designFile);
+        append(bookingExtras?.orgDesignFile);
+
+        return Array.from(new Set(urls));
+    }, [activeOrder, bookingExtras]);
 
     const handleRescheduleConfirm = (newDate, newTime) => {
         handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate);
@@ -216,6 +269,51 @@ export default function OrderDetail({
                             onAssign={handleAssign}
                             isCancelled={isCancelled}
                         />
+{imageUrls.length > 0 && (
+                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                                <h4 className="text-[11px] font-black tracking-wider uppercase mb-4 text-gray-400">Uploaded Images</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {imageUrls.map((src, index) => (
+                                        <a
+                                            key={`${src}-${index}`}
+                                            href={src}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="block rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm"
+                                        >
+                                            <img
+                                                src={src}
+                                                alt={`Uploaded image ${index + 1}`}
+                                                className="w-full h-32 object-cover"
+                                            />
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {(activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
+                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                                <h4 className="text-[11px] font-black tracking-wider uppercase mb-4 text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg inline-flex items-center gap-1.5">
+                                    <ExternalLink size={12} /> Google Drive Link
+                                </h4>
+                                <a
+                                    href={activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block p-4 text-center hover:bg-indigo-50 transition-colors rounded-xl group border border-gray-100"
+                                >
+                                    <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
+                                        <LinkIcon size={20} className="text-white" />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-900 mb-1 truncate">
+                                        Design Reference (Google Drive)
+                                    </p>
+                                    <span className="text-xs text-indigo-600 font-semibold bg-indigo-100 px-2.5 py-1 rounded-full group-hover:bg-indigo-200 transition-colors">
+                                        Open in new tab →
+                                    </span>
+                                </a>
+                            </div>
+                        )}
                         <OrderSummary
                             activeOrder={activeOrder}
                             assignedEmployee={assignedEmployee}

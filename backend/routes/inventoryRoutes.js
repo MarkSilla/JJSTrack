@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getAllInventory,
+  getInventoryActivity,
   getInventoryById,
   getInventoryByCategory,
   createInventory,
@@ -18,17 +19,18 @@ const router = express.Router();
 
 // Public routes (no auth required for now, add authMiddleware if needed)
 router.get("/", getAllInventory);
+router.get("/activity", authMiddleware, getInventoryActivity);
 router.get("/stats", getInventoryStats);
 router.get("/search", searchInventory);
 router.get("/category/:category", getInventoryByCategory);
 router.get("/:id", getInventoryById);
 
 // Protected routes
-router.post("/", createInventory);
-router.put("/:id", updateInventory);
-router.patch("/:id/adjust", adjustStock);
-router.patch("/:id/archive", archiveInventory);
-router.patch("/:id/restore", restoreInventory);
-router.delete("/:id", deleteInventory);
+router.post("/", authMiddleware, createInventory);
+router.put("/:id", authMiddleware, updateInventory);
+router.patch("/:id/adjust", authMiddleware, adjustStock);
+router.patch("/:id/archive", authMiddleware, archiveInventory);
+router.patch("/:id/restore", authMiddleware, restoreInventory);
+router.delete("/:id", authMiddleware, deleteInventory);
 
 export default router;

@@ -19,6 +19,17 @@ api.interceptors.request.use((config) => {
 });
 
 export const bookingApi = {
+  // Create booking
+  createBooking: async (bookingData) => {
+    try {
+      const response = await api.post('/bookings', bookingData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      throw error;
+    }
+  },
+
   // Get all bookings
   getAllBookings: async () => {
     try {

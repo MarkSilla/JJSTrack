@@ -60,7 +60,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                                                 </span>
                                             )}
                                             <div className="min-w-0">
-                                                <p className="text-gray-800 text-sm font-medium truncate">{m.surname}</p>
+                                                <p className="text-gray-800 text-sm font-medium truncate">{[m.firstName, m.surname].filter(Boolean).join(' ')}</p>
                                                 <p className="text-gray-400 text-xs">
                                                     {product?.label || '—'} · Size: {m.size || '—'}
                                                 </p>

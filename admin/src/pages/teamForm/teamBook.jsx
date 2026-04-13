@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
 import TeamStepContact from './TeamStepContact'
@@ -122,6 +123,7 @@ const TeamBook = () => {
             const token = localStorage.getItem('token')
             if (!token) {
                 alert('Please login first')
+                setLoading(false)
                 return
             }
 
@@ -129,15 +131,18 @@ const TeamBook = () => {
             const user = userStr ? JSON.parse(userStr) : null
             if (!user) {
                 alert('User not found. Please login again.')
+                setLoading(false)
                 return
             }
+
+            const uploadedDesignFile = await uploadImageToCloudinary(designFile)
 
             const bookingData = {
                 bookingType: 'jersey',
                 service: 'team-jersey',
                 teamName,
                 players,
-                designFile: designFile ? designFile.name : '',
+                designFile: uploadedDesignFile,
                 driveLink,
                 contact,
                 items: players.map(p => ({

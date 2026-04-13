@@ -280,6 +280,8 @@ export default function ChatWidget() {
   const QUICK_REPLIES = ["Track my order", "Pricing details", "Talk to an agent"];
 
   const loadConversationSummary = useCallback(async () => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) return;
     try {
       const response = await chatApi.getConversations();
       const conversation = response?.conversations?.[0];
@@ -290,6 +292,8 @@ export default function ChatWidget() {
   }, []);
 
   const loadMessages = useCallback(async (silent = false) => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) return;
     try {
       if (!silent) setIsLoading(true);
       const response = await chatApi.getMessages();
@@ -337,6 +341,8 @@ export default function ChatWidget() {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) return;
     loadConversationSummary();
     const intervalId = setInterval(loadConversationSummary, 5000);
     return () => clearInterval(intervalId);

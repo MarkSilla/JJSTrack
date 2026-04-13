@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
+import { staffApi } from '../../services/staffApi.js';
 
 import {
     EMPLOYEE_POOL,
@@ -139,6 +140,7 @@ export default function AdOrder() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [staffList, setStaffList] = useState([]);
     const [orderTracking, setOrderTracking] = useState(() => {
         try { const saved = localStorage.getItem('orderTracking'); return saved ? JSON.parse(saved) : {}; }
         catch { return {}; }
@@ -156,6 +158,19 @@ export default function AdOrder() {
             try {
                 setLoading(true);
                 setError(null);
+
+                // Fetch staff list for assignments
+                try {
+                    const staffResponse = await staffApi.getAllStaff();
+                    const staffData = staffResponse.staff || staffResponse.data || [];
+                    console.log('📋 Staff list loaded:', staffData.length, 'staff members');
+                    console.log('📋 Staff sample:', staffData.slice(0, 2).map(s => ({ _id: s._id, fullName: s.fullName, name: s.name })));
+                    setStaffList(Array.isArray(staffData) ? staffData : []);
+                } catch (staffErr) {
+                    console.warn('Failed to fetch staff list, using fallback:', staffErr);
+                    // Fallback to EMPLOYEE_POOL if staffApi fails
+                    setStaffList(EMPLOYEE_POOL);
+                }
 
                 const [orderResponse, bookingResponse] = await Promise.allSettled([
                     orderApi.getAllOrders(),
@@ -231,11 +246,14 @@ export default function AdOrder() {
 
     const confirmAssign = () => {
         const { orderId, empId } = assignConfirm;
-        const employee = EMPLOYEE_POOL.find(e => e.id === empId);
-        const assignedTailorName = employee ? employee.name : empId;
+        
+        // empId is now the fullName directly from dropdown
+        const assignedTailorName = empId;
+
+        console.log('🎯 Assigning booking:', { orderId, empId, assignedTailorName });
 
         setAssignments(prev => {
-            const updated = { ...prev, [orderId]: empId };
+            const updated = { ...prev, [orderId]: assignedTailorName };
             localStorage.setItem('assignments', JSON.stringify(updated));
             return updated;
         });
@@ -245,10 +263,15 @@ export default function AdOrder() {
                 if ((order.id || order._id) === orderId) {
                     const isBooking = !!order.bookingType;
                     const orderIdToUse = order._id || order.id;
+                    console.log('📤 Updating booking API:', { isBooking, orderIdToUse, assignedTailorName });
                     if (isBooking) {
-                        bookingApi.updateBooking(orderIdToUse, { assignedTailor: assignedTailorName }).catch(err => console.error(err));
+                        bookingApi.updateBooking(orderIdToUse, { assignedTailor: assignedTailorName })
+                            .then(res => console.log('✅ Booking update success:', res))
+                            .catch(err => console.error('❌ Booking update error:', err));
                     } else {
-                        orderApi.assignEmployee(orderIdToUse, empId).catch(err => console.error(err));
+                        orderApi.assignEmployee(orderIdToUse, assignedTailorName)
+                            .then(res => console.log('✅ Order update success:', res))
+                            .catch(err => console.error('❌ Order update error:', err));
                     }
                     return { ...order, assignedTailor: assignedTailorName };
                 }
@@ -304,6 +327,7 @@ export default function AdOrder() {
 
             <AssignConfirmationModal
                 assignConfirm={assignConfirm}
+                staffList={staffList}
                 onConfirm={confirmAssign}
                 onCancel={cancelAssign}
             />

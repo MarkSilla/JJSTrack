@@ -9,7 +9,7 @@ const PRODUCT_TYPES = [
     { id: 'polo', label: 'Polo Shirt', price: 650 },
 ]
 
-const emptyMember = { surname: '', number: '', productType: '', size: '' }
+const emptyMember = { firstName: '', surname: '', number: '', productType: '', size: '' }
 
 const getMemberPrice = (member) => {
     const product = PRODUCT_TYPES.find((p) => p.id === member.productType)
@@ -22,7 +22,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
 
     const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
 
-    const canAdd = form.surname && form.productType && form.size
+    const canAdd = form.firstName && form.surname && form.productType && form.size
 
     const addOrUpdate = () => {
         if (!canAdd) return
@@ -85,18 +85,27 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
                 </div>
 
                 <div className="bg-[#F8FAFC] border border-gray-200 rounded-xl p-5 space-y-4">
-                    {/* Surname & Number */}
+                    {/* Name & Number */}
                     <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">First Name <span className="text-red-400">*</span></label>
+                            <input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Juan"
+                                className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
+                        </div>
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Surname <span className="text-red-400">*</span></label>
                             <input value={form.surname} onChange={(e) => set('surname', e.target.value)} placeholder="Dela Cruz"
                                 className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Number <span className="text-gray-400 font-normal">(optional)</span></label>
                             <input type="number" value={form.number} onChange={(e) => set('number', e.target.value)} placeholder="—"
                                 className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                         </div>
+                        <div className="col-span-1"></div>
                     </div>
 
                     {/* Product Type */}
@@ -183,7 +192,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
                                                 </span>
                                             )}
                                             <div className="min-w-0">
-                                                <p className="text-gray-800 font-semibold text-sm truncate">{m.surname}</p>
+                                                <p className="text-gray-800 font-semibold text-sm truncate">{[m.firstName, m.surname].filter(Boolean).join(' ')}</p>
                                                 <p className="text-gray-400 text-xs mt-0.5">
                                                     {product?.label || '—'} · Size: {m.size || '—'}
                                                 </p>

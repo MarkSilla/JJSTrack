@@ -1,8 +1,10 @@
 import JJS from "./jjs.png";
+import sample from "./sample1.jpg";
 
 const image = {
 
-    JJS
+    JJS,
+    sample
 }
 
 export default image;

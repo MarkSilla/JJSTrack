@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
     ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon
@@ -9,12 +9,43 @@ const Dashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [alerts, setAlerts] = useState([]);
     const [schedules, setSchedules] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const token = localStorage.getItem('staffToken');
+                if (!token) {
+                    setLoading(false);
+                    return;
+                }
+
+                const response = await fetch('http://localhost:4000/api/bookings', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    setTasks(data.bookings);
+                }
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBookings();
+    }, []);
 
     const summaryStats = {
-        totalTasks: 0,
-        pending: 0,
-        inProgress: 0,
-        completed: 0,
+        totalTasks: tasks.length,
+        pending: tasks.filter(task => task.status === 'Pending').length,
+        inProgress: tasks.filter(task => task.status === 'In Progress').length,
+        completed: tasks.filter(task => task.status === 'Completed').length,
     };
 
     const summaryCards = [
@@ -81,24 +112,27 @@ const Dashboard = () => {
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {summaryCards.map(({ icon: Icon, label, value, sub, accent, bgAccent }, idx) => (
+                {summaryCards.map(({ icon: Icon, label, value, sub, accent }, idx) => (
                     <div
                         key={idx}
                         className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
                         style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
                     >
-                        <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                        <div className="flex items-center justify-between mb-4 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-                                    <Icon size={18} color={accent} strokeWidth={2.2} />
-                                </div>
-                                <span className="text-[13px] font-semibold text-gray-500">{label}</span>
+                        <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+                        <div className="flex items-center gap-3 relative z-10">
+                            <div 
+                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" 
+                                style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}
+                            >
+                                <Icon size={20} color={accent} strokeWidth={2.2} />
                             </div>
-                        </div>
-                        <div className="flex flex-col gap-1 relative z-10">
-                            <div className="text-3xl font-bold text-slate-800 tracking-tight">{value}</div>
-                            <div className="text-xs text-gray-400 font-medium">{value === 0 ? 'No records today' : sub}</div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5">{label}</div>
+                                <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">{value}</div>
+                                <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">
+                                    {value === 0 ? 'No records today' : sub}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -150,16 +184,16 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {tasks.map((task) => (
-                                        <tr key={task.id} className="hover:bg-slate-50/70 transition-colors">
+                                        <tr key={task._id} className="hover:bg-slate-50/70 transition-colors">
                                             <td className="px-6 py-3.5">
-                                                <span className="text-sm font-medium text-slate-800 block min-w-[150px]">{task.name}</span>
+                                                <span className="text-sm font-medium text-slate-800 block min-w-[150px]">{task.service}</span>
                                             </td>
                                             <td className="px-6 py-3.5 hidden sm:table-cell text-xs text-slate-400 whitespace-nowrap font-medium">
-                                                {task.time}
+                                                {task.pickupDate} {task.pickupSlot}
                                             </td>
                                             <td className="px-6 py-3.5">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor(task.priority)}`}>
-                                                    {task.priority}
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor('Normal')}`}>
+                                                    Normal
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3.5">

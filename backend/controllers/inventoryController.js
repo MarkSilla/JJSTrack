@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import Inventory from "../models/inventoryModel.js";
+import InventoryActivity from "../models/inventoryActivityModel.js";
+import userModel from "../models/userModel.js";
 
 // Helper function to normalize item names - STRICT normalization
 const normalizeName = (name) => {
@@ -17,6 +20,144 @@ const resolveStockCap = (item = {}) => {
     Number(item.stock) || 0
   );
   return Number.isFinite(cap) && cap > 0 ? cap : 0;
+};
+
+const getActorFallback = (role) => {
+  if (role === "admin") return "Admin";
+  if (role === "staff") return "Staff";
+  if (role === "user") return "User";
+  return "System";
+};
+
+const resolveActorInfo = async (req) => {
+  const fallbackRole = req?.userRole || "system";
+  const fallbackName = getActorFallback(fallbackRole);
+
+  if (!req?.userId || !mongoose.Types.ObjectId.isValid(req.userId)) {
+    return {
+      performedByRole: fallbackRole,
+      performedByName: fallbackName,
+    };
+  }
+
+  try {
+    const actor = await userModel
+      .findById(req.userId)
+      .select("fullName firstName lastName email role")
+      .lean();
+
+    if (!actor) {
+      return {
+        performedByRole: fallbackRole,
+        performedByName: fallbackName,
+      };
+    }
+
+    const composedName = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim();
+    const performedByName = actor.fullName?.trim() || composedName || actor.email || fallbackName;
+
+    return {
+      performedById: actor._id,
+      performedByRole: actor.role || fallbackRole,
+      performedByName,
+    };
+  } catch (error) {
+    console.error("Failed to resolve inventory actor:", error);
+    return {
+      performedByRole: fallbackRole,
+      performedByName: fallbackName,
+    };
+  }
+};
+
+const formatQuantity = (amount, unit) => {
+  const qty = Number(amount) || 0;
+  return unit ? `${qty} ${unit}` : `${qty}`;
+};
+
+const mapActivityType = (actionType) => {
+  if (actionType === "create" || actionType === "increase" || actionType === "restore") {
+    return "add";
+  }
+  if (actionType === "decrease") {
+    return "dec";
+  }
+  if (actionType === "update") {
+    return "edit";
+  }
+  return "warn";
+};
+
+const buildActivityText = (activity) => {
+  const actorName = activity.performedByName || getActorFallback(activity.performedByRole);
+  const inventoryName = activity.inventoryName || "inventory item";
+  const quantity = formatQuantity(activity.amount, activity.unit);
+
+  switch (activity.actionType) {
+    case "create":
+      return `${actorName} added "${inventoryName}" to inventory`;
+    case "increase":
+      return `${actorName} added ${quantity} to "${inventoryName}"`;
+    case "decrease":
+      return `${actorName} removed ${quantity} from "${inventoryName}"`;
+    case "update":
+      return `${actorName} updated "${inventoryName}" details`;
+    case "archive":
+      return `${actorName} archived "${inventoryName}"`;
+    case "restore":
+      return `${actorName} restored "${inventoryName}"`;
+    default:
+      return `${actorName} updated "${inventoryName}"`;
+  }
+};
+
+const serializeActivity = (activity) => ({
+  _id: activity._id,
+  inventoryId: activity.inventoryId,
+  inventoryName: activity.inventoryName,
+  actionType: activity.actionType,
+  type: mapActivityType(activity.actionType),
+  text: buildActivityText(activity),
+  amount: activity.amount,
+  unit: activity.unit,
+  performedByName: activity.performedByName,
+  performedByRole: activity.performedByRole,
+  createdAt: activity.createdAt,
+  note: activity.note || "",
+});
+
+const logInventoryActivity = async ({
+  req,
+  inventory,
+  actionType,
+  amount = 0,
+  previousStock = 0,
+  newStock = 0,
+  note = "",
+}) => {
+  if (!inventory?._id || !actionType) return;
+
+  try {
+    const actor = await resolveActorInfo(req);
+
+    await InventoryActivity.create({
+      inventoryId: inventory._id,
+      inventoryName: inventory.name,
+      inventorySku: inventory.sku,
+      category: inventory.category,
+      actionType,
+      amount: Number(amount) || 0,
+      unit: inventory.unit || "",
+      previousStock: Math.max(0, Number(previousStock) || 0),
+      newStock: Math.max(0, Number(newStock ?? inventory.stock) || 0),
+      performedById: actor.performedById,
+      performedByName: actor.performedByName,
+      performedByRole: actor.performedByRole,
+      note,
+    });
+  } catch (error) {
+    console.error("Failed to log inventory activity:", error);
+  }
 };
 
 // Helper function to generate SKU
@@ -46,6 +187,24 @@ export const getAllInventory = async (req, res) => {
   try {
     const inventory = await Inventory.find().sort({ createdAt: -1 });
     res.status(200).json(inventory);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getInventoryActivity = async (req, res) => {
+  try {
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 100)
+      : 20;
+
+    const activities = await InventoryActivity.find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.status(200).json(activities.map(serializeActivity));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -97,12 +256,22 @@ export const createInventory = async (req, res) => {
 
     if (existingItem) {
       // Item exists - update stock instead of creating new one
-      const newStock = existingItem.stock + stockValue;
+      const previousStock = existingItem.stock;
+      const newStock = previousStock + stockValue;
       existingItem.stock = newStock;
       existingItem.maxStock = Math.max(resolveStockCap(existingItem), newStock);
       existingItem.lastActivityDate = new Date();
       
       const updatedInventory = await existingItem.save();
+      await logInventoryActivity({
+        req,
+        inventory: updatedInventory,
+        actionType: "increase",
+        amount: stockValue,
+        previousStock,
+        newStock,
+        note: "Stock increased through create inventory flow",
+      });
       return res.status(200).json({
         ...updatedInventory.toObject(),
         message: "Item already exists. Stock updated.",
@@ -131,6 +300,15 @@ export const createInventory = async (req, res) => {
     });
 
     const savedInventory = await newInventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: savedInventory,
+      actionType: "create",
+      amount: stockValue,
+      previousStock: 0,
+      newStock: savedInventory.stock,
+      note: "New inventory item created",
+    });
     res.status(201).json({
       ...savedInventory.toObject(),
       message: "New item created.",
@@ -152,6 +330,7 @@ export const updateInventory = async (req, res) => {
     }
 
     // Update fields if provided
+    const previousStock = inventory.stock;
     if (name) inventory.name = name;
     if (category) inventory.category = category;
     if (stock != null) {
@@ -167,6 +346,15 @@ export const updateInventory = async (req, res) => {
     if (unitPrice != null) inventory.unitPrice = unitPrice;
 
     const updatedInventory = await inventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: updatedInventory,
+      actionType: "update",
+      amount: Math.abs(updatedInventory.stock - previousStock),
+      previousStock,
+      newStock: updatedInventory.stock,
+      note: "Inventory item updated",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -177,8 +365,9 @@ export const updateInventory = async (req, res) => {
 export const adjustStock = async (req, res) => {
   try {
     const { type, amount } = req.body;
+    const adjustmentAmount = Number(amount);
 
-    if (!type || !amount || amount <= 0) {
+    if (!type || !adjustmentAmount || adjustmentAmount <= 0) {
       return res.status(400).json({ message: "Invalid type or amount" });
     }
 
@@ -188,13 +377,14 @@ export const adjustStock = async (req, res) => {
     }
 
     // Adjust current stock and keep maxStock as highest reached value
+    const previousStock = inventory.stock;
     const currentCap = resolveStockCap(inventory);
 
     if (type === "increase") {
-      inventory.stock = inventory.stock + amount;
+      inventory.stock = inventory.stock + adjustmentAmount;
       inventory.maxStock = Math.max(currentCap, inventory.stock);
     } else if (type === "decrease") {
-      inventory.stock = Math.max(0, inventory.stock - amount);
+      inventory.stock = Math.max(0, inventory.stock - adjustmentAmount);
       inventory.maxStock = currentCap;
     } else {
       return res.status(400).json({ message: "Invalid adjustment type" });
@@ -204,6 +394,15 @@ export const adjustStock = async (req, res) => {
     inventory.lastActivityDate = new Date();
 
     const updatedInventory = await inventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: updatedInventory,
+      actionType: type,
+      amount: adjustmentAmount,
+      previousStock,
+      newStock: updatedInventory.stock,
+      note: `Stock ${type}d through adjust stock flow`,
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -219,7 +418,16 @@ export const archiveInventory = async (req, res) => {
     }
 
     inventory.archived = true;
+    inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: updatedInventory,
+      actionType: "archive",
+      previousStock: updatedInventory.stock,
+      newStock: updatedInventory.stock,
+      note: "Inventory item archived",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -235,7 +443,16 @@ export const restoreInventory = async (req, res) => {
     }
 
     inventory.archived = false;
+    inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: updatedInventory,
+      actionType: "restore",
+      previousStock: updatedInventory.stock,
+      newStock: updatedInventory.stock,
+      note: "Inventory item restored",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -251,7 +468,16 @@ export const deleteInventory = async (req, res) => {
     }
 
     inventory.archived = true;
+    inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
+    await logInventoryActivity({
+      req,
+      inventory: updatedInventory,
+      actionType: "archive",
+      previousStock: updatedInventory.stock,
+      newStock: updatedInventory.stock,
+      note: "Inventory item archived through delete flow",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
 import img from '../../assets/img.js'
-import { bookingApi } from '../../../services/bookingApi.js';
+import { bookingApi } from '../../../services/bookingApi.js'
+import { uploadImageToCloudinary, uploadFilesToCloudinary } from '../../utils/cloudinary.js'
 
 // Repair steps
 import StepService from '../repairForm/StepService.jsx'
@@ -10,6 +11,7 @@ import StepPhoto from '../repairForm/StepPhoto.jsx'
 import StepDetails from '../repairForm/StepDetails.jsx'
 import StepPickup from '../repairForm/StepPickup.jsx'
 import StepReview from '../repairForm/StepReview.jsx'
+import { REPAIR_OPTIONS } from '../repairForm/constants.js'
 
 // Team steps
 import TeamStepPlayers from '../teamForm/TeamStepPlayers.jsx'
@@ -294,8 +296,13 @@ const BookingModal = ({ isOpen, onClose }) => {
 
             if (!user) {
                 setError('User not authenticated. Please login first.')
+                setLoading(false)
                 return
             }
+
+            const uploadedPhotos = isRepair ? await uploadFilesToCloudinary(photos) : []
+            const uploadedDesignFile = isJersey ? await uploadImageToCloudinary(designFile) : ''
+            const uploadedOrgDesignFile = isOrg ? await uploadImageToCloudinary(orgDesignFile) : ''
 
             // Build booking object based on service type
             const bookingData = {
@@ -330,15 +337,33 @@ const BookingModal = ({ isOpen, onClose }) => {
 
             if (isRepair) {
                 // Repair booking
-                const optionsArray = selectedOptions.map(optId => ({
-                    name: optId,
-                    quantity: quantities[optId] || 1,
-                    price: 0 // Price would be fetched from options data if available
-                }))
+                const optionsArray = selectedOptions.map(optId => {
+                    const repairOption = REPAIR_OPTIONS.find(option => option.id === optId)
+                    const quantity = quantities[optId] || 1
+                    const displayName = optId === 'others'
+                        ? (repairDescription.trim() || repairOption?.label || 'Other Repair')
+                        : (repairOption?.label || optId)
+
+                    return {
+                        name: displayName,
+                        quantity,
+                        price: Number(repairOption?.price) || 0,
+                    }
+                })
 
                 bookingData.selectedOptions = optionsArray
+                bookingData.items = optionsArray.map(option => ({
+                    description: option.name,
+                    type: 'Repair',
+                    qty: option.quantity,
+                    unitPrice: option.price,
+                    addOn: 'None',
+                    addOnPrice: 0,
+                }))
                 bookingData.repairDescription = repairDescription
-                bookingData.photos = photos // Array of file paths/URLs
+                bookingData.photos = Array.isArray(uploadedPhotos)
+                    ? uploadedPhotos.map((url) => (typeof url === 'string' ? url.trim() : '')).filter(Boolean)
+                    : []
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
@@ -346,14 +371,14 @@ const BookingModal = ({ isOpen, onClose }) => {
                 // Team jersey booking
                 bookingData.teamName = teamName
                 bookingData.players = players
-                bookingData.designFile = designFile ? designFile.name : ''
+                bookingData.designFile = uploadedDesignFile
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
                 bookingData.members = members
-                bookingData.orgDesignFile = orgDesignFile ? orgDesignFile.name : ''
+                bookingData.orgDesignFile = uploadedOrgDesignFile
                 bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
             }

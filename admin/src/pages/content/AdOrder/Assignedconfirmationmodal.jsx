@@ -2,11 +2,11 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { EMPLOYEE_POOL } from './Constants.js';
 
-export default function AssignConfirmationModal({ assignConfirm, onConfirm, onCancel }) {
+export default function AssignConfirmationModal({ assignConfirm, staffList = [], onConfirm, onCancel }) {
     if (!assignConfirm.show) return null;
 
-    const employee = EMPLOYEE_POOL.find(e => e.id === assignConfirm.empId);
-    const empName = employee ? employee.name : assignConfirm.empId;
+    // empId is now the fullName directly from dropdown
+    const empName = assignConfirm.empId;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">

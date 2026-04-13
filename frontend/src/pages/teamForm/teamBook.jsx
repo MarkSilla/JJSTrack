@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import { bookingApi } from '../../../services/bookingApi'
 import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
@@ -112,12 +113,14 @@ const TeamBook = () => {
                 return
             }
 
+            const uploadedDesignFile = await uploadImageToCloudinary(designFile)
+
             const bookingData = {
                 bookingType: 'jersey',
                 service: 'team-jersey',
                 teamName,
                 players,
-                designFile: designFile ? designFile.name : '',
+                designFile: uploadedDesignFile,
                 driveLink,
                 contact,
             }

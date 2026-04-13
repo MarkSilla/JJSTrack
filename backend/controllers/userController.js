@@ -86,13 +86,25 @@ export const googleAuth = async (req, res) => {
     let user = await userModel.findOne({ firebaseUID: uid });
 
     if (!user) {
-      user = new userModel({
-        firebaseUID: uid,
-        email,
-        fullName: fullName || email.split('@')[0],
-        photoURL: photoURL || '',
-        isVerified: true,
-      });
+      // Check if user with this email already exists
+      user = await userModel.findOne({ email });
+      
+      if (!user) {
+        // Create new user
+        user = new userModel({
+          firebaseUID: uid,
+          email,
+          fullName: fullName || email.split('@')[0],
+          photoURL: photoURL || '',
+          isVerified: true,
+        });
+      } else {
+        // Link Firebase to existing email account
+        user.firebaseUID = uid;
+        user.fullName = fullName || user.fullName;
+        user.photoURL = photoURL || user.photoURL;
+        user.isVerified = true;
+      }
       await user.save();
     } else {
       user.fullName = fullName || user.fullName;

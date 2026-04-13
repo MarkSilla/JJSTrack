@@ -19,7 +19,7 @@ const PRODUCT_TYPES = [...BASE_PRODUCT_TYPES, ...OPTIONAL_PRODUCT_TYPES]
 
 const POCKET_PRICE = 100
 
-const emptyPlayer = { surname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false }
+const emptyPlayer = { firstName: '', surname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false }
 
 const getPlayerPrice = (player) => {
     const product = PRODUCT_TYPES.find((p) => p.id === player.productType)
@@ -38,7 +38,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
     const selectedProduct = PRODUCT_TYPES.find((p) => p.id === form.productType)
     const needsShortSize = selectedProduct?.needsShortSize || false
 
-    const canAdd = form.surname && form.number && form.productType && form.jerseySize && (!needsShortSize || form.shortSize)
+    const canAdd = form.firstName && form.surname && form.number && form.productType && form.jerseySize && (!needsShortSize || form.shortSize)
 
     const addOrUpdate = () => {
         if (!canAdd) return
@@ -106,16 +106,24 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                     {/* Name & Number */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">First Name <span className="text-red-400">*</span></label>
+                            <input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Juan"
+                                className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Surname <span className="text-red-400">*</span></label>
                             <input value={form.surname} onChange={(e) => set('surname', e.target.value)} placeholder="Dela Cruz"
                                 className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                         </div>
+                    </div>
 
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Jersey Number <span className="text-red-400">*</span></label>
                             <input type="number" value={form.number} onChange={(e) => set('number', e.target.value)} placeholder="7"
                                 className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all " />
                         </div>
+                        <div className="col-span-1"></div>
                     </div>
 
 

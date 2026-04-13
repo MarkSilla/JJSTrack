@@ -2,7 +2,7 @@ import React from 'react'
 import { MdEdit, MdLink, MdImage } from 'react-icons/md'
 
 const PRODUCT_TYPES = [
-    { id: 'shortjersey', label: 'Short Jersey (Jersey + Shorts)', price: 900, needsShortSize: true },
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: true },
     { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
     { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
     { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
