@@ -118,6 +118,14 @@ const bookingSchema = new mongoose.Schema({
     default: 'Pending',
   },
 
+  // Archive tracking
+  isArchived: {
+    type: Boolean,
+    default: false,
+  },
+  archivedAt: Date,
+  archivedBy: String,
+
   notes: String,
   adminNotes: String,
   assignedTailor: String,
@@ -136,7 +144,6 @@ const bookingSchema = new mongoose.Schema({
   paidAt: Date,
 },
 {
-  // ✅ timestamps:true replaces manual createdAt/updatedAt
   timestamps: true,
 });
 

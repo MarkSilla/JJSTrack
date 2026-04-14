@@ -3,33 +3,136 @@ import { useOutletContext } from 'react-router-dom';
 import {
     ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon
 } from 'lucide-react';
+import { bookingApi } from '../services/bookingApi';
+
+const parseScheduleDate = (value) => {
+    if (!value) return null;
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? new Date(`${value}T00:00:00`)
+        : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const splitTimeLabel = (pickupSlot) => {
+    const raw = String(pickupSlot || 'TBA').trim();
+    const match = raw.match(/^(.+?)\s*(AM|PM)$/i);
+
+    if (!match) {
+        return { time: raw, ampm: '' };
+    }
+
+    return {
+        time: match[1].trim(),
+        ampm: match[2].toUpperCase(),
+    };
+};
+
+const getScheduleColorClass = (status) => {
+    if (status === 'Completed' || status === 'Released') return 'border-emerald-400';
+    if (status === 'Pending' || status === 'Approved') return 'border-amber-400';
+    return 'border-blue-400';
+};
+
+const buildScheduleEntries = (bookings = []) =>
+    bookings
+        .filter((booking) => booking.status !== 'Cancelled' && booking.status !== 'Released')
+        .map((booking) => {
+            const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion || booking.createdAt);
+
+            if (!scheduleDate) {
+                return null;
+            }
+
+            const { time, ampm } = splitTimeLabel(booking.pickupSlot);
+            const customerName = booking.contact?.fullName || booking.customer || 'Customer';
+            const serviceName = booking.service || booking.bookingType || 'Service';
+            const location = booking.contact?.address || booking.bookingType || 'Assigned booking';
+
+            return {
+                id: booking._id,
+                title: `${customerName} - ${serviceName}`,
+                location,
+                time,
+                ampm,
+                dateLabel: scheduleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                dateValue: scheduleDate.toISOString(),
+                dayKey: formatDateKey(scheduleDate),
+                status: booking.status,
+                colorClass: getScheduleColorClass(booking.status),
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => new Date(a.dateValue) - new Date(b.dateValue));
+
+const buildAlerts = (bookings = []) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return bookings
+        .filter((booking) => booking.status !== 'Cancelled' && booking.status !== 'Released')
+        .map((booking) => {
+            const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion);
+            const customerName = booking.contact?.fullName || booking.customer || 'Customer';
+
+            if (scheduleDate && scheduleDate < today && booking.status !== 'Completed') {
+                return {
+                    type: 'overdue',
+                    title: `${customerName} is overdue`,
+                    desc: `${booking.service || booking.bookingType || 'Booking'} was scheduled for ${scheduleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`,
+                };
+            }
+
+            if (booking.status === 'Pending' || booking.status === 'Approved') {
+                return {
+                    type: 'pending',
+                    title: `${customerName} is waiting`,
+                    desc: `${booking.service || booking.bookingType || 'Booking'} still needs attention from the team.`,
+                };
+            }
+
+            return null;
+        })
+        .filter(Boolean)
+        .slice(0, 5);
+};
 
 const Dashboard = () => {
-    const { toggleCalendar } = useOutletContext();
+    const outletContext = useOutletContext() || {};
+    const toggleCalendar = outletContext.toggleCalendar;
+    const setCalendarEntries = outletContext.setCalendarEntries;
     const [tasks, setTasks] = useState([]);
     const [alerts, setAlerts] = useState([]);
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => {};
+
         const fetchBookings = async () => {
             try {
-                const token = localStorage.getItem('staffToken');
+                const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
                 if (!token) {
                     setLoading(false);
                     return;
                 }
 
-                const response = await fetch('http://localhost:4000/api/bookings', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data = await response.json();
+                const data = await bookingApi.getAllBookings();
                 if (data.success) {
-                    setTasks(data.bookings);
+                    const bookings = Array.isArray(data.bookings) ? data.bookings : [];
+                    const nextSchedules = buildScheduleEntries(bookings);
+                    const nextAlerts = buildAlerts(bookings);
+
+                    setTasks(bookings);
+                    setAlerts(nextAlerts);
+                    setSchedules(nextSchedules);
+                    updateCalendarEntries(nextSchedules);
                 }
             } catch (error) {
                 console.error('Error fetching bookings:', error);
@@ -39,7 +142,8 @@ const Dashboard = () => {
         };
 
         fetchBookings();
-    }, []);
+        return () => updateCalendarEntries([]);
+    }, [setCalendarEntries]);
 
     const summaryStats = {
         totalTasks: tasks.length,
@@ -103,16 +207,17 @@ const Dashboard = () => {
                 </div>
                 <div className="relative z-10 flex items-center gap-3 flex-wrap">
                     <button
-                        onClick={toggleCalendar}
+                        onClick={() => typeof toggleCalendar === 'function' && toggleCalendar()}
+                        disabled={loading}
                         className="group flex items-center gap-2 bg-white text-blue-700 text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-blue-50 hover:text-blue-800 transition-all whitespace-nowrap border border-slate-200 hover:border-blue-200 shadow-sm cursor-pointer"
                     >
                         <CalendarDays className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
-                        View Schedule
+                        {loading ? 'Loading Schedule...' : 'View Schedule'}
                     </button>
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {summaryCards.map(({ icon: Icon, label, value, sub, accent }, idx) => (
+                {summaryCards.map(({ icon, label, value, sub, accent }, idx) => (
                     <div
                         key={idx}
                         className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
@@ -124,7 +229,7 @@ const Dashboard = () => {
                                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" 
                                 style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}
                             >
-                                <Icon size={20} color={accent} strokeWidth={2.2} />
+                                {React.createElement(icon, { size: 20, color: accent, strokeWidth: 2.2 })}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5">{label}</div>
@@ -266,7 +371,7 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-                                {schedules.map((schedule, i) => (
+                                {schedules.slice(0, 5).map((schedule, i) => (
                                     <div key={i} className="flex gap-3">
                                         <div className="flex flex-col items-end min-w-[38px]">
                                             <span className="text-xs font-semibold text-slate-500">{schedule.time}</span>
@@ -274,7 +379,7 @@ const Dashboard = () => {
                                         </div>
                                         <div className={`flex-1 border-l-2 pl-3 ${schedule.colorClass || 'border-blue-300'}`}>
                                             <p className="text-xs font-semibold text-slate-800">{schedule.title}</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">{schedule.location}</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">{schedule.dateLabel} • {schedule.location}</p>
                                         </div>
                                     </div>
                                 ))}

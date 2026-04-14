@@ -1,7 +1,12 @@
-import React from 'react';
-import { Search, Filter, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, X, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
 const STATUS_TABS = ['All', 'Pending', 'In Progress', 'Completed'];
+
+const SORT_OPTIONS = [
+    { value: 'date-newest', label: 'Date: Newest' },
+    { value: 'date-oldest', label: 'Date: Oldest' },
+];
 
 const OrderFilters = ({
     searchQuery,
@@ -11,7 +16,11 @@ const OrderFilters = ({
     isFilterOpen,
     setIsFilterOpen,
     counts,
+    sortOption,
+    setSortOption,
 }) => {
+    const [showSort, setShowSort] = useState(false);
+    const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
             <div className="flex gap-2 items-center">
@@ -31,6 +40,29 @@ const OrderFilters = ({
                         >
                             <X size={14} />
                         </button>
+                    )}
+                </div>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowSort(v => !v)}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                    >
+                        <SlidersHorizontal size={13} className="text-blue-400" />
+                        <span className="hidden sm:inline max-w-[110px] truncate">{currentSortLabel}</span>
+                        <ChevronDown size={12} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showSort && (
+                        <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-44">
+                            {SORT_OPTIONS.map(o => (
+                                <button
+                                    key={o.value}
+                                    onClick={() => { setSortOption(o.value); setShowSort(false); }}
+                                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortOption === o.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                >
+                                    {o.label}
+                                </button>
+                            ))}
+                        </div>
                     )}
                 </div>
                 <div className="relative">

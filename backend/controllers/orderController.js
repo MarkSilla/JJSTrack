@@ -2,6 +2,7 @@ import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
+import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
 
 export const getOrders = async (req, res) => {
   try {
@@ -121,7 +122,6 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (status) order.status = status;
     if (assignedTailor) order.assignedTailor = assignedTailor;
     if (estimatedCompletion) order.estimatedCompletion = estimatedCompletion;
     if (notes) order.notes = notes;
@@ -132,11 +132,15 @@ export const updateOrderStatus = async (req, res) => {
         step.done = i < stepIndex;
         step.active = i === stepIndex;
       });
-
-      if (stepIndex >= order.steps.length - 1) {
-        order.status = 'Completed';
-      }
     }
+
+    const nextStatus = resolveWorkflowStatus({
+      currentStatus: order.status,
+      requestedStatus: status,
+      steps: order.steps,
+    });
+
+    if (nextStatus) order.status = nextStatus;
 
     await order.save();
 
@@ -170,6 +174,14 @@ export const updateOrderSteps = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    const nextSteps = steps || order.steps;
+
+    const nextStatus = resolveWorkflowStatus({
+      currentStatus: order.status,
+      steps: nextSteps,
+    });
+
+    if (nextStatus) order.status = nextStatus;
     if (steps) order.steps = steps;
     if (players) order.players = players;
 

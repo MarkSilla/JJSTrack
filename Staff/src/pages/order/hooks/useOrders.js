@@ -12,6 +12,8 @@ const getDerivedStatus = (order) => {
     if (!order) return 'Pending';
     if (order.status === 'Cancelled') return 'Cancelled';
     if (order.status === 'In Progress' || order.status === 'In-Progress') return 'In Progress';
+    // Treat "Ready for Pickup" as "Completed"
+    if (order.status === 'Ready' || order.status === 'Ready for Pickup' || order.status === 'ReadyForPickup' || order.status === 'ready-for-pickup') return 'Completed';
     if (order.status === 'Completed' || order.status === 'Complete') return 'Completed';
     return 'Pending';
 };
@@ -29,10 +31,33 @@ const getActiveStepIndex = (order) => {
     return 0;
 };
 
+const getOrderSortTime = (order) => {
+    const parseDateValue = (value) => {
+        if (!value) return 0;
+        const date = new Date(value);
+        return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+    };
+
+    if (Array.isArray(order.steps) && order.steps.length > 0) {
+        const doneSteps = order.steps.filter(step => step?.done && step?.date);
+        if (doneSteps.length > 0) {
+            const latestDone = doneSteps.reduce((latest, step) =>
+                parseDateValue(step.date) > parseDateValue(latest.date) ? step : latest,
+                doneSteps[0]
+            );
+            const latestTime = parseDateValue(latestDone.date);
+            if (latestTime) return latestTime;
+        }
+    }
+
+    return parseDateValue(order.dueDate || order.pickupDate || order.createdAt || order.date);
+};
+
 const useOrders = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [sortOption, setSortOption] = useState('date-newest');
     const [staffOrders, setStaffOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -90,8 +115,12 @@ const useOrders = () => {
             result = result.filter(o => getDerivedStatus(o) === filterStatus);
         }
 
-        return result;
-    }, [searchQuery, filterStatus, staffOrders]);
+        return [...result].sort((a, b) => {
+            const aTime = getOrderSortTime(a);
+            const bTime = getOrderSortTime(b);
+            return sortOption === 'date-oldest' ? aTime - bTime : bTime - aTime;
+        });
+    }, [searchQuery, filterStatus, staffOrders, sortOption]);
 
     const counts = useMemo(() => {
         const c = { All: 0, Pending: 0, 'In Progress': 0, Completed: 0 };
@@ -113,6 +142,8 @@ const useOrders = () => {
         setFilterStatus,
         isFilterOpen,
         setIsFilterOpen,
+        sortOption,
+        setSortOption,
         getDerivedStatus,
         getActiveStepIndex,
         loading,

@@ -16,29 +16,9 @@ import {
 import KPICards from './AdOrder/Kpicards';
 import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
+import { getDerivedStatus } from '../../utils/helpers.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-export const isOverdue = (dueDateStr) => {
-    if (!dueDateStr) return false;
-    const dueDate = new Date(dueDateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return dueDate < today;
-};
-
-export const getDerivedStatus = (order) => {
-    if (!order) return 'Pending';
-    if (order.status === 'Cancelled') return 'Cancelled';
-    const needsApproval = order?.serviceType === 'Team Jersey' || order?.serviceType === 'Organization';
-    const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
-    if (needsApproval && !hasPickupDate) return 'For Approval';
-    if (order.status !== 'Completed' && order.status !== 'Complete' && isOverdue(order.invoice?.dueDate)) return 'Overdue';
-    if (order.status === 'In Progress' || order.status === 'In-Progress') return 'In Progress';
-    if (order.status === 'Ready') return 'Ready';
-    if (order.status === 'Completed' || order.status === 'Complete') return 'Completed';
-    return 'Pending';
-};
 
 export const getActiveStepIndex = (order, orderTracking) => {
     if (!order) return 0;
@@ -139,6 +119,7 @@ export default function AdOrder() {
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
+    const [sortOption, setSortOption] = useState('date-newest');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [staffList, setStaffList] = useState([]);
     const [orderTracking, setOrderTracking] = useState(() => {
@@ -163,8 +144,6 @@ export default function AdOrder() {
                 try {
                     const staffResponse = await staffApi.getAllStaff();
                     const staffData = staffResponse.staff || staffResponse.data || [];
-                    console.log('📋 Staff list loaded:', staffData.length, 'staff members');
-                    console.log('📋 Staff sample:', staffData.slice(0, 2).map(s => ({ _id: s._id, fullName: s.fullName, name: s.name })));
                     setStaffList(Array.isArray(staffData) ? staffData : []);
                 } catch (staffErr) {
                     console.warn('Failed to fetch staff list, using fallback:', staffErr);
@@ -205,6 +184,28 @@ export default function AdOrder() {
 
     // ─── Derived State ────────────────────────────────────────────────────────
 
+    const getOrderSortTime = (order) => {
+        const parseDateValue = (value) => {
+            if (!value) return 0;
+            const date = new Date(value);
+            return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+        };
+
+        if (Array.isArray(order.steps) && order.steps.length > 0) {
+            const doneSteps = order.steps.filter(step => step?.done && step?.date);
+            if (doneSteps.length > 0) {
+                const latestDone = doneSteps.reduce((latest, step) =>
+                    parseDateValue(step.date) > parseDateValue(latest.date) ? step : latest,
+                    doneSteps[0]
+                );
+                const latestTime = parseDateValue(latestDone.date);
+                if (latestTime) return latestTime;
+            }
+        }
+
+        return parseDateValue(order.invoice?.dueDate || order.estimatedCompletion || order.pickupDate || order.createdAt || order.date);
+    };
+
     const filteredOrders = useMemo(() => {
         let result = orders.filter(o =>
             (o.customer || o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -213,17 +214,22 @@ export default function AdOrder() {
         );
 
         if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
-        else if (filterStatus === 'Ready') result = result.filter(o => getDerivedStatus(o) === 'Ready');
+        else if (filterStatus === 'Released') result = result.filter(o => getDerivedStatus(o) === 'Released');
         else if (filterStatus === 'Overdue') result = result.filter(o => getDerivedStatus(o) === 'Overdue');
         else if (filterStatus === 'For Approval') result = result.filter(o => getDerivedStatus(o) === 'For Approval');
+        else if (filterStatus === 'Completed') result = result.filter(o => getDerivedStatus(o) === 'Completed');
         else if (filterStatus === 'Cancelled') result = result.filter(o => getDerivedStatus(o) === 'Cancelled');
         else if (filterStatus === 'All') result = result.filter(o => getDerivedStatus(o) !== 'Cancelled');
 
-        return result;
-    }, [searchQuery, filterStatus, orders]);
+        return [...result].sort((a, b) => {
+            const aTime = getOrderSortTime(a);
+            const bTime = getOrderSortTime(b);
+            return sortOption === 'date-oldest' ? aTime - bTime : bTime - aTime;
+        });
+    }, [searchQuery, filterStatus, orders, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'For Approval': 0, 'In Progress': 0, Ready: 0, Overdue: 0, Cancelled: 0 };
+        const c = { All: 0, 'For Approval': 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
         orders.forEach(o => {
             const s = getDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
@@ -314,6 +320,8 @@ export default function AdOrder() {
                     onOrderClick={handleOrderClick} /* NEW: navigate instead of setActiveOrderId */
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
+                    sortOption={sortOption}
+                    setSortOption={setSortOption}
                     isFilterOpen={isFilterOpen}
                     setIsFilterOpen={setIsFilterOpen}
                     filterStatus={filterStatus}

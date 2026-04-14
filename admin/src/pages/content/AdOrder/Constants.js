@@ -16,12 +16,12 @@ export const ASSIGNABLE_ROLES = ['Tailor', 'Sewing Staff', 'Production Staff'];
 
 export const STATUS_CONFIG = {
     "For Approval":      { color: "bg-violet-100 text-violet-700",      label: "For Approval" },
+    "Released":          { color: "bg-cyan-100 text-cyan-700",         label: "Released" },
     "Completed":         { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
     "Complete":          { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
     "In-Progress":       { color: "bg-blue-100 text-blue-700",       label: "In Progress" },
     "In Progress":       { color: "bg-blue-100 text-blue-700",       label: "In Progress" },
     "Pending":           { color: "bg-amber-100 text-amber-700",     label: "Pending"  },
-    "Ready":             { color: "bg-green-100 text-green-700",     label: "Ready" },
     "Overdue":           { color: "bg-red-100 text-red-600",         label: "Overdue" },
     "Cancelled":         { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },
     "Cancel/Incomplete": { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },

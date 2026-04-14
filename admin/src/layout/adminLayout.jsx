@@ -39,7 +39,7 @@ const PAGE_META = [
     {
         match: /^\/admin\/released$/,
         title: 'Released Items',
-        subtitle: 'View and monitor all released orders.'
+        subtitle: 'All scanned and released bookings.'
     },
     {
         match: /^\/admin\/staff$/,
@@ -50,6 +50,11 @@ const PAGE_META = [
         match: /^\/admin\/inventory$/,
         title: 'Inventory',
         subtitle: 'Monitor stock levels, adjustments, and item records.'
+    },
+    {
+        match: /^\/admin\/report$/,
+        title: 'Reports',
+        subtitle: 'Generate and view detailed business reports.'
     },
 ]
 

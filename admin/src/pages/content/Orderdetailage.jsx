@@ -6,7 +6,8 @@ import { bookingApi } from '../../services/bookingApi.js';
 import { EMPLOYEE_POOL, SERVICE_STEPS, PIECE_RATES } from './AdOrder/Constants.js';
 import OrderDetail from './AdOrder/Orderdetail';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
-import {getDerivedStatus,getActiveStepIndex,computeOrderEarnings,convertBooking,} from './AdOrder.jsx';
+import { getDerivedStatus, getActiveStepIndex } from '../../utils/helpers.js';
+import { computeOrderEarnings, convertBooking } from './AdOrder.jsx';
 
 
 export default function OrderDetailPage() {
@@ -84,7 +85,7 @@ export default function OrderDetailPage() {
     const assignedEmployee = useMemo(() => {
         if (!activeOrder) return null;
         const empId = assignments[activeOrder.id || activeOrder._id];
-        return empId ? EMPLOYEE_POOL.find(e => e.id === empId) : null;
+        return empId ? EMPLOYEE_POOL.find(e => [e.id, e.fullName, e.name].includes(empId)) : null;
     }, [activeOrder, assignments]);
 
     const earningsPreview = useMemo(() => {
@@ -109,7 +110,14 @@ export default function OrderDetailPage() {
                 };
 
                 const patch = { steps: updatedSteps };
-                if (stepIndex === 0) patch.status = 'In Progress';
+                let newStatus = order.status;
+                if (stepIndex === 0) {
+                    newStatus = 'In Progress';
+                    patch.status = 'In Progress';
+                } else if (updatedSteps.length > 0 && stepIndex === updatedSteps.length - 1) {
+                    newStatus = 'Completed';
+                    patch.status = 'Completed';
+                }
 
                 const idToUse = order._id || order.id;
                 if (order.isBooking) {
@@ -118,7 +126,7 @@ export default function OrderDetailPage() {
                     orderApi.updateOrder(idToUse, patch).catch(console.error);
                 }
 
-                return { ...order, steps: updatedSteps };
+                return { ...order, steps: updatedSteps, status: newStatus };
             })
         );
 
@@ -140,7 +148,7 @@ export default function OrderDetailPage() {
 
     const confirmAssign = () => {
         const { orderId: targetId, empId } = assignConfirm;
-        const employee = EMPLOYEE_POOL.find(e => e.id === empId);
+        const employee = EMPLOYEE_POOL.find(e => [e.id, e.fullName, e.name].includes(empId));
         const assignedTailorName = employee ? employee.name : empId;
 
         setAssignments(prev => {

@@ -4,6 +4,7 @@ import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
+import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
 
 const normalizePositiveNumber = (value, fallback = 1) => {
   const parsed = Number(value);
@@ -484,7 +485,14 @@ export const updateBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    if (status) booking.status = status;
+    const nextSteps = steps || booking.steps;
+    const nextStatus = resolveWorkflowStatus({
+      currentStatus: booking.status,
+      requestedStatus: status,
+      steps: nextSteps,
+    });
+
+    if (nextStatus) booking.status = nextStatus;
     if (adminNotes) booking.adminNotes = adminNotes;
     if (contact) booking.contact = contact;
     if (pickupDate) booking.pickupDate = pickupDate;
@@ -522,7 +530,11 @@ export const updateBookingStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    booking.status = status;
+    booking.status = resolveWorkflowStatus({
+      currentStatus: booking.status,
+      requestedStatus: status,
+      steps: booking.steps,
+    });
     if (adminNotes) booking.adminNotes = adminNotes;
 
     await booking.save();
@@ -956,5 +968,99 @@ export const generateMissingBookingQRCodes = async (req, res) => {
   } catch (error) {
     console.error('Generate Missing Booking QR Codes Error:', error);
     res.status(500).json({ success: false, message: 'Failed to generate QR codes' });
+  }
+};
+
+// Archive a booking
+export const archiveBooking = async (req, res) => {
+  try {
+    console.log('Archive booking request - params:', req.params, 'userId:', req.userId);
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    }
+
+    const user = await userModel.findById(req.userId);
+    console.log('User found:', user?.name, 'role:', user?.role);
+    
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin can archive bookings'
+      });
+    }
+
+    const booking = await bookingModel.findByIdAndUpdate(
+      id,
+      {
+        isArchived: true,
+        archivedAt: new Date(),
+        archivedBy: user.name || user.email
+      },
+      { new: true }
+    );
+
+    if (!booking) {
+      console.log('Booking not found:', id);
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    console.log('Booking archived successfully:', booking._id);
+    res.json({
+      success: true,
+      message: 'Booking archived successfully',
+      booking
+    });
+  } catch (error) {
+    console.error('Archive Booking Error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: 'Failed to archive booking: ' + error.message });
+  }
+};
+
+// Unarchive a booking
+export const unarchiveBooking = async (req, res) => {
+  try {
+    console.log('Unarchive booking request - params:', req.params, 'userId:', req.userId);
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    }
+    
+    const user = await userModel.findById(req.userId);
+    console.log('User found:', user?.name, 'role:', user?.role);
+    
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin can unarchive bookings'
+      });
+    }
+
+    const booking = await bookingModel.findByIdAndUpdate(
+      id,
+      {
+        isArchived: false,
+        archivedAt: null,
+        archivedBy: null
+      },
+      { new: true }
+    );
+
+    if (!booking) {
+      console.log('Booking not found:', id);
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    console.log('Booking unarchived successfully:', booking._id);
+    res.json({
+      success: true,
+      message: 'Booking unarchived successfully',
+      booking
+    });
+  } catch (error) {
+    console.error('Unarchive Booking Error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: 'Failed to unarchive booking: ' + error.message });
   }
 };

@@ -23,6 +23,8 @@ const OrderPage = () => {
         setFilterStatus,
         isFilterOpen,
         setIsFilterOpen,
+        sortOption,
+        setSortOption,
         getDerivedStatus,
         getActiveStepIndex,
         loading,
@@ -126,6 +128,8 @@ return (
             isFilterOpen={isFilterOpen}
             setIsFilterOpen={setIsFilterOpen}
             counts={counts}
+            sortOption={sortOption}
+            setSortOption={setSortOption}
         />
 
         <div className="flex-1">

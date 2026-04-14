@@ -10,7 +10,7 @@ export default function AssignEmployeeDropdown({ currentId, onAssign }) {
     const [dropdownStyle, setDropdownStyle] = useState({});
     const ref = useRef(null);
     const buttonRef = useRef(null);
-    const current = employees.find(e => e._id === currentId);
+    const current = employees.find(e => [e._id, e.id, e.fullName, e.name].includes(currentId));
 
     const fetchMyStaff = useCallback(async () => {
         try {
@@ -113,7 +113,7 @@ export default function AssignEmployeeDropdown({ currentId, onAssign }) {
                                 key={emp._id}
                                 onClick={() => { onAssign(emp.fullName || emp.name); setOpen(false); }}
                                 className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors text-left border-none cursor-pointer
-                                    ${currentId === emp.fullName ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                                    ${[emp._id, emp.id, emp.fullName, emp.name].includes(currentId) ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                             >
                                 <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-black" style={{ background: '#EFF6FF', color: '#2563EB' }}>
                                     {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -122,7 +122,7 @@ export default function AssignEmployeeDropdown({ currentId, onAssign }) {
                                     <div className="font-semibold truncate">{emp.name}</div>
                                     <div className="text-[10px] text-gray-400">{emp.role}</div>
                                 </div>
-                                {currentId === emp.fullName && <Check size={13} className="text-blue-500 shrink-0" />}
+                                {[emp._id, emp.id, emp.fullName, emp.name].includes(currentId) && <Check size={13} className="text-blue-500 shrink-0" />}
                             </button>
                         ))}
                     </div>

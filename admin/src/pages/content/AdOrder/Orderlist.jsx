@@ -1,7 +1,12 @@
-import React from 'react';
-import { Search, Filter } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { STATUS_CONFIG, TYPE_CONFIG, PRIORITY_CONFIG, SERVICE_STEPS, EMPLOYEE_POOL } from './Constants.js';
 import { getDerivedStatus, getActiveStepIndex } from '../../../utils/helpers.js';
+
+const SORT_OPTIONS = [
+    { value: 'date-newest', label: 'Date: Newest' },
+    { value: 'date-oldest', label: 'Date: Oldest' },
+];
 
 export default function OrderList({
     filteredOrders,
@@ -9,6 +14,8 @@ export default function OrderList({
     onOrderClick,           // NEW: (orderId: string) => void  —  replaces setActiveOrderId
     searchQuery,
     setSearchQuery,
+    sortOption,
+    setSortOption,
     isFilterOpen,
     setIsFilterOpen,
     filterStatus,
@@ -16,12 +23,16 @@ export default function OrderList({
     counts,
     orderTracking,
     assignments,
-    fullWidth = false,      // NEW: when true, the panel expands to fill available space
+    fullWidth = false,      
 }) {
-    const statusTabs = ['All', 'For Approval', 'In Progress', 'Ready', 'Overdue', 'Cancelled'];
+    const [showSort, setShowSort] = useState(false);
+    const statusTabs = ['All', 'For Approval', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
+    const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
     const approvalTabs = [
         { label: 'All', value: 'All' },
         { label: 'Pending Approval', value: 'For Approval' },
+        { label: 'Completed', value: 'Completed' },
+        { label: 'Released', value: 'Released' },
     ];
 
     // Width classes: full-width mode vs the original fixed side-panel width
@@ -38,16 +49,39 @@ export default function OrderList({
                 </div>
 
                 {/* Search + Filter */}
-                <div className="flex gap-2 relative">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 relative">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                         <input
                             type="text"
-                            placeholder="Search orders..."
+                            placeholder="Search ID, name, service..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full bg-gray-50 border border-transparent focus:border-blue-200 focus:bg-white focus:ring-4 focus:ring-blue-500/10 rounded-2xl py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all"
+                            className="bg-slate-50 border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 rounded-xl py-2 pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
                         />
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowSort(v => !v)}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                        >
+                            <SlidersHorizontal size={13} className="text-blue-400" />
+                            <span className="hidden sm:inline max-w-[110px] truncate">{currentSortLabel}</span>
+                            <ChevronDown size={12} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showSort && (
+                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-44">
+                                {SORT_OPTIONS.map(o => (
+                                    <button
+                                        key={o.value}
+                                        onClick={() => { setSortOption(o.value); setShowSort(false); }}
+                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortOption === o.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                    >
+                                        {o.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="relative">
                         <button
@@ -138,10 +172,17 @@ export default function OrderList({
                         const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
                         const orderStepIdx = getActiveStepIndex(order, orderTracking);
                         const orderSteps = order.steps || SERVICE_STEPS[order.serviceType] || SERVICE_STEPS['Team Jersey'];
+                        const rawStatus = String(order.status || '').toLowerCase();
                         const currentStageLabel =
                             derivedStatus === 'For Approval'
                                 ? 'Awaiting Admin Approval'
-                                : (orderSteps[orderStepIdx]?.label || orderSteps[orderStepIdx] || 'Pending');
+                                : derivedStatus === 'Released'
+                                    ? 'Picked Up'
+                                    : derivedStatus === 'Completed' && rawStatus.includes('pick')
+                                        ? 'Pick-up'
+                                        : derivedStatus === 'Completed'
+                                            ? 'Ready for Pick Up'
+                                            : (orderSteps[orderStepIdx]?.label || orderSteps[orderStepIdx] || 'Pending');
                         const priorityConf = order.priority ? PRIORITY_CONFIG[order.priority] : null;
                         const PriorityIcon = priorityConf?.icon;
                         const typeConf = TYPE_CONFIG[order.serviceType] || TYPE_CONFIG['Team Jersey'];

@@ -1,12 +1,49 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
     ArrowLeft, User, Phone, CheckCheck, Activity, Scissors,
     FileText, Image as ImageIcon
 } from 'lucide-react';
-import { ARCHIVED_ORDERS, ARCHIVE_ACTIVITY } from './order/mock/mockData';
+import { bookingApi } from '../services/bookingApi';
 import img from '../assets/img';
+
+const mapBookingTypeToArchive = (bookingType) => {
+    const typeMap = {
+        'jersey': 'TEAM_JERSEY',
+        'team jersey': 'TEAM_JERSEY',
+        'organizational': 'ORGANIZATIONAL',
+        'organization': 'ORGANIZATIONAL',
+        'repair': 'REPAIR',
+    };
+    return typeMap[bookingType?.toLowerCase()] || 'TEAM_JERSEY';
+};
+
+const mapBookingToArchiveOrder = (booking) => {
+    return {
+        id: booking._id || booking.id,
+        _id: booking._id,
+        type: mapBookingTypeToArchive(booking.bookingType),
+        teamName: booking.teamName || booking.orgName || 'Order',
+        customerName: booking.contact?.fullName || booking.customer || 'Unknown',
+        customer: booking.contact?.fullName || booking.customer || 'Unknown',
+        contact: booking.contact?.phone || booking.phone || 'N/A',
+        serviceTitle: booking.bookingType || booking.service || 'Service',
+        items: booking.items || [],
+        teamRoster: booking.players || booking.members || [],
+        productionProgress: booking.steps || [],
+        designImages: booking.photos || [],
+        lineupImage: booking.photos?.[0] || booking.designFile || booking.orgDesignFile,
+        repairImage: booking.photos?.[0] || booking.repairImage,
+        completedAt: booking.completedAt || booking.updatedAt || new Date().toISOString(),
+        dropDate: booking.createdAt,
+        dueDate: booking.pickupDate || booking.createdAt,
+        assignedBy: booking.assignedTailor || 'Admin',
+        totalQty: booking.items?.reduce((sum, item) => sum + (item.qty || 0), 0) || 0,
+        notes: booking.notes,
+        ...booking,
+    };
+};
 
 const fmtDate = (str) => {
     if (!str || str === '—') return '—';
@@ -568,39 +605,7 @@ const ArchiveCard = ({ order, onClick }) => {
         </button>
     );
 };
-
-const ActivityTimeline = ({ activities }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <Activity size={16} className="text-blue-500" />
-                <h3 className="text-[13px] font-bold text-slate-800">Archive Activity Log</h3>
-            </div>
-        </div>
-        <div className="p-6">
-            <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
-                {activities.map((activity, idx) => (
-                    <div key={idx} className="relative">
-                        <div className="absolute -left-[31px] top-1 w-2.5 h-2.5 rounded-full bg-white border-2 border-blue-500 shadow-[0_0_0_4px_white]" />
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[13px] font-black text-slate-900">{activity.action}</span>
-                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                                    {activity.target}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400">
-                                <span className="flex items-center gap-1"><User size={10} /> {activity.staffName}</span>
-                                <span className="flex items-center gap-1"><Calendar size={10} /> {fmtDate(activity.timestamp)}</span>
-                                <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-500" /> Success</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    </div>
-);
+const ActivityTimeline = () => null;
 
 
 
@@ -610,9 +615,33 @@ const ArchivesPage = () => {
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('All');
     const [sortOrder, setSortOrder] = useState('newest');
+    const [archivedOrders, setArchivedOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchArchivedOrders = async () => {
+            try {
+                setLoading(true);
+                const response = await bookingApi.getAllBookings();
+                const bookings = response.bookings || response.data || [];
+                
+                // Filter for explicitly archived bookings
+                const archived = bookings.filter(b => b.isArchived === true);
+                const mapped = archived.map(mapBookingToArchiveOrder);
+                setArchivedOrders(mapped);
+            } catch (error) {
+                console.error('Error fetching archived orders:', error);
+                setArchivedOrders([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchArchivedOrders();
+    }, []);
 
     const filtered = useMemo(() => {
-        let list = [...ARCHIVED_ORDERS];
+        let list = [...archivedOrders];
         if (typeFilter !== 'All') list = list.filter(o => o.type === typeFilter);
         if (search.trim()) {
             const q = search.toLowerCase();
@@ -628,23 +657,34 @@ const ArchivesPage = () => {
             return sortOrder === 'newest' ? db - da : da - db;
         });
         return list;
-    }, [search, typeFilter, sortOrder]);
+    }, [search, typeFilter, sortOrder, archivedOrders]);
 
     const stats = useMemo(() => {
-        const total = ARCHIVED_ORDERS.length;
-        const jerseys = ARCHIVED_ORDERS.filter(o => o.type === 'TEAM_JERSEY').length;
-        const orgs = ARCHIVED_ORDERS.filter(o => o.type === 'ORGANIZATIONAL').length;
-        const repair = ARCHIVED_ORDERS.filter(o => o.type === 'REPAIR').length;
+        const total = archivedOrders.length;
+        const jerseys = archivedOrders.filter(o => o.type === 'TEAM_JERSEY').length;
+        const orgs = archivedOrders.filter(o => o.type === 'ORGANIZATIONAL').length;
+        const repair = archivedOrders.filter(o => o.type === 'REPAIR').length;
         return { total, jerseys, orgs, repair };
-    }, []);
+    }, [archivedOrders]);
 
-    const selectedOrder = ARCHIVED_ORDERS.find(o => o.id === selectedId);
+    const selectedOrder = archivedOrders.find(o => o.id === selectedId);
 
     if (selectedOrder) return (
         <div className="min-h-[calc(100vh-80px)]">
             <ArchiveDetail order={selectedOrder} onBack={() => setSelectedId(null)} />
         </div>
     );
+
+    if (loading) {
+        return (
+            <div className="font-sans flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                    <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin mx-auto mb-4" />
+                    <p className="text-sm font-semibold text-slate-500">Loading archives...</p>
+                </div>
+            </div>
+        );
+    }
 
     const kpiCards = [
         { label: 'Total Records', value: stats.total, icon: Archive, color: '#059669', filter: 'All', sub: 'Production history' },
@@ -777,7 +817,7 @@ const ArchivesPage = () => {
                             </table>
                         )}
                         {filtered.length > 0 && (
-                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{ARCHIVED_ORDERS.length}</strong> archived orders</span></div>
+                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{archivedOrders.length}</strong> archived orders</span></div>
                         )}
                     </div>
 
@@ -785,7 +825,7 @@ const ArchivesPage = () => {
                         {filtered.length === 0 ? (
                             <div className="bg-white border border-slate-200 rounded-2xl py-16 px-8 text-center shadow-sm"><Archive size={28} className="text-slate-200 mx-auto mb-3" /><p className="text-[13px] font-bold text-slate-400">No archived orders found</p></div>
                         ) : (
-                            filtered.map(order => <ArchiveCard key={order.id} order={order} onClick={setSelectedId} />)
+                            filtered.map(order => <ArchiveCard key={order._id} order={order} onClick={setSelectedId} />)
                         )}
                     </div>
                 </>
@@ -794,7 +834,17 @@ const ArchivesPage = () => {
 
 
             {activeTab === 'activity' && (
-                <ActivityTimeline activities={ARCHIVE_ACTIVITY} />
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
+                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Activity size={16} className="text-blue-500" />
+                            <h3 className="text-[13px] font-bold text-slate-800">Archive Activity Log</h3>
+                        </div>
+                    </div>
+                    <div className="p-6 text-center text-slate-500 font-medium">
+                        Activity logging coming soon
+                    </div>
+                </div>
             )}
         </div>
     );

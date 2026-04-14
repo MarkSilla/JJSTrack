@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive } from 'lucide-react';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';
@@ -29,6 +29,8 @@ export default function OrderDetail({
     const [approvalMode, setApprovalMode] = useState(false);
     const [cancelLoading, setCancelLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [archiveLoading, setArchiveLoading] = useState(false);
+    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [bookingExtras, setBookingExtras] = useState(null);
 
     const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
@@ -122,6 +124,27 @@ export default function OrderDetail({
         }
     };
 
+    const confirmArchiveOrder = async () => {
+        const bookingId = activeOrder.id || activeOrder._id || activeOrder.bookingId || activeOrder.booking?._id;
+        
+        console.log('Archiving order - activeOrder:', activeOrder);
+        console.log('Extracted bookingId:', bookingId);
+
+        try {
+            setArchiveLoading(true);
+            await bookingApi.archiveBooking(bookingId);
+            setShowArchiveConfirm(false);
+            setIsMenuOpen(false);
+            setActiveOrderId(null);
+        } catch (error) {
+            console.error('Failed to archive order:', error);
+            alert('Failed to archive order. Please try again.');
+            setShowArchiveConfirm(false);
+        } finally {
+            setArchiveLoading(false);
+        }
+    };
+
     if (!activeOrder) {
         return (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
@@ -190,6 +213,15 @@ export default function OrderDetail({
                                     className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer"
                                 >
                                     <XCircle size={16} className="text-red-500" /> Cancel Order
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowArchiveConfirm(true);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer"
+                                >
+                                    <Archive size={16} className="text-amber-500" /> Archive Order
                                 </button>
                             </div>
                         )}
@@ -370,6 +402,51 @@ export default function OrderDetail({
                                 className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
                             >
                                 {cancelLoading ? 'Cancelling...' : 'Cancel Order'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Archive Confirmation Modal */}
+            {showArchiveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">Archive Order</h2>
+                                <p className="text-sm text-gray-500 mt-1">Move this completed order to archives? You can unarchive it anytime.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowArchiveConfirm(false)}
+                                disabled={archiveLoading}
+                                className="text-gray-400 hover:text-gray-600 disabled:opacity-50 bg-transparent border-none cursor-pointer ml-2"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 space-y-3">
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                <p className="text-xs font-semibold text-amber-700">Order ID: <span className="font-bold">{activeOrder.id}</span></p>
+                                <p className="text-xs font-semibold text-amber-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
+                            </div>
+                        </div>
+
+                        <div className="p-6 flex gap-3 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowArchiveConfirm(false)}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                            >
+                                Keep Active
+                            </button>
+                            <button
+                                onClick={confirmArchiveOrder}
+                                disabled={archiveLoading}
+                                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                            >
+                                {archiveLoading ? 'Archiving...' : 'Archive Order'}
                             </button>
                         </div>
                     </div>

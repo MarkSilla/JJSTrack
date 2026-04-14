@@ -139,6 +139,28 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Archive booking
+  archiveBooking: async (bookingId) => {
+    try {
+      const response = await api.post(`/bookings/${bookingId}/archive`);
+      return response.data;
+    } catch (error) {
+      console.error('Error archiving booking:', error);
+      throw error;
+    }
+  },
+
+  // Unarchive booking
+  unarchiveBooking: async (bookingId) => {
+    try {
+      const response = await api.post(`/bookings/${bookingId}/unarchive`);
+      return response.data;
+    } catch (error) {
+      console.error('Error unarchiving booking:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

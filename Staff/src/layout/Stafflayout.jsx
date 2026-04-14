@@ -10,6 +10,7 @@ const StaffLayout = () => {
     const [collapsed, setCollapsed] = useState(true)
     const [isMobileExpanded, setIsMobileExpanded] = useState(false)
     const [calendarOpen, setCalendarOpen] = useState(false)
+    const [calendarEntries, setCalendarEntries] = useState([])
 
     const handleBurgerClick = () => {
         if (window.innerWidth < 1024) {
@@ -34,7 +35,7 @@ const StaffLayout = () => {
                         onToggleSidebar={handleBurgerClick}
                     />
                     <main className="flex-1 overflow-y-auto p-2 md:p-6 lg:p-4">
-                        <Outlet context={{ toggleCalendar: () => setCalendarOpen(true) }} />
+                        <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
                         <StaffChatWidget />
                     </main>
                 </div>
@@ -43,6 +44,7 @@ const StaffLayout = () => {
             <StaffCalendarDrawer
                 isOpen={calendarOpen}
                 onClose={() => setCalendarOpen(false)}
+                schedules={calendarEntries}
             />
         </div>
     )

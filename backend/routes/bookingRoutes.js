@@ -12,6 +12,8 @@ import {
   getBookingQR,
   markAsPickedUp,
   generateMissingBookingQRCodes,
+  archiveBooking,
+  unarchiveBooking,
 } from '../controllers/bookingController.js';
 import { authMiddleware, adminMiddleware, staffMiddleware } from '../middleware/auth.js';
 
@@ -27,6 +29,10 @@ router.get('/', authMiddleware, getBookings);
 // More specific routes before generic /:id routes
 router.put('/:id/cancel', authMiddleware, cancelBooking);
 router.get('/:id/qr', authMiddleware, getBookingQR);
+
+// Admin only - archive/unarchive bookings
+router.post('/:id/archive', authMiddleware, adminMiddleware, archiveBooking);
+router.post('/:id/unarchive', authMiddleware, adminMiddleware, unarchiveBooking);
 
 // QR code scanning - mark booking as picked up
 router.post('/qr/pickup', authMiddleware, markAsPickedUp);
