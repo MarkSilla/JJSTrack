@@ -1,13 +1,25 @@
-import api from './api.js';
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:4000/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export const chatApi = {
   getConversations: async (params = {}) => {
     const response = await api.get('/chat/conversations', { params });
-    return response.data;
-  },
-
-  openOrderConversation: async (payload) => {
-    const response = await api.post('/chat/conversations/order', payload);
     return response.data;
   },
 
@@ -27,4 +39,4 @@ export const chatApi = {
   },
 };
 
-export default chatApi;
+export default api;

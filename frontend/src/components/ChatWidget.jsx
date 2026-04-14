@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck } from "lucide-react";
+import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck, User, Users } from "lucide-react";
 import img from "../assets/img";
 import { chatApi } from "../../services/chatApi";
 
@@ -7,7 +7,7 @@ const mapApiMessage = (raw) => {
   const senderRole = String(raw?.senderRole || "").toLowerCase();
   return {
     id: raw?.id || raw?._id || Date.now(),
-    sender: raw?.sender || (senderRole === "user" ? "client" : "admin"),
+    sender: raw?.sender || (senderRole === "user" ? "client" : senderRole === "staff" ? "staff" : "admin"),
     message: raw?.message || "",
     timestamp: raw?.timestamp || raw?.createdAt || new Date().toISOString(),
     type: raw?.type || (raw?.imageUrl ? "image" : "text"),
@@ -24,27 +24,51 @@ const fileToDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
+const isTailorConversation = (conversation) => Boolean(conversation?.assignedStaffId);
+
+const getConversationDisplayName = (conversation) => {
+  if (!conversation) return "Admin";
+
+  return isTailorConversation(conversation)
+    ? (conversation.assignedStaffName || "Tailor")
+    : "Admin";
+};
+
+const getConversationInitial = (conversation) =>
+  getConversationDisplayName(conversation).charAt(0).toUpperCase();
+
+const getIncomingSenderLabel = (sender) => {
+  if (sender === "staff") return "Tailor";
+  if (sender === "admin") return "Admin";
+  return "";
+};
+
 const ChatBubble = ({ sender, message, timestamp, type, imageUrl, status }) => {
-  const isClient = sender === "client";
   const timeString = new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isClient = sender === "client";
+  const senderLabel = isClient ? "" : getIncomingSenderLabel(sender);
 
   return (
     <div className={`flex w-full ${isClient ? "justify-end" : "justify-start"} mb-4`}>
       <div
-        className={`max-w-[75%] md:max-w-[65%] px-4 py-2.5 shadow-sm relative ${isClient
+        className={`max-w-[80%] md:max-w-[70%] px-4 py-2.5 shadow-sm relative ${isClient
           ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
           : "bg-gray-700 text-white rounded-2xl rounded-bl-sm border border-gray-800"
           }`}
       >
+        {!isClient && senderLabel ? (
+          <p className="mb-1 text-[11px] font-semibold text-slate-300">{senderLabel}</p>
+        ) : null}
+
         {type === "image" && imageUrl ? (
           <div className="mb-2">
-            <img src={imageUrl} alt="Chat attachment" className="rounded-lg max-h-48 object-cover border border-white/20" />
+            <img src={imageUrl} alt="Chat attachment" className="rounded-lg max-h-48 object-cover border border-black/10" />
           </div>
         ) : null}
 
         {message && <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>}
 
-        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isClient ? "text-blue-200" : "text-slate-300"}`}>
+        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isClient ? "text-slate-50" : "text-slate-300"}`}>
           {timeString}
           {isClient && status === "read" && <CheckCheck className="w-3 h-3 text-blue-200" />}
           {isClient && status === "sent" && <Check className="w-3 h-3 text-blue-200" />}
@@ -59,12 +83,12 @@ const ImagePreview = ({ imageFile, onRemove }) => {
   const objectUrl = URL.createObjectURL(imageFile);
 
   return (
-    <div className="px-4 pt-3 pb-1">
+    <div className="px-4 pt-3 pb-1 border-t border-stone-200 bg-white">
       <div className="relative inline-block">
         <img src={objectUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-stone-200 shadow-sm" />
         <button
           onClick={onRemove}
-          className="absolute -top-2 -right-2 bg-stone-800 text-white rounded-full p-1 shadow hover:bg-red-500 transition-colors"
+          className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow hover:bg-red-500 transition-colors"
           type="button"
         >
           <X className="w-3 h-3" />
@@ -100,14 +124,14 @@ const InputArea = ({ onSendMessage }) => {
   };
 
   return (
-    <form onSubmit={handleSend} className="bg-stone-50 border-t border-stone-200">
+    <form onSubmit={handleSend} className="bg-stone-50 border-t border-stone-200 shrink-0">
       <ImagePreview imageFile={imageFile} onRemove={() => setImageFile(null)} />
 
       <div className="flex items-center gap-2 p-3">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-stone-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors shrink-0"
+          className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200 rounded-full transition-colors shrink-0"
         >
           <Paperclip className="w-5 h-5" />
         </button>
@@ -127,8 +151,8 @@ const InputArea = ({ onSendMessage }) => {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 bg-white border border-stone-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
+          placeholder="Type your message..."
+          className="flex-1 bg-white border border-stone-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all shadow-sm"
         />
 
         <button
@@ -151,7 +175,7 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoa
   }, [messages, isTyping]);
 
   return (
-    <div className="flex-1 bg-stone-50 overflow-y-auto p-4">
+    <div className="flex-1 bg-white overflow-y-auto p-4">
       {isLoading ? (
         <div className="h-full flex items-center justify-center text-stone-400 text-sm">Loading messages...</div>
       ) : messages.length === 0 ? (
@@ -199,57 +223,155 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoa
   );
 };
 
-const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText }) => {
+const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText, conversations, adminConversations, tailorConversations, selectedConversation, onSelectConversation }) => {
   return (
     <div
-      className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-300 ${isFullScreen
+      className={`fixed z-[9999] flex bg-white shadow-2xl overflow-hidden transition-all duration-300 ${isFullScreen
         ? "inset-0 md:inset-4 md:rounded-2xl"
-        : "bottom-0 right-0 w-full h-[80vh] md:bottom-24 md:right-8 md:w-[380px] md:h-[600px] md:rounded-2xl rounded-t-2xl"
+        : "bottom-0 right-0 w-full h-[80vh] md:bottom-24 md:right-8 md:w-[800px] md:h-[600px] md:rounded-2xl rounded-t-2xl"
         }`}
     >
-      <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center overflow-hidden shadow-sm">
-            <img src={img.jjslogo1} alt="JJS" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; }} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-sm">JJS-Admin</h3>
-            <p className="text-[10px] text-blue-200 flex items-center gap-1 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block shadow-sm" />
-              {isTyping ? "Admin is typing..." : "Active"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={toggleFullScreen}
-            className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors hidden md:block"
-            type="button"
-          >
-            {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors"
-            type="button"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <MessageList
-        messages={messages}
-        isTyping={isTyping}
-        quickReplies={quickReplies}
-        onSendQuickReply={(text) => onSendMessage({ message: text, type: "text", imageUrl: null })}
-        isLoading={isLoading}
-        errorText={errorText}
+      <ConversationList
+        adminConversations={adminConversations}
+        tailorConversations={tailorConversations}
+        selectedConversation={selectedConversation}
+        onSelect={onSelectConversation}
       />
-      <InputArea onSendMessage={onSendMessage} />
+      <div className="flex-1 flex flex-col">
+        <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center overflow-hidden shadow-sm">
+              <img src={img.jjslogo1} alt="JJS" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = "none"; }} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">
+                {getConversationDisplayName(selectedConversation)}
+              </h3>
+              <p className="text-[10px] text-blue-200 flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block shadow-sm" />
+                {isTyping ? "Typing..." : "Active"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleFullScreen}
+              className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors hidden md:block"
+              type="button"
+            >
+              {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors"
+              type="button"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <MessageList
+          messages={messages}
+          isTyping={isTyping}
+          quickReplies={quickReplies}
+          onSendQuickReply={(text) => onSendMessage({ message: text, type: "text", imageUrl: null })}
+          isLoading={isLoading}
+          errorText={errorText}
+        />
+        <InputArea onSendMessage={onSendMessage} />
+      </div>
     </div>
   );
 };
+
+const ConversationItem = ({ conversation, isSelected, onClick }) => {
+  const statusColor = "bg-green-500"; // Assume online
+
+  return (
+    <div
+      onClick={() => onClick(conversation)}
+      className={`relative p-4 border-b border-stone-100 cursor-pointer flex gap-3 transition-all hover:bg-stone-100 ${isSelected ? "bg-blue-100 border-l-4 border-blue-500" : "bg-white border-l-4 border-transparent"
+        }`}
+    >
+      <div className="relative shrink-0">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm bg-stone-200 text-stone-600">
+          {getConversationInitial(conversation)}
+        </div>
+        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${statusColor}`} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start mb-0.5">
+          <h4 className={`font-semibold text-sm truncate pr-2 ${conversation.unreadCount > 0 ? "text-stone-900" : "text-stone-700"}`}>
+            {getConversationDisplayName(conversation)}
+          </h4>
+          <span className="text-[10px] text-stone-400 shrink-0 mt-0.5">
+            {conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center gap-2">
+          <p className={`text-xs truncate ${conversation.unreadCount > 0 ? "font-semibold text-blue-700" : "text-stone-500"}`}>
+            {conversation.lastMessagePreview || "No messages yet..."}
+          </p>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {conversation.unreadCount > 0 && (
+              <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {conversation.unreadCount}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ConversationList = ({ adminConversations, tailorConversations, selectedConversation, onSelect }) => (
+  <div className="w-80 bg-white border-r border-stone-200 flex flex-col">
+    <div className="p-4 border-b border-stone-200">
+      <h3 className="font-semibold text-stone-800">Conversations</h3>
+    </div>
+    <div className="flex-1 overflow-y-auto">
+      {adminConversations.length > 0 && (
+        <div>
+          <div className="px-4 py-2 bg-stone-100 text-xs font-semibold text-stone-600 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Admin
+          </div>
+          {adminConversations.map((conv) => (
+            <ConversationItem
+              key={conv.id}
+              conversation={conv}
+              isSelected={selectedConversation?.id === conv.id}
+              onClick={onSelect}
+            />
+          ))}
+        </div>
+      )}
+      {tailorConversations.length > 0 && (
+        <div>
+          <div className="px-4 py-2 bg-stone-100 text-xs font-semibold text-stone-600 flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Tailors
+          </div>
+          {tailorConversations.map((conv) => (
+            <ConversationItem
+              key={conv.id}
+              conversation={conv}
+              isSelected={selectedConversation?.id === conv.id}
+              onClick={onSelect}
+            />
+          ))}
+        </div>
+      )}
+      {adminConversations.length === 0 && tailorConversations.length === 0 && (
+        <div className="p-4 text-center text-stone-500 text-sm">No conversations</div>
+      )}
+    </div>
+  </div>
+);
 
 const ChatLauncher = ({ onClick, unreadCount }) => {
   return (
@@ -276,6 +398,8 @@ export default function ChatWidget() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
 
   const QUICK_REPLIES = ["Track my order", "Pricing details", "Talk to an agent"];
 
@@ -284,25 +408,29 @@ export default function ChatWidget() {
     if (!token) return;
     try {
       const response = await chatApi.getConversations();
-      const conversation = response?.conversations?.[0];
-      setUnreadCount(Number(conversation?.unreadCount || 0));
+      const convs = Array.isArray(response?.conversations) ? response.conversations : [];
+      setConversations(convs);
+      if (convs.length > 0 && !selectedConversation) {
+        setSelectedConversation(convs[0]);
+      }
+      const totalUnread = convs.reduce((sum, c) => sum + Number(c.unreadCount || 0), 0);
+      setUnreadCount(totalUnread);
     } catch (error) {
       console.error("Load conversation summary error:", error);
     }
-  }, []);
+  }, [selectedConversation]);
 
-  const loadMessages = useCallback(async (silent = false) => {
+  const loadMessages = useCallback(async (conversationId, silent = false) => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) return;
+    if (!token || !conversationId) return;
     try {
       if (!silent) setIsLoading(true);
-      const response = await chatApi.getMessages();
+      const response = await chatApi.getMessages({ conversationId });
       const nextMessages = Array.isArray(response?.messages)
         ? response.messages.map(mapApiMessage)
         : [];
 
       setMessages(nextMessages);
-      setUnreadCount(0);
       setErrorText("");
     } catch (error) {
       console.error("Load messages error:", error);
@@ -313,6 +441,7 @@ export default function ChatWidget() {
   }, []);
 
   const handleSendMessage = useCallback(async (msgObj) => {
+    if (!selectedConversation) return;
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       id: tempId,
@@ -328,17 +457,17 @@ export default function ChatWidget() {
     setErrorText("");
 
     try {
-      const response = await chatApi.sendMessage(msgObj);
+      const payload = { ...msgObj, conversationId: selectedConversation.id };
+      const response = await chatApi.sendMessage(payload);
       const persisted = mapApiMessage(response?.chatMessage || {});
 
       setMessages((prev) => prev.map((message) => (message.id === tempId ? persisted : message)));
-      setUnreadCount(0);
     } catch (error) {
       console.error("Send message error:", error);
       setMessages((prev) => prev.filter((message) => message.id !== tempId));
       setErrorText(error?.response?.data?.message || "Failed to send message");
     }
-  }, []);
+  }, [selectedConversation]);
 
   useEffect(() => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -349,19 +478,28 @@ export default function ChatWidget() {
   }, [loadConversationSummary]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    if (!isOpen || !selectedConversation) return undefined;
 
-    loadMessages(false);
+    loadMessages(selectedConversation.id, false);
     const intervalId = setInterval(() => {
-      loadMessages(true);
+      loadMessages(selectedConversation.id, true);
     }, 3000);
 
     return () => clearInterval(intervalId);
-  }, [isOpen, loadMessages]);
+  }, [isOpen, selectedConversation, loadMessages]);
 
   useEffect(() => {
     if (!isOpen) setIsFullScreen(false);
   }, [isOpen]);
+
+  const handleSelectConversation = useCallback((conversation) => {
+    setSelectedConversation(conversation);
+    setMessages([]);
+    setErrorText("");
+  }, []);
+
+  const adminConversations = conversations.filter(c => !c.assignedStaffId);
+  const tailorConversations = conversations.filter(c => c.assignedStaffId);
 
   const isSmallScreen = typeof window !== "undefined" ? window.innerWidth < 768 : false;
 
@@ -388,6 +526,11 @@ export default function ChatWidget() {
             quickReplies={QUICK_REPLIES}
             isLoading={isLoading}
             errorText={errorText}
+            conversations={conversations}
+            adminConversations={adminConversations}
+            tailorConversations={tailorConversations}
+            selectedConversation={selectedConversation}
+            onSelectConversation={handleSelectConversation}
           />
         </>
       )}

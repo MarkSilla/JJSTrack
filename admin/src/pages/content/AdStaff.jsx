@@ -4,12 +4,15 @@ import StatCard from "./Staff/StatCard";
 import AddEmployeeModal from "./Staff/AddEmployeeModal";
 import ProfilePanel from "./Staff/ProfilePanel";
 import { staffApi } from "../../services/staffApi";
+import { bookingApi } from "../../services/bookingApi";
 
 const EMP_TYPES = ["All Types", "Full Time", "Part Time", "Contractual"];
 const STATUSES = ["All Status", "Active", "Inactive", "Suspended"];
 const SORT_OPTS = ["Newest", "Oldest", "Name A-Z"];
 
 const COLOR_PALETTE = ["#2563EB", "#0891B2", "#7C3AED", "#059669", "#D97706", "#BE185D", "#1D4ED8", "#0F766E", "#EA580C", "#64748B"];
+const BOOKING_DONE_STATUSES = new Set(["completed", "released"]);
+const BOOKING_EXCLUDED_STATUSES = new Set(["cancelled"]);
 
 const toDateOnly = (value) => {
     if (!value) return "";
@@ -40,6 +43,83 @@ const pickColor = (seed = "") => {
     if (!seed) return COLOR_PALETTE[0];
     const index = [...String(seed)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % COLOR_PALETTE.length;
     return COLOR_PALETTE[index];
+};
+
+const normalizeKey = (value = "") => String(value).trim().toLowerCase();
+
+const clampPercentage = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+
+const getEmployeeMatchKeys = (employee = {}) => {
+    const fullName = employee.fullName || employee.name || `${employee.firstName || ""} ${employee.lastName || ""}`.replace(/\s+/g, " ").trim();
+    return new Set(
+        [
+            employee._id,
+            employee.id,
+            employee.employeeId,
+            employee.name,
+            employee.fullName,
+            fullName,
+            employee.email,
+            `${employee.firstName || ""} ${employee.lastName || ""}`.replace(/\s+/g, " ").trim(),
+        ].map(normalizeKey).filter(Boolean)
+    );
+};
+
+const matchesEmployeeBooking = (booking, employee) => {
+    const assignedTailor = normalizeKey(booking?.assignedTailor);
+    if (!assignedTailor) return false;
+    return getEmployeeMatchKeys(employee).has(assignedTailor);
+};
+
+const getBookingReference = (booking = {}) => {
+    const rawId = booking?._id || booking?.id || "";
+    const suffix = String(rawId).slice(-6).toUpperCase();
+    return suffix ? `BK-${suffix}` : "Booking";
+};
+
+const getBookingTaskLabel = (booking = {}) => {
+    const steps = Array.isArray(booking.steps) ? booking.steps : [];
+    const activeStep = steps.find((step) => step?.active) || steps.find((step) => !step?.done);
+    const statusText = String(booking.status || "").trim();
+    const stage = activeStep?.label || statusText || "Pending";
+    const service = booking.service || booking.bookingType || "Service";
+    return `${getBookingReference(booking)} • ${service} • ${stage}`;
+};
+
+const getCleanBookingTaskLabel = (booking = {}) =>
+    String(getBookingTaskLabel(booking))
+        .replace(/â€¢/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
+
+const buildBookingTaskLabel = (booking = {}) => {
+    const steps = Array.isArray(booking.steps) ? booking.steps : [];
+    const activeStep = steps.find((step) => step?.active) || steps.find((step) => !step?.done);
+    const statusText = String(booking.status || "").trim();
+    const stage = activeStep?.label || statusText || "Pending";
+    const service = booking.service || booking.bookingType || "Service";
+    return `${getBookingReference(booking)} - ${service} - ${stage}`;
+};
+
+const deriveEmployeeMetrics = (employee, bookings) => {
+    const matchedBookings = (Array.isArray(bookings) ? bookings : []).filter((booking) => matchesEmployeeBooking(booking, employee));
+    const trackedBookings = matchedBookings.filter((booking) => !BOOKING_EXCLUDED_STATUSES.has(normalizeKey(booking.status)));
+    const completedBookings = trackedBookings.filter((booking) => BOOKING_DONE_STATUSES.has(normalizeKey(booking.status)));
+    const activeBookings = trackedBookings.filter((booking) => !BOOKING_DONE_STATUSES.has(normalizeKey(booking.status)));
+
+    const bookingTasks = activeBookings.map(buildBookingTaskLabel);
+    const storedTasks = Array.isArray(employee.tasks) ? employee.tasks.filter(Boolean) : [];
+    const combinedTasks = Array.from(new Set([...bookingTasks, ...storedTasks]));
+
+    return {
+        orders: trackedBookings.length > 0 ? trackedBookings.length : employee.orders,
+        productivity: trackedBookings.length > 0
+            ? clampPercentage((completedBookings.length / trackedBookings.length) * 100)
+            : clampPercentage(employee.productivity),
+        tasks: combinedTasks,
+        activeBookings: activeBookings.length,
+        completedBookings: completedBookings.length,
+    };
 };
 
 const mapStaffToEmployee = (staff, index = 0) => {
@@ -220,6 +300,7 @@ const EmployeeCard = ({ emp, onView, onDeactivate }) => {
 
 const AdStaff = () => {
     const [employees, setEmployees] = useState([]);
+    const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState("");
     const [search, setSearch] = useState("");
@@ -237,15 +318,33 @@ const AdStaff = () => {
         try {
             setLoading(true);
             setApiError("");
-            const response = await staffApi.getAllStaff();
+            const [staffResult, bookingResult] = await Promise.allSettled([
+                staffApi.getAllStaff(),
+                bookingApi.getAllBookings(),
+            ]);
+
+            if (staffResult.status !== "fulfilled") {
+                throw staffResult.reason;
+            }
+
+            const response = staffResult.value;
             const rawStaff = Array.isArray(response?.staff) ? response.staff : Array.isArray(response) ? response : [];
             const mapped = rawStaff.map((staff, index) => mapStaffToEmployee(staff, index));
             setEmployees(mapped);
             setSelected(prev => (prev ? mapped.find(item => item._id === prev._id) || null : null));
+
+            if (bookingResult.status === "fulfilled") {
+                const rawBookings = Array.isArray(bookingResult.value?.bookings) ? bookingResult.value.bookings : [];
+                setBookings(rawBookings);
+            } else {
+                console.error("Failed to fetch bookings for staff metrics:", bookingResult.reason);
+                setBookings([]);
+            }
         } catch (error) {
             console.error("Failed to fetch staff:", error);
             setApiError(readErrorMessage(error, "Failed to load staff list"));
             setEmployees([]);
+            setBookings([]);
         } finally {
             setLoading(false);
         }
@@ -265,8 +364,15 @@ const AdStaff = () => {
         return () => window.removeEventListener('edit-staff', handleEdit);
     }, []);
 
+    const employeesWithMetrics = useMemo(() => (
+        employees.map((employee) => ({
+            ...employee,
+            ...deriveEmployeeMetrics(employee, bookings),
+        }))
+    ), [employees, bookings]);
+
     const filtered = useMemo(() => {
-        let list = [...employees];
+        let list = [...employeesWithMetrics];
         if (search) list = list.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase()));
         if (typeFilter !== "All Types") list = list.filter(e => e.type === typeFilter);
         if (statusFilter !== "All Status") list = list.filter(e => e.status === statusFilter);
@@ -274,7 +380,12 @@ const AdStaff = () => {
         if (sortBy === "Oldest") list.sort((a, b) => new Date(a.hired) - new Date(b.hired));
         if (sortBy === "Name A-Z") list.sort((a, b) => a.name.localeCompare(b.name));
         return list;
-    }, [employees, search, typeFilter, statusFilter, sortBy]);
+    }, [employeesWithMetrics, search, typeFilter, statusFilter, sortBy]);
+
+    const selectedEmployee = useMemo(() => {
+        if (!selected?._id) return selected;
+        return employeesWithMetrics.find((item) => item._id === selected._id) || selected;
+    }, [employeesWithMetrics, selected]);
 
     const stats = useMemo(() => ([
         { label: "Total Employees", value: employees.length, icon: UsersIcon, color: "#2563EB", sub: `${employees.filter(e => e.status === "Active").length} currently active` },
@@ -497,7 +608,7 @@ const AdStaff = () => {
                     onAdd={saveEmployee}
                 />
             )}
-            {selected && <ProfilePanel emp={selected} onClose={() => setSelected(null)} />}
+            {selectedEmployee && <ProfilePanel emp={selectedEmployee} onClose={() => setSelected(null)} />}
         </div>
     );
 };

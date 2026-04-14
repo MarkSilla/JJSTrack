@@ -1,518 +1,584 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck,
-    Search, Filter, ArrowLeft, Pin, ShieldAlert, Circle
-} from "lucide-react";
-import img from "../assets/img";
+    Search, ArrowLeft, ShieldAlert, Circle
+} from 'lucide-react';
+import { chatApi } from '../services/chatApi';
 
-// =============================================================================
-// MOCK DATA & STATE INITIALIZATION
-// TODO (REAL DATA): Replace these static arrays with API/Supabase fetches
-// =============================================================================
-const INITIAL_CLIENTS = [
-    { id: 'c1', name: 'John Doe', avatar: 'JD', unreadCount: 2, status: 'online', lastOrder: '#8492' },
-    { id: 'c2', name: 'Maria Garcia', avatar: 'MG', unreadCount: 0, status: 'offline', lastOrder: '#8450' }
-];
+const fileToDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 
-const INITIAL_MESSAGES = {
-    'c1': [
-        { id: 1, sender: 'system', message: 'Order #8492 Payment Confirmed', timestamp: new Date(Date.now() - 3600000).toISOString(), type: 'system' },
-        { id: 2, sender: 'client', message: 'Hi! When will my order be ready for pickup?', timestamp: new Date(Date.now() - 1800000).toISOString(), type: 'text', status: 'read' },
-        { id: 3, sender: 'client', message: 'Can you expedite it?', timestamp: new Date(Date.now() - 1700000).toISOString(), type: 'text', status: 'read' }
-    ],
-    'c2': [
-        { id: 1, sender: 'staff', message: 'Your repair is complete and ready for pickup.', timestamp: new Date(Date.now() - 86400000).toISOString(), type: 'text', status: 'read' },
-        { id: 2, sender: 'client', message: 'Thanks, I will pick it up today.', timestamp: new Date(Date.now() - 82400000).toISOString(), type: 'text', status: 'read' }
-    ]
+const getInitials = (name) => {
+    const value = String(name || '').trim();
+    if (!value) return 'U';
+    return value
+        .split(' ')
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('');
 };
 
-// =============================================================================
-// ChatBubble Component
-// =============================================================================
+const mapConversation = (conversation) => {
+    const fullName = conversation?.user?.fullName || 'Unknown User';
+    return {
+        id: conversation?.id || conversation?._id,
+        name: fullName,
+        avatar: getInitials(fullName),
+        unreadCount: Number(conversation?.unreadCount || 0),
+        status: 'online',
+        subjectLabel: conversation?.subjectLabel || '',
+        subjectTitle: conversation?.subjectTitle || '',
+        assignedStaffName: conversation?.assignedStaffName || '',
+        lastOrder: conversation?.subjectLabel || conversation?.subjectTitle || conversation?.user?.email || '',
+        lastMessagePreview: conversation?.lastMessagePreview || '',
+        lastMessageAt: conversation?.lastMessageAt || null,
+    };
+};
+
+const mapMessage = (message) => {
+    const senderRole = String(message?.senderRole || '').toLowerCase();
+    return {
+        id: message?.id || message?._id || Date.now(),
+        sender: senderRole === 'user' ? 'client' : senderRole === 'staff' ? 'staff' : senderRole === 'system' ? 'system' : 'admin',
+        message: message?.message || '',
+        timestamp: message?.timestamp || message?.createdAt || new Date().toISOString(),
+        type: message?.type || (message?.imageUrl ? 'image' : 'text'),
+        imageUrl: message?.imageUrl || null,
+        status: message?.status || 'sent',
+        senderRole,
+    };
+};
+
 const StaffChatBubble = ({ sender, message, timestamp, type, imageUrl, status }) => {
     const timeString = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    if (type === 'system') {
+    if (sender === 'system') {
         return (
-            <div className="flex w-full justify-center mb-4 my-2">
-                <span className="bg-blue-50 text-blue-700 text-[11px] font-semibold px-4 py-1.5 rounded-full border border-blue-100 shadow-sm">
+            <div className="my-2 flex w-full justify-center">
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-[11px] font-semibold text-blue-700 shadow-sm">
                     {message}
                 </span>
             </div>
         );
     }
 
-    const isStaff = sender === "staff";
+    const isStaff = sender === 'staff';
 
     return (
-        <div className={`flex w-full ${isStaff ? "justify-end" : "justify-start"} mb-4`}>
+        <div className={`mb-4 flex w-full ${isStaff ? 'justify-end' : 'justify-start'}`}>
             <div
-                className={`max-w-[80%] md:max-w-[70%] px-4 py-2.5 shadow-sm relative ${isStaff
-                    ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
-                    : "bg-gray-700 text-white rounded-2xl rounded-bl-sm border border-gray-800"
-                    }`}
+                className={`relative max-w-[80%] px-4 py-2.5 shadow-sm ${
+                    isStaff
+                        ? 'rounded-2xl rounded-br-sm bg-blue-600 text-white'
+                        : 'rounded-2xl rounded-bl-sm border border-gray-800 bg-gray-700 text-white'
+                }`}
             >
-                {type === "image" && imageUrl ? (
+                {type === 'image' && imageUrl ? (
                     <div className="mb-2">
-                        <img src={imageUrl} alt="Chat attachment" className="rounded-lg max-h-48 object-cover border border-black/10" />
+                        <img src={imageUrl} alt="Chat attachment" className="max-h-48 rounded-lg border border-black/10 object-cover" />
                     </div>
                 ) : null}
 
-                {message && <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>}
+                {message && <p className="whitespace-pre-wrap text-sm leading-relaxed">{message}</p>}
 
-                <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${isStaff ? "text-slate-50" : "text-slate-300 "}`}>
+                <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isStaff ? 'text-blue-200' : 'text-slate-300'}`}>
                     {timeString}
-                    {isStaff && status === "read" && <CheckCheck className="w-3 h-3 text-blue-200" />}
-                    {isStaff && status === "sent" && <Check className="w-3 h-3 text-blue-200" />}
+                    {isStaff && status === 'read' && <CheckCheck className="h-3 w-3 text-blue-200" />}
+                    {isStaff && status === 'sent' && <Check className="h-3 w-3 text-blue-200" />}
                 </div>
             </div>
         </div>
     );
 };
 
-// =============================================================================
-// Client ListItem Component
-// =============================================================================
-const ClientListItem = ({ client, lastMessage, isActive, onClick }) => {
-    const statusColor = {
-        online: 'bg-green-500',
-        away: 'bg-amber-400',
-        offline: 'bg-stone-300'
-    }[client.status] || 'bg-stone-300';
+const ConversationListItem = ({ conversation, isActive, onClick }) => (
+    <div
+        onClick={onClick}
+        className={`relative flex cursor-pointer gap-3 border-b border-stone-100 p-4 transition-all hover:bg-stone-100 ${
+            isActive ? 'border-l-4 border-blue-500 bg-blue-100' : 'border-l-4 border-transparent bg-white'
+        }`}
+    >
+        <div className="relative shrink-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-200 text-lg font-bold text-stone-600 shadow-sm">
+                {conversation.avatar}
+            </div>
+            <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500" />
+        </div>
 
-    let snippet = lastMessage?.message || 'No messages yet...';
-    if (lastMessage?.type === 'image') snippet = '📷 Image attachment';
-    if (lastMessage?.type === 'system') snippet = `[System] ${lastMessage.message}`;
-
-    return (
-        <div
-            onClick={onClick}
-            className={`relative p-4 border-b border-stone-100 cursor-pointer flex gap-3 transition-all hover:bg-stone-100 ${isActive ? 'bg-blue-100 border-l-4 border-blue-500' : 'bg-white border-l-4 border-transparent'}`}
-        >
-            <div className="relative shrink-0">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm bg-stone-200 text-stone-600`}>
-                    {client.avatar}
-                </div>
-                <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${statusColor}`}></div>
+        <div className="min-w-0 flex-1">
+            <div className="mb-0.5 flex items-start justify-between">
+                <h4 className={`truncate pr-2 text-sm font-semibold ${conversation.unreadCount > 0 ? 'text-stone-900' : 'text-stone-700'}`}>
+                    {conversation.name}
+                </h4>
+                <span className="mt-0.5 shrink-0 text-[10px] text-stone-400">
+                    {conversation.lastMessageAt
+                        ? new Date(conversation.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : ''}
+                </span>
             </div>
 
-            <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-0.5">
-                    <h4 className={`font-semibold text-sm truncate pr-2 ${client.unreadCount > 0 ? 'text-stone-900' : 'text-stone-700'}`}>
-                        {client.name}
-                    </h4>
-                    <span className="text-[10px] text-stone-400 shrink-0 mt-0.5">
-                        {lastMessage ? new Date(lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+            <p className="truncate text-[11px] font-semibold text-blue-600">{conversation.subjectLabel || conversation.subjectTitle || 'Assigned order chat'}</p>
+
+            <div className="mt-1 flex items-center justify-between gap-2">
+                <p className={`truncate text-xs ${conversation.unreadCount > 0 ? 'font-semibold text-blue-700' : 'text-stone-500'}`}>
+                    {conversation.lastMessagePreview || 'No messages yet...'}
+                </p>
+                {conversation.unreadCount > 0 && (
+                    <span className="min-w-[20px] rounded-full bg-blue-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
+                        {conversation.unreadCount}
                     </span>
-                </div>
-
-                <div className="flex justify-between items-center gap-2">
-                    <p className={`text-xs truncate ${client.unreadCount > 0 ? 'font-semibold text-blue-700' : 'text-stone-500'}`}>
-                        {snippet}
-                    </p>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        {client.unreadCount > 0 && (
-                            <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                                {client.unreadCount}
-                            </span>
-                        )}
-                    </div>
-                </div>
+                )}
             </div>
         </div>
-    );
-};
+    </div>
+);
 
-// =============================================================================
-// ImagePreview Component
-// =============================================================================
 const ImagePreview = ({ imageFile, onRemove }) => {
     if (!imageFile) return null;
     const objectUrl = URL.createObjectURL(imageFile);
+
     return (
-        <div className="px-4 pt-3 pb-1 border-t border-stone-200 bg-white">
+        <div className="border-t border-stone-200 bg-white px-4 pb-1 pt-3">
             <div className="relative inline-block">
-                <img src={objectUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-stone-200 shadow-sm" />
-                <button onClick={onRemove} className="absolute -top-2 -right-2 bg-blue-600 text-white rounded-full p-1 shadow hover:bg-red-500 transition-colors">
-                    <X className="w-3 h-3" />
+                <img src={objectUrl} alt="Preview" className="h-20 w-20 rounded-lg border border-stone-200 object-cover shadow-sm" />
+                <button onClick={onRemove} className="absolute -right-2 -top-2 rounded-full bg-blue-600 p-1 text-white shadow transition-colors hover:bg-red-500" type="button">
+                    <X className="h-3 w-3" />
                 </button>
             </div>
         </div>
     );
 };
 
-// =============================================================================
-// Staff InputArea Component
-// =============================================================================
-const InputArea = ({ onSendMessage }) => {
-    const [text, setText] = useState("");
+const InputArea = ({ onSendMessage, disabled }) => {
+    const [text, setText] = useState('');
     const [imageFile, setImageFile] = useState(null);
+    const [sending, setSending] = useState(false);
     const fileInputRef = useRef(null);
 
-    const handleSend = (e) => {
-        e.preventDefault();
-        if (!text.trim() && !imageFile) return;
+    const handleSend = async (event) => {
+        event.preventDefault();
+        if ((!text.trim() && !imageFile) || sending || disabled) return;
 
-        // TODO (REAL DATA): Upload `imageFile` to your server/Supabase and use the public URL here instead of URL.createObjectURL
-        let messageObj = {
-            message: text.trim(),
-            type: imageFile ? "image" : "text",
-            imageUrl: imageFile ? URL.createObjectURL(imageFile) : null
-        };
-
-        onSendMessage(messageObj);
-        setText("");
-        setImageFile(null);
+        try {
+            setSending(true);
+            const imageUrl = imageFile ? await fileToDataUrl(imageFile) : null;
+            await onSendMessage({
+                message: text.trim(),
+                type: imageUrl ? 'image' : 'text',
+                imageUrl,
+            });
+            setText('');
+            setImageFile(null);
+        } finally {
+            setSending(false);
+        }
     };
 
     return (
-        <form onSubmit={handleSend} className="bg-stone-50 border-t border-stone-200 shrink-0">
+        <form onSubmit={handleSend} className="shrink-0 border-t border-stone-200 bg-stone-50">
             <ImagePreview imageFile={imageFile} onRemove={() => setImageFile(null)} />
 
             <div className="flex items-center gap-2 p-3">
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200 rounded-full transition-colors shrink-0"
+                    className="shrink-0 rounded-full p-2 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
                 >
-                    <Paperclip className="w-5 h-5" />
+                    <Paperclip className="h-5 w-5" />
                 </button>
-                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]);
-                }} />
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={(event) => {
+                        if (event.target.files && event.target.files[0]) setImageFile(event.target.files[0]);
+                    }}
+                />
 
                 <input
                     type="text"
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Reply as Staff..."
-                    className="flex-1 bg-white border border-stone-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 transition-all shadow-sm"
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder="Reply to this customer..."
+                    disabled={disabled || sending}
+                    className="flex-1 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm shadow-sm transition-all focus:border-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-400"
                 />
 
                 <button
                     type="submit"
-                    disabled={!text.trim() && !imageFile}
-                    className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
+                    disabled={(!text.trim() && !imageFile) || sending || disabled}
+                    className="shrink-0 rounded-full bg-blue-600 p-2 text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    <Send className="w-5 h-5 ml-0.5" />
+                    <Send className="ml-0.5 h-5 w-5" />
                 </button>
             </div>
         </form>
     );
 };
 
-// =============================================================================
-// Chat Window (Active Conversation) Component
-// =============================================================================
-const ActiveConversation = ({ client, messages, onSendMessage, onBack, isTyping, quickReplies }) => {
+const ActiveConversation = ({ conversation, messages, onSendMessage, onBack, isLoading, errorText }) => {
     const endOfMessagesRef = useRef(null);
 
     useEffect(() => {
-        endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isTyping]);
+        endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
-    if (!client) {
+    if (!conversation) {
         return (
-            <div className="flex-1 bg-stone-50 flex flex-col items-center justify-center text-center p-8">
-                <div className="w-20 h-20 bg-stone-200 text-stone-400 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-10 h-10" />
+            <div className="flex flex-1 flex-col items-center justify-center bg-stone-50 p-8 text-center">
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-stone-200 text-stone-400">
+                    <MessageCircle className="h-10 w-10" />
                 </div>
-                <h2 className="text-xl font-bold text-stone-700 mb-2">JJS Chat</h2>
-                <p className="text-stone-500 text-sm max-w-sm">Select a client from the inbox panel on the left to view their conversation history and reply to their inquiries.</p>
+                <h2 className="mb-2 text-xl font-bold text-stone-700">Tailor Inbox</h2>
+                <p className="max-w-sm text-sm text-stone-500">Select an assigned order chat from the left to respond directly to the customer.</p>
             </div>
         );
     }
 
-    const statusColor = { online: 'text-green-500', away: 'text-amber-500', offline: 'text-stone-400' }[client.status];
-
     return (
-        <div className="flex-1 flex flex-col bg-stone-100 h-full overflow-hidden">
-            {/* Active Conversation Header */}
-            <div className="bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
+        <div className="flex h-full flex-1 flex-col overflow-hidden bg-stone-100">
+            <div className="z-10 flex shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="md:hidden p-1.5 mr-1 text-stone-500 hover:bg-stone-100 rounded-md">
-                        <ArrowLeft className="w-5 h-5" />
+                    <button onClick={onBack} className="mr-1 rounded-md p-1.5 text-stone-500 hover:bg-stone-100 md:hidden" type="button">
+                        <ArrowLeft className="h-5 w-5" />
                     </button>
 
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-blue-100 text-blue-700`}>
-                        {client.avatar}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                        {conversation.avatar}
                     </div>
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-stone-800 text-base leading-tight">{client.name}</h3>
-                        </div>
-                        <p className="text-xs text-stone-500 flex items-center gap-1.5 mt-0.5">
-                            <Circle className={`w-2 h-2 fill-current ${statusColor}`} />
-                            <span className="capitalize">{client.status}</span>
-                            <span className="text-stone-300">•</span>
-                            <span className="font-mono text-stone-400">Order {client.lastOrder}</span>
+                        <h3 className="text-base font-bold leading-tight text-stone-800">{conversation.name}</h3>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
+                            <Circle className="h-2 w-2 fill-current text-green-500" />
+                            <span className="capitalize">{conversation.status}</span>
+                            {!!conversation.lastOrder && (
+                                <>
+                                    <span className="text-stone-300">•</span>
+                                    <span className="font-mono text-stone-400">{conversation.lastOrder}</span>
+                                </>
+                            )}
                         </p>
+                        {conversation.subjectTitle ? (
+                            <p className="mt-0.5 text-[11px] font-semibold text-blue-600">{conversation.subjectTitle}</p>
+                        ) : null}
                     </div>
                 </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
-                {messages.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center text-stone-400 text-sm">
-                        No message history with {client.name}.
-                    </div>
+            <div className="flex flex-1 flex-col overflow-y-auto p-4">
+                {isLoading ? (
+                    <div className="flex flex-1 items-center justify-center text-sm text-stone-400">Loading messages...</div>
+                ) : messages.length === 0 ? (
+                    <div className="flex flex-1 items-center justify-center text-sm text-stone-400">No message history with {conversation.name}.</div>
                 ) : (
-                    messages.map((msg) => <StaffChatBubble key={msg.id} {...msg} />)
+                    messages.map((message) => <StaffChatBubble key={message.id} {...message} />)
                 )}
 
-                {isTyping && (
-                    <div className="flex w-full justify-start mb-4">
-                        <div className="bg-gradient-to-r from-blue-100 to-blue-200 border border-blue-300 text-blue-900 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1">
-                            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                            <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
-                        </div>
-                    </div>
-                )}
-
-                {/* ikaw nalang mamili if remove to Quick Replies */}
-                {messages.length > 0 && messages[messages.length - 1]?.sender === "client" && quickReplies && (
-                    <div className="flex flex-wrap gap-2 mt-2 mb-2 justify-end">
-                        {quickReplies.map((qr, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => onSendMessage({ message: qr, type: "text", imageUrl: null })}
-                                className="text-xs font-semibold text-stone-600 bg-white hover:bg-stone-50 border border-stone-200 rounded-full px-3 py-1.5 transition-colors shadow-sm"
-                            >
-                                {qr}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
+                {errorText ? <p className="mt-2 text-center text-xs text-red-500">{errorText}</p> : null}
                 <div ref={endOfMessagesRef} />
             </div>
-            <InputArea onSendMessage={onSendMessage} />
+            <InputArea onSendMessage={onSendMessage} disabled={!conversation} />
         </div>
     );
 };
 
+const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChange }) => {
+    const [conversations, setConversations] = useState([]);
+    const [activeConversationId, setActiveConversationId] = useState(null);
+    const [messagesByConversation, setMessagesByConversation] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filter, setFilter] = useState('all');
+    const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [errorText, setErrorText] = useState('');
 
-const StaffDualPaneDashboard = ({ onClose, isFullScreen, toggleFullScreen }) => {
-    //TODO (REAL DATA): Fetch initial clients and messages from API
-    const [clients, setClients] = useState(INITIAL_CLIENTS);
-    const [messages, setMessages] = useState(INITIAL_MESSAGES);
+    const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
+    const activeMessages = activeConversationId ? (messagesByConversation[activeConversationId] || []) : [];
 
-    const [activeClientId, setActiveClientId] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [filter, setFilter] = useState("all"); // 'all', 'unread'
-    const [clientTyping, setClientTyping] = useState({});
+    const totalUnread = useMemo(
+        () => conversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0),
+        [conversations]
+    );
 
-    const activeClient = clients.find(c => c.id === activeClientId);
-    const activeMessages = activeClient ? (messages[activeClientId] || []) : [];
+    const filteredConversations = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return conversations
+            .filter((conversation) => {
+                if (filter === 'unread' && Number(conversation.unreadCount || 0) <= 0) return false;
+                if (!query) return true;
 
-    const QUICK_REPLIES = ["Please provide your order #", "Your repair is delayed.", "Payment received!"];
-
-    // Filter & Sort Clients
-    const filteredClients = useMemo(() => {
-        return clients
-            .filter(c => {
-                if (filter === 'unread' && c.unreadCount === 0) return false;
-                if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase()) && !c.lastOrder.includes(searchQuery)) return false;
-                return true;
+                return [
+                    conversation.name,
+                    conversation.lastOrder,
+                    conversation.subjectTitle,
+                    conversation.lastMessagePreview,
+                ]
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(query);
             })
             .sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1;
-                if (!a.isPinned && b.isPinned) return 1;
-                return b.unreadCount - a.unreadCount;
+                const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+                const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+                return bTime - aTime;
             });
-    }, [clients, filter, searchQuery]);
+    }, [conversations, filter, searchQuery]);
 
-    // Handle selecting a client (marks messages as read)
-    const handleSelectClient = (clientId) => {
-        setActiveClientId(clientId);
-        setClients(prev => prev.map(c => c.id === clientId ? { ...c, unreadCount: 0 } : c));
-    };
+    const loadConversations = useCallback(async (silent = false) => {
+        try {
+            if (!silent) setIsLoadingConversations(true);
+            const response = await chatApi.getConversations({ scope: 'order' });
+            const nextConversations = Array.isArray(response?.conversations)
+                ? response.conversations.map(mapConversation)
+                : [];
 
-    // Handle Staff Sending a Message
-    const handleSendMessage = (msgObj) => {
-        if (!activeClientId) return;
+            setConversations(nextConversations);
+            onUnreadChange?.(nextConversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0));
+            setErrorText('');
 
-        const newMessage = {
-            id: Date.now(),
-            sender: "staff",
-            message: msgObj.message,
+            if (nextConversations.length > 0 && !activeConversationId) {
+                setActiveConversationId(nextConversations[0].id);
+            }
+            if (activeConversationId && !nextConversations.some((conversation) => conversation.id === activeConversationId)) {
+                setActiveConversationId(nextConversations[0]?.id || null);
+            }
+        } catch (error) {
+            console.error('Load staff conversations error:', error);
+            setErrorText(error?.response?.data?.message || 'Failed to load assigned chats');
+        } finally {
+            if (!silent) setIsLoadingConversations(false);
+        }
+    }, [activeConversationId, onUnreadChange]);
+
+    const loadMessages = useCallback(async (conversationId, silent = false) => {
+        if (!conversationId) return;
+
+        try {
+            if (!silent) setIsLoadingMessages(true);
+            const response = await chatApi.getMessages({ conversationId });
+            const nextMessages = Array.isArray(response?.messages) ? response.messages.map(mapMessage) : [];
+
+            setMessagesByConversation((prev) => ({
+                ...prev,
+                [conversationId]: nextMessages,
+            }));
+            setErrorText('');
+        } catch (error) {
+            console.error('Load staff messages error:', error);
+            setErrorText(error?.response?.data?.message || 'Failed to load messages');
+        } finally {
+            if (!silent) setIsLoadingMessages(false);
+        }
+    }, []);
+
+    const handleSelectConversation = useCallback(async (conversationId) => {
+        setActiveConversationId(conversationId);
+        setConversations((prev) => prev.map((conversation) => (
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+        )));
+
+        try {
+            await chatApi.markConversationRead({ conversationId });
+        } catch (error) {
+            console.error('Mark staff conversation read error:', error);
+        }
+
+        loadMessages(conversationId);
+    }, [loadMessages]);
+
+    const handleSendMessage = useCallback(async (msgObj) => {
+        if (!activeConversationId) return;
+
+        const tempId = `temp-${Date.now()}`;
+        const optimistic = {
+            id: tempId,
+            sender: 'staff',
+            message: msgObj.message || '',
             timestamp: new Date().toISOString(),
-            type: msgObj.type,
-            // Replace with true secure URL
-            imageUrl: msgObj.imageUrl,
-            status: "sent"
+            type: msgObj.type || 'text',
+            imageUrl: msgObj.imageUrl || null,
+            status: 'sent',
         };
 
-        setMessages(prev => ({
+        setMessagesByConversation((prev) => ({
             ...prev,
-            [activeClientId]: [...(prev[activeClientId] || []), newMessage]
+            [activeConversationId]: [...(prev[activeConversationId] || []), optimistic],
         }));
-        // REMOVE THIS SIMULATION BLOCK BELOW
-        setClientTyping(prev => ({ ...prev, [activeClientId]: true }));
-        setTimeout(() => {
-            // Mark staff message as read
-            setMessages(prev => ({
+
+        try {
+            const response = await chatApi.sendMessage({
+                conversationId: activeConversationId,
+                message: msgObj.message,
+                type: msgObj.type,
+                imageUrl: msgObj.imageUrl,
+            });
+
+            const persisted = mapMessage(response?.chatMessage || {});
+            setMessagesByConversation((prev) => ({
                 ...prev,
-                [activeClientId]: prev[activeClientId].map(m => m.id === newMessage.id ? { ...m, status: "read" } : m)
+                [activeConversationId]: (prev[activeConversationId] || []).map((message) => (
+                    message.id === tempId ? persisted : message
+                )),
             }));
 
-            setTimeout(() => {
-                setClientTyping(prev => ({ ...prev, [activeClientId]: false }));
-                const simulatedReply = {
-                    id: Date.now() + 1,
-                    sender: "client",
-                    message: "Thank you for the update. I will note this down.",
-                    timestamp: new Date().toISOString(),
-                    type: "text",
-                    status: "read"
-                };
-                setMessages(prev => ({
-                    ...prev,
-                    [activeClientId]: [...(prev[activeClientId] || []), simulatedReply]
-                }));
+            await loadConversations(true);
+        } catch (error) {
+            console.error('Staff send message error:', error);
+            setMessagesByConversation((prev) => ({
+                ...prev,
+                [activeConversationId]: (prev[activeConversationId] || []).filter((message) => message.id !== tempId),
+            }));
+            setErrorText(error?.response?.data?.message || 'Failed to send message');
+        }
+    }, [activeConversationId, loadConversations]);
 
-                // If client is not active, increase unread badge
-                setClients(prevClients => prevClients.map(c => {
-                    if (c.id === activeClientId && activeClientId !== c.id) { // logic simplified for simulation
-                        return { ...c, unreadCount: c.unreadCount + 1 };
-                    }
-                    return c;
-                }));
-            }, 1000);
-        }, 1500);
-        // =====================================================================
-    };
+    useEffect(() => {
+        loadConversations();
+    }, [loadConversations]);
 
-    const totalUnread = clients.reduce((acc, c) => acc + c.unreadCount, 0);
+    useEffect(() => {
+        if (!activeConversationId) return;
+        if (messagesByConversation[activeConversationId]) return;
+        loadMessages(activeConversationId);
+    }, [activeConversationId, loadMessages, messagesByConversation]);
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            loadConversations(true);
+            if (activeConversationId) {
+                loadMessages(activeConversationId, true);
+            }
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [activeConversationId, loadConversations, loadMessages]);
 
     return (
         <div
-            className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-300 ${isFullScreen
-                ? "inset-0 md:inset-4 md:rounded-2xl"
-                : "bottom-0 right-0 w-full h-[80vh] md:bottom-8 md:right-8 md:w-[850px] md:h-[650px] md:rounded-2xl rounded-t-2xl"
-                }`}
+            className={`fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl transition-all duration-300 ${
+                isFullScreen
+                    ? 'inset-0 md:inset-4 md:rounded-2xl'
+                    : 'bottom-0 right-0 h-[80vh] w-full rounded-t-2xl md:bottom-8 md:right-8 md:h-[650px] md:w-[850px] md:rounded-2xl'
+            }`}
         >
-            {/* Top Main Header */}
-            <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md z-20">
+            <div className="z-20 flex shrink-0 items-center justify-between bg-blue-600 px-4 py-3 text-white shadow-md">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center overflow-hidden shadow-sm bg-white rounded-full">
-                        <img src={img?.JJS} alt="JJS" className="w-full h-full object-contain p-1" onError={(e) => { e.target.style.display = 'none'; }} />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-bold text-blue-600 shadow-sm">
+                        J
                     </div>
                     <div>
-                        <h3 className="font-bold text-sm leading-tight tracking-wide">JJS-Staff</h3>
-                        <p className="text-[10px] text-blue-200 font-medium">Active</p>
+                        <h3 className="text-sm font-bold leading-tight tracking-wide">JJS-Staff</h3>
+                        <p className="text-[10px] font-medium text-blue-200">Assigned Order Chats</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     {totalUnread > 0 && (
-                        <span className="hidden md:flex items-center gap-1.5 bg-red-900 text-red-100 text-xs px-2.5 py-1 rounded-full border border-red-500/50">
-                            <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                        <span className="hidden items-center gap-1.5 rounded-full border border-red-500/50 bg-red-900 px-2.5 py-1 text-xs text-red-100 md:flex">
+                            <ShieldAlert className="h-3.5 w-3.5 text-red-400" />
                             {totalUnread} Requires Action
                         </span>
                     )}
-                    <div className="w-px h-5 bg-blue-500 mx-2 hidden md:block"></div>
-                    <button onClick={toggleFullScreen} className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors hidden md:block">
-                        {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    <div className="mx-2 hidden h-5 w-px bg-blue-500 md:block" />
+                    <button onClick={toggleFullScreen} className="hidden rounded-md p-1.5 text-blue-200 transition-colors hover:bg-blue-700 hover:text-white md:block" type="button">
+                        {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                     </button>
-                    <button onClick={onClose} className="p-1.5 text-blue-200 hover:text-white hover:bg-blue-700 rounded-md transition-colors bg-blue-700">
-                        <X className="w-5 h-5" />
+                    <button onClick={onClose} className="rounded-md bg-blue-700 p-1.5 text-blue-200 transition-colors hover:bg-blue-700 hover:text-white" type="button">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
-                <div className={`w-full md:w-[320px] lg:w-[350px] border-r border-stone-200 flex flex-col bg-white shrink-0 z-10 ${activeClientId ? 'hidden md:flex' : 'flex'}`}>
-
-                    <div className="p-4 border-b border-stone-100 bg-stone-50 shrink-0">
+            <div className="flex flex-1 overflow-hidden">
+                <div className={`z-10 flex w-full shrink-0 flex-col border-r border-stone-200 bg-white md:w-[320px] lg:w-[350px] ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+                    <div className="shrink-0 border-b border-stone-100 bg-stone-50 p-4">
                         <div className="relative mb-3">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                             <input
                                 type="text"
-                                placeholder="Search name or order #..."
+                                placeholder="Search customer or order..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border border-stone-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm"
+                                onChange={(event) => setSearchQuery(event.target.value)}
+                                className="w-full rounded-lg border border-stone-200 bg-white py-2 pl-9 pr-4 text-sm shadow-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                         </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setFilter('all')}
-                                className={`flex-1 text-xs font-semibold py-1.5 rounded-md transition-colors border ${filter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'}`}
+                                className={`flex-1 rounded-md border py-1.5 text-xs font-semibold transition-colors ${filter === 'all' ? 'border-blue-600 bg-blue-600 text-white' : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'}`}
                             >
                                 All
                             </button>
                             <button
                                 onClick={() => setFilter('unread')}
-                                className={`flex-1 text-xs font-semibold py-1.5 rounded-md transition-colors border ${filter === 'unread' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'}`}
+                                className={`flex-1 rounded-md border py-1.5 text-xs font-semibold transition-colors ${filter === 'unread' ? 'border-blue-500 bg-blue-500 text-white' : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100'}`}
                             >
                                 Unread
                             </button>
                         </div>
                     </div>
+
                     <div className="flex-1 overflow-y-auto">
-                        {filteredClients.length === 0 ? (
-                            <div className="p-8 text-center text-stone-400 text-sm">
-                                No clients match your current filters.
-                            </div>
+                        {isLoadingConversations ? (
+                            <div className="p-8 text-center text-sm text-stone-400">Loading assigned chats...</div>
+                        ) : filteredConversations.length === 0 ? (
+                            <div className="p-8 text-center text-sm text-stone-400">No assigned order chats yet.</div>
                         ) : (
-                            filteredClients.map(client => (
-                                <ClientListItem
-                                    key={client.id}
-                                    client={client}
-                                    lastMessage={(messages[client.id] || []).slice(-1)[0]}
-                                    isActive={activeClientId === client.id}
-                                    onClick={() => handleSelectClient(client.id)}
+                            filteredConversations.map((conversation) => (
+                                <ConversationListItem
+                                    key={conversation.id}
+                                    conversation={conversation}
+                                    isActive={activeConversationId === conversation.id}
+                                    onClick={() => handleSelectConversation(conversation.id)}
                                 />
                             ))
                         )}
                     </div>
                 </div>
 
-                {/* RIGHT PANE: Chat Interface */}
-                <div className={`flex-1 flex-col z-0 ${!activeClientId ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`z-0 flex-1 flex-col ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
                     <ActiveConversation
-                        client={activeClient}
+                        conversation={activeConversation}
                         messages={activeMessages}
-                        isTyping={clientTyping[activeClientId]}
                         onSendMessage={handleSendMessage}
-                        onBack={() => setActiveClientId(null)}
-                        quickReplies={QUICK_REPLIES}
+                        onBack={() => setActiveConversationId(null)}
+                        isLoading={isLoadingMessages}
+                        errorText={errorText}
                     />
                 </div>
-
             </div>
         </div>
     );
 };
 
-//num component
-const StaffChatLauncher = ({ onClick, unreadCount }) => {
-    return (
-        <button
-            onClick={onClick}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all z-[9999] ring-4 ring-blue-600/20"
-        >
-            <MessageCircle className="w-7 h-7" />
-            {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm border-2 border-white">
-                    {unreadCount}
-                </span>
-            )}
-        </button>
-    );
-};
-//main widget
+const StaffChatLauncher = ({ onClick, unreadCount }) => (
+    <button
+        onClick={onClick}
+        className="fixed bottom-6 right-6 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl ring-4 ring-blue-600/20 transition-all hover:scale-105 hover:bg-blue-700 active:scale-95"
+    >
+        <MessageCircle className="h-7 w-7" />
+        {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 text-xs font-bold text-white shadow-sm">
+                {unreadCount}
+            </span>
+        )}
+    </button>
+);
+
 export default function StaffChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [totalUnread, setTotalUnread] = useState(0);
 
-    useEffect(() => {
-        if (!isOpen) setIsFullScreen(false);
-    }, [isOpen]);
-
-    const totalUnread = INITIAL_CLIENTS.reduce((acc, c) => acc + c.unreadCount, 0);
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        setIsFullScreen(false);
+    }, []);
 
     return (
         <>
@@ -521,15 +587,17 @@ export default function StaffChatWidget() {
             {isOpen && (
                 <>
                     <div
-                        className={`fixed inset-0 bg-stone-900/40 z-[9998] transition-opacity flex justify-center items-center ${isFullScreen || window.innerWidth < 768 ? "opacity-100" : "opacity-0 pointer-events-none"
-                            }`}
-                        onClick={() => setIsOpen(false)}
+                        className={`fixed inset-0 z-[9998] flex items-center justify-center bg-stone-900/40 transition-opacity ${
+                            isFullScreen || window.innerWidth < 768 ? 'opacity-100' : 'pointer-events-none opacity-0'
+                        }`}
+                        onClick={handleClose}
                     />
 
-                    <StaffDualPaneDashboard
-                        onClose={() => setIsOpen(false)}
+                    <StaffChatShell
+                        onClose={handleClose}
                         isFullScreen={isFullScreen}
                         toggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+                        onUnreadChange={setTotalUnread}
                     />
                 </>
             )}

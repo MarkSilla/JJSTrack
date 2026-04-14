@@ -964,10 +964,6 @@ const STAT_CARDS = [
   return (
     <div className="min-h-screen bg-slate-50 font-inter">
       <div className="px-4 lg:px-6 py-2 top-0 z-100">
-        <div className="mb-4">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-black tracking-tight">Inventory</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Monitor and manage tailoring supplies</p>
-        </div>
 
         {/* ALERT 
         {!alertDismissed && alertCount > 0 && (

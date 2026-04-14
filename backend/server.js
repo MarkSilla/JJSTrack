@@ -12,6 +12,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import chatConversationModel from './models/chatConversationModel.js';
 
 import dns from 'dns';
 dotenv.config();
@@ -21,7 +22,19 @@ dns.setServers(['1.1.1.1', '8.8.8.8']);
 // App Config
 const app = express();
 const port = process.env.PORT || 4000;
-connectDB();
+
+const syncChatConversationIndexes = async () => {
+  try {
+    await chatConversationModel.updateMany(
+      { scope: { $exists: false } },
+      { $set: { scope: 'support' } }
+    );
+    await chatConversationModel.syncIndexes();
+    console.log('Chat conversation indexes synced');
+  } catch (error) {
+    console.error('Failed to sync chat conversation indexes:', error.message);
+  }
+};
 
 
 
@@ -64,4 +77,10 @@ app.use('/api/staff', staffRoutes);
 // Chat Routes
 app.use('/api/chat', chatRoutes);
 
-app.listen(port, () => console.log('Server started on Port: ' + port));
+const startServer = async () => {
+  await connectDB();
+  await syncChatConversationIndexes();
+  app.listen(port, () => console.log('Server started on Port: ' + port));
+};
+
+startServer();

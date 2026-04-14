@@ -7,11 +7,12 @@ import {
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { 
-    FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check
+    FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle
 } from 'lucide-react'
 import { orderApi }   from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate } from 'react-router-dom'
+import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
 
 const STEP_ICON = {
     'dropped off': MdMoveToInbox,
@@ -122,7 +123,7 @@ const StatusBadge = ({ status }) => {
 }
 
 // ─── Details Modal ────────────────────────────
-const DetailsModal = ({ order, onClose }) => {
+const DetailsModal = ({ order, onClose, onOpenChat }) => {
     const navigate  = useNavigate()
     const isBooking = !!order.bookingType
     const bookingRefId = typeof order.bookingId === 'string'
@@ -139,6 +140,7 @@ const DetailsModal = ({ order, onClose }) => {
     const displayName = isBooking
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
+    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
 
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
@@ -419,14 +421,24 @@ const DetailsModal = ({ order, onClose }) => {
             </div>
 
             {/* Footer */}
-            {canViewInvoice && (
-                <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0">
-                    <button
-                        onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
-                        className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
-                    >
-                        <FileText size={14} /> View Invoice
-                    </button>
+            {(canViewInvoice || canMessageTailor) && (
+                <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
+                    {canMessageTailor && (
+                        <button
+                            onClick={onOpenChat}
+                            className="w-full text-[12px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5 bg-white border border-emerald-200 rounded-xl shadow-sm"
+                        >
+                            <MessageCircle size={14} /> Message Tailor
+                        </button>
+                    )}
+                    {canViewInvoice && (
+                        <button
+                            onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
+                            className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
+                        >
+                            <FileText size={14} /> View Invoice
+                        </button>
+                    )}
                 </div>
             )}
         </div>
@@ -437,6 +449,7 @@ const DetailsModal = ({ order, onClose }) => {
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel }) => {
     const [showModal, setShowModal] = useState(false)
+    const [showChatModal, setShowChatModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
@@ -444,6 +457,7 @@ const OrderCard = ({ order, onCancel }) => {
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
     const steps = order.steps || []
+    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
 
     const loadQRCode = async () => {
         if (loadingQR || qrCode) return
@@ -549,6 +563,16 @@ const OrderCard = ({ order, onCancel }) => {
                     </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                    {canMessageTailor && (
+                        <button
+                            onClick={() => setShowChatModal(true)}
+                            className="bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                        >
+                            <MessageCircle size={12} />
+                            <span className="hidden sm:inline">Message Tailor</span>
+                            <span className="sm:hidden">Chat</span>
+                        </button>
+                    )}
                     {order.status !== 'Completed' && order.status !== 'Cancelled' && (
                         <button
                             onClick={() => onCancel(order._id, displayName, order.bookingId)}
@@ -581,7 +605,17 @@ const OrderCard = ({ order, onCancel }) => {
         </div>
 
         {/* ── Details Modal ── */}
-        {showModal && <DetailsModal order={order} onClose={() => setShowModal(false)} />}
+        {showModal && (
+            <DetailsModal
+                order={order}
+                onClose={() => setShowModal(false)}
+                onOpenChat={() => {
+                    setShowModal(false)
+                    setShowChatModal(true)
+                }}
+            />
+        )}
+        {showChatModal && <OrderTailorChatModal order={order} onClose={() => setShowChatModal(false)} />}
         </>
     )
 }
@@ -678,7 +712,7 @@ const Order = () => {
             ])
             if (od.success) setOrders(od.orders)
             if (bd.success) setBookings(bd.bookings || bd.data || [])
-        } catch (err) {
+        } catch {
             setError('Failed to load orders. Please try again.')
         } finally {
             setLoading(false)
@@ -787,19 +821,19 @@ const Order = () => {
                             { label: 'Total',       value: stats.total,      icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300'  },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop,        color: 'bg-amber-400/20 text-amber-300' },
                             { label: 'Completed',   value: stats.completed,  icon: MdDoneAll,     color: 'bg-green-400/20 text-green-300' },
-                        ].map(({ label, value, icon: Icon, color }) => (
+                        ].map(({ label, value, icon, color }) => (
                             <div key={label} className="bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-2.5">
                                 {/* Mobile: icon + label on top, number below */}
                                 <div className="flex items-center gap-1.5 sm:hidden">
                                     <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                        <Icon size={13} className={color.split(' ')[1]} />
+                                        {React.createElement(icon, { size: 13, className: color.split(' ')[1] })}
                                     </div>
                                     <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
                                 </div>
                                 <p className="text-white text-xl sm:text-lg font-bold leading-tight sm:hidden">{value}</p>
                                 {/* Desktop: original side-by-side layout */}
                                 <div className={`hidden sm:flex w-8 h-8 rounded-lg items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                    <Icon size={16} className={color.split(' ')[1]} />
+                                    {React.createElement(icon, { size: 16, className: color.split(' ')[1] })}
                                 </div>
                                 <div className="hidden sm:block">
                                     <p className="text-slate-400 text-[9px] font-medium">{label}</p>
