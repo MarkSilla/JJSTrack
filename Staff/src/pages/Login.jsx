@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import image from '../assets/img'
+import { API_BASE_URL } from '../utils/apiBaseUrl'
 
 function Login() {
     const [email, setEmail] = useState('')
@@ -32,7 +33,7 @@ function Login() {
 
         setLoading(true)
         try {
-            const response = await fetch('http://localhost:4000/api/users/staff/login', {
+            const response = await fetch(`${API_BASE_URL}/users/staff/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
