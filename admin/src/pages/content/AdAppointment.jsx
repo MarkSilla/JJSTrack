@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     ChevronLeft,
     ChevronRight,
@@ -29,6 +29,7 @@ const STATUS_CONFIG = {
 
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const LIVE_REFRESH_MS = 5000;
 
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
@@ -125,11 +126,12 @@ const AdAppointment = () => {
         return statusMap[backendStatus?.toLowerCase()] || 'pending';
     };
 
-    useEffect(() => {
-        const fetchBookings = async () => {
+    const fetchBookings = useCallback(async (silent = false) => {
             try {
-                setLoading(true);
-                setError(null);
+                if (!silent) {
+                    setLoading(true);
+                    setError(null);
+                }
                 const response = await bookingApi.getAllBookings();
                 const mappedAppointments = response.bookings?.map(booking => ({
                     id: booking._id,
@@ -146,14 +148,27 @@ const AdAppointment = () => {
                 setAppointments(mappedAppointments);
             } catch (err) {
                 console.error('Failed to fetch bookings:', err);
-                setError('Failed to load appointments');
-                setAppointments([]);
+                if (!silent) {
+                    setError('Failed to load appointments');
+                    setAppointments([]);
+                }
             } finally {
-                setLoading(false);
+                if (!silent) {
+                    setLoading(false);
+                }
             }
-        };
-        fetchBookings();
     }, []);
+
+    useEffect(() => {
+        fetchBookings(false);
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            fetchBookings(true);
+        }, LIVE_REFRESH_MS);
+
+        return () => window.clearInterval(intervalId);
+    }, [fetchBookings]);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();

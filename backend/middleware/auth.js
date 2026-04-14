@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import userModel from '../models/userModel.js';
+import { getRequestActor } from '../utils/requestActor.js';
 
 export const authMiddleware = (req, res, next) => {
   try {
@@ -32,7 +32,7 @@ export const authMiddleware = (req, res, next) => {
 // Check if user is Admin
 export const adminMiddleware = async (req, res, next) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -53,7 +53,7 @@ export const adminMiddleware = async (req, res, next) => {
 // Check if user is Staff or Admin
 export const staffMiddleware = async (req, res, next) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -74,7 +74,7 @@ export const staffMiddleware = async (req, res, next) => {
 // Check if user is User (regular user)
 export const userRoleMiddleware = async (req, res, next) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });

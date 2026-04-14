@@ -69,7 +69,7 @@ export const bookingApi = {
       const response = await api.put(`/bookings/${id}`, data);
       return response.data;
     } catch (error) {
-      console.error('Error updating booking:', error);
+      console.error('Error updating booking:', error?.response?.data || error);
       throw error;
     }
   },

@@ -38,6 +38,8 @@ const EMPTY_SLOT_INFO = {
     jerseyOrgIsFull: false,
 }
 
+const LIVE_REFRESH_MS = 5000
+
 const BookingModal = ({ booking, onClose }) => {
     if (!booking) return null
     const sc =
@@ -83,19 +85,17 @@ const Appointment = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
-    useEffect(() => {
-        let active = true
-        const fetchAppointmentsAndBookings = async () => {
+    const fetchAppointmentsAndBookings = useCallback(async (silent = false) => {
             try {
-                setLoading(true)
-                setError(null)
+                if (!silent) {
+                    setLoading(true)
+                    setError(null)
+                }
 
                 const [appointmentsRes, bookingsRes] = await Promise.allSettled([
                     appointmentApi.getAppointments(),
                     bookingApi.getBookings(),
                 ])
-
-                if (!active) return
 
                 const appointmentsList =
                     appointmentsRes.status === 'fulfilled'
@@ -134,30 +134,35 @@ const Appointment = () => {
                 setAppointments(appointmentsList)
                 setBookings(normalizedBookings)
 
-                if (appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected') {
+                if (!silent && appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected') {
                     setError('Failed to load appointments and bookings.')
-                } else if (appointmentsRes.status === 'rejected') {
+                } else if (!silent && appointmentsRes.status === 'rejected') {
                     setError('Some data failed to load (appointments).')
-                } else if (bookingsRes.status === 'rejected') {
+                } else if (!silent && bookingsRes.status === 'rejected') {
                     setError('Some data failed to load (bookings).')
                 }
             } catch (err) {
                 console.error('Failed to fetch appointments/bookings:', err)
-                if (active) {
+                if (!silent) {
                     setError('Failed to load appointments')
                     setAppointments([])
                     setBookings([])
                 }
             } finally {
-                if (active) setLoading(false)
+                if (!silent) setLoading(false)
             }
-        }
-
-        fetchAppointmentsAndBookings()
-        return () => {
-            active = false
-        }
     }, [])
+
+    useEffect(() => {
+        fetchAppointmentsAndBookings(false)
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return
+            fetchAppointmentsAndBookings(true)
+        }, LIVE_REFRESH_MS)
+
+        return () => window.clearInterval(intervalId)
+    }, [fetchAppointmentsAndBookings])
 
     const appointmentsByDate = useMemo(() => {
         const map = {}

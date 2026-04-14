@@ -95,7 +95,7 @@ export default function OrderDetail({
     }, [activeOrder, bookingExtras]);
 
     const handleRescheduleConfirm = (newDate, newTime) => {
-        handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate);
+        handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate, newTime);
     };
 
     const handleCancelOrder = () => {

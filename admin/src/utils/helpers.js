@@ -35,13 +35,13 @@ export const getDerivedStatus = (order) => {
 
 export const getActiveStepIndex = (order, orderTracking) => {
     if (!order) return 0;
-    if (orderTracking[order.id] !== undefined) return orderTracking[order.id];
     if (order.steps && order.steps.length > 0) {
         const activeIdx = order.steps.findIndex(s => s.active);
         if (activeIdx !== -1) return activeIdx;
         const notDoneIdx = order.steps.findIndex(s => !s.done);
         return notDoneIdx !== -1 ? notDoneIdx : order.steps.length - 1;
     }
+    if (orderTracking[order.id] !== undefined) return orderTracking[order.id];
     const steps = SERVICE_STEPS[order.serviceType] || SERVICE_STEPS["Team Jersey"];
     if (order.status === "Complete" || order.status === "Completed") return steps.length - 1;
     if (order.status === "In Progress" || order.status === "In-Progress") return 1;

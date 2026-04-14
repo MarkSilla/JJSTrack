@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
     MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdPrint,
     MdMoveToInbox, MdDesktopWindows, MdLocalPrintshop, MdLocalShipping,
@@ -21,6 +21,8 @@ const STEP_ICON = {
     'sewing':      GiSewingMachine,
     'pick-up':     MdLocalShipping,
 }
+
+const LIVE_REFRESH_MS = 5000
 
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
@@ -691,6 +693,7 @@ const Order = () => {
 
     const mainRef = useRef(null)
     const searchTimeoutRef = useRef(null)
+    const hasInitializedSearchRef = useRef(false)
 
     const handleScroll = (e) => {
         setShowStickySearch(e.target.scrollTop > 300)
@@ -700,8 +703,11 @@ const Order = () => {
         if (mainRef.current) mainRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    const fetchData = async (filter = activeFilter, search = searchQuery) => {
-        setLoading(true); setError(null)
+    const fetchData = useCallback(async (filter = 'All Orders', search = '', { silent = false } = {}) => {
+        if (!silent) {
+            setLoading(true)
+            setError(null)
+        }
         try {
             const params = {}
             if (filter !== 'All Orders') params.status = filter
@@ -713,28 +719,35 @@ const Order = () => {
             if (od.success) setOrders(od.orders)
             if (bd.success) setBookings(bd.bookings || bd.data || [])
         } catch {
-            setError('Failed to load orders. Please try again.')
+            if (!silent) {
+                setError('Failed to load orders. Please try again.')
+            }
         } finally {
-            setLoading(false)
+            if (!silent) {
+                setLoading(false)
+            }
         }
-    }
-
-    // Initial load
-    useEffect(() => { fetchData() }, [])
+    }, [])
 
     // Re-fetch on filter change
-    useEffect(() => { fetchData(activeFilter) }, [activeFilter])
+    useEffect(() => { fetchData(activeFilter, searchQuery) }, [activeFilter, fetchData])
 
-    // Auto-refresh every 60 seconds to get updates from admin
+    // Auto-refresh to get updates from admin without manual reload
     useEffect(() => {
         const interval = setInterval(() => {
-            fetchData(activeFilter, searchQuery)
-        }, 60000); // 60 seconds
+            if (document.visibilityState !== 'visible') return
+            fetchData(activeFilter, searchQuery, { silent: true })
+        }, LIVE_REFRESH_MS)
         return () => clearInterval(interval);
-    }, [activeFilter, searchQuery])
+    }, [activeFilter, searchQuery, fetchData])
 
     // Debounced search
     useEffect(() => {
+        if (!hasInitializedSearchRef.current) {
+            hasInitializedSearchRef.current = true
+            return
+        }
+
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current)
         }
@@ -748,7 +761,7 @@ const Order = () => {
                 clearTimeout(searchTimeoutRef.current)
             }
         }
-    }, [searchQuery])
+    }, [searchQuery, fetchData])
 
     // Stats from API
     useEffect(() => {
@@ -789,7 +802,7 @@ const Order = () => {
             if (response.success) {
                 alert('Order cancelled successfully')
                 // Refresh the orders list
-                fetchData(activeFilter)
+                fetchData(activeFilter, searchQuery)
             } else {
                 alert('Failed to cancel order: ' + (response.message || 'Unknown error'))
             }
@@ -908,7 +921,7 @@ const Order = () => {
                 {error && (
                     <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-center">
                         <p className="text-red-500 font-semibold text-sm">{error}</p>
-                        <button onClick={() => fetchData()} className="mt-3 text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">Retry</button>
+                        <button onClick={() => fetchData(activeFilter, searchQuery)} className="mt-3 text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">Retry</button>
                     </div>
                 )}
 

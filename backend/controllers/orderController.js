@@ -2,7 +2,12 @@ import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
+import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
+import { getRequestActor } from '../utils/requestActor.js';
 import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+
+const getOrderOwnerId = (order = {}) =>
+  String(order?.userId?._id || order?.userId || '');
 
 export const getOrders = async (req, res) => {
   try {
@@ -17,7 +22,12 @@ export const getOrders = async (req, res) => {
         const user = await userModel.findById(userId);
         if (user) {
           if (user.role === 'staff') {
-            query.assignedTailor = user.fullName;
+            const assignmentQuery = buildAssignmentQuery(user);
+            if (assignmentQuery) {
+              Object.assign(query, assignmentQuery);
+            } else {
+              query._id = null;
+            }
           } else if (user.role !== 'admin') {
             query.userId = userId;
           }
@@ -78,11 +88,15 @@ export const getOrderById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
 
+    if (user?.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     // Check ownership
-    if (!isAdminStaff && order.userId._id.toString() !== req.userId) {
+    if (!isAdminStaff && getOrderOwnerId(order) !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -111,7 +125,7 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
 
     // Restrict tracking updates
@@ -120,6 +134,10 @@ export const updateOrderStatus = async (req, res) => {
         success: false,
         message: 'Only admin/staff can update order tracking'
       });
+    }
+
+    if (user?.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     if (assignedTailor) order.assignedTailor = assignedTailor;
@@ -161,7 +179,7 @@ export const updateOrderSteps = async (req, res) => {
     const { id } = req.params;
     const { steps, players } = req.body;
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
       return res.status(403).json({
         success: false,
@@ -172,6 +190,10 @@ export const updateOrderSteps = async (req, res) => {
     const order = await orderModel.findById(id);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (user.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     const nextSteps = steps || order.steps;
@@ -210,16 +232,11 @@ export const cancelOrder = async (req, res) => {
     }
 
     // Handle special case where userId is 'admin' (string)
-    let isAdminStaff = false;
-    if (req.userId === 'admin') {
-      isAdminStaff = true;
-    } else {
-      const user = await userModel.findById(req.userId);
-      isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
-    }
+    const user = await getRequestActor(req);
+    const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
 
     // Check ownership - allow if user owns order or is admin/staff
-    if (!isAdminStaff && order.userId?.toString() !== req.userId) {
+    if (!isAdminStaff && getOrderOwnerId(order) !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -250,7 +267,7 @@ export const deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     if (!user || user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -281,7 +298,7 @@ export const assignEmployee = async (req, res) => {
     const { id } = req.params;
     const { employeeId } = req.body;
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
       return res.status(403).json({
         success: false,
@@ -311,7 +328,7 @@ export const assignEmployee = async (req, res) => {
 
 export const getOrderStats = async (req, res) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     let query = {};
 
     if (user && user.role !== 'admin' && user.role !== 'staff') {
@@ -442,7 +459,7 @@ export const getOrderQR = async (req, res) => {
 // Generate QR codes for all orders that don't have one
 export const generateMissingQRCodes = async (req, res) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestActor(req);
     if (!user || user.role !== 'admin') {
       return res.status(403).json({
         success: false,

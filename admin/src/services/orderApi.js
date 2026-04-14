@@ -86,7 +86,7 @@ export const orderApi = {
       const response = await api.put(`/orders/${id}`, data);
       return response.data;
     } catch (error) {
-      console.error('Error updating order:', error);
+      console.error('Error updating order:', error?.response?.data || error);
       throw error;
     }
   },

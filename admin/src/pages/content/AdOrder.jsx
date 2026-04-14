@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
@@ -18,17 +18,19 @@ import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
 
+const LIVE_REFRESH_MS = 5000;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export const getActiveStepIndex = (order, orderTracking) => {
     if (!order) return 0;
-    if (orderTracking[order.id] !== undefined) return orderTracking[order.id];
     if (order.steps && order.steps.length > 0) {
         const activeIdx = order.steps.findIndex(s => s.active);
         if (activeIdx !== -1) return activeIdx;
         const notDoneIdx = order.steps.findIndex(s => !s.done);
         return notDoneIdx !== -1 ? notDoneIdx : order.steps.length - 1;
     }
+    if (orderTracking[order.id] !== undefined) return orderTracking[order.id];
     const steps = SERVICE_STEPS[order.serviceType] || SERVICE_STEPS['Team Jersey'];
     if (order.status === 'Complete' || order.status === 'Completed') return steps.length - 1;
     if (order.status === 'In Progress' || order.status === 'In-Progress') return 1;
@@ -134,21 +136,24 @@ export default function AdOrder() {
 
     // ─── Fetch Orders & Bookings ──────────────────────────────────────────────
 
-    useEffect(() => {
-        const fetchOrdersAndBookings = async () => {
+    const fetchOrdersAndBookings = useCallback(async (silent = false) => {
             try {
-                setLoading(true);
-                setError(null);
+                if (!silent) {
+                    setLoading(true);
+                    setError(null);
+                }
 
-                // Fetch staff list for assignments
-                try {
-                    const staffResponse = await staffApi.getAllStaff();
-                    const staffData = staffResponse.staff || staffResponse.data || [];
-                    setStaffList(Array.isArray(staffData) ? staffData : []);
-                } catch (staffErr) {
-                    console.warn('Failed to fetch staff list, using fallback:', staffErr);
-                    // Fallback to EMPLOYEE_POOL if staffApi fails
-                    setStaffList(EMPLOYEE_POOL);
+                if (!silent) {
+                    // Fetch staff list for assignments
+                    try {
+                        const staffResponse = await staffApi.getAllStaff();
+                        const staffData = staffResponse.staff || staffResponse.data || [];
+                        setStaffList(Array.isArray(staffData) ? staffData : []);
+                    } catch (staffErr) {
+                        console.warn('Failed to fetch staff list, using fallback:', staffErr);
+                        // Fallback to EMPLOYEE_POOL if staffApi fails
+                        setStaffList(EMPLOYEE_POOL);
+                    }
                 }
 
                 const [orderResponse, bookingResponse] = await Promise.allSettled([
@@ -173,14 +178,27 @@ export default function AdOrder() {
                 setOrders(allItems);
             } catch (err) {
                 console.error('Failed to fetch orders and bookings:', err);
-                setError('Failed to load orders.');
-                setOrders([]);
+                if (!silent) {
+                    setError('Failed to load orders.');
+                    setOrders([]);
+                }
             } finally {
-                setLoading(false);
+                if (!silent) {
+                    setLoading(false);
+                }
             }
-        };
-        fetchOrdersAndBookings();
     }, []);
+
+    useEffect(() => {
+        fetchOrdersAndBookings(false);
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            fetchOrdersAndBookings(true);
+        }, LIVE_REFRESH_MS);
+
+        return () => window.clearInterval(intervalId);
+    }, [fetchOrdersAndBookings]);
 
     // ─── Derived State ────────────────────────────────────────────────────────
 

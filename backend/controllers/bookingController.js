@@ -4,7 +4,29 @@ import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
+import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+
+const isEnvAdminRequest = (req) => req.userId === 'admin';
+
+const getRequestUser = async (req) => {
+  if (isEnvAdminRequest(req)) {
+    return {
+      _id: 'admin',
+      role: 'admin',
+      name: 'Admin',
+      fullName: 'Admin',
+      email: process.env.ADMIN_USERNAME || 'admin',
+    };
+  }
+
+  return userModel.findById(req.userId);
+};
+
+const getBookingOwnerId = (booking) =>
+  booking?.userId?._id?.toString?.() ||
+  booking?.userId?.toString?.() ||
+  '';
 
 const normalizePositiveNumber = (value, fallback = 1) => {
   const parsed = Number(value);
@@ -371,21 +393,23 @@ export const getBookings = async (req, res) => {
     // Only filter by userId if the user is NOT an admin or staff
     if (userId !== 'admin') {
       try {
-        const userModel = (await import('../models/userModel.js')).default;
         const user = await userModel.findById(userId);
         if (user) {
           if (user.role === 'staff') {
-            const tailorName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.replace(/\s+/g, ' ').trim();
+            const assignmentQuery = buildAssignmentQuery(user);
             console.log('🔍 Staff Booking Query:', {
               userId: userId,
               fullName: user.fullName,
               firstName: user.firstName,
               lastName: user.lastName,
-              constructedName: tailorName,
-              searching_for_assignedTailor: tailorName
+              employeeId: user.employeeId,
+              email: user.email,
+              assignmentQuery
             });
-            if (tailorName) {
-              query.assignedTailor = tailorName;
+            if (assignmentQuery) {
+              Object.assign(query, assignmentQuery);
+            } else {
+              query._id = null;
             }
           } else if (user.role !== 'admin') {
             query.userId = userId;
@@ -455,9 +479,17 @@ export const getBookingById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Check if user owns the booking or is admin/staff
-    const user = await import('../models/userModel.js').then(m => m.default.findById(req.userId));
-    if (user && user.role !== 'admin' && user.role !== 'staff' && booking.userId.toString() !== req.userId) {
+    // Check if user owns the booking or is the assigned staff/admin
+    const user = await getRequestUser(req);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'staff' && !isAssignedToUser(booking.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (user.role !== 'admin' && user.role !== 'staff' && getBookingOwnerId(booking) !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -485,6 +517,23 @@ export const updateBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
+    const user = await getRequestUser(req);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isAdmin = user.role === 'admin';
+    const isStaff = user.role === 'staff';
+    const isOwner = getBookingOwnerId(booking) === req.userId;
+
+    if (isStaff && !isAssignedToUser(booking.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!isAdmin && !isStaff && !isOwner) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const nextSteps = steps || booking.steps;
     const nextStatus = resolveWorkflowStatus({
       currentStatus: booking.status,
@@ -493,16 +542,18 @@ export const updateBooking = async (req, res) => {
     });
 
     if (nextStatus) booking.status = nextStatus;
-    if (adminNotes) booking.adminNotes = adminNotes;
-    if (contact) booking.contact = contact;
-    if (pickupDate) booking.pickupDate = pickupDate;
-    if (pickupSlot) booking.pickupSlot = pickupSlot;
-    if (steps) booking.steps = steps;
-    if (assignedTailor) {
+    if (adminNotes !== undefined) booking.adminNotes = adminNotes;
+    if (contact !== undefined) booking.contact = contact;
+    if (pickupDate !== undefined) booking.pickupDate = pickupDate;
+    if (pickupSlot !== undefined) booking.pickupSlot = pickupSlot;
+    if (steps !== undefined) booking.steps = steps;
+    if (assignedTailor !== undefined) {
       console.log('🎯 Setting assignedTailor:', assignedTailor);
       booking.assignedTailor = assignedTailor;
     }
 
+    console.log('💾 Saving booking with status:', booking.status, 'steps:', booking.steps);
+    booking.steps = booking.steps || [];
     await booking.save();
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
@@ -528,6 +579,23 @@ export const updateBookingStatus = async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const user = await getRequestUser(req);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isAdmin = user.role === 'admin';
+    const isStaff = user.role === 'staff';
+    const isOwner = getBookingOwnerId(booking) === req.userId;
+
+    if (isStaff && !isAssignedToUser(booking.assignedTailor, user)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!isAdmin && !isStaff && !isOwner) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     booking.status = resolveWorkflowStatus({
@@ -743,7 +811,7 @@ export const cancelBooking = async (req, res) => {
 
     // Handle special case where userId is 'admin' (string)
     let isAdminStaff = false;
-    if (req.userId === 'admin') {
+    if (isEnvAdminRequest(req)) {
       isAdminStaff = true;
     } else {
       const user = await userModel.findById(req.userId);
@@ -939,7 +1007,7 @@ export const markAsPickedUp = async (req, res) => {
 // Generate QR codes for all bookings that don't have one
 export const generateMissingBookingQRCodes = async (req, res) => {
   try {
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestUser(req);
     if (!user || user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -981,7 +1049,7 @@ export const archiveBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Booking ID is required' });
     }
 
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestUser(req);
     console.log('User found:', user?.name, 'role:', user?.role);
     
     if (!user || user.role !== 'admin') {
@@ -996,7 +1064,7 @@ export const archiveBooking = async (req, res) => {
       {
         isArchived: true,
         archivedAt: new Date(),
-        archivedBy: user.name || user.email
+        archivedBy: user.fullName || user.name || user.email || 'admin'
       },
       { new: true }
     );
@@ -1028,7 +1096,7 @@ export const unarchiveBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Booking ID is required' });
     }
     
-    const user = await userModel.findById(req.userId);
+    const user = await getRequestUser(req);
     console.log('User found:', user?.name, 'role:', user?.role);
     
     if (!user || user.role !== 'admin') {

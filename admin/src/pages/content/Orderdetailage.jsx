@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { orderApi } from '../../services/orderApi.js';
@@ -9,6 +9,7 @@ import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus, getActiveStepIndex } from '../../utils/helpers.js';
 import { computeOrderEarnings, convertBooking } from './AdOrder.jsx';
 
+const LIVE_REFRESH_MS = 5000;
 
 export default function OrderDetailPage() {
     const { orderId } = useParams();  
@@ -29,11 +30,13 @@ export default function OrderDetailPage() {
     });
 
     const [assignConfirm, setAssignConfirm] = useState({ show: false, orderId: null, empId: null });
-    useEffect(() => {
-        const fetchAll = async () => {
+
+    const fetchAll = useCallback(async (silent = false) => {
             try {
-                setLoading(true);
-                setError(null);
+                if (!silent) {
+                    setLoading(true);
+                    setError(null);
+                }
 
                 const [orderRes, bookingRes] = await Promise.allSettled([
                     orderApi.getAllOrders(),
@@ -56,14 +59,26 @@ export default function OrderDetailPage() {
                 setOrders(allItems);
             } catch (err) {
                 console.error('Failed to fetch orders:', err);
-                setError('Failed to load order details.');
+                if (!silent) {
+                    setError('Failed to load order details.');
+                }
             } finally {
-                setLoading(false);
+                if (!silent) {
+                    setLoading(false);
+                }
             }
-        };
-
-        fetchAll();
     }, []);
+
+    useEffect(() => {
+        fetchAll(false);
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            fetchAll(true);
+        }, LIVE_REFRESH_MS);
+
+        return () => window.clearInterval(intervalId);
+    }, [fetchAll]);
     const activeOrder = useMemo(
         () => orders.find(o => (o.id || o._id) === orderId) ?? null,
         [orders, orderId]
@@ -175,31 +190,35 @@ export default function OrderDetailPage() {
 
     const cancelAssign = () => setAssignConfirm({ show: false, orderId: null, empId: null });
 
-    const handleApprovePickupDate = (targetOrderId, pickupDate) => {
-        if (!pickupDate) return;
+    const handleApprovePickupDate = async (targetOrderId, pickupDate, pickupSlot) => {
+        if (!pickupDate) return false;
 
-        setOrders(prev =>
-            prev.map(order => {
-                if ((order.id || order._id) !== targetOrderId) return order;
+        const targetOrder = orders.find(order => (order.id || order._id) === targetOrderId);
+        if (!targetOrder) return false;
 
-                const idToUse = order._id || order.id;
-                const patch = { pickupDate, status: 'Pending' };
+        const idToUse = targetOrder._id || targetOrder.id;
 
-                if (order.isBooking) {
-                    bookingApi.updateBooking(idToUse, patch).catch(console.error);
-                } else {
-                    orderApi.updateOrder(idToUse, patch).catch(console.error);
-                }
-
-                return {
-                    ...order,
-                    status: 'Pending',
+        try {
+            if (targetOrder.isBooking) {
+                await bookingApi.updateBooking(idToUse, {
                     pickupDate,
+                    status: 'Pending',
+                    ...(pickupSlot ? { pickupSlot } : {}),
+                });
+            } else {
+                await orderApi.updateOrder(idToUse, {
                     estimatedCompletion: pickupDate,
-                    invoice: { ...(order.invoice || {}), dueDate: pickupDate },
-                };
-            })
-        );
+                    status: 'Pending',
+                });
+            }
+
+            await fetchAll(true);
+            return true;
+        } catch (error) {
+            console.error('Failed to update pickup schedule:', error);
+            alert(error?.response?.data?.message || 'Failed to update schedule. Please try again.');
+            return false;
+        }
     };
     if (loading) {
         return (

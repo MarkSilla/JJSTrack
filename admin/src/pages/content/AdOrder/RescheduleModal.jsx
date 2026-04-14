@@ -12,6 +12,12 @@ const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 const pad = (n) => String(n).padStart(2, '0');
 const toDateString = (year, month, day) => `${year}-${pad(month + 1)}-${pad(day)}`;
+const toInitialDateString = (value) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return toDateString(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+};
 
 const AVAILABLE_TIMES = [
     '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
@@ -26,16 +32,32 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 const STEPS = ['date', 'time', 'confirm'];
 const STEP_LABELS = ['Date', 'Time', 'Confirm'];
 
-export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 'reschedule' }) {
+export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 'reschedule', currentDate }) {
     if (!isOpen) return null;
 
     const today = new Date();
-    const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-    const [selectedDateStr, setSelectedDateStr] = useState(toDateString(today.getFullYear(), today.getMonth(), today.getDate()));
+    const fallbackDateStr = toDateString(today.getFullYear(), today.getMonth(), today.getDate());
+    const [calendarDate, setCalendarDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+    const [selectedDateStr, setSelectedDateStr] = useState(toInitialDateString(currentDate) || fallbackDateStr);
     const [selectedTime, setSelectedTime] = useState('');
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [step, setStep] = useState('date'); // 'date' | 'time' | 'confirm'
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const nextDateStr = toInitialDateString(currentDate) || fallbackDateStr;
+        const nextDate = new Date(`${nextDateStr}T00:00:00`);
+
+        setSelectedDateStr(nextDateStr);
+        setSelectedTime('');
+        setStep('date');
+
+        if (!Number.isNaN(nextDate.getTime())) {
+            setCalendarDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+        }
+    }, [isOpen, currentDate, fallbackDateStr]);
 
     useEffect(() => {
         const fetchBookings = async () => {
@@ -58,8 +80,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
         fetchBookings();
     }, []);
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
     const firstDay = getFirstDayOfMonth(year, month);
 
@@ -87,9 +109,10 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
     };
 
     const handleClose = () => {
+        const nextDateStr = toInitialDateString(currentDate) || fallbackDateStr;
         setStep('date');
         setSelectedTime('');
-        setSelectedDateStr(toDateString(today.getFullYear(), today.getMonth(), today.getDate()));
+        setSelectedDateStr(nextDateStr);
         onClose();
     };
 
@@ -223,10 +246,10 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-sm font-bold text-gray-800">{MONTH_NAMES[month]} {year}</span>
                                 <div className="flex items-center gap-0.5 bg-gray-50 rounded-full p-0.5 border border-gray-100">
-                                    <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-1.5 rounded-full hover:bg-white text-gray-500 transition-all cursor-pointer bg-transparent border-none">
+                                    <button onClick={() => setCalendarDate(new Date(year, month - 1, 1))} className="p-1.5 rounded-full hover:bg-white text-gray-500 transition-all cursor-pointer bg-transparent border-none">
                                         <ChevronLeft size={14} />
                                     </button>
-                                    <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="p-1.5 rounded-full hover:bg-white text-gray-500 transition-all cursor-pointer bg-transparent border-none">
+                                    <button onClick={() => setCalendarDate(new Date(year, month + 1, 1))} className="p-1.5 rounded-full hover:bg-white text-gray-500 transition-all cursor-pointer bg-transparent border-none">
                                         <ChevronRight size={14} />
                                     </button>
                                 </div>
