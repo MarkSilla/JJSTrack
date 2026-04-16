@@ -11,7 +11,6 @@ const StatCard = ({ label, value, sub, icon: Icon, color }) => (
                 </div>
                 <span className="text-[12px] font-semibold text-gray-500">{label}</span>
             </div>
-            <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-1.5 py-0.5 bg-violet-50 text-violet-600">Live</div>
         </div>
         <div className=" mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">{value}</div>
         <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>

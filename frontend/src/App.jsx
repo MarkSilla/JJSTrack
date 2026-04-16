@@ -17,7 +17,6 @@ import ProtectedRoute from './components/ProtectedRoute'
 import HomeLayout from './layouts/HomeLayout'
 import TermsOfUse from './pages/TermsOfUse'
 import PrivacyPolicy from './pages/PrivacyPolicy'
-import ChatWidget from './components/ChatWidget'
 
 const App = () => {
   return (
@@ -45,7 +44,6 @@ const App = () => {
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Routes>
-        <ChatWidget />
       </Router>
     </Context>
   )

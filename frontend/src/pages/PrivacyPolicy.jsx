@@ -177,9 +177,10 @@ const privacySections = [
                 <ListItem num="8.2" title="Right to Rectification">You may request correction of inaccurate or incomplete personal data.</ListItem>
                 <ListItem num="8.3" title="Right to Erasure">You may request deletion of your personal data where it is no longer necessary for the purposes for which it was collected, subject to legal retention requirements.</ListItem>
                 <ListItem num="8.4" title="Right to Withdraw Consent">Where processing is based on your consent, you may withdraw such consent at any time without affecting the lawfulness of prior processing.</ListItem>
-                <ListItem num="8.5" title="Right to Restrict Processing">In certain circumstances, you may request that we limit the processing of your data.</ListItem>
+                <ListItem num="8.5" title="Right to Data Portability">Under the Data Privacy Act, you have the right to obtain a copy of your personal data in an electronic or structured format.</ListItem>
+                <ListItem num="8.6" title="Right to File a Complaint">If you believe your data privacy rights have been violated, you have the right to lodge a complaint with the National Privacy Commission (NPC) of the Philippines.</ListItem>
 
-                <p className="mt-5 text-sm text-stone-500">To exercise any of these rights, please contact us using the contact information provided in Section 12 of this Policy.</p>
+                <p className="mt-5 text-sm text-stone-500">To exercise any of these rights, please contact our Data Protection Officer using the information provided in Section 12.</p>
             </>
         ),
     },
@@ -230,7 +231,7 @@ const privacySections = [
             <>
                 <p className="mb-5">If you have any questions, concerns, or requests regarding this Privacy Policy or our data processing practices, please contact us at:</p>
                 <div className="mt-4 p-5 bg-stone-50 border border-stone-200 rounded-lg shadow-sm">
-                    <p className="mb-3 font-semibold text-stone-800">JJS Track — System Administrator</p>
+                    <p className="mb-3 font-semibold text-stone-800">JJS Track — Data Protection Officer (DPO) / Admin</p>
                     <p className="mb-2 text-sm flex"><span className="text-stone-500 w-24 shrink-0 font-medium">Email:</span> <a href="mailto:jjsportswear@gmail.com" className="text-blue-700 hover:text-blue-800 font-semibold underline decoration-blue-200 underline-offset-4">jjsportswear@gmail.com</a></p>
                     <p className="mb-2 text-sm flex"><span className="text-stone-500 w-24 shrink-0 font-medium">Address:</span> <span className="text-stone-700">Purok 3B National Highway, Calapacuan, Subic, Philippines</span></p>
                     <p className="mb-0 text-sm flex"><span className="text-stone-500 w-24 shrink-0 font-medium">Contact:</span> <span className="text-stone-700">0908 997 2332</span></p>

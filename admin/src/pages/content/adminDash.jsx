@@ -8,10 +8,10 @@ import { inventoryApi } from "../../services/inventoryApi";
 const formatDateLabel = (date) =>
   date
     ? date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
     : "No Date";
 
 const parseDateValue = (value) => {
@@ -166,11 +166,10 @@ function FilterDropdown({ value, onChange }) {
                 onChange(opt.value);
                 setOpen(false);
               }}
-              className={`w-full text-left px-3.5 py-2 text-[11px] font-medium transition-colors border-none cursor-pointer ${
-                value === opt.value
-                  ? "bg-blue-50 text-blue-700 font-semibold"
-                  : "bg-white text-gray-700 hover:bg-slate-50"
-              }`}
+              className={`w-full text-left px-3.5 py-2 text-[11px] font-medium transition-colors border-none cursor-pointer ${value === opt.value
+                ? "bg-blue-50 text-blue-700 font-semibold"
+                : "bg-white text-gray-700 hover:bg-slate-50"
+                }`}
             >
               {opt.label}
             </button>
@@ -193,9 +192,8 @@ function ApptCard({ appt, showView = false, onViewOrder }) {
             <div className="flex flex-col-2 gap-4 ">
               <div className="text-[12px] font-bold text-gray-900 truncate">{appt.service}</div>
               <span
-                className={`text-[9px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap ${
-                  BADGE_CLASSES[appt.status] ?? "bg-gray-100 text-gray-500"
-                }`}
+                className={`text-[9px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap ${BADGE_CLASSES[appt.status] ?? "bg-gray-100 text-gray-500"
+                  }`}
               >
                 {appt.status}
               </span>
@@ -708,13 +706,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                   </div>
                   <span className="text-[12px] font-semibold text-gray-500">{label}</span>
                 </div>
-                {trend !== null ? (
+                {trend !== null && (
                   <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
                     {trend}%
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-1.5 py-0.5 bg-violet-50 text-violet-600">
-                    Live
                   </div>
                 )}
               </div>
@@ -747,13 +741,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                   </div>
                   <span className="text-[12px] font-semibold text-gray-500">{label}</span>
                 </div>
-                {trend !== null ? (
+                {trend !== null && (
                   <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
                     {trend}%
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-1.5 py-0.5 bg-emerald-50 text-emerald-600">
-                    Live
                   </div>
                 )}
               </div>
@@ -778,11 +768,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                     <button
                       key={option.value}
                       onClick={() => setBookingVolumeRange(option.value)}
-                      className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg border-none cursor-pointer transition-colors ${
-                        bookingVolumeRange === option.value
-                          ? "bg-white text-blue-700 shadow-sm"
-                          : "bg-transparent text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg border-none cursor-pointer transition-colors ${bookingVolumeRange === option.value
+                        ? "bg-white text-blue-700 shadow-sm"
+                        : "bg-transparent text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       {option.label}
                     </button>
@@ -859,8 +848,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col h-full">
               <div className="mb-2 shrink-0">
-                <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Service Mix</h2>
-                <p className="mt-0.5 text-[11px] text-gray-400">By service type</p>
+                <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Services</h2>
               </div>
               <div className="relative" style={{ height: 155 }}>
                 <ResponsiveContainer width="100%" height="100%">

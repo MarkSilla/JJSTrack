@@ -267,11 +267,8 @@ export default function QRScanner() {
             <div className="min-h-screen bg-transparent">
                 <div className="max-w-5xl mx-auto px-4 pt-6 pb-20">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                            <ScanQrCode size={20} className="text-blue-400" />
-                        </div>
                         <div>
-                            <h1 className="text-base font-bold text-gray-800 leading-tight">QR Scanner</h1>
+                            <h1 className="text-xl font-black text-gray-800 leading-tight">QR Scanner</h1>
                             <p className="text-[11px] text-gray-400 leading-tight">Scan QR codes quickly and securely</p>
                         </div>
                         <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full border"

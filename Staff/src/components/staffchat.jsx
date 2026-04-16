@@ -72,11 +72,10 @@ const StaffChatBubble = ({ sender, message, timestamp, type, imageUrl, status })
     return (
         <div className={`mb-4 flex w-full ${isStaff ? 'justify-end' : 'justify-start'}`}>
             <div
-                className={`relative max-w-[80%] px-4 py-2.5 shadow-sm ${
-                    isStaff
+                className={`relative max-w-[80%] px-4 py-2.5 shadow-sm ${isStaff
                         ? 'rounded-2xl rounded-br-sm bg-blue-600 text-white'
                         : 'rounded-2xl rounded-bl-sm border border-gray-800 bg-gray-700 text-white'
-                }`}
+                    }`}
             >
                 {type === 'image' && imageUrl ? (
                     <div className="mb-2">
@@ -99,9 +98,8 @@ const StaffChatBubble = ({ sender, message, timestamp, type, imageUrl, status })
 const ConversationListItem = ({ conversation, isActive, onClick }) => (
     <div
         onClick={onClick}
-        className={`relative flex cursor-pointer gap-3 border-b border-stone-100 p-4 transition-all hover:bg-stone-100 ${
-            isActive ? 'border-l-4 border-blue-500 bg-blue-100' : 'border-l-4 border-transparent bg-white'
-        }`}
+        className={`relative flex cursor-pointer gap-3 border-b border-stone-100 p-4 transition-all hover:bg-stone-100 ${isActive ? 'border-l-4 border-blue-500 bg-blue-100' : 'border-l-4 border-transparent bg-white'
+            }`}
     >
         <div className="relative shrink-0">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-200 text-lg font-bold text-stone-600 shadow-sm">
@@ -461,11 +459,10 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
 
     return (
         <div
-            className={`fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl transition-all duration-300 ${
-                isFullScreen
+            className={`fixed z-[9999] flex flex-col overflow-hidden bg-white shadow-2xl transition-all duration-300 ${isFullScreen
                     ? 'inset-0 md:inset-4 md:rounded-2xl'
-                    : 'bottom-0 right-0 h-[80vh] w-full rounded-t-2xl md:bottom-8 md:right-8 md:h-[650px] md:w-[850px] md:rounded-2xl'
-            }`}
+                    : 'bottom-[100px] right-2 w-[calc(100%-16px)] sm:w-[400px] h-[calc(100svh-120px)] rounded-2xl md:bottom-[100px] md:right-8 md:w-[680px] md:h-[530px] md:rounded-2xl'
+                }`}
         >
             <div className="z-20 flex shrink-0 items-center justify-between bg-blue-600 px-4 py-3 text-white shadow-md">
                 <div className="flex items-center gap-3">
@@ -495,7 +492,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-                <div className={`z-10 flex w-full shrink-0 flex-col border-r border-stone-200 bg-white md:w-[320px] lg:w-[350px] ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`z-10 flex w-full shrink-0 flex-col border-r border-stone-200 bg-white md:w-[250px] ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="shrink-0 border-b border-stone-100 bg-stone-50 p-4">
                         <div className="relative mb-3">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -559,7 +556,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
 const StaffChatLauncher = ({ onClick, unreadCount }) => (
     <button
         onClick={onClick}
-        className="fixed bottom-6 right-6 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl ring-4 ring-blue-600/20 transition-all hover:scale-105 hover:bg-blue-700 active:scale-95"
+        className="fixed bottom-6 right-4 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl ring-4 ring-blue-600/20 transition-all hover:scale-105 hover:bg-blue-700 active:scale-95"
     >
         <MessageCircle className="h-7 w-7" />
         {unreadCount > 0 && (
@@ -587,9 +584,8 @@ export default function StaffChatWidget() {
             {isOpen && (
                 <>
                     <div
-                        className={`fixed inset-0 z-[9998] flex items-center justify-center bg-stone-900/40 transition-opacity ${
-                            isFullScreen || window.innerWidth < 768 ? 'opacity-100' : 'pointer-events-none opacity-0'
-                        }`}
+                        className={`fixed inset-0 z-[9998] flex items-center justify-center bg-stone-900/40 transition-opacity ${isFullScreen || window.innerWidth < 768 ? 'opacity-100' : 'pointer-events-none opacity-0'
+                            }`}
                         onClick={handleClose}
                     />
 

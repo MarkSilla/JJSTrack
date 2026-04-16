@@ -442,7 +442,7 @@ const AdminDualPaneDashboard = ({ onClose, isFullScreen, toggleFullScreen, onUnr
     <div
       className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-300 ${isFullScreen
         ? "inset-0 md:inset-4 md:rounded-2xl"
-        : "bottom-0 right-0 w-full h-[80vh] md:bottom-8 md:right-8 md:w-[850px] md:h-[650px] md:rounded-2xl rounded-t-2xl"
+        : "bottom-20 right-0 w-full h-[calc(90vh-5rem)] md:bottom-20 md:right-6 md:w-[700px] md:h-[550px] md:rounded-2xl rounded-t-2xl"
         }`}
     >
       <div className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md z-20">
@@ -541,7 +541,8 @@ const AdminChatLauncher = ({ onClick, unreadCount }) => {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all z-[9999] ring-4 ring-blue-600/20"
+      aria-label="Toggle chat"
+      className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all z-[10000] ring-4 ring-blue-600/20"
       type="button"
     >
       <MessageCircle className="w-7 h-7" />
@@ -585,7 +586,10 @@ export default function AdminChatWidget() {
 
   return (
     <>
-      {!isOpen && <AdminChatLauncher onClick={() => setIsOpen(true)} unreadCount={launcherUnread} />}
+      <AdminChatLauncher
+        onClick={() => setIsOpen(!isOpen)}
+        unreadCount={launcherUnread}
+      />
 
       {isOpen && (
         <>

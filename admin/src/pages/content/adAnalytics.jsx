@@ -342,18 +342,23 @@ export default function AdAnalytics() {
                             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-                                        <Icon size={18} color={accent} strokeWidth={2.2} />
+                                    <div
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
+                                        style={{ background: bgAccent }}
+                                    >
+                                        <Icon size={16} color={accent} strokeWidth={2.2} />
                                     </div>
-                                    <span className="text-[13px] font-semibold text-gray-500">{label}</span>
+                                    <span className="text-[12px] font-semibold text-gray-500">{label}</span>
                                 </div>
-                                <div className={`flex items-center gap-0.5 text-[11px] font-bold rounded-lg px-2 py-0.5 shrink-0 ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
-                                    {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                <div className={`flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+                                    {trend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
                                     {Math.abs(trend)}%
                                 </div>
                             </div>
-                            <div className="mt-[-14px] text-[22px] font-bold text-gray-900 leading-none tracking-tight pl-[45px]">{value}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5 pl-[50px]">{sub}</div>
+                            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+                                {value}
+                            </div>
+                            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
                         </div>
                     ))}
                 </div>

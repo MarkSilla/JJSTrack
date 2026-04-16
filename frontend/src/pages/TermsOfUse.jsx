@@ -112,9 +112,9 @@ const termsSections = [
         content: (
             <>
                 <p className="mb-5">JJS Track is committed to customer satisfaction. The following refund conditions apply:</p>
-                <ListItem num="5.1" title="Eligibility">A full refund will be issued if an order is not delivered to the user within three (3) weeks from the confirmed production completion date, provided the delay is attributable to JJS Track and not caused by events beyond our control (see Section 9).</ListItem>
-                <ListItem num="5.2" title="Refund Process">To initiate a refund, users must submit a refund request through the Platform's support portal, citing the order reference number and delivery delay details.</ListItem>
-                <ListItem num="5.3" title="Non-Refundable Scenarios">Refunds will not be issued for delays caused by incorrect address information provided by the user, force majeure events, or circumstances expressly outside JJS Track's control.</ListItem>
+                <ListItem num="5.1" title="Eligibility">In accordance with the Consumer Act of the Philippines (RA 7394), a full refund will be issued if an order is not delivered to the user within three (3) weeks from the confirmed production completion date, provided the delay is attributable to JJS Track and not caused by events beyond our control (see Section 9), or if the product is proven to be defective upon receipt.</ListItem>
+                <ListItem num="5.2" title="Refund Process">To initiate a refund, users must submit a refund request through the Platform's support portal, citing the order reference number, delivery delay details, or proof of defect.</ListItem>
+                <ListItem num="5.3" title="Non-Refundable Scenarios">Refunds will not be issued for delays caused by incorrect address information provided by the user, force majeure events, or circumstances expressly outside JJS Track's control. Custom-made items are non-refundable unless there is a proven manufacturing defect (as per DTI guidelines).</ListItem>
 
                 <p className="mt-5 text-sm italic text-stone-500">All refund requests are subject to review and will be processed within a reasonable period upon approval.</p>
             </>
@@ -286,6 +286,7 @@ const termsSections = [
                 <ListItem num="14.1">These Terms of Use shall be governed by and construed in accordance with the laws of the Republic of the Philippines, without regard to its conflict of laws provisions.</ListItem>
                 <ListItem num="14.2">Any dispute, claim, or controversy arising out of or relating to these Terms or your use of the Platform shall be subject to the exclusive jurisdiction of the competent courts of the Philippines.</ListItem>
                 <ListItem num="14.3">Prior to initiating any formal legal proceedings, the parties agree to make a good faith effort to resolve disputes through direct communication with JJS Track support.</ListItem>
+                <ListItem num="14.4">Unresolved consumer complaints may be escalated to the Department of Trade and Industry (DTI) of the Philippines in accordance with their consumer complaint procedures.</ListItem>
             </>
         ),
     },

@@ -77,14 +77,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                     >
                         <Menu size={22} />
                     </button>
-                    <div className="min-w-0">
-                        <p className="text-sm md:text-base font-black text-gray-900 leading-tight truncate">
-                            {pageTitle}
-                        </p>
-                        <p className="hidden sm:block text-[11px] text-gray-400 leading-tight truncate mt-0.5">
-                            {pageSubtitle}
-                        </p>
-                    </div>
                 </div>
                 <div className="flex  items-center gap-2 sm:gap-4">
                     <div className="hidden sm:flex flex-col items-end mr-2">
