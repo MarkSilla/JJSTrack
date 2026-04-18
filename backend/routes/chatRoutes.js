@@ -6,6 +6,9 @@ import {
   sendMessage,
   markConversationRead,
   getOrCreateOrderConversationForSubject,
+  editMessage,
+  deleteMessageForEveryone,
+  deleteMessageForMe,
 } from '../controllers/chatController.js';
 
 const router = express.Router();
@@ -15,5 +18,10 @@ router.post('/conversations/order', authMiddleware, getOrCreateOrderConversation
 router.get('/messages', authMiddleware, getMessages);
 router.post('/messages', authMiddleware, sendMessage);
 router.patch('/messages/read', authMiddleware, markConversationRead);
+
+// Message actions
+router.patch('/messages/:messageId', authMiddleware, editMessage);
+router.delete('/messages/:messageId/everyone', authMiddleware, deleteMessageForEveryone);
+router.delete('/messages/:messageId/me', authMiddleware, deleteMessageForMe);
 
 export default router;

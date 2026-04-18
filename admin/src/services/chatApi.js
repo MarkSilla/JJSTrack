@@ -37,6 +37,21 @@ export const chatApi = {
     const response = await api.patch('/chat/messages/read', payload);
     return response.data;
   },
+
+  editMessage: async ({ messageId, message }) => {
+    const response = await api.patch(`/chat/messages/${messageId}`, { message });
+    return response.data;
+  },
+
+  deleteMessageForEveryone: async ({ messageId }) => {
+    const response = await api.delete(`/chat/messages/${messageId}/everyone`);
+    return response.data;
+  },
+
+  deleteMessageForMe: async ({ messageId }) => {
+    const response = await api.delete(`/chat/messages/${messageId}/me`);
+    return response.data;
+  },
 };
 
 export default api;

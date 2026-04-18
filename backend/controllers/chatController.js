@@ -46,6 +46,8 @@ const mapMessageForClient = (messageDoc, requesterId) => {
     createdAt: messageDoc.createdAt,
     timestamp: messageDoc.createdAt,
     status: isOwn ? (seenByOthers ? 'read' : 'sent') : 'read',
+    isEdited: Boolean(messageDoc.isEdited),
+    isDeleted: Boolean(messageDoc.isDeleted),
   };
 };
 
@@ -61,10 +63,10 @@ const mapConversationForClient = (conversationDoc, userInfo, unreadCount = 0) =>
   assignedStaffName: conversationDoc.assignedStaffName || '',
   user: userInfo
     ? {
-        id: userInfo._id || userInfo.id,
-        fullName: getDisplayName(userInfo),
-        email: userInfo.email || '',
-      }
+      id: userInfo._id || userInfo.id,
+      fullName: getDisplayName(userInfo),
+      email: userInfo.email || '',
+    }
     : null,
   unreadCount: Number(unreadCount) || 0,
   lastMessagePreview: conversationDoc.lastMessagePreview || '',
@@ -641,6 +643,10 @@ export const getMessages = async (req, res) => {
 
     const messages = newestFirst
       .reverse()
+      .filter((messageDoc) => {
+        const df = Array.isArray(messageDoc.deletedFor) ? messageDoc.deletedFor : [];
+        return !df.some((uid) => String(uid) === String(ctx.id));
+      })
       .map((messageDoc) => mapMessageForClient(messageDoc, ctx.id));
 
     const conversationUserInfo = isAdminOrStaff(ctx) ? conversation.userId : ctx.userDoc;
@@ -736,5 +742,144 @@ export const markConversationRead = async (req, res) => {
   } catch (error) {
     console.error('Mark Conversation Read Error:', error);
     res.status(500).json({ success: false, message: 'Failed to mark messages as read' });
+  }
+};
+
+// ─── Edit Message ────────────────────────────────────────────────────────────
+export const editMessage = async (req, res) => {
+  try {
+    const ctx = await getRequesterContext(req, res);
+    if (!ctx) return;
+
+    const { messageId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ success: false, message: 'Invalid messageId' });
+    }
+
+    const rawMessage = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    if (!rawMessage) {
+      return res.status(400).json({ success: false, message: 'Message text is required' });
+    }
+
+    const messageDoc = await chatMessageModel.findById(messageId);
+    if (!messageDoc) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+
+    // Only the original sender may edit
+    if (String(messageDoc.senderId) !== String(ctx.id)) {
+      return res.status(403).json({ success: false, message: 'You can only edit your own messages' });
+    }
+
+    // System messages cannot be edited
+    if (messageDoc.senderRole === 'system') {
+      return res.status(403).json({ success: false, message: 'System messages cannot be edited' });
+    }
+
+    messageDoc.message = rawMessage;
+    messageDoc.isEdited = true;
+    await messageDoc.save();
+
+    const reloaded = await chatMessageModel.findById(messageDoc._id).lean();
+    res.json({
+      success: true,
+      message: 'Message updated',
+      chatMessage: mapMessageForClient(reloaded, ctx.id),
+    });
+  } catch (error) {
+    console.error('Edit Message Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to edit message' });
+  }
+};
+
+// ─── Delete for Everyone ─────────────────────────────────────────────────────
+export const deleteMessageForEveryone = async (req, res) => {
+  try {
+    const ctx = await getRequesterContext(req, res);
+    if (!ctx) return;
+
+    const { messageId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ success: false, message: 'Invalid messageId' });
+    }
+
+    const messageDoc = await chatMessageModel.findById(messageId);
+    if (!messageDoc) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+
+    // Only the original sender may delete for everyone
+    if (String(messageDoc.senderId) !== String(ctx.id)) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own messages' });
+    }
+
+    // System messages cannot be deleted this way
+    if (messageDoc.senderRole === 'system') {
+      return res.status(403).json({ success: false, message: 'System messages cannot be deleted' });
+    }
+
+    const conversationId = messageDoc.conversationId;
+    const originalCreatedAt = messageDoc.createdAt;
+    const seenBy = messageDoc.seenBy;
+    const senderId = messageDoc.senderId;
+    const senderRole = messageDoc.senderRole;
+    const senderName = messageDoc.senderName;
+
+    // Hard-delete the original message
+    await chatMessageModel.findByIdAndDelete(messageId);
+
+    // Insert a system tombstone in its place but preserving the sender context
+    const tombstone = await chatMessageModel.create({
+      conversationId,
+      senderId,
+      senderRole,
+      senderName,
+      type: 'text',
+      message: 'This message was deleted',
+      seenBy,
+      isDeleted: true,
+      createdAt: originalCreatedAt
+    });
+    const conversation = await chatConversationModel.findById(conversationId);
+    if (conversation) {
+      await chatConversationModel.findByIdAndUpdate(conversationId, {
+        lastMessagePreview: 'This message has been deleted',
+        lastMessageAt: tombstone.createdAt,
+      });
+    }
+
+    const reloaded = await chatMessageModel.findById(tombstone._id).lean();
+    res.json({
+      success: true,
+      message: 'Message deleted for everyone',
+      chatMessage: mapMessageForClient(reloaded, ctx.id),
+    });
+  } catch (error) {
+    console.error('Delete For Everyone Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete message' });
+  }
+};
+export const deleteMessageForMe = async (req, res) => {
+  try {
+    const ctx = await getRequesterContext(req, res);
+    if (!ctx) return;
+
+    const { messageId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ success: false, message: 'Invalid messageId' });
+    }
+
+    const messageDoc = await chatMessageModel.findById(messageId);
+    if (!messageDoc) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+    await chatMessageModel.findByIdAndUpdate(messageId, {
+      $addToSet: { deletedFor: ctx.id },
+    });
+
+    res.json({ success: true, message: 'Message hidden for you' });
+  } catch (error) {
+    console.error('Delete For Me Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to hide message' });
   }
 };

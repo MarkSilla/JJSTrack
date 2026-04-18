@@ -248,7 +248,7 @@ const Invoices = () => {
                             {/* Left */}
                             <div>
                                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                                    {getGreeting()}, <span className="text-blue-300">{name}</span> 👋
+                                    Invoices    
                                 </h2>
                                 <p className="text-slate-400 text-sm">View and manage your receipts & invoices.</p>
                             </div>

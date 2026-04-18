@@ -70,4 +70,4 @@ export default function WorkflowProgress({ activeOrderSteps, currentStepIdx, onS
             </div>
         </div>
     );
-}
+} 
