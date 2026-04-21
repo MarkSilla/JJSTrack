@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+export const API_BASE_URL = 'http://localhost:4000/api';
+
+export const getInventoryUpdatesWebSocketUrl = () => {
+  const url = new URL(API_BASE_URL);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = '/inventory-updates';
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,

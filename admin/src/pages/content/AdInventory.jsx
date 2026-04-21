@@ -6,7 +6,7 @@ import {
   Wrench, Sparkles, Link2,
 } from "lucide-react";
 import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
-import { inventoryApi } from "../../services/inventoryApi";
+import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi";
 import { fmt } from "../../utils/helpers.js";
 
 const numberInputStyle = `../../services/inventoryApi.js
@@ -29,6 +29,9 @@ const SORT_INVENTORY_OPTIONS = [
   { value: 'name-az', label: 'Name A → Z' },
   { value: 'name-za', label: 'Name Z → A' },
 ];
+
+const SOCKET_RECONNECT_MS = 2500;
+const SOCKET_REFRESH_DEBOUNCE_MS = 200;
 
 // Format time for activity log
 function formatActivityTime(date) {
@@ -110,10 +113,10 @@ function getEditDistance(s1, s2) {
 }
 
 function getPct(item) {
-  // Show percentage based on compared to minStock threshold
-  const minStock = item.minStock || 5;
-  const pct = Math.round((item.stock / (minStock * 2)) * 100);
-  return Math.min(100, pct);
+  const currentStock = Math.max(0, Number(item?.stock) || 0);
+  const stockCap = Math.max(1, getMaxStock(item));
+  const pct = Math.round((currentStock / stockCap) * 100);
+  return Math.min(100, Math.max(0, pct));
 }
 
 // STATUS BADGE 
@@ -738,6 +741,51 @@ const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [socketStatus, setSocketStatus] = useState("connecting");
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const socketRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const refreshTimeoutRef = useRef(null);
+
+  const refreshInventoryPage = async ({ showLoader = false } = {}) => {
+    try {
+      if (showLoader) {
+        setLoading(true);
+      }
+
+      const [inventoryData, activityData] = await Promise.all([
+        inventoryApi.getAllInventory(),
+        inventoryApi.getInventoryActivity(20),
+      ]);
+
+      setInventory(inventoryData);
+      setActivities(activityData.map(mapActivityRecord));
+      setError(null);
+      setLastSyncedAt(new Date());
+    } catch (err) {
+      console.error("Failed to load inventory page:", err);
+
+      if (showLoader) {
+        setError("Failed to load inventory");
+        setInventory([]);
+        setActivities([]);
+      }
+    } finally {
+      if (showLoader) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const fetchActivities = async () => {
+    try {
+      const data = await inventoryApi.getInventoryActivity(20);
+      setActivities(data.map(mapActivityRecord));
+      setLastSyncedAt(new Date());
+    } catch (err) {
+      console.error("Failed to fetch inventory activity:", err);
+    }
+  };
 
   useEffect(() => {
     const preset = location.state?.dashboardPreset;
@@ -755,37 +803,91 @@ const [sortBy, setSortBy] = useState('newest');
   }, [location.state]);
 
   useEffect(() => {
-    const loadInventoryPage = async () => {
-      try {
-        setLoading(true);
-        const [inventoryData, activityData] = await Promise.all([
-          inventoryApi.getAllInventory(),
-          inventoryApi.getInventoryActivity(20),
-        ]);
-        setInventory(inventoryData);
-        setActivities(activityData.map(mapActivityRecord));
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load inventory page:", err);
-        setError("Failed to load inventory");
-        setInventory([]);
-        setActivities([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInventoryPage();
+    void refreshInventoryPage({ showLoader: true });
   }, []);
 
-  const fetchActivities = async () => {
-    try {
-      const data = await inventoryApi.getInventoryActivity(20);
-      setActivities(data.map(mapActivityRecord));
-    } catch (err) {
-      console.error("Failed to fetch inventory activity:", err);
-    }
-  };
+  useEffect(() => {
+    let isDisposed = false;
+
+    const scheduleInventoryRefresh = () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        if (!isDisposed) {
+          void refreshInventoryPage();
+        }
+      }, SOCKET_REFRESH_DEBOUNCE_MS);
+    };
+
+    const connectInventorySocket = () => {
+      if (isDisposed) return;
+
+      setSocketStatus("connecting");
+
+      const socket = new WebSocket(getInventoryUpdatesWebSocketUrl());
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        if (!isDisposed) {
+          setSocketStatus("connected");
+          void refreshInventoryPage();
+        }
+      };
+
+      socket.onmessage = (event) => {
+        if (isDisposed) return;
+
+        try {
+          const message = JSON.parse(event.data);
+
+          if (message?.type === "inventory:changed") {
+            scheduleInventoryRefresh();
+          }
+        } catch (socketError) {
+          console.error("Failed to parse inventory socket message:", socketError);
+        }
+      };
+
+      socket.onerror = () => {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+      };
+
+      socket.onclose = () => {
+        if (isDisposed) return;
+
+        setSocketStatus("disconnected");
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+          connectInventorySocket();
+        }, SOCKET_RECONNECT_MS);
+      };
+    };
+
+    connectInventorySocket();
+
+    return () => {
+      isDisposed = true;
+
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      if (
+        socketRef.current &&
+        (socketRef.current.readyState === WebSocket.OPEN ||
+          socketRef.current.readyState === WebSocket.CONNECTING)
+      ) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   const activeInventory = inventory.filter(i => !i.archived);
   const archivedInventory = inventory.filter(i => i.archived);
@@ -1111,11 +1213,51 @@ const STAT_CARDS = [
             </div>
           </div>
 
-          {/* Add */}
-          <button onClick={() => setAddModal(true)}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
-            <Plus size={15} /> Add New Item
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className={`hidden lg:flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
+              socketStatus === "connected"
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-amber-50 border-amber-200"
+            }`}>
+              <RefreshCw
+                size={13}
+                className={`${
+                  socketStatus === "connected" ? "text-emerald-600" : "text-amber-600"
+                } ${socketStatus === "connected" ? "" : "animate-spin"}`}
+              />
+              <div className="leading-tight">
+                <p className={`text-[11px] font-semibold ${
+                  socketStatus === "connected" ? "text-emerald-700" : "text-amber-700"
+                }`}>
+                  {socketStatus === "connected"
+                    ? "Live sync active"
+                    : socketStatus === "connecting"
+                      ? "Connecting live sync..."
+                      : "Reconnecting live sync..."}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {lastSyncedAt
+                    ? `Last sync ${lastSyncedAt.toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}`
+                    : "Waiting for inventory updates"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => void refreshInventoryPage()}
+              className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <RefreshCw size={14} />
+              Sync Now
+            </button>
+            <button onClick={() => setAddModal(true)}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+              <Plus size={15} /> Add New Item
+            </button>
+          </div>
         </div>
 
         <div className="lg:hidden space-y-3 mb-8">

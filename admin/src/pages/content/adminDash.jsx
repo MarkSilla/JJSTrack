@@ -104,6 +104,41 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const DAILY_BOOKING_BUCKETS = [
+  { label: "Morning", value: "morning" },
+  { label: "Afternoon", value: "afternoon" },
+  { label: "Evening", value: "evening" },
+  { label: "Unscheduled", value: "unscheduled" },
+];
+
+const getDailyBookingBucket = (timeValue) => {
+  const text = String(timeValue || "").trim().toLowerCase();
+
+  if (!text || text === "no time" || text === "not specified") {
+    return "unscheduled";
+  }
+
+  if (text.includes("morning")) return "morning";
+  if (text.includes("afternoon")) return "afternoon";
+  if (text.includes("evening")) return "evening";
+
+  const match = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+  if (!match) return "unscheduled";
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2] || 0);
+  const meridiem = match[3].toUpperCase();
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return "unscheduled";
+  if (meridiem === "PM" && hour !== 12) hour += 12;
+  if (meridiem === "AM" && hour === 12) hour = 0;
+
+  const totalMinutes = hour * 60 + minute;
+  if (totalMinutes >= 17 * 60) return "evening";
+  if (totalMinutes >= 12 * 60) return "afternoon";
+  return "morning";
+};
+
 const BADGE_CLASSES = {
   Confirmed: "bg-blue-100 text-blue-700",
   Pending: "bg-amber-100 text-amber-700",
@@ -124,6 +159,7 @@ const FILTER_OPTIONS = [
 ];
 
 const BOOKING_VOLUME_OPTIONS = [
+  { label: "Daily", value: "daily" },
   { label: "Weekly", value: "weekly" },
   { label: "Monthly", value: "monthly" },
   { label: "Quarterly", value: "quarterly" },
@@ -131,6 +167,10 @@ const BOOKING_VOLUME_OPTIONS = [
 ];
 
 const BOOKING_VOLUME_META = {
+  daily: {
+    title: "Daily Booking Volume",
+    subtitle: "Bookings scheduled, completed & cancelled today",
+  },
   weekly: {
     title: "Weekly Booking Volume",
     subtitle: "Bookings scheduled, completed & cancelled this week",
@@ -501,6 +541,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         return {
           date: normalizedDate,
           status: appointment.status,
+          time: appointment.time,
         };
       })
       .filter(Boolean);
@@ -525,6 +566,28 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
     const referenceDate = new Date(todayDate);
     referenceDate.setHours(0, 0, 0, 0);
+
+    if (bookingVolumeRange === "daily") {
+      return DAILY_BOOKING_BUCKETS.map((bucket) => {
+        const point = {
+          label: bucket.label,
+          orders: 0,
+          completed: 0,
+          cancelled: 0,
+        };
+
+        normalizedAppointments.forEach((appointment) => {
+          if (!isSameDay(appointment.date, referenceDate)) return;
+          if (getDailyBookingBucket(appointment.time) !== bucket.value) return;
+
+          point.orders += 1;
+          if (appointment.status === "Complete") point.completed += 1;
+          if (appointment.status === "Cancel/Incomplete") point.cancelled += 1;
+        });
+
+        return point;
+      });
+    }
 
     if (bookingVolumeRange === "monthly") {
       const currentYear = referenceDate.getFullYear();

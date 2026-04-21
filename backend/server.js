@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -14,6 +15,7 @@ import staffRoutes from './routes/staffRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import chatConversationModel from './models/chatConversationModel.js';
+import { attachInventorySocketServer } from './utils/inventorySocketServer.js';
 
 import dns from 'dns';
 dotenv.config();
@@ -23,6 +25,7 @@ dns.setServers(['1.1.1.1', '8.8.8.8']);
 // App Config
 const app = express();
 const port = process.env.PORT || 4000;
+const server = http.createServer(app);
 
 const syncChatConversationIndexes = async () => {
   try {
@@ -84,7 +87,8 @@ app.use('/api/notifications', notificationRoutes);
 const startServer = async () => {
   await connectDB();
   await syncChatConversationIndexes();
-  app.listen(port, () => console.log('Server started on Port: ' + port));
+  attachInventorySocketServer(server);
+  server.listen(port, () => console.log('Server started on Port: ' + port));
 };
 
 startServer();

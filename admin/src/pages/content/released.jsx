@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi';
 
+const getBookingDisplayId = (booking = {}) =>
+    String(booking?.bookingId || booking?.displayId || booking?.id || booking?._id || 'N/A');
+
 const SORT_OPTIONS = [
     { value: 'newest', label: 'Newest → Oldest' },
     { value: 'oldest', label: 'Oldest → Newest' },
@@ -74,7 +77,7 @@ function ReleasedItemDetail({ booking, onBack }) {
                 <div className="h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-300" />
                 <div className="pt-5 px-6 pb-5">
                     <div className="flex items-center gap-2 flex-wrap mb-3.5">
-                        <MonoTag>#{booking.displayId?.slice(0, 6).toUpperCase()}</MonoTag>
+                        <MonoTag>{getBookingDisplayId(booking)}</MonoTag>
                         <Pill className="bg-cyan-50 text-cyan-800 border-cyan-200">
                             <CheckCircle2 size={10} /> Released
                         </Pill>
@@ -401,7 +404,7 @@ export default function ReleasedItems() {
                 .map(b => ({
                     ...b,
                     type: b.serviceType || b.service || b.bookingType || b.eventType || 'booking',
-                    displayId: b._id,
+                    displayId: getBookingDisplayId(b),
                     customerName: b.contact?.fullName || b.guestName || 'N/A',
                     releaseDate: b.pickedUpAt ? new Date(b.pickedUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
                     dropDate: new Date(b.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -577,8 +580,8 @@ export default function ReleasedItems() {
                                                     <span className="text-[11px] font-bold text-gray-400 tabular-nums">{idx + 1}</span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className="text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider">
-                                                        {item.displayId?.slice(0, 6).toUpperCase()}
+                                                    <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
+                                                        {getBookingDisplayId(item)}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">

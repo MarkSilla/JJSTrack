@@ -7,6 +7,7 @@ import {
   maybeCreateInventoryNotification,
   shouldCreateInventoryRestockNotification,
 } from "../utils/notificationHelpers.js";
+import { broadcastInventoryChange } from "../utils/inventorySocketServer.js";
 
 // Helper function to normalize item names - STRICT normalization
 const normalizeName = (name) => {
@@ -25,6 +26,17 @@ const resolveStockCap = (item = {}) => {
     Number(item.stock) || 0
   );
   return Number.isFinite(cap) && cap > 0 ? cap : 0;
+};
+
+const resolveInventoryAlertLevel = (item = {}) => {
+  if (item?.archived) return "normal";
+
+  const stock = Math.max(0, Number(item?.stock) || 0);
+  const minStock = Math.max(0, Number(item?.minStock) || 5);
+
+  if (stock === 0) return "outOfStock";
+  if (stock < minStock) return "lowStock";
+  return "normal";
 };
 
 const getActorFallback = (role) => {
@@ -130,6 +142,24 @@ const serializeActivity = (activity) => ({
   createdAt: activity.createdAt,
   note: activity.note || "",
 });
+
+const notifyInventoryClients = ({ actionType, inventory }) => {
+  if (!inventory?._id) return;
+
+  broadcastInventoryChange({
+    actionType,
+    inventoryId: inventory._id.toString(),
+    stock: Math.max(0, Number(inventory.stock) || 0),
+    minStock: Math.max(0, Number(inventory.minStock) || 5),
+    unit: inventory.unit || "",
+    name: inventory.name || "",
+    sku: inventory.sku || "",
+    category: inventory.category || "",
+    alertLevel: resolveInventoryAlertLevel(inventory),
+    archived: Boolean(inventory.archived),
+    updatedAt: new Date().toISOString(),
+  });
+};
 
 const logInventoryActivity = async ({
   req,
@@ -298,6 +328,10 @@ export const createInventory = async (req, res) => {
         previousStock,
         previousMinStock: existingItem.minStock,
       });
+      notifyInventoryClients({
+        actionType: "increase",
+        inventory: updatedInventory,
+      });
       return res.status(200).json({
         ...updatedInventory.toObject(),
         message: "Item already exists. Stock updated.",
@@ -346,6 +380,10 @@ export const createInventory = async (req, res) => {
       inventory: savedInventory,
       previousStock: 0,
       previousMinStock: minStockValue,
+    });
+    notifyInventoryClients({
+      actionType: "create",
+      inventory: savedInventory,
     });
     res.status(201).json({
       ...savedInventory.toObject(),
@@ -414,6 +452,10 @@ export const updateInventory = async (req, res) => {
       inventory: updatedInventory,
       previousStock,
       previousMinStock,
+    });
+    notifyInventoryClients({
+      actionType: "update",
+      inventory: updatedInventory,
     });
     res.status(200).json(updatedInventory);
   } catch (error) {
@@ -486,6 +528,10 @@ export const adjustStock = async (req, res) => {
       previousStock,
       previousMinStock,
     });
+    notifyInventoryClients({
+      actionType: type,
+      inventory: updatedInventory,
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -515,6 +561,10 @@ export const archiveInventory = async (req, res) => {
       req,
       inventory: updatedInventory,
       event: "archived",
+    });
+    notifyInventoryClients({
+      actionType: "archive",
+      inventory: updatedInventory,
     });
     res.status(200).json(updatedInventory);
   } catch (error) {
@@ -546,6 +596,10 @@ export const restoreInventory = async (req, res) => {
       inventory: updatedInventory,
       event: "restored",
     });
+    notifyInventoryClients({
+      actionType: "restore",
+      inventory: updatedInventory,
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -575,6 +629,10 @@ export const deleteInventory = async (req, res) => {
       req,
       inventory: updatedInventory,
       event: "archived",
+    });
+    notifyInventoryClients({
+      actionType: "archive",
+      inventory: updatedInventory,
     });
     res.status(200).json(updatedInventory);
   } catch (error) {

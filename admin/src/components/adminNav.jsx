@@ -4,9 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
     Bell, Menu, X, User, LogOut, Settings
 } from 'lucide-react'
+import { getInventoryUpdatesWebSocketUrl } from '../services/inventoryApi'
 import { notificationApi } from '../services/notificationApi'
 
 const NOTIFICATION_LIMIT = 20
+const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
+const NOTIFICATION_REFRESH_DEBOUNCE_MS = 200
 
 // ← DAGDAG ITO
 const PAGE_TITLES = {
@@ -69,6 +72,9 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const notifRef = useRef(null)
     const notificationPanelRef = useRef(null)
     const isMountedRef = useRef(true)
+    const notificationSocketRef = useRef(null)
+    const notificationReconnectTimeoutRef = useRef(null)
+    const notificationRefreshTimeoutRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -170,6 +176,81 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             clearInterval(intervalId)
             window.removeEventListener('focus', handleWindowFocus)
             document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [loadNotifications])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined
+
+        let isDisposed = false
+
+        const scheduleNotificationRefresh = () => {
+            if (notificationRefreshTimeoutRef.current) {
+                clearTimeout(notificationRefreshTimeoutRef.current)
+            }
+
+            notificationRefreshTimeoutRef.current = window.setTimeout(() => {
+                if (!isDisposed) {
+                    loadNotifications()
+                }
+            }, NOTIFICATION_REFRESH_DEBOUNCE_MS)
+        }
+
+        const connectNotificationSocket = () => {
+            if (isDisposed) return
+
+            const socket = new WebSocket(getInventoryUpdatesWebSocketUrl())
+            notificationSocketRef.current = socket
+
+            socket.onmessage = (event) => {
+                if (isDisposed) return
+
+                try {
+                    const message = JSON.parse(event.data)
+
+                    if (message?.type === 'inventory:changed') {
+                        scheduleNotificationRefresh()
+                    }
+                } catch (socketError) {
+                    console.error('Failed to parse notification sync socket message:', socketError)
+                }
+            }
+
+            socket.onerror = () => {
+                if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                    socket.close()
+                }
+            }
+
+            socket.onclose = () => {
+                if (isDisposed) return
+
+                notificationReconnectTimeoutRef.current = window.setTimeout(() => {
+                    connectNotificationSocket()
+                }, NOTIFICATION_SOCKET_RECONNECT_MS)
+            }
+        }
+
+        connectNotificationSocket()
+
+        return () => {
+            isDisposed = true
+
+            if (notificationRefreshTimeoutRef.current) {
+                clearTimeout(notificationRefreshTimeoutRef.current)
+            }
+
+            if (notificationReconnectTimeoutRef.current) {
+                clearTimeout(notificationReconnectTimeoutRef.current)
+            }
+
+            if (
+                notificationSocketRef.current &&
+                (notificationSocketRef.current.readyState === WebSocket.OPEN ||
+                    notificationSocketRef.current.readyState === WebSocket.CONNECTING)
+            ) {
+                notificationSocketRef.current.close()
+            }
         }
     }, [loadNotifications])
 
