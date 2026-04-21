@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
@@ -8,6 +9,25 @@ import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
+
+const buildOrderLookupQuery = (rawId = '') => {
+  const id = String(rawId || '').trim();
+
+  if (!id) {
+    return null;
+  }
+
+  if (mongoose.Types.ObjectId.isValid(id)) {
+    return {
+      $or: [
+        { _id: id },
+        { orderId: id },
+      ],
+    };
+  }
+
+  return { orderId: id };
+};
 
 export const getOrders = async (req, res) => {
   try {
@@ -79,9 +99,14 @@ export const getOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
+    const lookupQuery = buildOrderLookupQuery(id);
+
+    if (!lookupQuery) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
 
     const order = await orderModel
-      .findById(id)
+      .findOne(lookupQuery)
       .populate('userId', 'fullName email');
 
     if (!order) {

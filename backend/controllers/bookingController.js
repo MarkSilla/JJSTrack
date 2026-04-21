@@ -126,10 +126,27 @@ const formatBookingTypeLabel = (bookingType = '') => {
 const getBookingCustomerName = (booking = {}) =>
   String(booking?.contact?.fullName || 'Customer').trim() || 'Customer';
 
+const getBookingSubjectLabel = (booking = {}) => {
+  if (booking?.bookingType === 'jersey') {
+    return String(booking?.teamName || booking?.service || 'Team Jersey').trim() || 'Team Jersey';
+  }
+
+  if (booking?.bookingType === 'organizational') {
+    return String(booking?.orgName || booking?.service || 'Organization').trim() || 'Organization';
+  }
+
+  if (booking?.bookingType === 'repair') {
+    return String(booking?.service || booking?.repairDescription || 'Repair').trim() || 'Repair';
+  }
+
+  return String(booking?.service || booking?.teamName || booking?.orgName || '').trim();
+};
+
 const getBookingDescriptor = (booking = {}) => {
   const typeLabel = formatBookingTypeLabel(booking?.bookingType);
-  const serviceSuffix = booking?.service ? ` for ${booking.service}` : '';
-  return `${typeLabel} booking${serviceSuffix}`;
+  const subjectLabel = getBookingSubjectLabel(booking);
+  const subjectSuffix = subjectLabel ? ` for ${subjectLabel}` : '';
+  return `${typeLabel} booking${subjectSuffix}`;
 };
 
 const getBookingLabel = (booking = {}) =>

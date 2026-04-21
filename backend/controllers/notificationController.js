@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import notificationModel from '../models/notificationModel.js';
 import { getRequestActor } from '../utils/requestActor.js';
 import { resolveNotificationAudience } from '../utils/notificationHelpers.js';
+import { syncUpcomingBookingNotifications } from '../utils/bookingReminderNotifications.js';
 
 const serializeNotification = (notification) => ({
   _id: notification._id,
@@ -42,6 +43,10 @@ export const getNotifications = async (req, res) => {
     const limit = Number.isFinite(parsedLimit)
       ? Math.min(Math.max(parsedLimit, 1), 50)
       : 10;
+
+    if (audience === 'admin') {
+      await syncUpcomingBookingNotifications();
+    }
 
     const [notifications, unreadCount] = await Promise.all([
       notificationModel.find({ audience }).sort({ createdAt: -1 }).limit(limit).lean(),

@@ -2,40 +2,36 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-    Bell,
-    Menu,
-    X,
-    User,
-    LogOut,
-    Settings
+    Bell, Menu, X, User, LogOut, Settings
 } from 'lucide-react'
 import { notificationApi } from '../services/notificationApi'
 
 const NOTIFICATION_LIMIT = 20
 
+// ← DAGDAG ITO
+const PAGE_TITLES = {
+    '/admin/dashboard':   { title: 'Dashboard',      subtitle: 'Overview of your system' },
+    '/admin/appointment': { title: 'Appointments',   subtitle: 'Manage appointments' },
+    '/admin/orders':      { title: 'Orders',          subtitle: 'All customer orders' },
+    '/admin/released':    { title: 'Released Items',  subtitle: 'Released orders' },
+    '/admin/inventory':   { title: 'Inventory',       subtitle: 'Manage your stocks' },
+    '/admin/staff':       { title: 'Staff',            subtitle: 'Manage staff members' },
+    '/admin/report':      { title: 'Reports',          subtitle: 'Analytics & insights' },
+    '/admin/qr-scanner':  { title: 'QR Scanner',      subtitle: 'Scan QR codes' },
+}
+
 const formatNotificationTime = (createdAt) => {
     const date = new Date(createdAt)
-
-    if (Number.isNaN(date.getTime())) {
-        return 'Just now'
-    }
-
+    if (Number.isNaN(date.getTime())) return 'Just now'
     const diffMs = Date.now() - date.getTime()
     const diffMinutes = Math.floor(diffMs / 60000)
-
     if (diffMinutes < 1) return 'Just now'
     if (diffMinutes < 60) return `${diffMinutes} min ago`
-
     const diffHours = Math.floor(diffMinutes / 60)
     if (diffHours < 24) return `${diffHours} hr ago`
-
     const diffDays = Math.floor(diffHours / 24)
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-    })
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 const NOTIFICATION_FILTERS = [
@@ -46,47 +42,17 @@ const NOTIFICATION_FILTERS = [
 ]
 
 const getVisibleNotifications = (notifications, filter) => {
-    if (filter === 'inventory') {
-        return notifications.filter((notification) => notification.type === 'inventory')
-    }
-
-    if (filter === 'booking') {
-        return notifications.filter((notification) => notification.type === 'booking')
-    }
-
-    if (filter === 'unread') {
-        return notifications.filter((notification) => !notification.isRead)
-    }
-
+    if (filter === 'inventory') return notifications.filter((n) => n.type === 'inventory')
+    if (filter === 'booking') return notifications.filter((n) => n.type === 'booking')
+    if (filter === 'unread') return notifications.filter((n) => !n.isRead)
     return notifications
 }
 
 const getEmptyNotificationState = (filter) => {
-    if (filter === 'inventory') {
-        return {
-            title: 'No inventory notifications',
-            description: 'Inventory updates will appear here.'
-        }
-    }
-
-    if (filter === 'booking') {
-        return {
-            title: 'No booking notifications',
-            description: 'Booking updates will appear here.'
-        }
-    }
-
-    if (filter === 'unread') {
-        return {
-            title: 'No unread notifications',
-            description: 'Unread updates will appear here.'
-        }
-    }
-
-    return {
-        title: 'No notifications yet',
-        description: 'New updates will appear here.'
-    }
+    if (filter === 'inventory') return { title: 'No inventory notifications', description: 'Inventory updates will appear here.' }
+    if (filter === 'booking') return { title: 'No booking notifications', description: 'Booking updates will appear here.' }
+    if (filter === 'unread') return { title: 'No unread notifications', description: 'Unread updates will appear here.' }
+    return { title: 'No notifications yet', description: 'New updates will appear here.' }
 }
 
 const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '' }) => {
@@ -106,6 +72,9 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const navigate = useNavigate()
     const location = useLocation()
 
+    // ← DAGDAG ITO
+    const currentPage = PAGE_TITLES[location.pathname] ?? { title: pageTitle, subtitle: pageSubtitle }
+
     const user = {
         fullName: 'Admin User',
         email: localStorage.getItem('rememberAdminEmail') || 'admin@jjstrack.com',
@@ -113,11 +82,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     }
 
     const today = new Date()
-    const dateStr = today.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    })
+    const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     const dayStr = today.toLocaleDateString('en-US', { weekday: 'long' })
 
     useEffect(() => {
@@ -139,19 +104,13 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
 
     useEffect(() => {
         if (typeof window === 'undefined') return undefined
-
         const mediaQuery = window.matchMedia('(max-width: 639px)')
-        const syncViewport = (event) => {
-            setIsMobileViewport(event.matches)
-        }
-
+        const syncViewport = (event) => setIsMobileViewport(event.matches)
         setIsMobileViewport(mediaQuery.matches)
-
         if (typeof mediaQuery.addEventListener === 'function') {
             mediaQuery.addEventListener('change', syncViewport)
             return () => mediaQuery.removeEventListener('change', syncViewport)
         }
-
         mediaQuery.addListener(syncViewport)
         return () => mediaQuery.removeListener(syncViewport)
     }, [])
@@ -164,73 +123,48 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
 
     useEffect(() => {
         if (!showNotifications || typeof window === 'undefined') return undefined
-
         if (!isMobileViewport) return undefined
-
         const originalOverflow = document.body.style.overflow
         document.body.style.overflow = 'hidden'
-
-        return () => {
-            document.body.style.overflow = originalOverflow
-        }
+        return () => { document.body.style.overflow = originalOverflow }
     }, [showNotifications, isMobileViewport])
 
     const loadNotifications = useCallback(async ({ showLoader = false } = {}) => {
-        if (showLoader) {
-            setNotificationsLoading(true)
-        }
-
+        if (showLoader) setNotificationsLoading(true)
         try {
             const response = await notificationApi.getNotifications(NOTIFICATION_LIMIT)
-
             if (!isMountedRef.current) return
-
             const nextNotifications = Array.isArray(response?.notifications) ? response.notifications : []
             const parsedUnreadCount = Number(response?.unreadCount)
-
             setNotifications(nextNotifications)
             setUnreadCount(
                 Number.isFinite(parsedUnreadCount)
                     ? parsedUnreadCount
-                    : nextNotifications.filter((notification) => !notification.isRead).length
+                    : nextNotifications.filter((n) => !n.isRead).length
             )
         } catch (error) {
             console.error('Failed to fetch notifications:', error)
-
             if (showLoader && isMountedRef.current) {
                 setNotifications([])
                 setUnreadCount(0)
             }
         } finally {
-            if (showLoader && isMountedRef.current) {
-                setNotificationsLoading(false)
-            }
+            if (showLoader && isMountedRef.current) setNotificationsLoading(false)
         }
     }, [])
 
     useEffect(() => {
         isMountedRef.current = true
         loadNotifications({ showLoader: true })
-
         const intervalId = setInterval(() => {
-            if (document.visibilityState === 'visible') {
-                loadNotifications()
-            }
+            if (document.visibilityState === 'visible') loadNotifications()
         }, 15000)
-
-        const handleWindowFocus = () => {
-            loadNotifications()
-        }
-
+        const handleWindowFocus = () => loadNotifications()
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                loadNotifications()
-            }
+            if (document.visibilityState === 'visible') loadNotifications()
         }
-
         window.addEventListener('focus', handleWindowFocus)
         document.addEventListener('visibilitychange', handleVisibilityChange)
-
         return () => {
             isMountedRef.current = false
             clearInterval(intervalId)
@@ -240,7 +174,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     }, [loadNotifications])
 
     const handleLogout = () => {
-        // Clear authentication data from localStorage
         localStorage.removeItem('adminToken')
         localStorage.removeItem('rememberAdminEmail')
         navigate('/')
@@ -255,7 +188,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         const nextState = !showNotifications
         setShowNotifications(nextState)
         setShowDropdown(false)
-
         if (nextState) {
             setNotificationFilter('all')
             loadNotifications({ showLoader: notifications.length === 0 })
@@ -264,14 +196,9 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
 
     const handleMarkAllAsRead = async () => {
         setNotifications((current) =>
-            current.map((notification) => ({
-                ...notification,
-                isRead: true,
-                readAt: notification.readAt || new Date().toISOString()
-            }))
+            current.map((n) => ({ ...n, isRead: true, readAt: n.readAt || new Date().toISOString() }))
         )
         setUnreadCount(0)
-
         try {
             await notificationApi.markAllAsRead()
         } catch (error) {
@@ -290,7 +217,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 )
             )
             setUnreadCount((current) => Math.max(0, current - 1))
-
             try {
                 await notificationApi.markAsRead(notification._id)
             } catch (error) {
@@ -298,9 +224,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 loadNotifications()
             }
         }
-
         setShowNotifications(false)
-
         if (notification.route && notification.route !== location.pathname) {
             navigate(notification.route)
         }
@@ -309,18 +233,20 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const getUserInitials = (name) => {
         if (!name) return 'A'
         const parts = name.split(' ')
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase()
-        }
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
         return name.substring(0, 2).toUpperCase()
     }
 
     const visibleNotifications = getVisibleNotifications(notifications, notificationFilter)
     const emptyNotificationState = getEmptyNotificationState(notificationFilter)
+
     const notificationPanel = (
         <div
             ref={notificationPanelRef}
-            className={`${isMobileViewport ? 'fixed inset-x-3 top-20 bottom-3 z-[10001] flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl' : 'absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] sm:w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'} animate-in fade-in zoom-in duration-200`}
+            className={`${isMobileViewport
+                ? 'fixed inset-x-3 top-20 bottom-3 z-[10001] flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'
+                : 'absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] sm:w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'
+            } animate-in fade-in zoom-in duration-200`}
         >
             <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100">
                 <div className="min-w-0">
@@ -331,7 +257,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                             : 'All caught up'}
                     </p>
                 </div>
-
                 <div className="flex items-center gap-2 shrink-0">
                     {unreadCount > 0 && (
                         <button
@@ -374,12 +299,8 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                     </div>
                 ) : visibleNotifications.length === 0 ? (
                     <div className="px-4 py-8 text-center">
-                        <p className="text-sm font-semibold text-gray-700">
-                            {emptyNotificationState.title}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                            {emptyNotificationState.description}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-700">{emptyNotificationState.title}</p>
+                        <p className="text-xs text-gray-400 mt-1">{emptyNotificationState.description}</p>
                     </div>
                 ) : (
                     visibleNotifications.map((notification) => (
@@ -389,7 +310,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                             className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${notification.isRead ? 'bg-white' : 'bg-blue-50/60'}`}
                         >
                             <div className="flex items-start gap-3">
-                                <span className={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${notification.isRead ? 'bg-gray-200' : 'bg-blue-500'}`}></span>
+                                <span className={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${notification.isRead ? 'bg-gray-200' : 'bg-blue-500'}`} />
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-3">
                                         <p className="text-sm font-semibold text-gray-900 break-words">{notification.title}</p>
@@ -409,16 +330,31 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 w-full shrink-0">
             <div className="flex items-center justify-between h-16 px-4 md:px-6">
 
-                <div className="flex items-center gap-4 flex-1">
+                {/* Left — hamburger + page title ← BINAGO ITO */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
                         onClick={onToggleSidebar}
-                        className="p-2 rounded-lg hover:bg-gray-100 lg:hidden transition-colors text-gray-600"
+                        className="p-2 rounded-lg hover:bg-gray-100 lg:hidden transition-colors text-gray-600 shrink-0"
                         aria-label="Toggle sidebar"
                     >
                         <Menu size={22} />
                     </button>
+
+                    {/* Page Title */}
+                    <div className="min-w-0">
+                        <h1 className="text-sm font-bold text-gray-900 leading-tight truncate">
+                            {currentPage.title}
+                        </h1>
+                        {currentPage.subtitle && (
+                            <p className="text-[11px] text-gray-400 hidden sm:block truncate">
+                                {currentPage.subtitle}
+                            </p>
+                        )}
+                    </div>
                 </div>
-                <div className="flex  items-center gap-2 sm:gap-4">
+
+                {/* Right — date, bell, avatar */}
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                     <div className="hidden sm:flex flex-col items-end mr-2">
                         <p className="text-xs font-bold text-gray-900 leading-tight">{dayStr}</p>
                         <p className="text-[10px] text-gray-400 font-medium">{dateStr}</p>
@@ -456,7 +392,8 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                         )}
                     </div>
 
-                    <div className="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
+                    <div className="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block" />
+
                     <div className="relative" ref={dropdownRef}>
                         <button
                             onClick={toggleDropdown}
@@ -477,7 +414,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                                     <p className="text-sm font-bold text-gray-900 truncate">{user.fullName}</p>
                                     <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
                                 </div>
-
                                 <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                     <User size={16} className="text-gray-400" />
                                     <span>My Profile</span>
@@ -486,9 +422,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                                     <Settings size={16} className="text-gray-400" />
                                     <span>Settings</span>
                                 </button>
-
-                                <div className="my-2 border-t border-gray-50"></div>
-
+                                <div className="my-2 border-t border-gray-50" />
                                 <button
                                     onClick={handleLogout}
                                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -500,6 +434,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                         )}
                     </div>
                 </div>
+
             </div>
         </header>
     )

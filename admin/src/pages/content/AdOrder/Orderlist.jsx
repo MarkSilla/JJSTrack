@@ -190,6 +190,16 @@ export default function OrderList({
                         const listAssignee = assignments[orderId]
                             ? EMPLOYEE_POOL.find(e => e.id === assignments[orderId])
                             : null;
+                        const isNamedGroupBooking =
+                            Boolean(order.isBooking) &&
+                            (order.serviceType === 'Team Jersey' || order.serviceType === 'Organization') &&
+                            Boolean(order.item);
+                        const primaryLabel = isNamedGroupBooking
+                            ? (order.item || 'Unnamed Group')
+                            : (order.customer || order.customerName || 'Unknown');
+                        const secondaryLabel = isNamedGroupBooking
+                            ? (order.customer || order.customerName || 'Unknown')
+                            : (order.item || order.itemType || 'Item');
 
                         return (
                             <div
@@ -228,8 +238,8 @@ export default function OrderList({
                                         </div>
                                     </div>
 
-                                    <h3 className="text-sm font-bold text-gray-900 mb-1 leading-tight">
-                                        {order.customer || order.customerName || 'Unknown'}
+                                    <h3 className="text-sm font-bold text-gray-900 mb-1 leading-tight truncate" title={primaryLabel}>
+                                        {primaryLabel}
                                     </h3>
 
                                     <div className="flex items-center gap-2 mb-2">
@@ -238,9 +248,9 @@ export default function OrderList({
                                         </span>
                                         <span
                                             className="text-xs font-medium text-gray-500 truncate max-w-[160px]"
-                                            title={order.item}
+                                            title={secondaryLabel}
                                         >
-                                            {order.item || order.itemType || 'Item'}
+                                            {isNamedGroupBooking ? `Booked by ${secondaryLabel}` : secondaryLabel}
                                         </span>
                                     </div>
 

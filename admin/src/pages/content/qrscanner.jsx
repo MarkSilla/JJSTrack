@@ -102,6 +102,48 @@ function DetailChip({ icon: Icon, label, value }) {
     );
 }
 
+const parseScanPayload = (decodedText) => {
+    const fallbackValue = String(decodedText || '').trim();
+
+    try {
+        const parsed = JSON.parse(decodedText);
+        const orderId = typeof parsed?.orderId === 'string' ? parsed.orderId.trim() : '';
+        const bookingId = typeof parsed?.bookingId === 'string' ? parsed.bookingId.trim() : '';
+        const genericId = typeof parsed?.id === 'string' ? parsed.id.trim() : '';
+
+        return {
+            scannedId: orderId || bookingId || genericId || fallbackValue,
+            isOrderPayload: Boolean(orderId),
+            isBookingPayload: Boolean(bookingId),
+        };
+    } catch {
+        return {
+            scannedId: fallbackValue,
+            isOrderPayload: false,
+            isBookingPayload: false,
+        };
+    }
+};
+
+const extractScannedRecord = (response) => response?.data || response?.order || response?.booking || null;
+
+const getAlreadyHandledMessage = (isBooking = false, message = '') => {
+    const normalizedMessage = String(message || '').toLowerCase();
+
+    if (normalizedMessage.includes('picked up')) {
+        return 'Already picked up.';
+    }
+
+    if (normalizedMessage.includes('released')) {
+        return 'Already released.';
+    }
+
+    return isBooking ? 'Already picked up.' : 'Already released.';
+};
+
+const getSuccessMessage = (isBooking = false) =>
+    isBooking ? 'Item marked as picked up and payment recorded.' : 'Item released and payment recorded.';
+
 export default function QRScanner() {
     const navigate = useNavigate();
     const [scannedOrder, setScannedOrder] = useState(null);
@@ -169,6 +211,52 @@ export default function QRScanner() {
         }, 2000);
     };
 
+    const finalizeSuccessfulScan = (record) => {
+        setScannedOrder(record);
+        setResultKey(k => k + 1);
+        setScanState('success');
+        setReleased(true);
+        setIsPaid(true);
+        scanResultRef.current = null;
+
+        setTimeout(() => {
+            setReleased(false);
+            setScannedOrder(null);
+            setScanError(null);
+            setScanState('idle');
+            setIsPaid(false);
+            scanResultRef.current = null;
+        }, 3000);
+    };
+
+    const releaseScannedRecord = async (record) => {
+        if (!record) return;
+
+        setIsReleasing(true);
+
+        try {
+            const releaseId = record.isBooking ? record._id : (record.orderId || record._id);
+            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId) : await orderApi.markAsReleased(releaseId);
+
+            if (res.success) {
+                finalizeSuccessfulScan(record);
+            } else {
+                const m = res.message || (record.isBooking ? 'Failed to mark as picked up.' : 'Failed to release.');
+                setScanError(m.toLowerCase().includes('already') ? getAlreadyHandledMessage(record.isBooking, m) : m);
+                setResultKey(k => k + 1);
+                setScanState('error');
+                setScannedOrder(null);
+            }
+        } catch (err) {
+            setScanError(err.message?.toLowerCase().includes('already') ? getAlreadyHandledMessage(record.isBooking, err.message) : `Error: ${err.message}`);
+            setResultKey(k => k + 1);
+            setScanState('error');
+            setScannedOrder(null);
+        } finally {
+            setIsReleasing(false);
+        }
+    };
+
     const onScanSuccess = async (decodedText) => {
         if (scanResultRef.current === decodedText) return;
         scanResultRef.current = decodedText;
@@ -177,27 +265,49 @@ export default function QRScanner() {
         setScanState('scanning');
 
         try {
-            let scannedId = decodedText;
-            try { const p = JSON.parse(decodedText); scannedId = p.orderId || p.bookingId || p.id || decodedText; } catch { }
+            const { scannedId, isOrderPayload, isBookingPayload } = parseScanPayload(decodedText);
+
+            if (!scannedId) {
+                setScanError('Invalid QR code.');
+                setResultKey(k => k + 1);
+                setScanState('error');
+                return;
+            }
 
             let order = null, isBooking = false;
-            try { const r = await orderApi.getOrderById(scannedId); if (r?.success && r?.data) order = r.data; else if (r?.data) order = r.data; } catch (e) { if (e.response?.status === 404) { } }
+            const shouldCheckOrder = !isBookingPayload;
+            const shouldCheckBooking = !isOrderPayload;
 
-            if (!order) {
+            if (shouldCheckOrder) {
+                try {
+                    const r = await orderApi.getOrderById(scannedId);
+                    order = extractScannedRecord(r);
+                } catch (e) {
+                    if (e.response?.status && e.response.status !== 404) {
+                        console.error('Order lookup failed:', e);
+                    }
+                }
+            }
+
+            if (!order && shouldCheckBooking) {
                 try {
                     const r = await bookingApi.getBookingById(scannedId);
-                    if (r?.success && r?.data) { order = r.data; isBooking = true; } else if (r?.data) { order = r.data; isBooking = true; }
+                    const booking = extractScannedRecord(r);
+                    if (booking) {
+                        order = booking;
+                        isBooking = true;
+                    }
                 } catch (err) {
                     const s = err.response?.status;
                     if (s === 404 || s === 500) {
                         try {
                             const rel = await bookingApi.markAsPickedUp(scannedId);
-                            if (rel?.success) { setResultKey(k => k + 1); setScanState('success'); setReleased(true); setScannedOrder(null); setScanError(null); return; }
-                            else { const m = rel?.message || ''; if (m.toLowerCase().includes('already')) { setScanError('Already marked as received.'); setResultKey(k => k + 1); setScanState('error'); return; } }
+                            if (rel?.success) { finalizeSuccessfulScan({ _id: scannedId, isBooking: true, paid: true }); return; }
+                            else { const m = rel?.message || ''; if (m.toLowerCase().includes('already')) { setScanError(getAlreadyHandledMessage(true, m)); setResultKey(k => k + 1); setScanState('error'); return; } }
                         } catch (re) {
                             if (re.response?.status === 400) {
                                 const m = re.response?.data?.message || '';
-                                setScanError(m.toLowerCase().includes('not found') ? `Order "${scannedId}" not found.` : m.toLowerCase().includes('already') ? 'Already marked as received.' : m || 'Invalid order ID.');
+                                setScanError(m.toLowerCase().includes('not found') ? `Order "${scannedId}" not found.` : m.toLowerCase().includes('already') ? getAlreadyHandledMessage(true, m) : m || 'Invalid order ID.');
                                 setResultKey(k => k + 1); setScanState('error'); return;
                             }
                         }
@@ -206,9 +316,15 @@ export default function QRScanner() {
             }
 
             if (order) {
-                const done = order.status === 'Released' || order.status === 'Completed' || order.released || order.isPickedUp;
-                if (done) { setScanError('Already marked as received.'); setResultKey(k => k + 1); setScanState('error'); setScannedOrder(null); }
-                else { setScannedOrder({ ...order, isBooking }); setResultKey(k => k + 1); setScanState('found'); }
+                const scannedRecord = { ...order, isBooking };
+                const alreadyHandled = order.status === 'Released' || order.released || order.isReleased || order.isPickedUp;
+                if (alreadyHandled) { setScanError(getAlreadyHandledMessage(isBooking, order.status)); setResultKey(k => k + 1); setScanState('error'); setScannedOrder(null); }
+                else {
+                    setScannedOrder(scannedRecord);
+                    setResultKey(k => k + 1);
+                    setScanState('processing');
+                    await releaseScannedRecord(scannedRecord);
+                }
             } else {
                 setScanError(`Order "${scannedId}" not found. QR may be invalid or expired.`);
                 setResultKey(k => k + 1); setScanState('error');
@@ -218,27 +334,6 @@ export default function QRScanner() {
             setResultKey(k => k + 1); setScanState('error');
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleRelease = async () => {
-        if (!scannedOrder) return;
-        setIsReleasing(true);
-        try {
-            const res = scannedOrder.isBooking ? await bookingApi.markAsPickedUp(scannedOrder._id) : await orderApi.markAsReleased(scannedOrder._id);
-            if (res.success) {
-                setResultKey(k => k + 1); setScanState('success'); setReleased(true); setIsPaid(true); scanResultRef.current = null;
-                setTimeout(() => { setReleased(false); setScannedOrder(null); setScanError(null); setScanState('idle'); setIsPaid(false); }, 3000);
-            } else {
-                const m = res.message || 'Failed to release.';
-                setScanError(m.toLowerCase().includes('already') ? 'Already marked as received.' : m);
-                setResultKey(k => k + 1); setScanState('error'); setScannedOrder(null);
-            }
-        } catch (err) {
-            setScanError(err.message?.toLowerCase().includes('already') ? 'Already marked as received.' : `Error: ${err.message}`);
-            setResultKey(k => k + 1); setScanState('error');
-        } finally {
-            setIsReleasing(false);
         }
     };
 
@@ -252,7 +347,7 @@ export default function QRScanner() {
     };
     const triggerStopCamera = () => document.getElementById('html5-qrcode-button-camera-stop')?.click();
 
-    const hasResult = scanState === 'found' || scanState === 'success' || scanState === 'error';
+    const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error';
 
     const orderDetails = scannedOrder ? [
         { icon: User, label: 'Customer', value: scannedOrder.contact?.fullName || scannedOrder.customer || 'N/A' },
@@ -277,7 +372,7 @@ export default function QRScanner() {
                                 style={{ background: isLoading ? '#f59e0b' : '#16a34a', boxShadow: `0 0 5px ${isLoading ? '#f59e0b' : '#16a34a'}` }} />
                             <span className="text-[9px] font-bold uppercase tracking-widest"
                                 style={{ color: isLoading ? '#b45309' : '#16a34a' }}>
-                                {isLoading ? 'Reading' : 'Ready'}
+                                {isLoading ? (isReleasing ? 'Updating' : 'Reading') : 'Ready'}
                             </span>
                         </div>
                     </div>
@@ -326,7 +421,7 @@ export default function QRScanner() {
                                             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/35">
                                                 <div className="flex flex-col items-center gap-2">
                                                     <Loader size={22} className="text-blue-400 animate-spin" />
-                                                    <p className="text-[10px] text-blue-300 font-medium">Reading QR…</p>
+                                                    <p className="text-[10px] text-blue-300 font-medium">{isReleasing ? 'Updating status…' : 'Reading QR…'}</p>
                                                 </div>
                                             </div>
                                         )}
@@ -373,7 +468,7 @@ export default function QRScanner() {
                                             <CheckCircle2 size={28} className="text-green-500" />
                                         </div>
                                         <p className="text-lg font-bold text-gray-800 mb-1">Scan Successful!</p>
-                                        <p className="text-xs text-green-600 mb-3">Item marked as picked up and payment recorded.</p>
+                                        <p className="text-xs text-green-600 mb-3">{getSuccessMessage(scannedOrder?.isBooking)}</p>
                                         <div className="flex items-center gap-2 justify-center mb-2">
                                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 border border-green-200 text-[9px] font-bold uppercase tracking-widest text-green-600">
                                                 <CheckCircle2 size={10} />
@@ -414,15 +509,15 @@ export default function QRScanner() {
                                         </button>
                                     </div>
                                 )}
-                                {scanState === 'found' && scannedOrder && (
+                                {scanState === 'processing' && scannedOrder && (
                                     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm fade-up">
                                         <div className="flex items-center gap-3 px-4 py-3.5 bg-blue-50 border-b border-blue-100">
                                             <div className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
-                                                <CheckCircle2 size={13} className="text-blue-500" />
+                                                <Loader size={13} className="text-blue-500 animate-spin" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold text-gray-800">Order Found</p>
-                                                <p className="text-[9px] text-gray-400 truncate mt-0.5">{scannedOrder._id}</p>
+                                                <p className="text-xs font-semibold text-gray-800">QR Verified</p>
+                                                <p className="text-[9px] text-gray-400 truncate mt-0.5">{scannedOrder.orderId || scannedOrder.bookingId || scannedOrder._id}</p>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${scannedOrder.isBooking ? 'bg-purple-50 border border-purple-200 text-purple-500' : 'bg-blue-100 border border-blue-200 text-blue-500'}`}>
@@ -436,10 +531,6 @@ export default function QRScanner() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <button onClick={handleCancel}
-                                                className="p-1.5 rounded-lg text-gray-300 hover:text-gray-600 hover:bg-white transition-all cursor-pointer border-none bg-transparent shrink-0">
-                                                <X size={13} />
-                                            </button>
                                         </div>
 
                                         <div className="p-4">
@@ -447,15 +538,12 @@ export default function QRScanner() {
                                                 {orderDetails.map(d => <DetailChip key={d.label} {...d} />)}
                                             </div>
                                             <div className="h-px bg-gray-100 mb-4" />
-                                            <div className="flex gap-2.5">
-                                                <button onClick={handleRelease} disabled={isReleasing}
-                                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-semibold transition-all cursor-pointer border-none shadow-sm shadow-blue-100">
-                                                    {isReleasing ? <><Loader size={13} className="animate-spin" />Releasing…</> : <><PackageCheck size={13} />Release & Mark Paid</>}
-                                                </button>
-                                                <button onClick={handleCancel} disabled={isReleasing}
-                                                    className="px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-600 text-xs font-semibold transition-all cursor-pointer">
-                                                    Cancel
-                                                </button>
+                                            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-center">
+                                                <div className="inline-flex items-center gap-2 text-blue-600 text-xs font-semibold">
+                                                    <PackageCheck size={14} />
+                                                    {scannedOrder.isBooking ? 'Automatically marking as picked up...' : 'Automatically releasing item...'}
+                                                </div>
+                                                <p className="text-[11px] text-blue-500 mt-1">No confirmation needed. This scan updates the status immediately.</p>
                                             </div>
                                         </div>
                                     </div>

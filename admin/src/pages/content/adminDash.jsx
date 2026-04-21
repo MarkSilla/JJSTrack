@@ -46,6 +46,22 @@ const normalizeServiceLabel = (service) => {
   return "Service";
 };
 
+const getBookingDisplayLabel = (booking = {}) => {
+  if (booking.bookingType === "jersey") {
+    return booking.teamName || booking.service || "Team Jersey";
+  }
+
+  if (booking.bookingType === "organizational") {
+    return booking.orgName || booking.service || "Organization";
+  }
+
+  if (booking.bookingType === "repair") {
+    return booking.service || booking.repairDescription || "Repair";
+  }
+
+  return booking.service || booking.teamName || booking.orgName || normalizeServiceLabel(booking.bookingType);
+};
+
 const normalizeAppointmentStatus = (status) => {
   const text = String(status || "").toLowerCase();
   if (text.includes("cancel")) return "Cancel/Incomplete";
@@ -298,7 +314,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
             return {
               id: booking._id,
-              service: booking.service || normalizeServiceLabel(booking.bookingType),
+              service: getBookingDisplayLabel(booking),
               date: formatDateLabel(dateObj),
               dateObj,
               time: booking.pickupSlot || "No Time",

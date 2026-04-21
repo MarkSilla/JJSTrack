@@ -51,6 +51,22 @@ export const computeOrderEarnings = (order, employeeId) => {
     return lines.length > 0 ? { lines, total } : null;
 };
 
+const getBookingDisplayLabel = (booking = {}) => {
+    if (booking.bookingType === 'jersey') {
+        return booking.teamName || booking.service || 'Team Jersey';
+    }
+
+    if (booking.bookingType === 'organizational') {
+        return booking.orgName || booking.service || 'Organization';
+    }
+
+    if (booking.bookingType === 'repair') {
+        return booking.service || booking.repairDescription || 'Repair';
+    }
+
+    return booking.service || booking.teamName || booking.orgName || booking.bookingType || 'Service';
+};
+
 export const convertBooking = (booking) => {
     let validDate = null;
     if (booking.pickupDate) {
@@ -70,13 +86,15 @@ export const convertBooking = (booking) => {
         console.error('Date formatting error:', e);
     }
 
+    const bookingDisplayLabel = getBookingDisplayLabel(booking);
+
     return {
         ...booking,
         id: booking.id || booking._id,
         displayId: booking.bookingId || booking.id || booking._id,
         orderId: booking._id,
         customer: booking.contact?.fullName || booking.customerName || 'Unknown',
-        item: booking.service || booking.bookingType || 'Service',
+        item: bookingDisplayLabel,
         serviceType:
             booking.bookingType === 'jersey' ? 'Team Jersey'
                 : booking.bookingType === 'organizational' ? 'Organization'
@@ -103,7 +121,7 @@ export const convertBooking = (booking) => {
                             unitPrice: opt.price || 0,
                             addOnPrice: 0,
                         }))
-                        : [{ description: booking.service || booking.bookingType || 'Service', qty: 1, unitPrice: 0, addOnPrice: 0 }],
+                        : [{ description: bookingDisplayLabel, qty: 1, unitPrice: 0, addOnPrice: 0 }],
         },
         contact: booking.contact || {},
         phone: booking.contact?.phone || 'N/A',
