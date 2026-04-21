@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     ChevronLeft,
     ChevronRight,
@@ -104,6 +105,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
 };
 
 const AdAppointment = () => {
+    const location = useLocation();
     const [showBooking, setShowBooking] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showSchedule, setShowSchedule] = useState(false);
@@ -114,6 +116,28 @@ const AdAppointment = () => {
     const today = new Date();
     const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
     const [selectedDateStr, setSelectedDateStr] = useState(toDateString(today.getFullYear(), today.getMonth(), today.getDate()));
+
+    useEffect(() => {
+        const preset = location.state?.dashboardPreset;
+        if (!preset) return;
+
+        if (typeof preset.selectedDateStr === 'string') {
+            setSelectedDateStr(preset.selectedDateStr);
+
+            const selectedDate = new Date(`${preset.selectedDateStr}T00:00:00`);
+            if (!Number.isNaN(selectedDate.getTime())) {
+                setCurrentDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+            }
+        }
+
+        if (typeof preset.activeFilter === 'string') {
+            setActiveFilter(preset.activeFilter);
+        }
+
+        if (typeof preset.showSchedule === 'boolean') {
+            setShowSchedule(preset.showSchedule);
+        }
+    }, [location.state]);
 
     const mapStatus = (backendStatus) => {
         const statusMap = {

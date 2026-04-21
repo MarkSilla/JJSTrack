@@ -167,6 +167,7 @@ export default function OrderList({
                 ) : (
                     filteredOrders.map(order => {
                         const orderId = order.id || order._id;
+                        const orderDisplayId = order.displayId || order.orderId || order.bookingId || orderId;
                         const isSelected = activeOrderId === orderId;
                         const derivedStatus = getDerivedStatus(order);
                         const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
@@ -203,7 +204,12 @@ export default function OrderList({
                                 {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />}
                                 <div className="p-3 pl-4">
                                     <div className="flex items-start justify-between mb-2">
-                                        <span className="text-[11px] font-bold text-gray-500 tracking-wider">{orderId}</span>
+                                        <span
+                                            className="max-w-[160px] truncate text-[11px] font-bold text-gray-500 tracking-wider"
+                                            title={orderDisplayId}
+                                        >
+                                            {orderDisplayId}
+                                        </span>
                                         <div className="flex items-center gap-1.5">
                                             {order.isBooking && (
                                                 <span className="text-[9px] font-black uppercase px-2 py-1 rounded border border-purple-200 bg-purple-50 text-purple-600 tracking-wider">

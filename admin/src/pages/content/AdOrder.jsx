@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
 import { staffApi } from '../../services/staffApi.js';
@@ -73,6 +73,7 @@ export const convertBooking = (booking) => {
     return {
         ...booking,
         id: booking.id || booking._id,
+        displayId: booking.bookingId || booking.id || booking._id,
         orderId: booking._id,
         customer: booking.contact?.fullName || booking.customerName || 'Unknown',
         item: booking.service || booking.bookingType || 'Service',
@@ -115,6 +116,7 @@ export const convertBooking = (booking) => {
 
 export default function AdOrder() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -200,6 +202,27 @@ export default function AdOrder() {
         return () => window.clearInterval(intervalId);
     }, [fetchOrdersAndBookings]);
 
+    useEffect(() => {
+        const preset = location.state?.dashboardPreset;
+        if (!preset) return;
+
+        if (typeof preset.searchQuery === 'string') {
+            setSearchQuery(preset.searchQuery);
+        }
+
+        if (typeof preset.filterStatus === 'string') {
+            setFilterStatus(preset.filterStatus);
+        }
+
+        if (typeof preset.sortOption === 'string') {
+            setSortOption(preset.sortOption);
+        }
+
+        if (typeof preset.isFilterOpen === 'boolean') {
+            setIsFilterOpen(preset.isFilterOpen);
+        }
+    }, [location.state]);
+
     // ─── Derived State ────────────────────────────────────────────────────────
 
     const getOrderSortTime = (order) => {
@@ -225,10 +248,11 @@ export default function AdOrder() {
     };
 
     const filteredOrders = useMemo(() => {
+        const normalizedQuery = searchQuery.toLowerCase();
         let result = orders.filter(o =>
-            (o.customer || o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (o.id || o._id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (o.item || o.itemType || o.serviceType || '').toLowerCase().includes(searchQuery.toLowerCase())
+            (o.customer || o.customerName || '').toLowerCase().includes(normalizedQuery) ||
+            String(o.displayId || o.orderId || o.bookingId || o.id || o._id || '').toLowerCase().includes(normalizedQuery) ||
+            (o.item || o.itemType || o.serviceType || '').toLowerCase().includes(normalizedQuery)
         );
 
         if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');

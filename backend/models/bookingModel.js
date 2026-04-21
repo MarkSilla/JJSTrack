@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import mongoose from "mongoose";
 
 const playerSchema = new mongoose.Schema({
@@ -36,7 +37,45 @@ const bookingStepSchema = new mongoose.Schema({
   time:   String,
 });
 
+const formatBookingDateSegment = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+};
+
+const createRandomSegment = (length = 6) =>
+  crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length).toUpperCase();
+
+export const generateUniqueBookingId = async (BookingModel) => {
+  const Model = BookingModel || mongoose.models.Booking;
+
+  if (!Model) {
+    throw new Error('Booking model is not initialized');
+  }
+
+  const dateSegment = formatBookingDateSegment();
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const candidate = `ORD-${dateSegment}-${createRandomSegment(6)}`;
+    const existingBooking = await Model.exists({ bookingId: candidate });
+
+    if (!existingBooking) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Failed to generate a unique bookingId');
+};
+
 const bookingSchema = new mongoose.Schema({
+  bookingId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    immutable: true,
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -147,4 +186,12 @@ const bookingSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-export default mongoose.model('Booking', bookingSchema);
+bookingSchema.pre('save', async function preSave() {
+  if (!this.bookingId) {
+    this.bookingId = await generateUniqueBookingId(this.constructor);
+  }
+});
+
+const Booking = mongoose.model('Booking', bookingSchema);
+
+export default Booking;

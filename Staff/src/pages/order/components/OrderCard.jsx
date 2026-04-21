@@ -15,6 +15,7 @@ const TYPE_CONFIG = {
 
 const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => {
     const derivedStatus = getDerivedStatus(order);
+    const orderDisplayId = order.displayId || order.orderId || order.bookingId || order.id;
     const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
     const typeConf = TYPE_CONFIG[order.serviceType] || TYPE_CONFIG['Team Jersey'];
     const stepIdx = getActiveStepIndex(order);
@@ -28,8 +29,8 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
             className="md:hidden bg-white rounded-3xl border border-gray-100 p-5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 relative overflow-hidden group"
         >
             <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-gray-400 tracking-wider font-mono">
-                    {order.id.slice(0, 10)}...
+                <span className="max-w-[170px] truncate text-xs font-bold text-gray-400 tracking-wider font-mono">
+                    {orderDisplayId}
                 </span>
                 <span className={`text-xs font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
                     {statusConf.label}

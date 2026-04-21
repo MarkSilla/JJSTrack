@@ -23,6 +23,7 @@ const mapBookingToArchiveOrder = (booking) => {
     return {
         id: booking._id || booking.id,
         _id: booking._id,
+        displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
         type: mapBookingTypeToArchive(booking.bookingType),
         teamName: booking.teamName || booking.orgName || 'Order',
         customerName: booking.contact?.fullName || booking.customer || 'Unknown',
@@ -140,7 +141,7 @@ const ArchiveDetail = ({ order, onBack }) => {
 
                 <div className="pt-5 px-6 pb-5">
                     <div className="flex items-center gap-2 flex-wrap mb-3.5">
-                        <MonoTag>#{order.id?.toUpperCase()}</MonoTag>
+                        <MonoTag>{order.displayId || order.id}</MonoTag>
                         <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-300">
                             <CheckCircle2 size={10} /> Completed
                         </Pill>
@@ -577,13 +578,14 @@ const ArchiveDetail = ({ order, onBack }) => {
 const ArchiveCard = ({ order, onClick }) => {
     const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
     const TypeIcon = tc.icon;
+    const orderDisplayId = order.displayId || order.id;
     return (
         <button
             onClick={() => onClick(order.id)}
             className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer flex flex-col gap-3 shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-0.5"
         >
             <div className="flex items-center justify-between gap-2">
-                <MonoTag>#{order.id?.toUpperCase().slice(-8)}</MonoTag>
+                <MonoTag>{orderDisplayId}</MonoTag>
                 <Pill bg={tc.bg} text={tc.text} border={tc.border}>
                     <TypeIcon size={9} /> {tc.label}
                 </Pill>
@@ -649,7 +651,7 @@ const ArchivesPage = () => {
                 (o.teamName || '').toLowerCase().includes(q) ||
                 (o.customerName || '').toLowerCase().includes(q) ||
                 (o.serviceTitle || '').toLowerCase().includes(q) ||
-                o.id?.toLowerCase().includes(q)
+                String(o.displayId || o.id || '').toLowerCase().includes(q)
             );
         }
         list.sort((a, b) => {
@@ -801,9 +803,10 @@ const ArchivesPage = () => {
                                     {filtered.map((order, idx) => {
                                         const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
                                         const TypeIcon = tc.icon;
+                                        const orderDisplayId = order.displayId || order.id;
                                         return (
                                             <tr key={order.id} onClick={() => setSelectedId(order.id)} className={`h-[62px] cursor-pointer border-b border-slate-100 transition-colors duration-150 hover:bg-blue-50 group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                                                <td className="px-3.5 pl-6"><MonoTag>#{order.id?.toUpperCase().slice(-8)}</MonoTag></td>
+                                                <td className="px-3.5 pl-6"><MonoTag>{orderDisplayId}</MonoTag></td>
                                                 <td className="px-3.5"><Pill bg={tc.bg} text={tc.text} border={tc.border}><TypeIcon size={9} /> {tc.label}</Pill></td>
                                                 <td className="px-3.5"><div className="text-[13px] font-bold text-slate-900 leading-snug">{order.teamName || order.customerName}</div>{order.teamName && <div className="text-[11px] font-medium text-slate-400 mt-0.5">{order.customerName}</div>}</td>
                                                 <td className="px-3.5 text-xs font-semibold text-slate-500">{order.serviceTitle}</td>

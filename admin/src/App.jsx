@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import Login from './pages/login'
 import AdminLayout from './layout/adminLayout'
@@ -12,6 +12,8 @@ import ReleasedItems from './pages/content/released'
 import AdStaff from './pages/content/AdStaff'
 import AdInventory from './pages/content/AdInventory'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { StockAlertProvider } from './context/StockAlertContext'
+import { GlobalStockAlert } from './components/GlobalStockAlert'
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -28,32 +30,33 @@ function App() {
     }, [])
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen"><span>Loading...</span></div>
+        return <div className='flex items-center justify-center h-screen'><span>Loading...</span></div>
     }
 
     return (
-        <Router>
-            <Routes>
-                {/* Redirect to dashboard if already authenticated */}
-                <Route path="/" element={isAuthenticated ? <Navigate to="/admin/dashboard" replace /> : <Login />} />
-
-                <Route path="/admin" element={
-                    <ProtectedRoute>
-                        <AdminLayout />
-                    </ProtectedRoute>
-                }>
-                    <Route path="dashboard" element={<Dash />} />
-                    <Route path="report" element={<AdAnalytics />} />
-                    <Route path="appointment" element={<AdAppointment />} />
-                    <Route path="orders" element={<AdOrder />} />
-                    <Route path="orders/:orderId" element={<OrderDetailPage />} />
-                    <Route path="qr-scanner" element={<QRScanner />} />
-                    <Route path="released" element={<ReleasedItems />} />
-                    <Route path="staff" element={<AdStaff />} />
-                    <Route path="inventory" element={<AdInventory />} />
-                </Route>
-            </Routes>
-        </Router>
+        <StockAlertProvider>
+            <Router>
+                <GlobalStockAlert />
+                <Routes>
+                    <Route path='/' element={isAuthenticated ? <Navigate to='/admin/dashboard' replace /> : <Login />} />
+                    <Route path='/admin' element={
+                        <ProtectedRoute>
+                            <AdminLayout />
+                        </ProtectedRoute>
+                    }>
+                        <Route path='dashboard' element={<Dash />} />
+                        <Route path='report' element={<AdAnalytics />} />
+                        <Route path='appointment' element={<AdAppointment />} />
+                        <Route path='orders' element={<AdOrder />} />
+                        <Route path='orders/:orderId' element={<OrderDetailPage />} />
+                        <Route path='qr-scanner' element={<QRScanner />} />
+                        <Route path='released' element={<ReleasedItems />} />
+                        <Route path='staff' element={<AdStaff />} />
+                        <Route path='inventory' element={<AdInventory />} />
+                    </Route>
+                </Routes>
+            </Router>
+        </StockAlertProvider>
     )
 }
 

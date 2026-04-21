@@ -72,6 +72,16 @@ export default function OrderDetail({
         [activeOrder]
     );
 
+    const visibleOrderId = useMemo(() => {
+        if (!activeOrder) return '';
+
+        if (activeOrder.isBooking) {
+            return activeOrder.displayId || bookingExtras?.bookingId || activeOrder.id || activeOrder._id || '';
+        }
+
+        return activeOrder.displayId || activeOrder.orderId || activeOrder.id || activeOrder._id || '';
+    }, [activeOrder, bookingExtras]);
+
     const imageUrls = useMemo(() => {
         const urls = [];
         const append = (value) => {
@@ -170,7 +180,7 @@ export default function OrderDetail({
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <span className="text-[11px] lg:text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg tracking-wider">{activeOrder.id}</span>
+                        <span className="text-[11px] lg:text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg tracking-wider">{visibleOrderId}</span>
                         {activeOrder.isBooking && (
                             <span className="text-[11px] lg:text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-lg tracking-wider">BOOKING</span>
                         )}
@@ -383,7 +393,7 @@ export default function OrderDetail({
 
                         <div className="p-6 bg-gray-50 space-y-3">
                             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <p className="text-xs font-semibold text-red-700">Order ID: <span className="font-bold">{activeOrder.id}</span></p>
+                                <p className="text-xs font-semibold text-red-700">Order ID: <span className="font-bold">{visibleOrderId}</span></p>
                                 <p className="text-xs font-semibold text-red-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
                             </div>
                         </div>
@@ -428,7 +438,7 @@ export default function OrderDetail({
 
                         <div className="p-6 bg-gray-50 space-y-3">
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                                <p className="text-xs font-semibold text-amber-700">Order ID: <span className="font-bold">{activeOrder.id}</span></p>
+                                <p className="text-xs font-semibold text-amber-700">Order ID: <span className="font-bold">{visibleOrderId}</span></p>
                                 <p className="text-xs font-semibold text-amber-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
                             </div>
                         </div>

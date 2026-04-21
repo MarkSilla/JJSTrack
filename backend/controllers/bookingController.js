@@ -1,4 +1,4 @@
-import bookingModel from '../models/bookingModel.js';
+import bookingModel, { generateUniqueBookingId } from '../models/bookingModel.js';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
@@ -6,6 +6,7 @@ import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
 import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+import { createNotification } from '../utils/notificationHelpers.js';
 
 const isEnvAdminRequest = (req) => req.userId === 'admin';
 
@@ -27,6 +28,54 @@ const getBookingOwnerId = (booking) =>
   booking?.userId?._id?.toString?.() ||
   booking?.userId?.toString?.() ||
   '';
+
+const ensureBookingId = async (booking) => {
+  if (!booking?._id || booking.bookingId) {
+    return booking;
+  }
+
+  const nextBookingId = await generateUniqueBookingId(bookingModel);
+  const updateResult = await bookingModel.updateOne(
+    {
+      _id: booking._id,
+      $or: [
+        { bookingId: { $exists: false } },
+        { bookingId: null },
+        { bookingId: '' },
+      ],
+    },
+    { $set: { bookingId: nextBookingId } },
+    { timestamps: false }
+  );
+
+  if (updateResult.modifiedCount > 0) {
+    booking.bookingId = nextBookingId;
+    return booking;
+  }
+
+  const latestBooking = await bookingModel.findById(booking._id).select('bookingId');
+  if (latestBooking?.bookingId) {
+    booking.bookingId = latestBooking.bookingId;
+  }
+
+  return booking;
+};
+
+const ensureBookingIds = async (bookings = []) => {
+  const bookingList = Array.isArray(bookings) ? bookings : [];
+
+  await Promise.all(
+    bookingList
+      .filter((booking) => booking?._id && !booking.bookingId)
+      .map((booking) =>
+        ensureBookingId(booking).catch((error) => {
+          console.error(`Failed to backfill bookingId for booking ${booking._id}:`, error);
+        })
+      )
+  );
+
+  return bookingList;
+};
 
 const normalizePositiveNumber = (value, fallback = 1) => {
   const parsed = Number(value);
@@ -65,6 +114,266 @@ const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
     .trim();
 
   return fullName || String(participant.name || fallback).trim() || fallback;
+};
+
+const formatBookingTypeLabel = (bookingType = '') => {
+  if (bookingType === 'repair') return 'repair';
+  if (bookingType === 'jersey') return 'team jersey';
+  if (bookingType === 'organizational') return 'organizational';
+  return 'booking';
+};
+
+const getBookingCustomerName = (booking = {}) =>
+  String(booking?.contact?.fullName || 'Customer').trim() || 'Customer';
+
+const getBookingDescriptor = (booking = {}) => {
+  const typeLabel = formatBookingTypeLabel(booking?.bookingType);
+  const serviceSuffix = booking?.service ? ` for ${booking.service}` : '';
+  return `${typeLabel} booking${serviceSuffix}`;
+};
+
+const getBookingLabel = (booking = {}) =>
+  `${getBookingCustomerName(booking)}'s ${getBookingDescriptor(booking)}`;
+
+const formatPickupSchedule = (pickupDate = '', pickupSlot = '') =>
+  [pickupDate, pickupSlot].filter(Boolean).join(' at ');
+
+const resolveBookingNotificationRoute = (booking = {}, fallbackOrderId = '') => {
+  const orderId =
+    fallbackOrderId ||
+    booking?.orderId?._id?.toString?.() ||
+    booking?.orderId?.toString?.() ||
+    '';
+
+  return orderId ? `/admin/orders/${orderId}` : '/admin/orders';
+};
+
+const createBookingAdminNotification = async ({
+  req,
+  booking,
+  title,
+  message,
+  route,
+  metadata = {},
+}) => {
+  if (!booking?._id || !title || !message) return null;
+
+  return createNotification({
+    audience: 'admin',
+    type: 'booking',
+    title,
+    message,
+    route: route || resolveBookingNotificationRoute(booking),
+    entityId: booking._id,
+    entityModel: 'Booking',
+    metadata: {
+      bookingType: booking.bookingType,
+      service: booking.service,
+      status: booking.status,
+      customerName: getBookingCustomerName(booking),
+      ...metadata,
+    },
+    req,
+  });
+};
+
+const maybeCreateBookingStatusNotification = async ({
+  req,
+  booking,
+  previousStatus = '',
+}) => {
+  if (!booking?.status || booking.status === previousStatus) {
+    return null;
+  }
+
+  let title = '';
+  let message = '';
+
+  switch (booking.status) {
+    case 'Approved':
+      title = 'Booking approved';
+      message = `${getBookingLabel(booking)} was approved.`;
+      break;
+    case 'In Progress':
+      title = 'Booking in progress';
+      message = `Work has started on ${getBookingLabel(booking)}.`;
+      break;
+    case 'Completed':
+      title = 'Booking completed';
+      message = `${getBookingLabel(booking)} was marked completed and is ready for pickup.`;
+      break;
+    case 'Released':
+      title = 'Booking released';
+      message = booking.isPickedUp
+        ? `${getBookingLabel(booking)} was released and picked up.`
+        : `${getBookingLabel(booking)} was released.`;
+      break;
+    case 'Cancelled':
+      title = 'Booking cancelled';
+      message = `${getBookingLabel(booking)} was cancelled.`;
+      break;
+    default:
+      return null;
+  }
+
+  return createBookingAdminNotification({
+    req,
+    booking,
+    title,
+    message,
+    metadata: {
+      event: 'status_changed',
+      previousStatus,
+      nextStatus: booking.status,
+    },
+  });
+};
+
+const maybeCreateBookingAssignmentNotification = async ({
+  req,
+  booking,
+  previousAssignedTailor = '',
+}) => {
+  const previousTailor = String(previousAssignedTailor || '').trim();
+  const nextTailor = String(booking?.assignedTailor || '').trim();
+
+  if (!nextTailor || previousTailor === nextTailor) {
+    return null;
+  }
+
+  return createBookingAdminNotification({
+    req,
+    booking,
+    title: previousTailor ? 'Booking reassigned' : 'Booking assigned',
+    message: previousTailor
+      ? `${getBookingLabel(booking)} was reassigned from ${previousTailor} to ${nextTailor}.`
+      : `${getBookingLabel(booking)} was assigned to ${nextTailor}.`,
+    metadata: {
+      event: previousTailor ? 'reassigned' : 'assigned',
+      previousAssignedTailor: previousTailor,
+      assignedTailor: nextTailor,
+    },
+  });
+};
+
+const maybeCreateBookingPickupNotification = async ({
+  req,
+  booking,
+  previousPickupDate = '',
+  previousPickupSlot = '',
+}) => {
+  const previousDate = String(previousPickupDate || '').trim();
+  const previousSlot = String(previousPickupSlot || '').trim();
+  const nextDate = String(booking?.pickupDate || '').trim();
+  const nextSlot = String(booking?.pickupSlot || '').trim();
+
+  if (previousDate === nextDate && previousSlot === nextSlot) {
+    return null;
+  }
+
+  const nextSchedule = formatPickupSchedule(nextDate, nextSlot);
+  if (!nextSchedule) {
+    return null;
+  }
+
+  const previousSchedule = formatPickupSchedule(previousDate, previousSlot);
+
+  return createBookingAdminNotification({
+    req,
+    booking,
+    title: previousSchedule ? 'Booking pickup rescheduled' : 'Booking pickup scheduled',
+    message: previousSchedule
+      ? `${getBookingLabel(booking)} pickup moved from ${previousSchedule} to ${nextSchedule}.`
+      : `${getBookingLabel(booking)} pickup was set for ${nextSchedule}.`,
+    metadata: {
+      event: previousSchedule ? 'pickup_rescheduled' : 'pickup_scheduled',
+      previousPickupDate: previousDate || null,
+      previousPickupSlot: previousSlot || null,
+      pickupDate: nextDate || null,
+      pickupSlot: nextSlot || null,
+    },
+  });
+};
+
+const maybeCreateBookingCapacityNotification = async ({ req, booking }) => {
+  if (!booking?.pickupDate) {
+    return null;
+  }
+
+  if (booking.bookingType === 'repair') {
+    const repairCount = await bookingModel.countDocuments({
+      pickupDate: booking.pickupDate,
+      bookingType: 'repair',
+      status: { $ne: 'Cancelled' },
+    });
+
+    if (repairCount !== 7) {
+      return null;
+    }
+
+    return createBookingAdminNotification({
+      req,
+      booking,
+      title: 'Repair slots full',
+      message: `Repair bookings for ${booking.pickupDate} are now fully booked.`,
+      metadata: {
+        event: 'pickup_capacity_full',
+        pickupDate: booking.pickupDate,
+        slotGroup: 'repair',
+        activeBookings: repairCount,
+      },
+    });
+  }
+
+  if (booking.bookingType === 'jersey' || booking.bookingType === 'organizational') {
+    const jerseyOrgCount = await bookingModel.countDocuments({
+      pickupDate: booking.pickupDate,
+      bookingType: { $in: ['jersey', 'organizational'] },
+      status: { $ne: 'Cancelled' },
+    });
+
+    if (jerseyOrgCount !== 3) {
+      return null;
+    }
+
+    return createBookingAdminNotification({
+      req,
+      booking,
+      title: 'Custom booking slots full',
+      message: `Jersey and organizational bookings for ${booking.pickupDate} are now fully booked.`,
+      metadata: {
+        event: 'pickup_capacity_full',
+        pickupDate: booking.pickupDate,
+        slotGroup: 'jersey_organizational',
+        activeBookings: jerseyOrgCount,
+      },
+    });
+  }
+
+  return null;
+};
+
+const createBookingConvertedNotification = async ({
+  req,
+  booking,
+  order,
+}) => {
+  if (!booking?._id || !order?._id) {
+    return null;
+  }
+
+  return createBookingAdminNotification({
+    req,
+    booking,
+    title: 'Booking converted to order',
+    message: `${getBookingLabel(booking)} was converted to order ${order.orderId}.`,
+    route: resolveBookingNotificationRoute(booking, order._id.toString()),
+    metadata: {
+      event: 'converted_to_order',
+      orderId: order._id,
+      orderNumber: order.orderId,
+    },
+  });
 };
 
 // Create a new booking (from repair form, team jersey, or organizational)
@@ -349,6 +658,18 @@ export const createBooking = async (req, res) => {
     await booking.save();
     console.log('Booking saved successfully:', booking._id);
 
+    await createBookingAdminNotification({
+      req,
+      booking,
+      title: 'New booking submitted',
+      message: `${contact.fullName} submitted a ${bookingType} booking for ${service}.`,
+      route: '/admin/orders',
+      metadata: {
+        event: 'submitted',
+      },
+    });
+    await maybeCreateBookingCapacityNotification({ req, booking });
+
     res.status(201).json({
       success: true,
       message: 'Booking submitted successfully',
@@ -436,6 +757,7 @@ export const getBookings = async (req, res) => {
     console.log('getBookings called with userId:', userId, 'query:', query);
 
     const bookings = await bookingModel.find(query).sort({ createdAt: -1 });
+    await ensureBookingIds(bookings);
 
     // Debug: Check all bookings if none found for staff member
     if (bookings.length === 0 && query.assignedTailor) {
@@ -493,6 +815,8 @@ export const getBookingById = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    await ensureBookingId(booking);
+
     res.json({
       success: true,
       booking,
@@ -534,6 +858,10 @@ export const updateBooking = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    const previousStatus = booking.status;
+    const previousAssignedTailor = booking.assignedTailor;
+    const previousPickupDate = booking.pickupDate;
+    const previousPickupSlot = booking.pickupSlot;
     const nextSteps = steps || booking.steps;
     const nextStatus = resolveWorkflowStatus({
       currentStatus: booking.status,
@@ -557,6 +885,22 @@ export const updateBooking = async (req, res) => {
     await booking.save();
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
+    await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingAssignmentNotification({
+      req,
+      booking,
+      previousAssignedTailor,
+    });
+    await maybeCreateBookingPickupNotification({
+      req,
+      booking,
+      previousPickupDate,
+      previousPickupSlot,
+    });
 
     res.json({
       success: true,
@@ -598,6 +942,7 @@ export const updateBookingStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    const previousStatus = booking.status;
     booking.status = resolveWorkflowStatus({
       currentStatus: booking.status,
       requestedStatus: status,
@@ -606,6 +951,11 @@ export const updateBookingStatus = async (req, res) => {
     if (adminNotes) booking.adminNotes = adminNotes;
 
     await booking.save();
+    await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
 
     res.json({
       success: true,
@@ -769,6 +1119,11 @@ export const convertBookingToOrder = async (req, res) => {
 
     booking.totalPrice = totalPrice;
     await booking.save();
+    await createBookingConvertedNotification({
+      req,
+      booking,
+      order,
+    });
 
     const invoice = new invoiceModel({
       userId: booking.userId,
@@ -832,8 +1187,14 @@ export const cancelBooking = async (req, res) => {
     }
 
     // Update booking status
+    const previousStatus = booking.status;
     booking.status = 'Cancelled';
     await booking.save();
+    await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
 
     // If there's an associated order, cancel it too
     if (booking.orderId) {
@@ -978,12 +1339,18 @@ export const markAsPickedUp = async (req, res) => {
       });
     }
 
+    const previousStatus = booking.status;
     booking.isPickedUp = true;
     booking.pickedUpAt = new Date();
     booking.status = 'Released';  // Set status to Released when QR is scanned
     booking.paid = true;  // Mark as paid when scanned
     booking.paidAt = new Date();
     await booking.save();
+    await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
 
     // Update associated invoice status to "Paid"
     await invoiceModel.findOneAndUpdate(

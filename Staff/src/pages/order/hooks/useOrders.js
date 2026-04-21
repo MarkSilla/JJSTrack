@@ -73,6 +73,7 @@ const useOrders = () => {
             // Map bookings to order format
             const orders = Array.isArray(bookings) ? bookings.map(booking => ({
                 id: booking._id || booking.id,
+                displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
                 customer: booking.contact?.fullName || booking.customerName || 'Unknown',
                 item: booking.service || booking.bookingType || 'Service',
                 status: booking.status || 'Pending',
@@ -107,7 +108,7 @@ const useOrders = () => {
     const filteredOrders = useMemo(() => {
         let result = staffOrders.filter(o =>
             (o.customer || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (o.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            String(o.displayId || o.orderId || o.bookingId || o.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
             (o.item || '').toLowerCase().includes(searchQuery.toLowerCase())
         );
 

@@ -712,6 +712,7 @@ export default function AdAnalytics() {
               {recentPaidInvoices.map((booking) => {
                 const customer = booking?.contact?.fullName || booking?.customerName || "Unknown";
                 const service = normalizeServiceType(booking?.service || booking?.bookingType || booking?.serviceType);
+                const bookingDisplayId = booking?.bookingId || booking?._id || "Booking";
                 return (
                   <div
                     key={booking?._id || booking?.bookingId}
@@ -719,7 +720,7 @@ export default function AdAnalytics() {
                   >
                     <div className="min-w-0">
                       <div className="truncate text-xs font-bold text-slate-800">
-                        {(booking?._id || "Booking").slice(-8)} - {customer}
+                        {bookingDisplayId} - {customer}
                       </div>
                       <div className="truncate text-[11px] text-slate-500">
                         {service} - {formatShortDate(booking?.paidAt || booking?.pickupDate || booking?.updatedAt || booking?.createdAt)}

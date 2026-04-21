@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 import Inventory from "../models/inventoryModel.js";
 import InventoryActivity from "../models/inventoryActivityModel.js";
 import userModel from "../models/userModel.js";
+import {
+  createInventoryEventNotification,
+  maybeCreateInventoryNotification,
+  shouldCreateInventoryRestockNotification,
+} from "../utils/notificationHelpers.js";
 
 // Helper function to normalize item names - STRICT normalization
 const normalizeName = (name) => {
@@ -272,6 +277,27 @@ export const createInventory = async (req, res) => {
         newStock,
         note: "Stock increased through create inventory flow",
       });
+      if (
+        shouldCreateInventoryRestockNotification({
+          inventory: updatedInventory,
+          previousStock,
+          previousMinStock: existingItem.minStock,
+        })
+      ) {
+        await createInventoryEventNotification({
+          req,
+          inventory: updatedInventory,
+          event: "restocked",
+          previousStock,
+          amount: stockValue,
+        });
+      }
+      await maybeCreateInventoryNotification({
+        req,
+        inventory: updatedInventory,
+        previousStock,
+        previousMinStock: existingItem.minStock,
+      });
       return res.status(200).json({
         ...updatedInventory.toObject(),
         message: "Item already exists. Stock updated.",
@@ -309,6 +335,18 @@ export const createInventory = async (req, res) => {
       newStock: savedInventory.stock,
       note: "New inventory item created",
     });
+    await createInventoryEventNotification({
+      req,
+      inventory: savedInventory,
+      event: "created",
+      amount: stockValue,
+    });
+    await maybeCreateInventoryNotification({
+      req,
+      inventory: savedInventory,
+      previousStock: 0,
+      previousMinStock: minStockValue,
+    });
     res.status(201).json({
       ...savedInventory.toObject(),
       message: "New item created.",
@@ -331,6 +369,7 @@ export const updateInventory = async (req, res) => {
 
     // Update fields if provided
     const previousStock = inventory.stock;
+    const previousMinStock = inventory.minStock;
     if (name) inventory.name = name;
     if (category) inventory.category = category;
     if (stock != null) {
@@ -355,6 +394,27 @@ export const updateInventory = async (req, res) => {
       newStock: updatedInventory.stock,
       note: "Inventory item updated",
     });
+    if (
+      shouldCreateInventoryRestockNotification({
+        inventory: updatedInventory,
+        previousStock,
+        previousMinStock,
+      })
+    ) {
+      await createInventoryEventNotification({
+        req,
+        inventory: updatedInventory,
+        event: "restocked",
+        previousStock,
+        amount: Math.max(0, updatedInventory.stock - previousStock),
+      });
+    }
+    await maybeCreateInventoryNotification({
+      req,
+      inventory: updatedInventory,
+      previousStock,
+      previousMinStock,
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -378,6 +438,7 @@ export const adjustStock = async (req, res) => {
 
     // Adjust current stock and keep maxStock as highest reached value
     const previousStock = inventory.stock;
+    const previousMinStock = inventory.minStock;
     const currentCap = resolveStockCap(inventory);
 
     if (type === "increase") {
@@ -402,6 +463,28 @@ export const adjustStock = async (req, res) => {
       previousStock,
       newStock: updatedInventory.stock,
       note: `Stock ${type}d through adjust stock flow`,
+    });
+    if (
+      type === "increase" &&
+      shouldCreateInventoryRestockNotification({
+        inventory: updatedInventory,
+        previousStock,
+        previousMinStock,
+      })
+    ) {
+      await createInventoryEventNotification({
+        req,
+        inventory: updatedInventory,
+        event: "restocked",
+        previousStock,
+        amount: adjustmentAmount,
+      });
+    }
+    await maybeCreateInventoryNotification({
+      req,
+      inventory: updatedInventory,
+      previousStock,
+      previousMinStock,
     });
     res.status(200).json(updatedInventory);
   } catch (error) {
@@ -428,6 +511,11 @@ export const archiveInventory = async (req, res) => {
       newStock: updatedInventory.stock,
       note: "Inventory item archived",
     });
+    await createInventoryEventNotification({
+      req,
+      inventory: updatedInventory,
+      event: "archived",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -453,6 +541,11 @@ export const restoreInventory = async (req, res) => {
       newStock: updatedInventory.stock,
       note: "Inventory item restored",
     });
+    await createInventoryEventNotification({
+      req,
+      inventory: updatedInventory,
+      event: "restored",
+    });
     res.status(200).json(updatedInventory);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -477,6 +570,11 @@ export const deleteInventory = async (req, res) => {
       previousStock: updatedInventory.stock,
       newStock: updatedInventory.stock,
       note: "Inventory item archived through delete flow",
+    });
+    await createInventoryEventNotification({
+      req,
+      inventory: updatedInventory,
+      event: "archived",
     });
     res.status(200).json(updatedInventory);
   } catch (error) {

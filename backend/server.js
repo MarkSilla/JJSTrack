@@ -12,6 +12,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import pricingRoutes from './routes/pricingRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import chatConversationModel from './models/chatConversationModel.js';
 
 import dns from 'dns';
@@ -76,6 +77,9 @@ app.use('/api/staff', staffRoutes);
 
 // Chat Routes
 app.use('/api/chat', chatRoutes);
+
+// Notification Routes
+app.use('/api/notifications', notificationRoutes);
 
 const startServer = async () => {
   await connectDB();

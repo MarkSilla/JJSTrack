@@ -78,6 +78,16 @@ function parseDate(d) {
 const formatCurrency = (value) =>
   `PHP ${Number(value || 0).toLocaleString("en-PH", { maximumFractionDigits: 0 })}`;
 
+const formatDateKey = (date) => {
+  if (!date) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 const BADGE_CLASSES = {
   Confirmed: "bg-blue-100 text-blue-700",
   Pending: "bg-amber-100 text-amber-700",
@@ -180,9 +190,29 @@ function FilterDropdown({ value, onChange }) {
   );
 }
 
-function ApptCard({ appt, showView = false, onViewOrder }) {
+function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) {
+  const handleCardClick = () => {
+    if (!isClickable || !onViewOrder) return;
+    onViewOrder(appt.orderId);
+  };
+
+  const handleCardKeyDown = (event) => {
+    if (!isClickable || !onViewOrder) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onViewOrder(appt.orderId);
+    }
+  };
+
   return (
-    <div className="flex gap-3 border border-slate-100 rounded-xl px-2 py-2 hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-150 group">
+    <div
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`flex gap-3 border border-slate-100 rounded-xl px-2 py-2 transition-all duration-150 group ${isClickable ? "cursor-pointer hover:bg-blue-50/30 focus:outline-none focus-visible:outline-none" : ""}`}
+    >
       <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
         <CalendarDays size={13} className="text-blue-500" />
       </div>
@@ -211,7 +241,10 @@ function ApptCard({ appt, showView = false, onViewOrder }) {
           <div className="flex text-center items-center justify-center ">
             {showView && (
               <button
-                onClick={() => onViewOrder && onViewOrder(appt.orderId)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onViewOrder && onViewOrder(appt.orderId);
+                }}
                 className="flex items-center gap-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-bold rounded-md border-none cursor-pointer transition-colors"
               >
                 <Eye size={12} /> View
@@ -333,6 +366,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
   const TODAY = formatDateLabel(todayDate);
   const TOMORROW = formatDateLabel(tomorrowDate);
+  const todayDateKey = formatDateKey(todayDate);
 
   const apptToday = useMemo(
     () =>
@@ -558,6 +592,12 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#3B82F6",
       bgAccent: "#EFF6FF",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/appointment", {
+          selectedDateStr: todayDateKey,
+          showSchedule: true,
+          activeFilter: "all",
+        }),
     },
     {
       icon: Loader2,
@@ -567,6 +607,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#7C3AED",
       bgAccent: "#F5F3FF",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "In Progress",
+        }),
     },
     {
       icon: CheckCircle2,
@@ -576,6 +620,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#059669",
       bgAccent: "#ECFDF5",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "Completed",
+        }),
     },
     {
       icon: ShoppingBag,
@@ -585,6 +633,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#0891B2",
       bgAccent: "#ECFEFF",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "All",
+        }),
     },
     {
       icon: XCircle,
@@ -594,6 +646,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#EF4444",
       bgAccent: "#FEF2F2",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "Cancelled",
+        }),
     },
   ];
 
@@ -606,6 +662,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#0EA5E9",
       bgAccent: "#ECFEFF",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/inventory", {
+          showArchived: false,
+          statFilter: "All",
+        }),
     },
     {
       icon: AlertTriangle,
@@ -615,6 +676,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#F59E0B",
       bgAccent: "#FFFBEB",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/inventory", {
+          showArchived: false,
+          statFilter: "Low Stock",
+        }),
     },
     {
       icon: XCircle,
@@ -624,6 +690,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#DC2626",
       bgAccent: "#FEF2F2",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/inventory", {
+          showArchived: false,
+          statFilter: "Out of Stock",
+        }),
     },
     {
       icon: Archive,
@@ -633,6 +704,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#4F46E5",
       bgAccent: "#EEF2FF",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/inventory", {
+          showArchived: true,
+          statFilter: "All",
+        }),
     },
     {
       icon: ShoppingBag,
@@ -642,6 +718,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       accent: "#0F766E",
       bgAccent: "#F0FDFA",
       trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/inventory", {
+          showArchived: false,
+          statFilter: "All",
+        }),
     },
   ];
 
@@ -657,6 +738,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       navigate(`/admin/orders/${orderId}`);
     }
   };
+
+  function navigateWithDashboardPreset(path, dashboardPreset = {}) {
+    navigate(path, { state: { dashboardPreset } });
+  }
 
   if (loading) {
     return (
@@ -686,10 +771,12 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         )}
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend }) => (
-            <div
+          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }) => (
+            <button
+              type="button"
               key={label}
-              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+              onClick={onClick}
+              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none"
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
@@ -716,15 +803,17 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                 {value}
               </div>
               <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
-            </div>
+            </button>
           ))}
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend }) => (
-            <div
+          {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }) => (
+            <button
+              type="button"
               key={label}
-              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+              onClick={onClick}
+              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none"
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
@@ -751,7 +840,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                 {value}
               </div>
               <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -927,7 +1016,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                 <div className="text-gray-400 text-center py-8 text-[12px]">No appointments today</div>
               ) : (
                 apptToday.map((appt) => (
-                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} />
+                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>
@@ -952,7 +1041,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               {apptTomorrow.length === 0 ? (
                 <div className="text-gray-400 text-center py-8 text-[12px]">No appointments tomorrow</div>
               ) : (
-                apptTomorrow.map((appt) => <ApptCard key={appt.id} appt={appt} showView={false} />)
+                apptTomorrow.map((appt) => (
+                  <ApptCard key={appt.id} appt={appt} showView={false} onViewOrder={handleViewOrder} isClickable />
+                ))
               )}
             </div>
           </div>
@@ -972,7 +1063,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               {filteredAllAppts.length === 0 ? (
                 <div className="text-gray-400 text-center py-8 text-[12px]">No appointments found</div>
               ) : (
-                filteredAllAppts.map((appt) => <ApptCard key={appt.id} appt={appt} showView={false} />)
+                filteredAllAppts.map((appt) => (
+                  <ApptCard key={appt.id} appt={appt} showView={false} onViewOrder={handleViewOrder} isClickable />
+                ))
               )}
             </div>
           </div>
@@ -981,4 +1074,12 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 

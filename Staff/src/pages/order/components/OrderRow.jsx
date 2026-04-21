@@ -15,6 +15,7 @@ const TYPE_CONFIG = {
 
 const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepIndex }) => {
     const orderId = order.id;
+    const orderDisplayId = order.displayId || order.orderId || order.bookingId || orderId;
     const derivedStatus = getDerivedStatus(order);
     const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
     const typeConf = TYPE_CONFIG[order.serviceType] || { color: "bg-gray-50 text-gray-600 border border-gray-200" };
@@ -33,7 +34,7 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
             {/* Order ID */}
             <td className="px-5 py-4">
                 <span className="font-mono text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg tracking-wider">
-                    #{orderId?.slice(-8).toUpperCase()}
+                    {orderDisplayId}
                 </span>
             </td>
 

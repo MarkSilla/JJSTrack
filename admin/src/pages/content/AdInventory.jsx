@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Archive, RotateCcw, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
   Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown,
@@ -716,6 +717,7 @@ export default function InventorySystem() {
 }
 
 function InventorySystemContent() {
+  const location = useLocation();
   const [inventory, setInventory] = useState([]);
   const [activities, setActivities] = useState([]);
   const [search, setSearch] = useState("");
@@ -736,6 +738,21 @@ const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+
+  useEffect(() => {
+    const preset = location.state?.dashboardPreset;
+    if (!preset) return;
+
+    if (typeof preset.search === "string") setSearch(preset.search);
+    if (typeof preset.catFilter === "string") setCatFilter(preset.catFilter);
+    if (typeof preset.statFilter === "string") setStatFilter(preset.statFilter);
+    if (typeof preset.sortBy === "string") setSortBy(preset.sortBy);
+    if (typeof preset.showArchived === "boolean") setShowArchived(preset.showArchived);
+
+    setShowCategory(false);
+    setShowStatus(false);
+    setShowSort(false);
+  }, [location.state]);
 
   useEffect(() => {
     const loadInventoryPage = async () => {

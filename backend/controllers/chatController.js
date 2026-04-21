@@ -116,7 +116,8 @@ const getConversationQueryScope = (scope) => {
 };
 
 const getOrderLabel = (order) => order.orderId || `Order ${String(order._id).slice(-6).toUpperCase()}`;
-const getBookingLabel = (booking) => `Booking ${String(booking._id).slice(-6).toUpperCase()}`;
+const getBookingLabel = (booking) =>
+  booking.bookingId || `Booking ${String(booking._id).slice(-6).toUpperCase()}`;
 const getOrderTitle = (order) => normalizeText(order.item || order.serviceType || 'Order');
 const getBookingTitle = (booking) =>
   normalizeText(booking.service || booking.bookingType || 'Booking');

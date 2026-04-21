@@ -1,30 +1,114 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
     Bell,
-    Search,
     Menu,
     X,
     User,
     LogOut,
-    Settings,
-    Mail,
-    Phone,
-    MapPin,
-    ChevronDown
+    Settings
 } from 'lucide-react'
+import { notificationApi } from '../services/notificationApi'
+
+const NOTIFICATION_LIMIT = 20
+
+const formatNotificationTime = (createdAt) => {
+    const date = new Date(createdAt)
+
+    if (Number.isNaN(date.getTime())) {
+        return 'Just now'
+    }
+
+    const diffMs = Date.now() - date.getTime()
+    const diffMinutes = Math.floor(diffMs / 60000)
+
+    if (diffMinutes < 1) return 'Just now'
+    if (diffMinutes < 60) return `${diffMinutes} min ago`
+
+    const diffHours = Math.floor(diffMinutes / 60)
+    if (diffHours < 24) return `${diffHours} hr ago`
+
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+    })
+}
+
+const NOTIFICATION_FILTERS = [
+    { key: 'all', label: 'All' },
+    { key: 'inventory', label: 'Inventory' },
+    { key: 'booking', label: 'Booking' },
+    { key: 'unread', label: 'Unread' }
+]
+
+const getVisibleNotifications = (notifications, filter) => {
+    if (filter === 'inventory') {
+        return notifications.filter((notification) => notification.type === 'inventory')
+    }
+
+    if (filter === 'booking') {
+        return notifications.filter((notification) => notification.type === 'booking')
+    }
+
+    if (filter === 'unread') {
+        return notifications.filter((notification) => !notification.isRead)
+    }
+
+    return notifications
+}
+
+const getEmptyNotificationState = (filter) => {
+    if (filter === 'inventory') {
+        return {
+            title: 'No inventory notifications',
+            description: 'Inventory updates will appear here.'
+        }
+    }
+
+    if (filter === 'booking') {
+        return {
+            title: 'No booking notifications',
+            description: 'Booking updates will appear here.'
+        }
+    }
+
+    if (filter === 'unread') {
+        return {
+            title: 'No unread notifications',
+            description: 'Unread updates will appear here.'
+        }
+    }
+
+    return {
+        title: 'No notifications yet',
+        description: 'New updates will appear here.'
+    }
+}
 
 const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '' }) => {
     const [showDropdown, setShowDropdown] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
+    const [notifications, setNotifications] = useState([])
+    const [notificationsLoading, setNotificationsLoading] = useState(false)
+    const [notificationFilter, setNotificationFilter] = useState('all')
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [isMobileViewport, setIsMobileViewport] = useState(() =>
+        typeof window !== 'undefined' ? window.matchMedia('(max-width: 639px)').matches : false
+    )
     const dropdownRef = useRef(null)
     const notifRef = useRef(null)
+    const notificationPanelRef = useRef(null)
+    const isMountedRef = useRef(true)
     const navigate = useNavigate()
     const location = useLocation()
 
     const user = {
         fullName: 'Admin User',
-        email: 'admin@jjstrack.com',
+        email: localStorage.getItem('rememberAdminEmail') || 'admin@jjstrack.com',
         photoURL: null
     }
 
@@ -41,7 +125,11 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowDropdown(false)
             }
-            if (notifRef.current && !notifRef.current.contains(event.target)) {
+            if (
+                notifRef.current &&
+                !notifRef.current.contains(event.target) &&
+                (!notificationPanelRef.current || !notificationPanelRef.current.contains(event.target))
+            ) {
                 setShowNotifications(false)
             }
         }
@@ -49,11 +137,173 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined
+
+        const mediaQuery = window.matchMedia('(max-width: 639px)')
+        const syncViewport = (event) => {
+            setIsMobileViewport(event.matches)
+        }
+
+        setIsMobileViewport(mediaQuery.matches)
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', syncViewport)
+            return () => mediaQuery.removeEventListener('change', syncViewport)
+        }
+
+        mediaQuery.addListener(syncViewport)
+        return () => mediaQuery.removeListener(syncViewport)
+    }, [])
+
+    useEffect(() => {
+        setShowDropdown(false)
+        setShowNotifications(false)
+        setNotificationFilter('all')
+    }, [location.pathname])
+
+    useEffect(() => {
+        if (!showNotifications || typeof window === 'undefined') return undefined
+
+        if (!isMobileViewport) return undefined
+
+        const originalOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+
+        return () => {
+            document.body.style.overflow = originalOverflow
+        }
+    }, [showNotifications, isMobileViewport])
+
+    const loadNotifications = useCallback(async ({ showLoader = false } = {}) => {
+        if (showLoader) {
+            setNotificationsLoading(true)
+        }
+
+        try {
+            const response = await notificationApi.getNotifications(NOTIFICATION_LIMIT)
+
+            if (!isMountedRef.current) return
+
+            const nextNotifications = Array.isArray(response?.notifications) ? response.notifications : []
+            const parsedUnreadCount = Number(response?.unreadCount)
+
+            setNotifications(nextNotifications)
+            setUnreadCount(
+                Number.isFinite(parsedUnreadCount)
+                    ? parsedUnreadCount
+                    : nextNotifications.filter((notification) => !notification.isRead).length
+            )
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error)
+
+            if (showLoader && isMountedRef.current) {
+                setNotifications([])
+                setUnreadCount(0)
+            }
+        } finally {
+            if (showLoader && isMountedRef.current) {
+                setNotificationsLoading(false)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
+        isMountedRef.current = true
+        loadNotifications({ showLoader: true })
+
+        const intervalId = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                loadNotifications()
+            }
+        }, 15000)
+
+        const handleWindowFocus = () => {
+            loadNotifications()
+        }
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                loadNotifications()
+            }
+        }
+
+        window.addEventListener('focus', handleWindowFocus)
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        return () => {
+            isMountedRef.current = false
+            clearInterval(intervalId)
+            window.removeEventListener('focus', handleWindowFocus)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [loadNotifications])
+
     const handleLogout = () => {
         // Clear authentication data from localStorage
         localStorage.removeItem('adminToken')
         localStorage.removeItem('rememberAdminEmail')
         navigate('/')
+    }
+
+    const toggleDropdown = () => {
+        setShowDropdown((prev) => !prev)
+        setShowNotifications(false)
+    }
+
+    const toggleNotifications = () => {
+        const nextState = !showNotifications
+        setShowNotifications(nextState)
+        setShowDropdown(false)
+
+        if (nextState) {
+            setNotificationFilter('all')
+            loadNotifications({ showLoader: notifications.length === 0 })
+        }
+    }
+
+    const handleMarkAllAsRead = async () => {
+        setNotifications((current) =>
+            current.map((notification) => ({
+                ...notification,
+                isRead: true,
+                readAt: notification.readAt || new Date().toISOString()
+            }))
+        )
+        setUnreadCount(0)
+
+        try {
+            await notificationApi.markAllAsRead()
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error)
+            loadNotifications()
+        }
+    }
+
+    const handleNotificationClick = async (notification) => {
+        if (!notification.isRead) {
+            setNotifications((current) =>
+                current.map((item) =>
+                    item._id === notification._id
+                        ? { ...item, isRead: true, readAt: new Date().toISOString() }
+                        : item
+                )
+            )
+            setUnreadCount((current) => Math.max(0, current - 1))
+
+            try {
+                await notificationApi.markAsRead(notification._id)
+            } catch (error) {
+                console.error('Failed to mark notification as read:', error)
+                loadNotifications()
+            }
+        }
+
+        setShowNotifications(false)
+
+        if (notification.route && notification.route !== location.pathname) {
+            navigate(notification.route)
+        }
     }
 
     const getUserInitials = (name) => {
@@ -64,6 +314,96 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         }
         return name.substring(0, 2).toUpperCase()
     }
+
+    const visibleNotifications = getVisibleNotifications(notifications, notificationFilter)
+    const emptyNotificationState = getEmptyNotificationState(notificationFilter)
+    const notificationPanel = (
+        <div
+            ref={notificationPanelRef}
+            className={`${isMobileViewport ? 'fixed inset-x-3 top-20 bottom-3 z-[10001] flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl' : 'absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] sm:w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'} animate-in fade-in zoom-in duration-200`}
+        >
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900">Notifications</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        {unreadCount > 0
+                            ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}`
+                            : 'All caught up'}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                    {unreadCount > 0 && (
+                        <button
+                            onClick={handleMarkAllAsRead}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                            Mark all read
+                        </button>
+                    )}
+                    {isMobileViewport && (
+                        <button
+                            onClick={() => setShowNotifications(false)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                            aria-label="Close notifications"
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <div className="px-4 py-3 border-b border-gray-100">
+                <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 overflow-x-auto sm:overflow-visible">
+                    {NOTIFICATION_FILTERS.map((filterOption) => (
+                        <button
+                            key={filterOption.key}
+                            onClick={() => setNotificationFilter(filterOption.key)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${notificationFilter === filterOption.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            {filterOption.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className={`overflow-y-auto ${isMobileViewport ? 'flex-1' : 'max-h-80'}`}>
+                {notificationsLoading ? (
+                    <div className="px-4 py-8 text-center">
+                        <p className="text-sm font-semibold text-gray-700">Loading notifications...</p>
+                    </div>
+                ) : visibleNotifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                        <p className="text-sm font-semibold text-gray-700">
+                            {emptyNotificationState.title}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {emptyNotificationState.description}
+                        </p>
+                    </div>
+                ) : (
+                    visibleNotifications.map((notification) => (
+                        <button
+                            key={notification._id}
+                            onClick={() => handleNotificationClick(notification)}
+                            className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${notification.isRead ? 'bg-white' : 'bg-blue-50/60'}`}
+                        >
+                            <div className="flex items-start gap-3">
+                                <span className={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${notification.isRead ? 'bg-gray-200' : 'bg-blue-500'}`}></span>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-sm font-semibold text-gray-900 break-words">{notification.title}</p>
+                                        <span className="whitespace-nowrap text-[11px] text-gray-400">{formatNotificationTime(notification.createdAt)}</span>
+                                    </div>
+                                    <p className="mt-1 text-xs leading-5 text-gray-500 break-words">{notification.message}</p>
+                                </div>
+                            </div>
+                        </button>
+                    ))
+                )}
+            </div>
+        </div>
+    )
 
     return (
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 w-full shrink-0">
@@ -86,18 +426,40 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
 
                     <div className="relative" ref={notifRef}>
                         <button
-                            onClick={() => setShowNotifications(!showNotifications)}
+                            onClick={toggleNotifications}
                             className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                            aria-label="Open notifications"
+                            aria-expanded={showNotifications}
                         >
                             <Bell size={20} className="text-gray-500" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 rounded-full border-2 border-white text-[10px] font-semibold text-white flex items-center justify-center leading-none">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                            )}
                         </button>
+
+                        {showNotifications && (
+                            isMobileViewport
+                                ? createPortal(
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-[10000] bg-slate-900/20 backdrop-blur-[1px]"
+                                            onClick={() => setShowNotifications(false)}
+                                            aria-hidden="true"
+                                        />
+                                        {notificationPanel}
+                                    </>,
+                                    document.body
+                                )
+                                : notificationPanel
+                        )}
                     </div>
 
                     <div className="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
                     <div className="relative" ref={dropdownRef}>
                         <button
-                            onClick={() => setShowDropdown(!showDropdown)}
+                            onClick={toggleDropdown}
                             className="flex items-center gap-2 p-1 hover:bg-gray-50 rounded-xl transition-all"
                         >
                             <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shadow-sm overflow-hidden ring-2 ring-blue-50">

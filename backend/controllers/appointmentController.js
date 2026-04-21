@@ -1,5 +1,6 @@
 import appointmentModel from '../models/appointmentModel.js';
 import userModel from '../models/userModel.js';
+import { createNotification } from '../utils/notificationHelpers.js';
 
 const getRequestAccess = async (userId) => {
   if (userId === 'admin') {
@@ -32,6 +33,23 @@ export const createAppointment = async (req, res) => {
     });
 
     await appointment.save();
+
+    await createNotification({
+      audience: 'admin',
+      type: 'appointment',
+      title: 'New appointment request',
+      message: `${service} scheduled for ${date} at ${time}.`,
+      route: '/admin/appointment',
+      entityId: appointment._id,
+      entityModel: 'Appointment',
+      metadata: {
+        status: appointment.status,
+        service,
+        date,
+        time,
+      },
+      req,
+    });
 
     res.status(201).json({
       success: true,

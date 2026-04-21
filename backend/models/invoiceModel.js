@@ -133,7 +133,7 @@ const invoiceSchema = new mongoose.Schema({
 });
 
 // Auto-generate invoice ID before saving
-invoiceSchema.pre('save', async function(next) {
+invoiceSchema.pre('save', async function preSave() {
   if (!this.invoiceId) {
     const count = await mongoose.model('Invoice').countDocuments();
     const year = new Date().getFullYear();
@@ -150,7 +150,6 @@ invoiceSchema.pre('save', async function(next) {
   this.total = this.subtotal + this.tax - discountAmount;
   
   this.updatedAt = new Date();
-  next();
 });
 
 export default mongoose.model('Invoice', invoiceSchema);

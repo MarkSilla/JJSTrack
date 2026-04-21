@@ -27,6 +27,7 @@ const useOrderDetails = (orderId) => {
                         // Basic info
                         id: booking._id || booking.id,
                         _id: booking._id,
+                        displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
                         
                         // Team/Org info
                         teamName: booking.teamName || booking.orgName || booking.service || 'Order',

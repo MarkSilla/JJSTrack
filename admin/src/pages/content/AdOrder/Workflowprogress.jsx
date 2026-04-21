@@ -2,7 +2,14 @@ import React from 'react';
 import { Check, Lock, CalendarClock, ShieldCheck } from 'lucide-react';
 import { STEP_ICON } from './Constants.js';
 
-export default function WorkflowProgress({ activeOrderSteps, currentStepIdx, onStepClick, orderId, isForApproval, hasSchedule }) {
+export default function WorkflowProgress({
+    activeOrderSteps,
+    currentStepIdx,
+    onStepClick,
+    orderId,
+    isForApproval,
+    hasSchedule
+}) {
     const isLocked = isForApproval || !hasSchedule;
     const lockReason = isForApproval
         ? {
@@ -70,4 +77,4 @@ export default function WorkflowProgress({ activeOrderSteps, currentStepIdx, onS
             </div>
         </div>
     );
-} 
+}

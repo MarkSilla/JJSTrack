@@ -228,7 +228,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Order</span>
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg tracking-wider font-mono leading-none">
-                                #{order.id?.slice(-8).toUpperCase()}
+                                {order.displayId || order.orderId || order.bookingId || order.id}
                             </span>
                         </div>
                         <StatusBadge conf={displayConf} label={derivedLabel} />
