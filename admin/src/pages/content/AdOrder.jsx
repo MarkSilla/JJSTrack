@@ -142,6 +142,7 @@ export default function AdOrder() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortOption, setSortOption] = useState('date-newest');
+    const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [staffList, setStaffList] = useState([]);
     const [orderTracking, setOrderTracking] = useState(() => {
@@ -236,6 +237,10 @@ export default function AdOrder() {
             setSortOption(preset.sortOption);
         }
 
+        if (typeof preset.serviceTypeFilter === 'string') {
+            setServiceTypeFilter(preset.serviceTypeFilter);
+        }
+
         if (typeof preset.isFilterOpen === 'boolean') {
             setIsFilterOpen(preset.isFilterOpen);
         }
@@ -265,6 +270,16 @@ export default function AdOrder() {
         return parseDateValue(order.invoice?.dueDate || order.estimatedCompletion || order.pickupDate || order.createdAt || order.date);
     };
 
+    const getServiceTypeKey = (order) => {
+        const text = String(order?.serviceType || order?.bookingType || '').trim().toLowerCase();
+
+        if (text.includes('repair')) return 'repair';
+        if (text.includes('jersey')) return 'jersey';
+        if (text.includes('organization') || text.includes('organizational') || text.includes('custom')) return 'organization';
+
+        return 'other';
+    };
+
     const filteredOrders = useMemo(() => {
         const normalizedQuery = searchQuery.toLowerCase();
         let result = orders.filter(o =>
@@ -281,12 +296,16 @@ export default function AdOrder() {
         else if (filterStatus === 'Cancelled') result = result.filter(o => getDerivedStatus(o) === 'Cancelled');
         else if (filterStatus === 'All') result = result.filter(o => getDerivedStatus(o) !== 'Cancelled');
 
+        if (serviceTypeFilter !== 'all') {
+            result = result.filter(o => getServiceTypeKey(o) === serviceTypeFilter);
+        }
+
         return [...result].sort((a, b) => {
             const aTime = getOrderSortTime(a);
             const bTime = getOrderSortTime(b);
             return sortOption === 'date-oldest' ? aTime - bTime : bTime - aTime;
         });
-    }, [searchQuery, filterStatus, orders, sortOption]);
+    }, [searchQuery, filterStatus, orders, serviceTypeFilter, sortOption]);
 
     const counts = useMemo(() => {
         const c = { All: 0, 'For Approval': 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
@@ -382,6 +401,8 @@ export default function AdOrder() {
                     setSearchQuery={setSearchQuery}
                     sortOption={sortOption}
                     setSortOption={setSortOption}
+                    serviceTypeFilter={serviceTypeFilter}
+                    setServiceTypeFilter={setServiceTypeFilter}
                     isFilterOpen={isFilterOpen}
                     setIsFilterOpen={setIsFilterOpen}
                     filterStatus={filterStatus}

@@ -8,6 +8,13 @@ const SORT_OPTIONS = [
     { value: 'date-oldest', label: 'Date: Oldest' },
 ];
 
+const SERVICE_TYPE_OPTIONS = [
+    { value: 'all', label: 'Service: All' },
+    { value: 'repair', label: 'Service: Repair' },
+    { value: 'jersey', label: 'Service: Jersey' },
+    { value: 'organization', label: 'Service: Organization' },
+];
+
 export default function OrderList({
     filteredOrders,
     activeOrderId,          // null when used on the list page; orderId string when used inside detail page breadcrumb etc.
@@ -16,6 +23,8 @@ export default function OrderList({
     setSearchQuery,
     sortOption,
     setSortOption,
+    serviceTypeFilter,
+    setServiceTypeFilter,
     isFilterOpen,
     setIsFilterOpen,
     filterStatus,
@@ -26,8 +35,10 @@ export default function OrderList({
     fullWidth = false,      
 }) {
     const [showSort, setShowSort] = useState(false);
+    const [showServiceTypeSort, setShowServiceTypeSort] = useState(false);
     const statusTabs = ['All', 'For Approval', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
     const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
+    const currentServiceTypeLabel = SERVICE_TYPE_OPTIONS.find(o => o.value === serviceTypeFilter)?.label || 'Service: All';
     const approvalTabs = [
         { label: 'All', value: 'All' },
         { label: 'Pending Approval', value: 'For Approval' },
@@ -62,7 +73,11 @@ export default function OrderList({
                     </div>
                     <div className="relative">
                         <button
-                            onClick={() => setShowSort(v => !v)}
+                            onClick={() => {
+                                setShowSort(v => !v);
+                                setShowServiceTypeSort(false);
+                                setIsFilterOpen(false);
+                            }}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
                         >
                             <SlidersHorizontal size={13} className="text-blue-400" />
@@ -85,7 +100,41 @@ export default function OrderList({
                     </div>
                     <div className="relative">
                         <button
-                            onClick={() => setIsFilterOpen(!isFilterOpen)}
+                            onClick={() => {
+                                setShowServiceTypeSort(v => !v);
+                                setShowSort(false);
+                                setIsFilterOpen(false);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                        >
+                            <SlidersHorizontal size={13} className="text-blue-400" />
+                            <span className="hidden sm:inline max-w-[145px] truncate">{currentServiceTypeLabel}</span>
+                            <ChevronDown size={12} className={`text-gray-400 transition-transform ${showServiceTypeSort ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showServiceTypeSort && (
+                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48">
+                                {SERVICE_TYPE_OPTIONS.map(option => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => {
+                                            setServiceTypeFilter(option.value);
+                                            setShowServiceTypeSort(false);
+                                        }}
+                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${serviceTypeFilter === option.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => {
+                                setIsFilterOpen(!isFilterOpen);
+                                setShowSort(false);
+                                setShowServiceTypeSort(false);
+                            }}
                             className={`p-3 rounded-2xl border transition-all flex items-center justify-center cursor-pointer
                             ${isFilterOpen || filterStatus !== 'All'
                                     ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm'

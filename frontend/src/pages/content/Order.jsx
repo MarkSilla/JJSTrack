@@ -3,7 +3,7 @@ import {
     MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdPrint,
     MdMoveToInbox, MdDesktopWindows, MdLocalPrintshop, MdLocalShipping,
     MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
-    MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag,
+    MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag, MdSort,
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { 
@@ -23,6 +23,51 @@ const STEP_ICON = {
 }
 
 const LIVE_REFRESH_MS = 5000
+const SORT_OPTIONS = [
+    { value: 'latest', label: 'Latest First' },
+    { value: 'service-asc', label: 'Service Type (A-Z)' },
+    { value: 'service-desc', label: 'Service Type (Z-A)' },
+]
+
+const getServiceTypeLabel = (entry = {}) => {
+    const serviceType = String(entry.serviceType || '').trim()
+    if (serviceType) return serviceType
+
+    const bookingType = String(entry.bookingType || '').trim().toLowerCase()
+    if (bookingType === 'repair') return 'Repair'
+    if (bookingType === 'jersey') return 'Team Jersey'
+    if (bookingType === 'organizational') return 'Custom'
+    if (!bookingType) return ''
+
+    return bookingType.charAt(0).toUpperCase() + bookingType.slice(1)
+}
+
+const getCreatedAtValue = (entry = {}) => {
+    const timestamp = new Date(entry.createdAt || entry.date || 0).getTime()
+    return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const sortOrders = (items = [], sortBy = 'latest') => {
+    const sortedItems = [...items]
+
+    if (sortBy === 'service-asc' || sortBy === 'service-desc') {
+        sortedItems.sort((first, second) => {
+            const firstType = getServiceTypeLabel(first).toLowerCase()
+            const secondType = getServiceTypeLabel(second).toLowerCase()
+            const direction = sortBy === 'service-asc' ? 1 : -1
+            const typeComparison = firstType.localeCompare(secondType) * direction
+
+            if (typeComparison !== 0) return typeComparison
+
+            return getCreatedAtValue(second) - getCreatedAtValue(first)
+        })
+
+        return sortedItems
+    }
+
+    sortedItems.sort((first, second) => getCreatedAtValue(second) - getCreatedAtValue(first))
+    return sortedItems
+}
 
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
@@ -128,6 +173,7 @@ const StatusBadge = ({ status }) => {
 const DetailsModal = ({ order, onClose, onOpenChat }) => {
     const navigate  = useNavigate()
     const isBooking = !!order.bookingType
+    const serviceTypeLabel = getServiceTypeLabel(order)
     const bookingRefId = typeof order.bookingId === 'string'
         ? order.bookingId
         : order.bookingId?._id
@@ -217,7 +263,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         { label: 'Order ID',     value: order.orderId || order._id },
         { label: 'Status',       value: order.status },
         { label: 'Item/Service', value: order.item || order.service },
-        { label: 'Service Type', value: order.serviceType },
+        { label: 'Service Type', value: serviceTypeLabel },
         { label: 'Date Placed',  value: order.date || new Date(order.createdAt).toLocaleDateString() },
         { label: 'Est. Completion', value: order.estimatedCompletion },
         ...(!isBooking ? [
@@ -455,6 +501,7 @@ const OrderCard = ({ order, onCancel }) => {
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
+    const serviceTypeLabel = getServiceTypeLabel(order)
     const displayName = isBooking
         ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
         : order.item
@@ -503,7 +550,7 @@ const OrderCard = ({ order, onCancel }) => {
                                 {displayName}
                             </h3>
                             <span className="bg-gray-100 text-gray-500 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-widest whitespace-nowrap shrink-0">
-                                {isBooking ? order.bookingType : (order.serviceType || '—')}
+                                {serviceTypeLabel || '—'}
                             </span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
@@ -683,6 +730,7 @@ const FilterSheet = ({ active, onSelect, onClose }) => {
 const Order = () => {
     const [searchQuery,  setSearchQuery]  = useState('')
     const [activeFilter, setActiveFilter] = useState('All Orders')
+    const [sortBy,       setSortBy]       = useState('latest')
     const [orders,       setOrders]       = useState([])
     const [bookings,     setBookings]     = useState([])
     const [stats,        setStats]        = useState({ total: 0, inProgress: 0, completed: 0 })
@@ -782,6 +830,7 @@ const Order = () => {
     }, [orders, bookings])
 
     const handleFilterSelect = (f) => setActiveFilter(f)
+    const displayedItems = sortOrders([...orders, ...bookings], sortBy)
 
     const handleCancelOrder = async (orderId, orderName, bookingId) => {
         if (!window.confirm(`Are you sure you want to cancel "${orderName}"? This action cannot be undone.`)) {
@@ -859,47 +908,66 @@ const Order = () => {
             </div>
 
             {/* ── Controls ── */}
-            <div className="flex items-center gap-2 mb-5">
-                {/* Search */}
-                <div className="relative flex-1">
-                    <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search orders..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
-                    />
+            <div className="space-y-2 mb-5">
+                <div className="flex items-center gap-2">
+                    {/* Search */}
+                    <div className="relative flex-1">
+                        <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search orders..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                        />
+                    </div>
+
+                    {/* Refresh button - visible on all sizes */}
+                    <button
+                        onClick={() => fetchData(activeFilter, searchQuery)}
+                        className="bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                        title="Refresh orders"
+                    >
+                        <MdLoop size={16} />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
                 </div>
 
-                {/* Refresh button - visible on all sizes */}
-                <button
-                    onClick={() => fetchData(activeFilter, searchQuery)}
-                    className="bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                    title="Refresh orders"
-                >
-                    <MdLoop size={16} />
-                    <span className="hidden sm:inline">Refresh</span>
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 sm:flex-none sm:min-w-[210px]">
+                        <MdSort size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <select
+                            value={sortBy}
+                            onChange={e => setSortBy(e.target.value)}
+                            className="w-full appearance-none pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all font-medium text-gray-600"
+                        >
+                            {SORT_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                {/* Mobile filter button */}
-                <button
-                    onClick={() => setShowFilter(true)}
-                    className="sm:hidden flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-600 shadow-sm shrink-0"
-                >
-                    <MdFilterList size={16} />
-                    <span className="hidden xs:inline">{activeFilter === 'All Orders' ? 'Filter' : activeFilter}</span>
-                </button>
+                    {/* Mobile filter button */}
+                    <button
+                        onClick={() => setShowFilter(true)}
+                        className="sm:hidden flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-600 shadow-sm shrink-0"
+                    >
+                        <MdFilterList size={16} />
+                        <span className="hidden xs:inline">{activeFilter === 'All Orders' ? 'Filter' : activeFilter}</span>
+                    </button>
 
-                {/* Desktop filter tabs */}
-                <div className="hidden sm:flex items-center gap-1.5">
-                    {['All Orders', 'In Progress', 'Completed', 'Cancelled'].map(filter => (
-                        <button key={filter} onClick={() => setActiveFilter(filter)}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer
-                                ${activeFilter === filter ? 'bg-[#0F172A] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
-                            {filter}
-                        </button>
-                    ))}
+                    {/* Desktop filter tabs */}
+                    <div className="hidden sm:flex items-center gap-1.5">
+                        {['All Orders', 'In Progress', 'Completed', 'Cancelled'].map(filter => (
+                            <button key={filter} onClick={() => setActiveFilter(filter)}
+                                className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer
+                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -927,13 +995,13 @@ const Order = () => {
 
                 {loading && !error && <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>}
 
-                {!loading && !error && (orders.length > 0 || bookings.length > 0) &&
-                    [...orders, ...bookings].map((item, idx) => (
+                {!loading && !error && displayedItems.length > 0 &&
+                    displayedItems.map((item, idx) => (
                         <OrderCard key={item._id || idx} order={item} onCancel={handleCancelOrder} />
                     ))
                 }
 
-                {!loading && !error && orders.length === 0 && bookings.length === 0 && (
+                {!loading && !error && displayedItems.length === 0 && (
                     <div className="bg-white rounded-3xl p-12 sm:p-20 text-center border-2 border-dashed border-gray-100">
                         <GiSewingMachine size={32} className="text-gray-200 mx-auto mb-3" />
                         <p className="text-gray-400 font-bold uppercase tracking-widest text-xs sm:text-sm">No orders found</p>
