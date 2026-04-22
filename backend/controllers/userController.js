@@ -30,6 +30,26 @@ const generateVerificationCode = () => {
 
 const normalizeEmail = (email) => String(email).trim().toLowerCase();
 
+const buildClientUser = (user, extra = {}) => ({
+  id: user._id,
+  email: user.email,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  fullName: user.fullName,
+  phoneNumber: user.phoneNumber,
+  address: user.address,
+  street: user.street,
+  provinceCode: user.provinceCode,
+  provinceName: user.provinceName,
+  cityCode: user.cityCode,
+  cityName: user.cityName,
+  brgyCode: user.brgyCode,
+  brgyName: user.brgyName,
+  photoURL: user.photoURL,
+  role: user.role,
+  ...extra,
+});
+
 // Send 6-digit verification code email
 const sendVerificationEmail = async (email, code, fullName) => {
   const mailOptions = {
@@ -119,13 +139,17 @@ export const googleAuth = async (req, res) => {
       } else {
         // Link Firebase to existing email account
         user.firebaseUID = uid;
-        user.fullName = fullName || user.fullName;
+        if (!user.fullName) {
+          user.fullName = fullName || user.email.split('@')[0];
+        }
         user.photoURL = photoURL || user.photoURL;
         user.isVerified = true;
       }
       await user.save();
     } else {
-      user.fullName = fullName || user.fullName;
+      if (!user.fullName) {
+        user.fullName = fullName || user.email.split('@')[0];
+      }
       user.photoURL = photoURL || user.photoURL;
       await user.save();
     }
@@ -139,16 +163,7 @@ export const googleAuth = async (req, res) => {
     res.json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
-        address: user.address,
-        photoURL: user.photoURL,
-        role: user.role,
-        isGoogleUser: true,
-      },
+      user: buildClientUser(user, { isGoogleUser: true }),
     });
   } catch (error) {
     console.error('Google Auth Error:', error);
@@ -410,16 +425,7 @@ export const login = async (req, res) => {
     res.json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
-        address: user.address,
-        photoURL: user.photoURL,
-        role: user.role,
-        isVerified: user.isVerified,
-      },
+      user: buildClientUser(user, { isVerified: user.isVerified }),
     });
   } catch (error) {
     console.error('Login Error:', error);
@@ -632,25 +638,7 @@ export const completeGoogleProfile = async (req, res) => {
     res.json({
       success: true,
       message: 'Profile completed successfully',
-      user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
-        address: user.address,
-        street: user.street,
-        provinceCode: user.provinceCode,
-        provinceName: user.provinceName,
-        cityCode: user.cityCode,
-        cityName: user.cityName,
-        brgyCode: user.brgyCode,
-        brgyName: user.brgyName,
-        photoURL: user.photoURL,
-        role: user.role,
-        isGoogleUser: true,
-      },
+      user: buildClientUser(user, { isGoogleUser: true }),
     });
   } catch (error) {
     console.error('Complete Google Profile Error:', error);
