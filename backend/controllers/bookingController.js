@@ -107,6 +107,17 @@ const normalizeSelectedOptions = (selectedOptions = []) =>
     quantity: normalizePositiveNumber(option?.quantity, 1),
   }));
 
+const BOOKING_ADDON_CONFIG = {
+  warmer: { label: 'Long Sleeve Warmer', price: 750 },
+  hoodie: { label: 'Hoodie T-shirt', price: 700 },
+};
+
+const getBookingAddOnMeta = (addOnId) =>
+  BOOKING_ADDON_CONFIG[addOnId] || {
+    label: String(addOnId || 'Add-on').trim() || 'Add-on',
+    price: 0,
+  };
+
 const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
   const fullName = [participant.firstName, participant.surname]
     .filter(Boolean)
@@ -114,6 +125,51 @@ const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
     .trim();
 
   return fullName || String(participant.name || fallback).trim() || fallback;
+};
+
+const buildParticipantInvoiceItems = ({
+  participants = [],
+  itemLabel = 'Jersey',
+  basePrice = 0,
+  pocketPrice = 0,
+  sizeSelector,
+}) => {
+  const participantList = Array.isArray(participants) ? participants : [];
+
+  return participantList.flatMap((participant, index) => {
+    const hasPocket = Boolean(participant?.hasPocketShorts || participant?.pockets);
+    const participantName = getParticipantLabel(participant, `Player ${index + 1}`);
+    const itemSuffix = participant?.number ? ` #${participant.number}` : '';
+    const selectedSize = typeof sizeSelector === 'function'
+      ? sizeSelector(participant)
+      : participant?.jerseySize || participant?.size || '';
+
+    const baseItem = {
+      description: `${itemLabel} (${participantName}${itemSuffix})`,
+      type: 'Custom',
+      qty: 1,
+      unitPrice: basePrice,
+      size: selectedSize,
+      addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
+      addOnPrice: hasPocket ? pocketPrice : 0,
+    };
+
+    const addOnItems = (Array.isArray(participant?.addOns) ? participant.addOns : []).map((addOnId) => {
+      const addOnMeta = getBookingAddOnMeta(addOnId);
+
+      return {
+        description: `${addOnMeta.label} (${participantName}${itemSuffix})`,
+        type: 'Custom',
+        qty: 1,
+        unitPrice: addOnMeta.price,
+        size: '',
+        addOn: 'Add-on',
+        addOnPrice: 0,
+      };
+    });
+
+    return [baseItem, ...addOnItems];
+  });
 };
 
 const formatBookingTypeLabel = (bookingType = '') => {
@@ -586,34 +642,20 @@ export const createBooking = async (req, res) => {
         addOnPrice: 0,
       }));
     } else if (normalizedItems.length === 0 && bookingType === 'jersey' && players) {
-      const playerArray = Array.isArray(players) ? players : [players];
-      normalizedItems = playerArray.map((player, index) => {
-        const hasPocket = Boolean(player?.hasPocketShorts || player?.pockets);
-        const playerName = getParticipantLabel(player, `Player ${index + 1}`);
-        return {
-          description: `Jersey (${playerName}${player?.number ? ` #${player.number}` : ''})`,
-          type: 'Custom',
-          qty: 1,
-          unitPrice: jerseyPrice,
-          size: player?.jerseySize || player?.size || '',
-          addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
-          addOnPrice: hasPocket ? pocketPrice : 0,
-        };
+      normalizedItems = buildParticipantInvoiceItems({
+        participants: Array.isArray(players) ? players : [players],
+        itemLabel: 'Jersey',
+        basePrice: jerseyPrice,
+        pocketPrice,
+        sizeSelector: (player) => player?.jerseySize || player?.size || '',
       });
     } else if (normalizedItems.length === 0 && bookingType === 'organizational' && members) {
-      const memberArray = Array.isArray(members) ? members : [members];
-      normalizedItems = memberArray.map((member, index) => {
-        const hasPocket = Boolean(member?.hasPocketShorts || member?.pockets);
-        const memberName = getParticipantLabel(member, `Member ${index + 1}`);
-        return {
-          description: `Uniform (${memberName}${member?.number ? ` #${member.number}` : ''})`,
-          type: 'Custom',
-          qty: 1,
-          unitPrice: orgPrice,
-          size: member?.size || member?.jerseySize || '',
-          addOn: hasPocket ? `Pocket Short (+${orgPocketPrice})` : 'None',
-          addOnPrice: hasPocket ? orgPocketPrice : 0,
-        };
+      normalizedItems = buildParticipantInvoiceItems({
+        participants: Array.isArray(members) ? members : [members],
+        itemLabel: 'Uniform',
+        basePrice: orgPrice,
+        pocketPrice: orgPocketPrice,
+        sizeSelector: (member) => member?.size || member?.jerseySize || '',
       });
     }
 
@@ -629,16 +671,26 @@ export const createBooking = async (req, res) => {
         return sum + (option.price * option.quantity);
       }, 0);
     } else if (bookingType === 'jersey' && players) {
-      const playerArray = Array.isArray(players) ? players : [players];
-      totalPrice = playerArray.reduce((sum, player) => {
-        const addOnPrice = player.hasPocketShorts ? pocketPrice : 0;
-        return sum + jerseyPrice + addOnPrice;
+      const fallbackItems = buildParticipantInvoiceItems({
+        participants: Array.isArray(players) ? players : [players],
+        itemLabel: 'Jersey',
+        basePrice: jerseyPrice,
+        pocketPrice,
+        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+      });
+      totalPrice = fallbackItems.reduce((sum, item) => {
+        return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));
       }, 0);
     } else if (bookingType === 'organizational' && members) {
-      const memberArray = Array.isArray(members) ? members : [members];
-      totalPrice = memberArray.reduce((sum, member) => {
-        const addOnPrice = member.hasPocketShorts ? orgPocketPrice : 0;
-        return sum + orgPrice + addOnPrice;
+      const fallbackItems = buildParticipantInvoiceItems({
+        participants: Array.isArray(members) ? members : [members],
+        itemLabel: 'Uniform',
+        basePrice: orgPrice,
+        pocketPrice: orgPocketPrice,
+        sizeSelector: (member) => member?.size || member?.jerseySize || '',
+      });
+      totalPrice = fallbackItems.reduce((sum, item) => {
+        return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));
       }, 0);
     }
 
@@ -1085,77 +1137,37 @@ export const convertBookingToOrder = async (req, res) => {
     const orgPrice = pricingOrg?.basePerItem || 650;
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
     
-    // Add-on prices (hardcoded for now)
-    const ADDON_PRICES = {
-      warmer: 750,
-      hoodie: 700,
-    };
-    
-    if (items.length === 0 && booking.bookingType === 'jersey' && booking.players) {
-      for (const player of booking.players) {
-        const unitPrice = jerseyPrice;
-        const hasPocket = player.hasPocketShorts || player.pockets;
-        const addOnPrice = hasPocket ? pocketPrice : 0;
-        const playerName = [player.firstName, player.surname].filter(Boolean).join(' ') || player.name || 'Player';
-        items.push({
-          description: `Jersey (${playerName}${player.number ? ` #${player.number}` : ''})`,
-          type: 'Custom',
-          qty: 1,
-          unitPrice,
-          size: player.jerseySize || player.size || '',
-          addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
-          addOnPrice,
-        });
-        
-        // Add separate items for each selected add-on
-        if (player.addOns && Array.isArray(player.addOns)) {
-          for (const addOnId of player.addOns) {
-            const addOnPrice = ADDON_PRICES[addOnId] || 0;
-            const addOnLabel = addOnId === 'warmer' ? 'Long Sleeve Warmer' : addOnId === 'hoodie' ? 'Hoodie T-shirt' : addOnId;
-            items.push({
-              description: `${addOnLabel} (${playerName}${player.number ? ` #${player.number}` : ''})`,
-              type: 'Custom',
-              qty: 1,
-              unitPrice: addOnPrice,
-              size: '',
-              addOn: 'Add-on',
-              addOnPrice: 0,
-            });
-          }
-        }
+    if (booking.bookingType === 'jersey' && booking.players) {
+      const derivedItems = buildParticipantInvoiceItems({
+        participants: booking.players,
+        itemLabel: 'Jersey',
+        basePrice: jerseyPrice,
+        pocketPrice,
+        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+      });
+      const derivedAddOnItems = derivedItems.filter((item) => item.addOn === 'Add-on');
+      const hasAddOnItems = items.some((item) => item?.addOn === 'Add-on');
+
+      if (items.length === 0) {
+        items.push(...derivedItems);
+      } else if (!hasAddOnItems && derivedAddOnItems.length > 0) {
+        items.push(...derivedAddOnItems);
       }
-    } else if (items.length === 0 && booking.bookingType === 'organizational' && booking.members) {
-      for (const member of booking.members) {
-        const unitPrice = orgPrice;
-        const hasPocket = member.hasPocketShorts || member.pockets;
-        const addOnPrice = hasPocket ? orgPocketPrice : 0;
-        const memberName = [member.firstName, member.surname].filter(Boolean).join(' ') || member.name || 'Member';
-        items.push({
-          description: `Jersey (${memberName}${member.number ? ` #${member.number}` : ''})`,
-          type: 'Custom',
-          qty: 1,
-          unitPrice,
-          size: member.size || member.jerseySize || '',
-          addOn: hasPocket ? `Pocket Short (+${orgPocketPrice})` : 'None',
-          addOnPrice,
-        });
-        
-        // Add separate items for each selected add-on
-        if (member.addOns && Array.isArray(member.addOns)) {
-          for (const addOnId of member.addOns) {
-            const addOnPrice = ADDON_PRICES[addOnId] || 0;
-            const addOnLabel = addOnId === 'warmer' ? 'Long Sleeve Warmer' : addOnId === 'hoodie' ? 'Hoodie T-shirt' : addOnId;
-            items.push({
-              description: `${addOnLabel} (${memberName}${member.number ? ` #${member.number}` : ''})`,
-              type: 'Custom',
-              qty: 1,
-              unitPrice: addOnPrice,
-              size: '',
-              addOn: 'Add-on',
-              addOnPrice: 0,
-            });
-          }
-        }
+    } else if (booking.bookingType === 'organizational' && booking.members) {
+      const derivedItems = buildParticipantInvoiceItems({
+        participants: booking.members,
+        itemLabel: 'Uniform',
+        basePrice: orgPrice,
+        pocketPrice: orgPocketPrice,
+        sizeSelector: (member) => member?.size || member?.jerseySize || '',
+      });
+      const derivedAddOnItems = derivedItems.filter((item) => item.addOn === 'Add-on');
+      const hasAddOnItems = items.some((item) => item?.addOn === 'Add-on');
+
+      if (items.length === 0) {
+        items.push(...derivedItems);
+      } else if (!hasAddOnItems && derivedAddOnItems.length > 0) {
+        items.push(...derivedAddOnItems);
       }
     } else if (items.length === 0 && booking.bookingType === 'repair' && booking.selectedOptions) {
       for (const option of booking.selectedOptions) {
@@ -1174,6 +1186,7 @@ export const convertBookingToOrder = async (req, res) => {
       return sum + itemTotal;
     }, 0);
 
+    booking.items = items;
     booking.totalPrice = totalPrice;
     await booking.save();
     await createBookingConvertedNotification({

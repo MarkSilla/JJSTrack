@@ -104,6 +104,38 @@ export default function OrderDetail({
         return Array.from(new Set(urls));
     }, [activeOrder, bookingExtras]);
 
+    const rosterPlayers = useMemo(() => {
+        if (Array.isArray(bookingExtras?.players) && bookingExtras.players.length > 0) {
+            return bookingExtras.players;
+        }
+
+        if (Array.isArray(activeOrder?.players) && activeOrder.players.length > 0) {
+            return activeOrder.players;
+        }
+
+        if (Array.isArray(bookingExtras?.members) && bookingExtras.members.length > 0) {
+            return bookingExtras.members;
+        }
+
+        if (Array.isArray(activeOrder?.members) && activeOrder.members.length > 0) {
+            return activeOrder.members;
+        }
+
+        return [];
+    }, [activeOrder, bookingExtras]);
+
+    const rosterInvoiceItems = useMemo(() => {
+        if (Array.isArray(activeOrder?.invoice?.items) && activeOrder.invoice.items.length > 0) {
+            return activeOrder.invoice.items;
+        }
+
+        if (Array.isArray(bookingExtras?.items) && bookingExtras.items.length > 0) {
+            return bookingExtras.items;
+        }
+
+        return [];
+    }, [activeOrder, bookingExtras]);
+
     const handleRescheduleConfirm = (newDate, newTime) => {
         handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate, newTime);
     };
@@ -272,7 +304,7 @@ export default function OrderDetail({
                             isForApproval={isForApproval}
                             hasSchedule={hasSchedule}
                         />
-                        <TeamRoster players={activeOrder.players} />
+                        <TeamRoster players={rosterPlayers} invoiceItems={rosterInvoiceItems} />
                     </div>
                     <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
                         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
@@ -360,6 +392,7 @@ export default function OrderDetail({
                             activeOrder={activeOrder}
                             assignedEmployee={assignedEmployee}
                             earningsPreview={earningsPreview}
+                            participants={rosterPlayers}
                         />
                     </div>
                 </div>
