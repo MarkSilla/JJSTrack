@@ -28,6 +28,32 @@ const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Conf
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
 
+const getStoredUser = () => {
+    try {
+        const rawUser = localStorage.getItem('user')
+        return rawUser ? JSON.parse(rawUser) : null
+    } catch (err) {
+        console.error('Error parsing stored user data:', err)
+        return null
+    }
+}
+
+const buildRepairDetailsFromUser = (user) => ({
+    name: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phoneNumber || '',
+    address: user?.address || '',
+    city: '',
+})
+
+const buildContactFromUser = (user) => ({
+    fullName: user?.fullName || '',
+    phone: user?.phoneNumber || '',
+    email: user?.email || '',
+    facebook: '',
+    address: user?.address || '',
+})
+
 // Stepper
 const Stepper = ({ currentStep, labels }) => (
     <nav className="w-full max-w-2xl mx-auto" aria-label="Progress">
@@ -114,7 +140,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [quantities, setQuantities] = useState({})
     const [repairDescription, setRepairDescription] = useState('')
     const [photos, setPhotos] = useState([])
-    const [details, setDetails] = useState({ name: '', email: '', phone: '', address: '', city: '' })
+    const [details, setDetails] = useState(() => buildRepairDetailsFromUser(getStoredUser()))
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
 
@@ -123,56 +149,24 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [players, setPlayers] = useState([])
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
-    const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    const [contact, setContact] = useState(() => buildContactFromUser(getStoredUser()))
 
     // Org state
     const [orgName, setOrgName] = useState('')
     const [members, setMembers] = useState([])
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
-    const [orgContact, setOrgContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    const [orgContact, setOrgContact] = useState(() => buildContactFromUser(getStoredUser()))
 
-    // Initialize contact data from user on component mount
+    // Rehydrate locked account details whenever the booking modal opens.
     useEffect(() => {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-            try {
-                const user = JSON.parse(userStr)
-                // Auto-fill repair form details
-                if (user.fullName || user.phoneNumber || user.email || user.address) {
-                    setDetails({
-                        name: user.fullName || '',
-                        email: user.email || '',
-                        phone: user.phoneNumber || '',
-                        address: user.address || '',
-                        city: ''
-                    })
-                }
-                // Auto-fill team contact
-                if (user.fullName || user.phoneNumber || user.email) {
-                    setContact({
-                        fullName: user.fullName || '',
-                        phone: user.phoneNumber || '',
-                        email: user.email || '',
-                        facebook: '',
-                        address: user.address || ''
-                    })
-                }
-                // Auto-fill org contact
-                if (user.fullName || user.phoneNumber || user.email) {
-                    setOrgContact({
-                        fullName: user.fullName || '',
-                        phone: user.phoneNumber || '',
-                        email: user.email || '',
-                        facebook: '',
-                        address: user.address || ''
-                    })
-                }
-            } catch (err) {
-                console.error('Error parsing user data:', err)
-            }
-        }
-    }, [])
+        if (!isOpen) return
+
+        const user = getStoredUser()
+        setDetails(buildRepairDetailsFromUser(user))
+        setContact(buildContactFromUser(user))
+        setOrgContact(buildContactFromUser(user))
+    }, [isOpen])
 
     // Reset form function
     const resetForm = () => {
@@ -186,7 +180,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         setQuantities({})
         setRepairDescription('')
         setPhotos([])
-        setDetails({ name: '', email: '', phone: '', address: '', city: '' })
+        setDetails(buildRepairDetailsFromUser(getStoredUser()))
         setSelectedDate(null)
         setSelectedSlot('')
 
@@ -195,14 +189,14 @@ const BookingModal = ({ isOpen, onClose }) => {
         setPlayers([])
         setDesignFile(null)
         setDriveLink('')
-        setContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+        setContact(buildContactFromUser(getStoredUser()))
 
         // Reset org state
         setOrgName('')
         setMembers([])
         setOrgDesignFile(null)
         setOrgDriveLink('')
-        setOrgContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+        setOrgContact(buildContactFromUser(getStoredUser()))
     }
 
     // Handle modal close
@@ -223,7 +217,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
 
     const isRepairDetailsComplete = () => {
-        return [details.name, details.email, details.phone, details.address, details.city].every((field) => field && field.trim().length > 0)
+        return [details.name, details.email, details.phone, details.address].every((field) => field && field.trim().length > 0)
     }
 
     const canNext = () => {
@@ -257,14 +251,14 @@ const BookingModal = ({ isOpen, onClose }) => {
     const getNextErrorMessage = () => {
         if (step === 1) return 'Please select a service before continuing.'
         if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
-        if (isRepair && step === 4) return 'Please complete all your delivery details before continuing.'
+        if (isRepair && step === 4) return 'Please complete your profile details first before continuing.'
         if (isRepair && step === 5) return 'Please select a pickup date and time slot.'
 
         if (isJersey && step === 2) return 'Please add at least one player first.'
-        if (isJersey && step === 4) return 'Please fill in the contact information.'
+        if (isJersey && step === 4) return 'Please complete your profile contact details first before continuing.'
 
         if (isOrg && step === 2) return 'Please add at least one member first.'
-        if (isOrg && step === 4) return 'Please fill in the organization contact information.'
+        if (isOrg && step === 4) return 'Please complete your profile contact details first before continuing.'
 
         return 'Please complete the required fields before continuing.'
     }
@@ -438,7 +432,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             switch (step) {
                 case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} />
                 case 3: return <StepPhoto photos={photos} setPhotos={setPhotos} skipPhoto={() => setStep(4)} />
-                case 4: return <StepDetails details={details} setDetail={setDetail} />
+                case 4: return <StepDetails details={details} setDetail={setDetail} readOnly />
                 case 5: return <StepPickup selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedSlot={selectedSlot} setSelectedSlot={setSelectedSlot} />
                 case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} />
                 default: return null
@@ -449,8 +443,8 @@ const BookingModal = ({ isOpen, onClose }) => {
             switch (step) {
                 case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
-                case 4: return <TeamStepContact contact={contact} setContact={setContact} />
-                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} />
+                case 4: return <TeamStepContact contact={contact} setContact={setContact} readOnly />
+                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly />
                 default: return null
             }
         }
@@ -459,8 +453,8 @@ const BookingModal = ({ isOpen, onClose }) => {
             switch (step) {
                 case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
-                case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} />
-                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} />
+                case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} readOnly />
+                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly />
                 default: return null
             }
         }

@@ -8,13 +8,27 @@ const PRODUCT_TYPES = [
     { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
 ]
 
+const OPTIONAL_PRODUCT_TYPES = [
+    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
+    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
+]
+
 const POCKET_PRICE = 100
 
 const getPlayerPrice = (player) => {
     const product = PRODUCT_TYPES.find((p) => p.id === player.productType)
     if (!product) return 0
+
     let total = product.price
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
+
+    if (player.addOns && Array.isArray(player.addOns)) {
+        player.addOns.forEach((addOnId) => {
+            const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
+            if (addOn) total += addOn.price
+        })
+    }
+
     return total
 }
 
@@ -35,8 +49,15 @@ const ReviewBlock = ({ title, onEdit, children }) => (
     </div>
 )
 
-const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, goToStep }) => {
+const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, goToStep, contactReadOnly = false }) => {
     const grandTotal = players.reduce((sum, pl) => sum + getPlayerPrice(pl), 0)
+    const contactRows = [
+        ['Name', contact.fullName],
+        ['Phone', contact.phone],
+        ['Email', contact.email],
+        ...(contact.facebook ? [['FB/Messenger', contact.facebook]] : []),
+        ['Address', contact.address],
+    ]
 
     return (
         <section>
@@ -46,7 +67,6 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
             </div>
 
             <div className="max-w-xl mx-auto">
-                {/* Team & Players */}
                 <ReviewBlock title="Team & Players" onEdit={() => goToStep(2)}>
                     <p className="text-gray-800 font-semibold mb-3">{teamName || 'No team name'}</p>
                     {players.length > 0 ? (
@@ -54,6 +74,7 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                             {players.map((pl, i) => {
                                 const product = PRODUCT_TYPES.find((p) => p.id === pl.productType)
                                 const price = getPlayerPrice(pl)
+
                                 return (
                                     <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-200 last:border-0">
                                         <div className="flex items-center gap-3 min-w-0">
@@ -65,13 +86,17 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                                     {[pl.firstName, pl.surname].filter(Boolean).join(' ')}
                                                 </p>
                                                 <p className="text-gray-400 text-xs">
-                                                    {product?.label || '—'} · {pl.jerseySize || '—'}
-                                                    {product?.needsShortSize && ` / ${pl.shortSize || '—'}`}
-                                                    {pl.pockets && ' · Pockets'}
+                                                    {product?.label || '-'} - {pl.jerseySize || '-'}
+                                                    {product?.needsShortSize && ` / ${pl.shortSize || '-'}`}
+                                                    {pl.pockets && ' - Pockets'}
+                                                    {pl.addOns && pl.addOns.length > 0 && ` - ${pl.addOns.map((id) => {
+                                                        const addon = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === id)
+                                                        return addon?.label
+                                                    }).join(', ')}`}
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">₱{price}</span>
+                                        <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">{'\u20B1'}{price}</span>
                                     </div>
                                 )
                             })}
@@ -81,11 +106,10 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                     )}
                     <div className="border-t border-gray-200 mt-3 pt-3 flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-medium">{players.length} player{players.length !== 1 ? 's' : ''} total</span>
-                        <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{grandTotal}</span>
+                        <span className="text-blue-600 font-extrabold text-lg tabular-nums">{'\u20B1'}{grandTotal}</span>
                     </div>
                 </ReviewBlock>
 
-                {/* Design */}
                 <ReviewBlock title="Design Reference" onEdit={() => goToStep(3)}>
                     {designFile ? (
                         <div className="flex items-center gap-3">
@@ -111,22 +135,20 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                     )}
                 </ReviewBlock>
 
-                {/* Contact Info */}
-                <ReviewBlock title="Contact Information" onEdit={() => goToStep(4)}>
+                <ReviewBlock title="Contact Information" onEdit={contactReadOnly ? undefined : () => goToStep(4)}>
                     <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
-                        {[
-                            ['Name', contact.fullName],
-                            ['Phone', contact.phone],
-                            ['Email', contact.email],
-                            ['FB/Messenger', contact.facebook],
-                            ['Address', contact.address],
-                        ].map(([k, v]) => (
+                        {contactRows.map(([k, v]) => (
                             <React.Fragment key={k}>
                                 <dt className="text-gray-400 font-medium">{k}</dt>
-                                <dd className="text-gray-800">{v || '—'}</dd>
+                                <dd className="text-gray-800">{v || '-'}</dd>
                             </React.Fragment>
                         ))}
                     </dl>
+                    {contactReadOnly && (
+                        <p className="text-xs text-blue-600/80 mt-3">
+                            Contact details are pulled from your signup/profile information.
+                        </p>
+                    )}
                 </ReviewBlock>
             </div>
         </section>

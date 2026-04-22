@@ -17,10 +17,6 @@ export const userApi = {
     register: async (userData) => {
         try {
             const response = await api.post('/users/register', userData);
-            if (response.data.success) {
-                localStorage.setItem("token", response.data.token);
-                localStorage.setItem("user", JSON.stringify(response.data.user));
-            }
             return response.data;
         } catch (error) {
             handleApiError(error, 'register');

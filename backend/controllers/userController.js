@@ -10,11 +10,25 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER, 
     pass: process.env.EMAIL_PASS, 
   },
+  pool: {
+    maxConnections: 1,
+  },
+});
+
+// Verify email connection on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('Email transporter error:', error.message);
+  } else {
+    console.log('Email transporter configured successfully');
+  }
 });
 
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+const normalizeEmail = (email) => String(email).trim().toLowerCase();
 
 // Send 6-digit verification code email
 const sendVerificationEmail = async (email, code, fullName) => {
@@ -67,10 +81,13 @@ const sendVerificationEmail = async (email, code, fullName) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    console.log(`📧 Attempting to send verification email to: ${email}`);
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent successfully to ${email}. Message ID: ${result.messageId}`);
     return true;
   } catch (error) {
-    console.error('Email sending error:', error);
+    console.error(`❌ Email sending failed for ${email}:`, error.message);
+    console.error('Full error:', error);
     return false;
   }
 };
@@ -83,17 +100,18 @@ export const googleAuth = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    const normalizedEmail = normalizeEmail(email);
     let user = await userModel.findOne({ firebaseUID: uid });
 
     if (!user) {
       // Check if user with this email already exists
-      user = await userModel.findOne({ email });
+      user = await userModel.findOne({ email: normalizedEmail });
       
       if (!user) {
         // Create new user
         user = new userModel({
           firebaseUID: uid,
-          email,
+          email: normalizedEmail,
           fullName: fullName || email.split('@')[0],
           photoURL: photoURL || '',
           isVerified: true,
@@ -180,71 +198,80 @@ export const updateUserProfile = async (req, res) => {
   }
 };
 
-// Register with Email & Password (Firebase)
+// Register with Email & Password (backend only)
 export const register = async (req, res) => {
   try {
-    const { uid, email, fullName } = req.body;
+    const { email, password, fullName, firstName, lastName, phone, address } = req.body;
     
-    if (!email || !fullName || !uid) {
+    if (!email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
 
-    let user = await userModel.findOne({ firebaseUID: uid });
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    let user = await userModel.findOne({ email: normalizedEmail });
 
     // Generate 6-digit verification code
     const verificationCode = generateVerificationCode();
     const codeExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+
+    if (user?.isVerified) {
+      return res.status(409).json({
+        success: false,
+        message: user.password
+          ? 'Email is already registered. Please log in instead.'
+          : 'This email is already linked to Google sign-in. Please continue with Google.',
+      });
+    }
 
     if (!user) {
       // Create new user
       user = new userModel({
-        firebaseUID: uid,
-        email,
+        email: normalizedEmail,
+        password: hashedPassword,
         fullName,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        phoneNumber: phone || '',
+        address: address || '',
         isVerified: false,
         verificationCode,
         verificationCodeExpiry: codeExpiry,
       });
       await user.save();
     } else {
-      // Update existing user
+      // Refresh an existing unverified account and resend a new code.
+      user.email = normalizedEmail;
+      user.password = hashedPassword;
       user.fullName = fullName || user.fullName;
+      user.firstName = firstName || user.firstName;
+      user.lastName = lastName || user.lastName;
+      user.phoneNumber = phone || user.phoneNumber;
+      user.address = address || user.address;
       user.verificationCode = verificationCode;
       user.verificationCodeExpiry = codeExpiry;
       user.isVerified = false;
       await user.save();
     }
 
-    // Send verification code email
-    const emailSent = await sendVerificationEmail(email, verificationCode, fullName);
-
-    if (!emailSent) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to send verification code. Please try again.' 
-      });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, firebaseUID: uid },
-      process.env.JWT_SECRET || 'secret_key',
-      { expiresIn: '7d' }
-    );
+    // Send verification code email (non-blocking, errors are logged but don't fail registration)
+    sendVerificationEmail(email, verificationCode, fullName).catch((err) => {
+      console.error('Failed to send verification email:', err.message);
+      // Email failure is not critical - user can request resend on verify page
+    });
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful. A 6-digit verification code has been sent to your email.',
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-      },
+      message: 'Registration successful. Check your email for a 6-digit verification code.',
+      email: user.email,
     });
   } catch (error) {
     console.error('Register Error:', error);
-    res.status(500).json({ success: false, message: 'Registration failed' });
+    res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
   }
 };
 
@@ -257,7 +284,7 @@ export const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and code are required' });
     }
 
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizeEmail(email) });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -302,7 +329,7 @@ export const resendVerificationCode = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizeEmail(email) });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -347,7 +374,7 @@ export const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizeEmail(email) });
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
@@ -358,6 +385,15 @@ export const login = async (req, res) => {
         success: false, 
         message: 'Please verify your email before logging in',
         requiresVerification: true 
+      });
+    }
+
+    // Accounts without a local password should continue through Google sign-in.
+    if (!user.password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This account uses Google sign-in. Please continue with Google.',
+        isGoogleUser: true
       });
     }
 
@@ -409,7 +445,7 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizeEmail(email) });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -505,7 +541,7 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email: normalizeEmail(email) });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -544,20 +580,32 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Complete Google user profile (add phone number, address, last name)
+// Complete Google user profile using the same core profile fields as signup.
 export const completeGoogleProfile = async (req, res) => {
   try {
-    const { firstName, lastName, phoneNumber, address } = req.body;
+    const {
+      firstName,
+      lastName,
+      phoneNumber,
+      address,
+      street,
+      provinceCode,
+      provinceName,
+      cityCode,
+      cityName,
+      brgyCode,
+      brgyName,
+    } = req.body;
     const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (!firstName || !lastName || !phoneNumber || !address) {
+    if (!firstName || !lastName || !phoneNumber || !address || !street || !provinceName || !cityName || !brgyName) {
       return res.status(400).json({ 
         success: false, 
-        message: 'First name, last name, phone number, and address are required' 
+        message: 'First name, last name, phone number, and full address details are required' 
       });
     }
 
@@ -567,10 +615,18 @@ export const completeGoogleProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Update user profile with both firstName and lastName
-    user.fullName = `${firstName} ${lastName}`.trim();
-    user.phoneNumber = phoneNumber;
-    user.address = address;
+    user.firstName = String(firstName).trim();
+    user.lastName = String(lastName).trim();
+    user.fullName = `${user.firstName} ${user.lastName}`.trim();
+    user.phoneNumber = String(phoneNumber).trim();
+    user.address = String(address).trim();
+    user.street = String(street).trim();
+    user.provinceCode = String(provinceCode || '').trim();
+    user.provinceName = String(provinceName).trim();
+    user.cityCode = String(cityCode || '').trim();
+    user.cityName = String(cityName).trim();
+    user.brgyCode = String(brgyCode || '').trim();
+    user.brgyName = String(brgyName).trim();
     await user.save();
 
     res.json({
@@ -579,11 +635,21 @@ export const completeGoogleProfile = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
         address: user.address,
+        street: user.street,
+        provinceCode: user.provinceCode,
+        provinceName: user.provinceName,
+        cityCode: user.cityCode,
+        cityName: user.cityName,
+        brgyCode: user.brgyCode,
+        brgyName: user.brgyName,
         photoURL: user.photoURL,
         role: user.role,
+        isGoogleUser: true,
       },
     });
   } catch (error) {
@@ -868,5 +934,31 @@ export const verifyAdminToken = async (req, res) => {
       success: false, 
       message: 'Invalid or expired token' 
     });
+  }
+};
+
+// DELETE TEST USER (for development only)
+export const deleteUserByEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const result = await userModel.deleteOne({ email: email.trim().toLowerCase() });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `User with email ${email} has been deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete User Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete user' });
   }
 };

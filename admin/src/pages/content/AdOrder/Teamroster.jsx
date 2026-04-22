@@ -4,6 +4,14 @@ import { User } from 'lucide-react';
 export default function TeamRoster({ players }) {
     if (!players || players.length === 0) return null;
 
+    const getAddOnLabel = (addOnId) => {
+        const labels = {
+            warmer: 'Long Sleeve Warmer',
+            hoodie: 'Hoodie T-shirt',
+        };
+        return labels[addOnId] || addOnId;
+    };
+
     return (
         <div className="bg-white border text-sm border-gray-100 rounded-2xl p-6 shadow-sm">
             <h3 className="text-sm font-bold text-gray-800 mb-5 flex items-center gap-2">
@@ -16,7 +24,8 @@ export default function TeamRoster({ players }) {
                             <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider">Player Name</th>
                             <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider text-center">Number</th>
                             <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider text-center">Size</th>
-                            <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider text-right">Name Print</th>
+                            <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider">Add-ons</th>
+                            <th className="pb-3 font-bold text-gray-400 text-[11px] uppercase tracking-wider text-right">Pockets</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -25,6 +34,19 @@ export default function TeamRoster({ players }) {
                                 <td className="py-3 font-bold text-gray-900">{player.surname || '—'}</td>
                                 <td className="py-3 text-center font-semibold text-gray-600">{player.number || '—'}</td>
                                 <td className="py-3 text-center font-black text-blue-600 bg-blue-50/30 rounded">{player.jerseySize || '—'}</td>
+                                <td className="py-3 font-medium text-gray-600">
+                                    {player.addOns && player.addOns.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {player.addOns.map((addOn, i) => (
+                                                <span key={i} className="px-2 py-1 bg-green-50 text-green-700 rounded-md text-[10px] font-bold border border-green-200">
+                                                    {getAddOnLabel(addOn)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400">None</span>
+                                    )}
+                                </td>
                                 <td className="py-3 text-right font-medium text-gray-600">
                                     {player.pockets ? (
                                         <span className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-md text-[11px] font-bold">YES</span>

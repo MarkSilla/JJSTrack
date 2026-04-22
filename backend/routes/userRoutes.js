@@ -15,6 +15,7 @@ import {
   staffLogin,
   adminLogout,
   verifyAdminToken,
+  deleteUserByEmail,
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middleware/auth.js';
 
@@ -25,6 +26,9 @@ router.post('/google-auth', googleAuth);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', logout);
+
+// Development: Delete test user (remove in production)
+router.post('/dev/delete-user', deleteUserByEmail);
 
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerificationCode);

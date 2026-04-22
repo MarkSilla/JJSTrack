@@ -61,7 +61,11 @@ const orderSchema = new mongoose.Schema({
   },
 
   players: [{
-    name: String, number: String, size: String, hasPocketShorts: Boolean,
+    name: String,
+    number: String,
+    size: String,
+    hasPocketShorts: Boolean,
+    addOns: { type: [String], default: [] },
   }],
   notes: String,
   qrCode: String,

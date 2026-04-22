@@ -1085,6 +1085,12 @@ export const convertBookingToOrder = async (req, res) => {
     const orgPrice = pricingOrg?.basePerItem || 650;
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
     
+    // Add-on prices (hardcoded for now)
+    const ADDON_PRICES = {
+      warmer: 750,
+      hoodie: 700,
+    };
+    
     if (items.length === 0 && booking.bookingType === 'jersey' && booking.players) {
       for (const player of booking.players) {
         const unitPrice = jerseyPrice;
@@ -1100,6 +1106,23 @@ export const convertBookingToOrder = async (req, res) => {
           addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
           addOnPrice,
         });
+        
+        // Add separate items for each selected add-on
+        if (player.addOns && Array.isArray(player.addOns)) {
+          for (const addOnId of player.addOns) {
+            const addOnPrice = ADDON_PRICES[addOnId] || 0;
+            const addOnLabel = addOnId === 'warmer' ? 'Long Sleeve Warmer' : addOnId === 'hoodie' ? 'Hoodie T-shirt' : addOnId;
+            items.push({
+              description: `${addOnLabel} (${playerName}${player.number ? ` #${player.number}` : ''})`,
+              type: 'Custom',
+              qty: 1,
+              unitPrice: addOnPrice,
+              size: '',
+              addOn: 'Add-on',
+              addOnPrice: 0,
+            });
+          }
+        }
       }
     } else if (items.length === 0 && booking.bookingType === 'organizational' && booking.members) {
       for (const member of booking.members) {
@@ -1116,6 +1139,23 @@ export const convertBookingToOrder = async (req, res) => {
           addOn: hasPocket ? `Pocket Short (+${orgPocketPrice})` : 'None',
           addOnPrice,
         });
+        
+        // Add separate items for each selected add-on
+        if (member.addOns && Array.isArray(member.addOns)) {
+          for (const addOnId of member.addOns) {
+            const addOnPrice = ADDON_PRICES[addOnId] || 0;
+            const addOnLabel = addOnId === 'warmer' ? 'Long Sleeve Warmer' : addOnId === 'hoodie' ? 'Hoodie T-shirt' : addOnId;
+            items.push({
+              description: `${addOnLabel} (${memberName}${member.number ? ` #${member.number}` : ''})`,
+              type: 'Custom',
+              qty: 1,
+              unitPrice: addOnPrice,
+              size: '',
+              addOn: 'Add-on',
+              addOnPrice: 0,
+            });
+          }
+        }
       }
     } else if (items.length === 0 && booking.bookingType === 'repair' && booking.selectedOptions) {
       for (const option of booking.selectedOptions) {

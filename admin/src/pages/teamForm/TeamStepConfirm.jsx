@@ -8,6 +8,16 @@ const PRODUCT_TYPES = [
     { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
 ]
 
+const BASE_PRODUCT_TYPES = [
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: true },
+    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+]
+
+const OPTIONAL_PRODUCT_TYPES = [
+    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
+    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
+]
+
 const POCKET_PRICE = 100
 
 const getPlayerPrice = (player) => {
@@ -15,6 +25,15 @@ const getPlayerPrice = (player) => {
     if (!product) return 0
     let total = product.price
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
+    
+    // Add optional add-ons pricing
+    if (player.addOns && Array.isArray(player.addOns)) {
+        player.addOns.forEach(addOnId => {
+            const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
+            if (addOn) total += addOn.price
+        })
+    }
+    
     return total
 }
 
@@ -86,6 +105,10 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                                         {product?.label || '—'} · {pl.jerseySize || '—'}
                                                         {product?.needsShortSize && ` / ${pl.shortSize || '—'}`}
                                                         {pl.pockets && ' · Pockets'}
+                                                        {pl.addOns && pl.addOns.length > 0 && ` · ${pl.addOns.map(id => {
+                                                            const addon = OPTIONAL_PRODUCT_TYPES.find(p => p.id === id)
+                                                            return addon?.label
+                                                        }).join(', ')}`}
                                                     </p>
                                                 </div>
                                             </div>

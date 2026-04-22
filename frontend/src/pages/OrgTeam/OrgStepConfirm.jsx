@@ -28,8 +28,15 @@ const ReviewBlock = ({ title, onEdit, children }) => (
     </div>
 )
 
-const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goToStep }) => {
+const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goToStep, contactReadOnly = false }) => {
     const grandTotal = members.reduce((sum, m) => sum + getMemberPrice(m), 0)
+    const contactRows = [
+        ['Name', contact.fullName],
+        ['Phone', contact.phone],
+        ['Email', contact.email],
+        ...(contact.facebook ? [['FB/Messenger', contact.facebook]] : []),
+        ['Address', contact.address],
+    ]
 
     return (
         <section>
@@ -39,7 +46,6 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
             </div>
 
             <div className="max-w-xl mx-auto">
-                {/* Organization & Members */}
                 <ReviewBlock title="Organization & Members" onEdit={() => goToStep(2)}>
                     <p className="text-gray-800 font-semibold mb-3">{orgName || 'No organization name'}</p>
                     {members.length > 0 ? (
@@ -47,6 +53,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                             {members.map((m, i) => {
                                 const product = PRODUCT_TYPES.find((p) => p.id === m.productType)
                                 const price = getMemberPrice(m)
+
                                 return (
                                     <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-200 last:border-0">
                                         <div className="flex items-center gap-3 min-w-0">
@@ -62,11 +69,11 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                                             <div className="min-w-0">
                                                 <p className="text-gray-800 text-sm font-medium truncate">{[m.firstName, m.surname].filter(Boolean).join(' ')}</p>
                                                 <p className="text-gray-400 text-xs">
-                                                    {product?.label || '—'} · Size: {m.size || '—'}
+                                                    {product?.label || '-'} - Size: {m.size || '-'}
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">₱{price}</span>
+                                        <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">{'\u20B1'}{price}</span>
                                     </div>
                                 )
                             })}
@@ -76,11 +83,10 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                     )}
                     <div className="border-t border-gray-200 mt-3 pt-3 flex items-center justify-between">
                         <span className="text-gray-500 text-xs font-medium">{members.length} order{members.length !== 1 ? 's' : ''} total</span>
-                        <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{grandTotal}</span>
+                        <span className="text-blue-600 font-extrabold text-lg tabular-nums">{'\u20B1'}{grandTotal}</span>
                     </div>
                 </ReviewBlock>
 
-                {/* Design */}
                 <ReviewBlock title="Design Reference" onEdit={() => goToStep(3)}>
                     {designFile ? (
                         <div className="flex items-center gap-3">
@@ -106,22 +112,20 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                     )}
                 </ReviewBlock>
 
-                {/* Contact Info */}
-                <ReviewBlock title="Contact Information" onEdit={() => goToStep(4)}>
+                <ReviewBlock title="Contact Information" onEdit={contactReadOnly ? undefined : () => goToStep(4)}>
                     <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
-                        {[
-                            ['Name', contact.fullName],
-                            ['Phone', contact.phone],
-                            ['Email', contact.email],
-                            ['FB/Messenger', contact.facebook],
-                            ['Address', contact.address],
-                        ].map(([k, v]) => (
+                        {contactRows.map(([k, v]) => (
                             <React.Fragment key={k}>
                                 <dt className="text-gray-400 font-medium">{k}</dt>
-                                <dd className="text-gray-800">{v || '—'}</dd>
+                                <dd className="text-gray-800">{v || '-'}</dd>
                             </React.Fragment>
                         ))}
                     </dl>
+                    {contactReadOnly && (
+                        <p className="text-xs text-blue-600/80 mt-3">
+                            Contact details are pulled from your signup/profile information.
+                        </p>
+                    )}
                 </ReviewBlock>
             </div>
         </section>

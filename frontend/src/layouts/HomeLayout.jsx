@@ -22,7 +22,21 @@ const HomeLayout = () => {
   useEffect(() => {
     // Check if user needs to complete profile after Google login
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (user && user.isGoogleUser && (!user.phoneNumber || !user.address)) {
+    const needsGoogleProfileCompletion =
+      user &&
+      user.isGoogleUser &&
+      (
+        !user.firstName ||
+        !user.lastName ||
+        !user.phoneNumber ||
+        !user.street ||
+        !user.brgyName ||
+        !user.cityName ||
+        !user.provinceName ||
+        !user.address
+      )
+
+    if (needsGoogleProfileCompletion) {
       setTimeout(() => {
         setShowProfileModal(true)
       }, 500)

@@ -19,13 +19,22 @@ const PRODUCT_TYPES = [...BASE_PRODUCT_TYPES, ...OPTIONAL_PRODUCT_TYPES]
 
 const POCKET_PRICE = 100
 
-const emptyPlayer = { firstName: '', surname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false }
+const emptyPlayer = { firstName: '', surname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false, addOns: [] }
 
 const getPlayerPrice = (player) => {
     const product = PRODUCT_TYPES.find((p) => p.id === player.productType)
     if (!product) return 0
     let total = product.price
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
+    
+    // Add optional add-ons pricing
+    if (player.addOns && Array.isArray(player.addOns)) {
+        player.addOns.forEach(addOnId => {
+            const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
+            if (addOn) total += addOn.price
+        })
+    }
+    
     return total
 }
 
@@ -34,6 +43,18 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
     const [editIdx, setEditIdx] = useState(null)
 
     const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
+    
+    const toggleAddOn = (addOnId) => {
+        setForm((p) => {
+            const currentAddOns = p.addOns || []
+            return {
+                ...p,
+                addOns: currentAddOns.includes(addOnId)
+                    ? currentAddOns.filter((id) => id !== addOnId)
+                    : [...currentAddOns, addOnId]
+            }
+        })
+    }
 
     const selectedProduct = PRODUCT_TYPES.find((p) => p.id === form.productType)
     const needsShortSize = selectedProduct?.needsShortSize || false
@@ -161,22 +182,24 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Optional add-ons</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 {OPTIONAL_PRODUCT_TYPES.map((pt) => {
-                                    const selected = form.productType === pt.id
+                                    const selected = form.addOns && form.addOns.includes(pt.id)
                                     return (
                                         <button
                                             key={pt.id}
                                             type="button"
-                                            onClick={() => {
-                                                set('productType', pt.id)
-                                                if (!pt.needsShortSize) set('shortSize', '')
-                                                if (!pt.needsShortSize) set('pockets', false)
-                                            }}
+                                            onClick={() => toggleAddOn(pt.id)}
                                             className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 cursor-pointer
                                                 ${selected
                                                     ? 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-100'
                                                     : 'border-gray-200 bg-white hover:border-gray-300'}`}
                                         >
-                                            <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-4 h-4 rounded-sm flex items-center justify-center border transition-all
+                                                    ${selected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                                                    {selected && <MdCheck size={12} className="text-white" />}
+                                                </span>
+                                                <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
+                                            </div>
                                             <span className={`text-sm font-bold tabular-nums ${selected ? 'text-blue-600' : 'text-gray-400'}`}>₱{pt.price}</span>
                                         </button>
                                     )
@@ -272,6 +295,10 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                                                     {product?.label || '—'} · Jersey: {pl.jerseySize || '—'}
                                                     {product?.needsShortSize && ` · Short: ${pl.shortSize || '—'}`}
                                                     {pl.pockets && ' · Pockets'}
+                                                    {pl.addOns && pl.addOns.length > 0 && ` · ${pl.addOns.map(id => {
+                                                        const addon = OPTIONAL_PRODUCT_TYPES.find(p => p.id === id)
+                                                        return addon?.label
+                                                    }).join(', ')}`}
                                                 </p>
                                             </div>
                                         </div>
@@ -332,6 +359,16 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                                     <span className="text-gray-700 font-medium tabular-nums">₱{POCKET_PRICE * players.filter((p) => p.pockets).length}</span>
                                 </div>
                             )}
+                            {OPTIONAL_PRODUCT_TYPES.map((pt) => {
+                                const count = players.reduce((sum, p) => sum + (p.addOns && p.addOns.includes(pt.id) ? 1 : 0), 0)
+                                if (count === 0) return null
+                                return (
+                                    <div key={pt.id} className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500">{pt.label} × {count}</span>
+                                        <span className="text-gray-700 font-medium tabular-nums">₱{pt.price * count}</span>
+                                    </div>
+                                )
+                            })}
                             <div className="border-t border-blue-200 pt-3 mt-3 flex items-center justify-between">
                                 <span className="text-gray-800 font-bold text-sm">Grand Total</span>
                                 <span className="text-blue-600 font-extrabold text-2xl tabular-nums">₱{grandTotal}</span>

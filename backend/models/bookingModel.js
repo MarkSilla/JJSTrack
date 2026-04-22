@@ -12,6 +12,10 @@ const playerSchema = new mongoose.Schema({
     default: false,
   },
   productType: String,
+  addOns: {
+    type: [String],
+    default: [],
+  },
   hasPocketShorts: {
     type: Boolean,
     default: false,
@@ -97,13 +101,7 @@ const bookingSchema = new mongoose.Schema({
 
   steps: {
     type: [bookingStepSchema],
-    default: () => [
-      { label: 'Dropped Off', done: false, active: false },
-      { label: 'Layout',      done: false, active: false },
-      { label: 'Printing',    done: false, active: false },
-      { label: 'Sewing',      done: false, active: false },
-      { label: 'Pick-up',     done: false, active: false },
-    ],
+    default: [],
   },
 
   // Repair specific
@@ -189,6 +187,25 @@ const bookingSchema = new mongoose.Schema({
 bookingSchema.pre('save', async function preSave() {
   if (!this.bookingId) {
     this.bookingId = await generateUniqueBookingId(this.constructor);
+  }
+
+  // Initialize steps based on bookingType if not already set
+  if (!this.steps || this.steps.length === 0) {
+    if (this.bookingType === 'repair') {
+      this.steps = [
+        { label: 'Dropped Off', done: false, active: false },
+        { label: 'Sewing',      done: false, active: false },
+        { label: 'Pick-up',     done: false, active: false },
+      ];
+    } else if (this.bookingType === 'jersey' || this.bookingType === 'organizational') {
+      this.steps = [
+        { label: 'Dropped Off', done: false, active: false },
+        { label: 'Layout',      done: false, active: false },
+        { label: 'Printing',    done: false, active: false },
+        { label: 'Sewing',      done: false, active: false },
+        { label: 'Pick-up',     done: false, active: false },
+      ];
+    }
   }
 });
 
