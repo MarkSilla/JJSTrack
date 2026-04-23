@@ -143,6 +143,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [details, setDetails] = useState(() => buildRepairDetailsFromUser(getStoredUser()))
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
+    const [notes, setNotes] = useState('')
 
     // Team state
     const [teamName, setTeamName] = useState('')
@@ -183,6 +184,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         setDetails(buildRepairDetailsFromUser(getStoredUser()))
         setSelectedDate(null)
         setSelectedSlot('')
+        setNotes('')
 
         // Reset team state
         setTeamName('')
@@ -302,6 +304,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             const bookingData = {
                 bookingType: isRepair ? 'repair' : isJersey ? 'jersey' : 'organizational',
                 service: service,
+                notes: notes,
             }
 
             // Determine which contact object to use
@@ -430,11 +433,11 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isRepair) {
             switch (step) {
-                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} />
+                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} notes={notes} setNotes={setNotes} />
                 case 3: return <StepPhoto photos={photos} setPhotos={setPhotos} skipPhoto={() => setStep(4)} />
                 case 4: return <StepDetails details={details} setDetail={setDetail} readOnly />
                 case 5: return <StepPickup selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedSlot={selectedSlot} setSelectedSlot={setSelectedSlot} />
-                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} />
+                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} notes={notes} />
                 default: return null
             }
         }

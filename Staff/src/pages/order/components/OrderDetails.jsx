@@ -277,6 +277,21 @@ const OrderDetails = ({ orderId, onBack }) => {
                 </div>
             </div>
 
+            {/* Client Notes Section */}
+            {order?.notes && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+                    <div className="bg-amber-100 p-2.5 rounded-xl shrink-0">
+                        <FileText size={20} className="text-amber-600" />
+                    </div>
+                    <div>
+                        <h4 className="text-[10px] font-black tracking-widest uppercase text-amber-600 mb-1">Client Customization Notes</h4>
+                        <p className="text-sm font-bold text-amber-900 leading-relaxed italic">
+                            "{order.notes}"
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <OrderStatusTracker
                 steps={productionSteps}
                 currentStepIdx={currentIdx}

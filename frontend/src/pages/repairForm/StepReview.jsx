@@ -11,7 +11,7 @@ const ReviewBlock = ({ title, children }) => (
     </div>
 )
 
-const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription, teamName, players, orgName, members, designFile, driveLink, contact }) => {
+const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription, teamName, players, orgName, members, designFile, driveLink, contact, notes }) => {
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
     const isOrg = service === 'organizational'
@@ -133,6 +133,12 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                             <dt className="text-gray-400 font-medium">Time Slot</dt>
                             <dd className="text-gray-800">{slot ? `${slot.label} (${slot.range})` : '—'}</dd>
                         </dl>
+                    </ReviewBlock>
+                )}
+
+                {notes && (
+                    <ReviewBlock title="Additional Instructions">
+                        <p className="text-gray-700 text-sm italic">"{notes}"</p>
                     </ReviewBlock>
                 )}
 

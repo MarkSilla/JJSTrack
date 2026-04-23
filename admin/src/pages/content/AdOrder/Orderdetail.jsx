@@ -284,6 +284,21 @@ export default function OrderDetail({
                 </div>
             </div>
 
+            {/* Client Notes Section */}
+            {activeOrder?.notes && (
+                <div className="mx-4 lg:mx-6 mb-4 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4">
+                    <div className="bg-amber-100 p-2 rounded-xl shrink-0">
+                        <FileText size={20} className="text-amber-600" />
+                    </div>
+                    <div>
+                        <h4 className="text-[11px] font-black tracking-wider uppercase text-amber-600 mb-1">Client Notes</h4>
+                        <p className="text-sm font-semibold text-amber-900 leading-relaxed italic">
+                            "{activeOrder.notes}"
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">

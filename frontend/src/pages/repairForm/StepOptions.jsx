@@ -1,7 +1,7 @@
 import { MdCheck, MdAdd, MdRemove, MdInfo } from 'react-icons/md'
 import { REPAIR_OPTIONS } from './constants'
 
-const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, repairDescription, setRepairDescription }) => {
+const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, repairDescription, setRepairDescription, notes, setNotes }) => {
     const total = REPAIR_OPTIONS
         .filter((o) => selectedOptions.includes(o.id))
         .reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0)
@@ -87,6 +87,18 @@ const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, r
                         </div>
                     )
                 })}
+            </div>
+
+            <div className="max-w-2xl mx-auto mt-8 font-inter">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 mb-2 block">Additional Notes (Optional)</label>
+                <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="e.g. Please use a blue zipper if possible, or any specific instructions..."
+                    rows={3}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all duration-200 resize-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1.5 italic">Anything else you'd like us to know about your repair?</p>
             </div>
 
             <div className="max-w-2xl mx-auto mt-6 font-inter   ">
