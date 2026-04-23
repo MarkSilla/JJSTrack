@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { userApi } from '../../services/userApi.js';
-import {
-  getAllProvinces,
-  getMunicipalitiesByProvince,
-  getBarangaysByMunicipality,
-} from '@aivangogh/ph-address';
+import { regions, provinces, cities, barangays } from 'select-philippines-address';
 import { User, MapPin, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 const TOTAL_STEPS = 2;
@@ -43,25 +39,27 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
     lastName: initialLastName,
     phone: storedUser.phoneNumber || '',
     street: storedUser.street || '',
-    barangay: storedUser.brgyName || '',
-    city: storedUser.cityName || '',
-    province: storedUser.provinceName || '',
+    regionCode: '',
+    regionName: '',
+    provinceCode: '',
+    provinceName: '',
+    cityCode: '',
+    cityName: '',
+    brgyCode: '',
+    brgyName: '',
     zipCode: '',
   });
-  const [selectedProvince, setSelectedProvince] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
+
+  const [regionList, setRegionList] = useState([]);
+  const [provinceList, setProvinceList] = useState([]);
+  const [cityList, setCityList] = useState([]);
+  const [brgyList, setBrgyList] = useState([]);
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  const allProvinces = useMemo(() => getAllProvinces(), []);
-  const allMunicipalities = useMemo(
-    () => (selectedProvince ? getMunicipalitiesByProvince(selectedProvince.psgcCode) : []),
-    [selectedProvince]
-  );
-  const allBarangays = useMemo(
-    () => (selectedCity ? getBarangaysByMunicipality(selectedCity.psgcCode) : []),
-    [selectedCity]
-  );
+  useEffect(() => {
+    regions().then(res => setRegionList(res || []));
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -79,44 +77,42 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || regionList.length === 0) return;
 
     const latestUser = parseStoredUser();
     const parsedName = splitName(latestUser.fullName || '');
     const firstName = fixedFirstName || latestUser.firstName || parsedName.firstName || '';
     const lastName = latestUser.lastName || parsedName.lastName || '';
-    const province =
-      allProvinces.find((item) => item.psgcCode === latestUser.provinceCode)
-      || allProvinces.find((item) => item.name === latestUser.provinceName)
-      || null;
-    const municipalities = province ? getMunicipalitiesByProvince(province.psgcCode) : [];
-    const city =
-      municipalities.find((item) => item.psgcCode === latestUser.cityCode)
-      || municipalities.find((item) => item.name === latestUser.cityName)
-      || null;
 
     setStep(1);
     setErrors({});
-    setSelectedProvince(province);
-    setSelectedCity(city);
+
     setFormData({
       email: latestUser.email || '',
       firstName,
       lastName,
       phone: latestUser.phoneNumber || '',
       street: latestUser.street || '',
-      barangay: latestUser.brgyName || '',
-      city: city?.name || latestUser.cityName || '',
-      province: province?.name || latestUser.provinceName || '',
-      zipCode: '',
+      regionCode: latestUser.regionCode || '',
+      regionName: latestUser.regionName || '',
+      provinceCode: latestUser.provinceCode || '',
+      provinceName: latestUser.provinceName || '',
+      cityCode: latestUser.cityCode || '',
+      cityName: latestUser.cityName || '',
+      brgyCode: latestUser.brgyCode || '',
+      brgyName: latestUser.brgyName || '',
+      zipCode: latestUser.zipCode || '',
     });
-  }, [isOpen, fixedFirstName, allProvinces]);
+    if (latestUser.regionCode) provinces(latestUser.regionCode).then(res => setProvinceList(res || []));
+    if (latestUser.provinceCode) cities(latestUser.provinceCode).then(res => setCityList(res || []));
+    if (latestUser.cityCode) barangays(latestUser.cityCode).then(res => setBrgyList(res || []));
+
+  }, [isOpen, fixedFirstName, regionList]);
 
   const inputCls = (field) =>
-    `w-full px-3.5 py-2.5 border rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none transition bg-white ${
-      errors[field]
-        ? 'border-red-400 focus:border-red-500 focus:ring-[3px] focus:ring-red-500/10'
-        : 'border-gray-300 focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10'
+    `w-full px-3.5 py-2.5 border rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none transition bg-white ${errors[field]
+      ? 'border-red-400 focus:border-red-500 focus:ring-[3px] focus:ring-red-500/10'
+      : 'border-gray-300 focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10'
     }`;
 
   const handleChange = (e) => {
@@ -131,42 +127,70 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
     setErrors((prev) => ({ ...prev, phone: '', submit: '' }));
   };
 
+  const handleRegionChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      regionCode: code,
+      regionName: code ? name : '',
+      provinceCode: '',
+      provinceName: '',
+      cityCode: '',
+      cityName: '',
+      brgyCode: '',
+      brgyName: '',
+      zipCode: ''
+    }));
+    if (code) provinces(code).then(res => setProvinceList(res || []));
+    else setProvinceList([]);
+    setCityList([]);
+    setBrgyList([]);
+    setErrors(prev => ({ ...prev, region: '', submit: '' }));
+  };
+
   const handleProvinceChange = (e) => {
-    const found = allProvinces.find((province) => province.psgcCode === e.target.value);
-    setSelectedProvince(found || null);
-    setSelectedCity(null);
-    setFormData((prev) => ({
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
       ...prev,
-      province: found?.name || '',
-      city: '',
-      barangay: '',
-      zipCode: '',
+      provinceCode: code,
+      provinceName: code ? name : '',
+      cityCode: '',
+      cityName: '',
+      brgyCode: '',
+      brgyName: ''
     }));
-    setErrors((prev) => ({
-      ...prev,
-      province: '',
-      city: '',
-      barangay: '',
-      zipCode: '',
-      submit: '',
-    }));
+    if (code) cities(code).then(res => setCityList(res || []));
+    else setCityList([]);
+    setBrgyList([]);
+    setErrors(prev => ({ ...prev, province: '', submit: '' }));
   };
 
   const handleCityChange = (e) => {
-    const found = allMunicipalities.find((city) => city.psgcCode === e.target.value);
-    setSelectedCity(found || null);
-    setFormData((prev) => ({
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
       ...prev,
-      city: found?.name || '',
-      barangay: '',
+      cityCode: code,
+      cityName: code ? name : '',
+      brgyCode: '',
+      brgyName: ''
     }));
-    setErrors((prev) => ({ ...prev, city: '', barangay: '', submit: '' }));
+    if (code) barangays(code).then(res => setBrgyList(res || []));
+    else setBrgyList([]);
+    setErrors(prev => ({ ...prev, city: '', submit: '' }));
   };
 
   const handleBarangayChange = (e) => {
-    const found = allBarangays.find((barangay) => barangay.psgcCode === e.target.value);
-    setFormData((prev) => ({ ...prev, barangay: found?.name || '' }));
-    setErrors((prev) => ({ ...prev, barangay: '', submit: '' }));
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      brgyCode: code,
+      brgyName: code ? name : ''
+    }));
+    setErrors(prev => ({ ...prev, barangay: '', submit: '' }));
   };
 
   const validateStep1 = () => {
@@ -184,17 +208,27 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
     const nextErrors = {};
 
     if (!formData.street.trim()) nextErrors.street = 'Street is required';
-    if (!formData.province.trim()) nextErrors.province = 'Province is required';
-    if (!formData.city.trim()) nextErrors.city = 'City / Municipality is required';
-    if (!formData.barangay.trim()) nextErrors.barangay = 'Barangay is required';
+    if (!formData.regionCode) nextErrors.region = 'Region is required';
+    if (!formData.provinceCode) nextErrors.province = 'Province is required';
+    if (!formData.cityCode) nextErrors.city = 'City / Municipality is required';
+    if (!formData.brgyCode) nextErrors.barangay = 'Barangay is required';
     if (!formData.zipCode.trim()) nextErrors.zipCode = 'ZIP code is required';
     else if (formData.zipCode.length !== 4) nextErrors.zipCode = 'ZIP code must be 4 digits';
 
     return nextErrors;
   };
 
-  const buildFullAddress = () =>
-    `${formData.street}, ${formData.barangay}, ${formData.city}, ${formData.province} ${formData.zipCode}, Philippines`;
+  const buildFullAddress = () => {
+    const parts = [
+      formData.street,
+      formData.brgyName,
+      formData.cityName,
+      formData.provinceName,
+      formData.regionName,
+      formData.zipCode ? `${formData.zipCode}, Philippines` : 'Philippines'
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
 
   const handleNext = () => {
     if (step === 1) {
@@ -229,12 +263,15 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
         phoneNumber: formData.phone.trim(),
         address: buildFullAddress(),
         street: formData.street.trim(),
-        provinceCode: selectedProvince?.psgcCode || '',
-        provinceName: formData.province.trim(),
-        cityCode: selectedCity?.psgcCode || '',
-        cityName: formData.city.trim(),
-        brgyCode: allBarangays.find((barangay) => barangay.name === formData.barangay)?.psgcCode || '',
-        brgyName: formData.barangay.trim(),
+        regionCode: formData.regionCode,
+        regionName: formData.regionName,
+        provinceCode: formData.provinceCode,
+        provinceName: formData.provinceName,
+        cityCode: formData.cityCode,
+        cityName: formData.cityName,
+        brgyCode: formData.brgyCode,
+        brgyName: formData.brgyName,
+        zipCode: formData.zipCode.trim(),
       });
 
       if (response.success) {
@@ -324,7 +361,7 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
     }
 
     return (
-      <div className="animate-slide-in">
+      <div className="animate-slide-in lg:pb-40">
         <div className="text-center mb-6">
           <div className="bg-slate-100 p-3 rounded-full inline-flex mb-4 shadow-sm">
             <MapPin className="w-6 h-6 text-slate-700" />
@@ -349,17 +386,37 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Region</label>
+            <select
+              value={formData.regionCode}
+              onChange={handleRegionChange}
+              disabled={isLoading}
+              className={inputCls('region')}
+            >
+              <option value="">Select Region</option>
+              {regionList.map((r) => (
+                <option key={r.region_code} value={r.region_code}>
+                  {r.region_name}
+                </option>
+              ))}
+            </select>
+            {errors.region && <p className="text-xs text-red-600 mt-1">{errors.region}</p>}
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Province</label>
             <select
-              value={selectedProvince?.psgcCode || ''}
+              value={formData.provinceCode}
               onChange={handleProvinceChange}
-              disabled={isLoading}
+              disabled={isLoading || !formData.regionCode}
               className={inputCls('province')}
             >
-              <option value="">Select Province</option>
-              {allProvinces.map((province) => (
-                <option key={province.psgcCode} value={province.psgcCode}>
-                  {province.name}
+              <option value="">
+                {formData.regionCode ? 'Select Province' : 'Select a region first'}
+              </option>
+              {provinceList.map((province) => (
+                <option key={province.province_code} value={province.province_code}>
+                  {province.province_name}
                 </option>
               ))}
             </select>
@@ -369,62 +426,60 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">City / Municipality</label>
             <select
-              value={selectedCity?.psgcCode || ''}
+              value={formData.cityCode}
               onChange={handleCityChange}
-              disabled={isLoading || !selectedProvince}
+              disabled={isLoading || !formData.provinceCode}
               className={inputCls('city')}
             >
               <option value="">
-                {selectedProvince ? 'Select City / Municipality' : 'Select a province first'}
+                {formData.provinceCode ? 'Select City / Municipality' : 'Select a province first'}
               </option>
-              {allMunicipalities.map((city) => (
-                <option key={city.psgcCode} value={city.psgcCode}>
-                  {city.name}
+              {cityList.map((city) => (
+                <option key={city.city_code} value={city.city_code}>
+                  {city.city_name}
                 </option>
               ))}
             </select>
             {errors.city && <p className="text-xs text-red-600 mt-1">{errors.city}</p>}
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Barangay</label>
-              <select
-                value={allBarangays.find((barangay) => barangay.name === formData.barangay)?.psgcCode || ''}
-                onChange={handleBarangayChange}
-                disabled={isLoading || !selectedCity}
-                className={inputCls('barangay')}
-              >
-                <option value="">
-                  {selectedCity ? 'Select Barangay' : 'Select a city first'}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Barangay</label>
+            <select
+              value={formData.brgyCode}
+              onChange={handleBarangayChange}
+              disabled={isLoading || !formData.cityCode}
+              className={inputCls('barangay')}
+            >
+              <option value="">
+                {formData.cityCode ? 'Select Barangay' : 'Select a city first'}
+              </option>
+              {brgyList.map((barangay) => (
+                <option key={barangay.brgy_code} value={barangay.brgy_code}>
+                  {barangay.brgy_name}
                 </option>
-                {allBarangays.map((barangay) => (
-                  <option key={barangay.psgcCode} value={barangay.psgcCode}>
-                    {barangay.name}
-                  </option>
-                ))}
-              </select>
-              {errors.barangay && <p className="text-xs text-red-600 mt-1">{errors.barangay}</p>}
-            </div>
+              ))}
+            </select>
+            {errors.barangay && <p className="text-xs text-red-600 mt-1">{errors.barangay}</p>}
+          </div>
 
-            <div className="w-28">
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">ZIP Code</label>
-              <input
-                type="text"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={(e) => {
-                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 4);
-                  setFormData((prev) => ({ ...prev, zipCode: digitsOnly }));
-                  setErrors((prev) => ({ ...prev, zipCode: '', submit: '' }));
-                }}
-                placeholder="e.g. 2111"
-                maxLength={4}
-                disabled={isLoading}
-                className={inputCls('zipCode')}
-              />
-              {errors.zipCode && <p className="text-xs text-red-600 mt-1">{errors.zipCode}</p>}
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">ZIP Code</label>
+            <input
+              type="text"
+              name="zipCode"
+              value={formData.zipCode}
+              onChange={(e) => {
+                const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setFormData((prev) => ({ ...prev, zipCode: digitsOnly }));
+                setErrors((prev) => ({ ...prev, zipCode: '', submit: '' }));
+              }}
+              placeholder="e.g. 2111"
+              maxLength={4}
+              disabled={isLoading}
+              className={inputCls('zipCode')}
+            />
+            {errors.zipCode && <p className="text-xs text-red-600 mt-1">{errors.zipCode}</p>}
           </div>
         </div>
       </div>
@@ -444,20 +499,17 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
       `}</style>
 
       <div
-        className={`fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-all duration-300 ${
-          isOpen ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
       />
 
       <div
-        className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-2 sm:p-4 pointer-events-none transition-all duration-300 ${
-          isOpen ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-2 sm:p-4 pointer-events-none transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+          }`}
       >
         <div
-          className={`bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xl max-h-[98vh] sm:max-h-[92vh] shadow-2xl relative pointer-events-auto transition-all duration-500 flex flex-col ${
-            isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-12'
-          }`}
+          className={`bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xl max-h-[98vh] sm:max-h-[92vh] shadow-2xl relative pointer-events-auto transition-all duration-500 flex flex-col ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-12'
+            }`}
         >
           <div className="relative bg-gradient-to-br from-slate-800 via-slate-800 to-slate-700 rounded-t-3xl px-4 py-5 sm:p-6 overflow-hidden flex-shrink-0">
             <div className="relative z-10">
@@ -471,13 +523,12 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
                   <React.Fragment key={current}>
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                          step === current
-                            ? 'bg-white text-slate-800'
-                            : step > current
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${step === current
+                          ? 'bg-white text-slate-800'
+                          : step > current
                             ? 'bg-green-400 text-slate-900'
                             : 'bg-white/20 text-white'
-                        }`}
+                          }`}
                       >
                         {step > current ? <CheckCircle className="w-4 h-4" /> : current}
                       </div>
@@ -520,9 +571,8 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
               <button
                 onClick={handleNext}
                 disabled={isLoading}
-                className={`h-11 flex items-center justify-center gap-2 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                  step === 1 ? 'w-full' : 'flex-1'
-                }`}
+                className={`h-11 flex items-center justify-center gap-2 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${step === 1 ? 'w-full' : 'flex-1'
+                  }`}
               >
                 {isLoading ? (
                   <>

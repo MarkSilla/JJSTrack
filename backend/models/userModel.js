@@ -143,6 +143,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  
+  zipCode: {
+    type: String,
+    trim: true,
+  },
 
   tasks: {
     type: [String],

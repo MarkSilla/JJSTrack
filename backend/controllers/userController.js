@@ -39,12 +39,15 @@ const buildClientUser = (user, extra = {}) => ({
   phoneNumber: user.phoneNumber,
   address: user.address,
   street: user.street,
+  regionCode: user.regionCode,
+  regionName: user.regionName,
   provinceCode: user.provinceCode,
   provinceName: user.provinceName,
   cityCode: user.cityCode,
   cityName: user.cityName,
   brgyCode: user.brgyCode,
   brgyName: user.brgyName,
+  zipCode: user.zipCode,
   photoURL: user.photoURL,
   role: user.role,
   ...extra,
@@ -216,7 +219,25 @@ export const updateUserProfile = async (req, res) => {
 // Register with Email & Password (backend only)
 export const register = async (req, res) => {
   try {
-    const { email, password, fullName, firstName, lastName, phone, address } = req.body;
+    const { 
+      email, 
+      password, 
+      fullName, 
+      firstName, 
+      lastName, 
+      phone, 
+      address,
+      street,
+      regionCode,
+      regionName,
+      provinceCode,
+      provinceName,
+      cityCode,
+      cityName,
+      brgyCode,
+      brgyName,
+      zipCode
+    } = req.body;
     
     if (!email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
@@ -253,6 +274,16 @@ export const register = async (req, res) => {
         lastName: lastName || '',
         phoneNumber: phone || '',
         address: address || '',
+        street: street || '',
+        regionCode: regionCode || '',
+        regionName: regionName || '',
+        provinceCode: provinceCode || '',
+        provinceName: provinceName || '',
+        cityCode: cityCode || '',
+        cityName: cityName || '',
+        brgyCode: brgyCode || '',
+        brgyName: brgyName || '',
+        zipCode: zipCode || '',
         isVerified: false,
         verificationCode,
         verificationCodeExpiry: codeExpiry,
@@ -267,6 +298,16 @@ export const register = async (req, res) => {
       user.lastName = lastName || user.lastName;
       user.phoneNumber = phone || user.phoneNumber;
       user.address = address || user.address;
+      user.street = street || user.street;
+      user.regionCode = regionCode || user.regionCode;
+      user.regionName = regionName || user.regionName;
+      user.provinceCode = provinceCode || user.provinceCode;
+      user.provinceName = provinceName || user.provinceName;
+      user.cityCode = cityCode || user.cityCode;
+      user.cityName = cityName || user.cityName;
+      user.brgyCode = brgyCode || user.brgyCode;
+      user.brgyName = brgyName || user.brgyName;
+      user.zipCode = zipCode || user.zipCode;
       user.verificationCode = verificationCode;
       user.verificationCodeExpiry = codeExpiry;
       user.isVerified = false;
@@ -595,12 +636,15 @@ export const completeGoogleProfile = async (req, res) => {
       phoneNumber,
       address,
       street,
+      regionCode,
+      regionName,
       provinceCode,
       provinceName,
       cityCode,
       cityName,
       brgyCode,
       brgyName,
+      zipCode,
     } = req.body;
     const userId = req.userId;
 
@@ -633,6 +677,9 @@ export const completeGoogleProfile = async (req, res) => {
     user.cityName = String(cityName).trim();
     user.brgyCode = String(brgyCode || '').trim();
     user.brgyName = String(brgyName).trim();
+    user.regionCode = String(regionCode || '').trim();
+    user.regionName = String(regionName || '').trim();
+    user.zipCode = String(zipCode || '').trim();
     await user.save();
 
     res.json({

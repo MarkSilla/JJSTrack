@@ -4,11 +4,7 @@ import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
-import {
-  getAllProvinces,
-  getMunicipalitiesByProvince,
-  getBarangaysByMunicipality,
-} from '@aivangogh/ph-address';
+import { regions, provinces, cities, barangays } from 'select-philippines-address';
 
 const TOTAL_STEPS = 2;
 
@@ -23,40 +19,106 @@ const SignupPage = () => {
     lastName: '',
     phone: '',
     street: '',
-    barangay: '',
-    city: '',
-    province: '',
+    regionCode: '',
+    regionName: '',
+    provinceCode: '',
+    provinceName: '',
+    cityCode: '',
+    cityName: '',
+    brgyCode: '',
+    brgyName: '',
     zipCode: '',
     agreedToTerms: false,
   });
 
-  const [selectedProvince, setSelectedProvince] = useState(null);
-  const [selectedCity, setSelectedCity]         = useState(null);
+  const [regionList, setRegionList] = useState([]);
+  const [provinceList, setProvinceList] = useState([]);
+  const [cityList, setCityList] = useState([]);
+  const [brgyList, setBrgyList] = useState([]);
 
-  const [loading, setLoading]                         = useState(false);
-  const [error, setError]                             = useState('');
-  const [showPassword, setShowPassword]               = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmedPassword, setConfirmedPassword] = useState(false);
-  const [activeLegalDoc, setActiveLegalDoc]           = useState(null);
-  const navigate = useNavigate();
+  const [activeLegalDoc, setActiveLegalDoc] = useState(null);
 
-  // PH Address data
-  const allProvinces      = useMemo(() => getAllProvinces(), []);
-  const allMunicipalities = useMemo(
-    () => (selectedProvince ? getMunicipalitiesByProvince(selectedProvince.psgcCode) : []),
-    [selectedProvince]
-  );
-  const allBarangays = useMemo(
-    () => (selectedCity ? getBarangaysByMunicipality(selectedCity.psgcCode) : []),
-    [selectedCity]
-  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    regions().then(res => setRegionList(res || []));
+  }, []);
+
+  const handleRegionChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      regionCode: code,
+      regionName: code ? name : '',
+      provinceCode: '',
+      provinceName: '',
+      cityCode: '',
+      cityName: '',
+      brgyCode: '',
+      brgyName: '',
+      zipCode: ''
+    }));
+    if (code) provinces(code).then(res => setProvinceList(res || []));
+    else setProvinceList([]);
+    setCityList([]);
+    setBrgyList([]);
+    setError('');
+  };
+
+  const handleProvinceChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      provinceCode: code,
+      provinceName: code ? name : '',
+      cityCode: '',
+      cityName: '',
+      brgyCode: '',
+      brgyName: ''
+    }));
+    if (code) cities(code).then(res => setCityList(res || []));
+    else setCityList([]);
+    setBrgyList([]);
+    setError('');
+  };
+
+  const handleCityChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      cityCode: code,
+      cityName: code ? name : '',
+      brgyCode: '',
+      brgyName: ''
+    }));
+    if (code) barangays(code).then(res => setBrgyList(res || []));
+    else setBrgyList([]);
+    setError('');
+  };
+
+  const handleBarangayChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setFormData(prev => ({
+      ...prev,
+      brgyCode: code,
+      brgyName: code ? name : ''
+    }));
+    setError('');
+  };
 
   const legalDocuments = {
     privacy: { title: 'Privacy Policy', href: '/privacy-policy' },
-    terms:   { title: 'Terms of Use',   href: '/terms-of-use'   },
+    terms: { title: 'Terms of Use', href: '/terms-of-use' },
   };
-  const openLegalModal   = (docKey) => setActiveLegalDoc(docKey);
-  const closeLegalModal  = () => setActiveLegalDoc(null);
+  const openLegalModal = (docKey) => setActiveLegalDoc(docKey);
+  const closeLegalModal = () => setActiveLegalDoc(null);
   const selectedDocument = activeLegalDoc ? legalDocuments[activeLegalDoc] : null;
 
   useEffect(() => {
@@ -82,9 +144,10 @@ const SignupPage = () => {
 
   const isStep2Valid = () =>
     formData.street &&
-    formData.province &&
-    formData.city &&
-    formData.barangay &&
+    formData.regionCode &&
+    formData.provinceCode &&
+    formData.cityCode &&
+    formData.brgyCode &&
     formData.zipCode &&
     formData.agreedToTerms;
 
@@ -92,27 +155,6 @@ const SignupPage = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    setError('');
-  };
-
-  const handleProvinceChange = (e) => {
-    const found = allProvinces.find((p) => p.psgcCode === e.target.value);
-    setSelectedProvince(found || null);
-    setSelectedCity(null);
-    setFormData((prev) => ({ ...prev, province: found?.name || '', city: '', barangay: '', zipCode: '' }));
-    setError('');
-  };
-
-  const handleCityChange = (e) => {
-    const found = allMunicipalities.find((m) => m.psgcCode === e.target.value);
-    setSelectedCity(found || null);
-    setFormData((prev) => ({ ...prev, city: found?.name || '', barangay: '' }));
-    setError('');
-  };
-
-  const handleBarangayChange = (e) => {
-    const found = allBarangays.find((b) => b.psgcCode === e.target.value);
-    setFormData((prev) => ({ ...prev, barangay: found?.name || '' }));
     setError('');
   };
 
@@ -125,8 +167,17 @@ const SignupPage = () => {
 
   const handleBack = () => { setError(''); setStep(1); };
 
-  const buildFullAddress = () =>
-    `${formData.street}, ${formData.barangay}, ${formData.city}, ${formData.province} ${formData.zipCode}, Philippines`;
+  const buildFullAddress = () => {
+    const parts = [
+      formData.street,
+      formData.brgyName,
+      formData.cityName,
+      formData.provinceName,
+      formData.regionName,
+      formData.zipCode ? `${formData.zipCode}, Philippines` : 'Philippines'
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -134,15 +185,24 @@ const SignupPage = () => {
 
     setLoading(true);
     try {
-      // Email/password signup stays in the backend; Firebase is only for Google auth.
       const response = await userApi.register({
-        email:     formData.email,
-        password:  formData.password,
-        fullName:  `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        password: formData.password,
+        fullName: `${formData.firstName} ${formData.lastName}`,
         firstName: formData.firstName,
-        lastName:  formData.lastName,
-        phone:     formData.phone,
-        address:   buildFullAddress(),
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: buildFullAddress(),
+        street: formData.street,
+        regionCode: formData.regionCode,
+        regionName: formData.regionName,
+        provinceCode: formData.provinceCode,
+        provinceName: formData.provinceName,
+        cityCode: formData.cityCode,
+        cityName: formData.cityName,
+        brgyCode: formData.brgyCode,
+        brgyName: formData.brgyName,
+        zipCode: formData.zipCode,
       });
 
       if (response.success) {
@@ -160,11 +220,11 @@ const SignupPage = () => {
   const handleGoogleSignup = async () => {
     setLoading(true);
     try {
-      const result   = await signInWithPopup(auth, googleProvider);
-      const user     = result.user;
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
       const response = await userApi.googleAuth({
-        uid:      user.uid,
-        email:    user.email,
+        uid: user.uid,
+        email: user.email,
         fullName: user.displayName || user.email.split('@')[0],
         photoURL: user.photoURL || '',
       });
@@ -235,16 +295,14 @@ const SignupPage = () => {
             {[1, 2].map((s) => (
               <React.Fragment key={s}>
                 <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                    step === s ? 'bg-blue-800 text-white shadow-md shadow-blue-800/30'
-                    : step > s  ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 text-gray-400'
-                  }`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${step === s ? 'bg-blue-800 text-white shadow-md shadow-blue-800/30'
+                    : step > s ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-400'
+                    }`}>
                     {step > s ? '✓' : s}
                   </div>
-                  <span className={`text-xs font-medium transition-colors ${
-                    step === s ? 'text-blue-800' : step > s ? 'text-green-500' : 'text-gray-400'
-                  }`}>
+                  <span className={`text-xs font-medium transition-colors ${step === s ? 'text-blue-800' : step > s ? 'text-green-500' : 'text-gray-400'
+                    }`}>
                     {s === 1 ? 'Personal Info' : 'Address'}
                   </span>
                 </div>
@@ -342,7 +400,7 @@ const SignupPage = () => {
 
           {/* STEP 2 */}
           {step === 2 && (
-            <div className="animate-slide-in">
+            <div className="animate-slide-in lg:pb-40">
               <h2 className="text-3xl font-bold text-slate-900 mb-1 font-playfair">Your Address</h2>
               <p className="text-sm text-slate-400 mb-6">Where should we deliver your orders?</p>
 
@@ -354,48 +412,72 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Province</label>
-                  <select value={selectedProvince?.psgcCode || ''} onChange={handleProvinceChange}
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Region</label>
+                  <select value={formData.regionCode} onChange={handleRegionChange}
                     disabled={loading} className={inputCls}>
-                    <option value="">Select Province</option>
-                    {allProvinces.map((p) => (
-                      <option key={p.psgcCode} value={p.psgcCode}>{p.name}</option>
+                    <option value="">Select Region</option>
+                    {regionList.map((r) => (
+                      <option key={r.region_code} value={r.region_code}>{r.region_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Province</label>
+                  <select value={formData.provinceCode} onChange={handleProvinceChange}
+                    disabled={loading || !formData.regionCode} className={inputCls}>
+                    <option value="">{formData.regionCode ? 'Select Province' : 'Select a region first'}</option>
+                    {provinceList.map((p) => (
+                      <option key={p.province_code} value={p.province_code}>{p.province_name}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="mb-4">
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">City / Municipality</label>
-                  <select value={selectedCity?.psgcCode || ''} onChange={handleCityChange}
-                    disabled={loading || !selectedProvince} className={inputCls}>
-                    <option value="">{selectedProvince ? 'Select City / Municipality' : 'Select a province first'}</option>
-                    {allMunicipalities.map((m) => (
-                      <option key={m.psgcCode} value={m.psgcCode}>{m.name}</option>
+                  <select value={formData.cityCode} onChange={handleCityChange}
+                    disabled={loading || !formData.provinceCode} className={inputCls}>
+                    <option value="">{formData.provinceCode ? 'Select City / Municipality' : 'Select a province first'}</option>
+                    {cityList.map((m) => (
+                      <option key={m.city_code} value={m.city_code}>{m.city_name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="flex gap-3 mb-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Barangay</label>
-                    <select
-                      value={allBarangays.find((b) => b.name === formData.barangay)?.psgcCode || ''}
-                      onChange={handleBarangayChange}
-                      disabled={loading || !selectedCity}
-                      className={inputCls}>
-                      <option value="">{selectedCity ? 'Select Barangay' : 'Select a city first'}</option>
-                      {allBarangays.map((b) => (
-                        <option key={b.psgcCode} value={b.psgcCode}>{b.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="w-28">
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">ZIP Code</label>
-                    <input type="text" name="zipCode" value={formData.zipCode} onChange={handleChange}
-                      placeholder="e.g. 2111" maxLength={4} disabled={loading}
-                      onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, ''); }}
-                      className={inputCls} />
-                  </div>
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Barangay</label>
+                  <select
+                    value={formData.brgyCode}
+                    onChange={handleBarangayChange}
+                    disabled={loading || !formData.cityCode}
+                    className={inputCls}
+                  >
+                    <option value="">
+                      {formData.cityCode ? 'Select Barangay' : 'Select a city first'}
+                    </option>
+                    {brgyList.map((b) => (
+                      <option key={b.brgy_code} value={b.brgy_code}>
+                        {b.brgy_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-5">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">ZIP Code</label>
+                  <input
+                    type="text"
+                    name="zipCode"
+                    value={formData.zipCode}
+                    onChange={handleChange}
+                    placeholder="e.g. 2111"
+                    maxLength={4}
+                    disabled={loading}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\D/g, '');
+                    }}
+                    className={inputCls}
+                  />
                 </div>
 
                 <div className="flex mb-6 justify-center">
