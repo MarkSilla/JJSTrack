@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import img from '../assets/img.js'
-import { LayoutDashboard, Calendar, LogOut, ShoppingBag, Receipt, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Calendar, LogOut, ShoppingBag, Receipt, Settings, ChevronLeft, ChevronRight, Palette } from 'lucide-react'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/home' },
+  { icon: Palette, label: 'Designs', description: 'Explore jersey designs', path: '/designs' },
   { icon: Calendar, label: 'Appointment', description: 'Manage appointments', path: '/appointment' },
   { icon: ShoppingBag, label: 'Orders', description: 'View all orders', path: '/order' },
   { icon: Receipt, label: 'Invoices', description: 'Billing & invoices', path: '/invoices' },

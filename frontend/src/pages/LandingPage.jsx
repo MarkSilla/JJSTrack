@@ -176,8 +176,13 @@ const LandingPage = () => {
                 <h3 className="text-xl md:text-2xl font-bold font-playfair text-white mb-3">Custom Sportswear <span className="text-yellow-400">Design</span></h3>
                 <p className="text-white font-light text-sm md:text-base mb-6">Create jerseys and sportswear tailored to your team's identity. Choose your colors, logos, names, and numbers—designed for comfort, durability, and performance.</p>
                 <div>
-                  <a href="#" className="inline-block border-b-2 border-yellow-400 text-white px-4 md:px-6 py-2 rounded-lg font-medium 
-                    hover:shadow-[0_3px_1px_#facc15] transition-all duration-300">View Designs</a>
+                  <button 
+                    onClick={() => navigate('/designs')}
+                    className="inline-block border-b-2 border-yellow-400 text-white px-4 md:px-6 py-2 rounded-lg font-medium cursor-pointer
+                    hover:shadow-[0_3px_1px_#facc15] transition-all duration-300"
+                  >
+                    View Designs
+                  </button>
                 </div>
               </div>
               {/* Bottom Left */}
