@@ -92,6 +92,7 @@ const toInvoiceItems = (booking) => {
             addOnPrice: toNumeric(item?.addOnPrice),
             size: item?.size || '',
             addOn: item?.addOn || 'None',
+            notes: item?.notes || '',
         }))
     }
 
@@ -105,6 +106,7 @@ const toInvoiceItems = (booking) => {
             addOnPrice: 0,
             size: '',
             addOn: 'None',
+            notes: option?.notes || '',
         }))
     }
 
@@ -116,6 +118,7 @@ const toInvoiceItems = (booking) => {
         addOnPrice: 0,
         size: '',
         addOn: 'None',
+        notes: '',
     }]
 }
 
@@ -406,6 +409,7 @@ const Invoices = () => {
                                                                 {item.addOn && item.addOn !== 'None' && (
                                                                     <div className="text-[10px] text-blue-500 font-bold uppercase mt-0.5">{item.addOn}</div>
                                                                 )}
+                                                                {item.notes && <div className="text-[10px] text-gray-500 mt-1">{item.notes}</div>}
                                                             </td>
                                                             <td className="py-3.5 px-4 text-center">{typeBadge(item.type)}</td>
                                                             <td className="py-3.5 px-4 text-center text-gray-600">{item.qty}</td>
@@ -434,6 +438,9 @@ const Invoices = () => {
                                                             </div>
                                                             {item.addOn && item.addOn !== 'None' && (
                                                                 <p className="text-[10px] text-blue-500 font-black uppercase tracking-wider">{item.addOn}</p>
+                                                            )}
+                                                            {item.notes && (
+                                                                <p className="text-[10px] text-gray-500 mt-1">{item.notes}</p>
                                                             )}
                                                         </div>
                                                     </div>

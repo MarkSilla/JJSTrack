@@ -139,6 +139,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [selectedOptions, setSelectedOptions] = useState([])
     const [quantities, setQuantities] = useState({})
     const [repairDescription, setRepairDescription] = useState('')
+    const [repairNotes, setRepairNotes] = useState({})
     const [photos, setPhotos] = useState([])
     const [details, setDetails] = useState(() => buildRepairDetailsFromUser(getStoredUser()))
     const [selectedDate, setSelectedDate] = useState(null)
@@ -180,6 +181,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         setSelectedOptions([])
         setQuantities({})
         setRepairDescription('')
+        setRepairNotes({})
         setPhotos([])
         setDetails(buildRepairDetailsFromUser(getStoredUser()))
         setSelectedDate(null)
@@ -216,6 +218,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
     const toggleOption = (id) => setSelectedOptions((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
+    const setRepairNote = (id, note) => setRepairNotes((p) => ({ ...p, [id]: note }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
 
     const isRepairDetailsComplete = () => {
@@ -345,6 +348,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                         name: displayName,
                         quantity,
                         price: Number(repairOption?.price) || 0,
+                        notes: (repairNotes[optId] || '').trim(),
                     }
                 })
 
@@ -356,6 +360,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                     unitPrice: option.price,
                     addOn: 'None',
                     addOnPrice: 0,
+                    notes: option.notes,
                 }))
                 bookingData.repairDescription = repairDescription
                 bookingData.photos = Array.isArray(uploadedPhotos)
@@ -368,6 +373,36 @@ const BookingModal = ({ isOpen, onClose }) => {
                 // Team jersey booking
                 bookingData.teamName = teamName
                 bookingData.players = players
+                bookingData.items = players.map((player, index) => {
+                    const baseProductCatalog = {
+                        jersey: { label: 'Jersey Only', price: 550, needsShortSize: false },
+                        fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+                    }
+                    const addOnCatalog = {
+                        warmer: { label: 'Long Sleeve Warmer', price: 750 },
+                        hoodie: { label: 'Hoodie T-shirt', price: 700 },
+                    }
+                    const baseProduct = baseProductCatalog[player.productType] || baseProductCatalog.jersey
+                    const selectedAddOns = (Array.isArray(player.addOns) ? player.addOns : [])
+                        .map((id) => addOnCatalog[id])
+                        .filter(Boolean)
+                    const hasPockets = Boolean(player.pockets && baseProduct.needsShortSize)
+                    const addOnLabels = selectedAddOns.map((addOn) => `${addOn.label} (+${addOn.price})`)
+                    if (hasPockets) addOnLabels.push('Pocket Short (+100)')
+                    const addOnPrice = selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0) + (hasPockets ? 100 : 0)
+                    const playerLabel = [player.nickname, player.firstName, player.surname].filter(Boolean).join(' ').trim() || `Player ${index + 1}`
+
+                    return {
+                        description: `${baseProduct.label} (${playerLabel}${player.number ? ` #${player.number}` : ''})`,
+                        type: 'Custom',
+                        qty: 1,
+                        unitPrice: baseProduct.price,
+                        size: player.jerseySize,
+                        addOn: addOnLabels.length > 0 ? addOnLabels.join(', ') : 'None',
+                        addOnPrice,
+                        notes: '',
+                    }
+                })
                 bookingData.designFile = uploadedDesignFile
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact

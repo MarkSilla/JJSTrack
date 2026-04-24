@@ -15,7 +15,7 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
     const isOrg = service === 'organizational'
-    
+
     const chosen = isRepair ? REPAIR_OPTIONS.filter((o) => (selectedOptions || []).includes(o.id)) : []
     const total = isRepair ? chosen.reduce((s, o) => s + o.price * (quantities?.[o.id] || 1), 0) : 0
     const slot = isRepair ? TIME_SLOTS.find((s) => s.id === selectedSlot) : null
@@ -84,9 +84,13 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                         <div className="divide-y divide-gray-200">
                             {chosen.map((o) => {
                                 const qty = quantities[o.id] || 1
+                                const optionNotes = repairNotes?.[o.id] || ''
                                 return (
-                                    <div key={o.id} className="flex justify-between py-2.5 first:pt-0 last:pb-0">
-                                        <span className="text-gray-600 text-sm">{o.label} {qty > 1 && <span className="text-gray-400">×{qty}</span>}</span>
+                                    <div key={o.id} className="flex justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+                                        <div>
+                                            <span className="text-gray-600 text-sm">{o.label} {qty > 1 && <span className="text-gray-400">×{qty}</span>}</span>
+                                            {optionNotes && <p className="text-xs text-gray-400 mt-1">{optionNotes}</p>}
+                                        </div>
                                         <span className="text-blue-600 font-bold text-sm tabular-nums">₱{o.price * qty}</span>
                                     </div>
                                 )

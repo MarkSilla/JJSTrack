@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Maximize2, X, Sparkles, Info, MessageSquare, ArrowLeft, Phone, Mail, ShoppingBag, CheckCircle2, ChevronRight, Filter, Shirt, Wind, Shield } from 'lucide-react';
+import { Search, Maximize2, X, Sparkles, Info, MessageSquare, ArrowLeft, Phone, Mail, ShoppingBag, CheckCircle2, ChevronRight, Filter, Shirt, Wind, Shield, Cloud, Ruler, Zap, Feather, Waves, Image as ImageIcon } from 'lucide-react';
 import img from '../assets/img';
 import { useNavigate } from 'react-router-dom';
-
 const MAIN_CATEGORIES = [
   { id: 'hangerView', label: 'Hanger View', bgStyle: 'tailoring' },
   { id: 'fullConcept', label: 'Full Concept', bgStyle: 'showcase' },
   { id: 'nbaCutouts', label: 'NBA Cutouts', bgStyle: 'arena' },
 ];
-
 const SUB_CATEGORIES = [
   { id: 'all', label: 'ALL', subLabel: 'All Designs' },
   { id: 'proLeague', label: 'PRO-LEAGUE CUT', subLabel: 'V-Neck | Athletic Fit' },
   { id: 'aeroV', label: 'AERO-V COLLAR', subLabel: 'V-Neck | Modern Fit' },
   { id: 'primeRound', label: 'PRIME-ROUND FIT', subLabel: 'Round Neck | Classic Fit' },
 ];
-
 const Design = () => {
   const [activeMainCat, setActiveMainCat] = useState('hangerView');
   const [activeSubCat, setActiveSubCat] = useState('all');
@@ -24,7 +21,9 @@ const Design = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
-
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   useEffect(() => {
     if (isPreviewOpen) {
       document.body.style.overflow = 'hidden';
@@ -51,23 +50,22 @@ const Design = () => {
 
     const vintageItems = (img.jerseys.vintage || []).map((src, i) => ({
       src,
-      type: 'apex',
-      typeLabel: 'APEX SERIES • Pro Showcase',
+      type: 'vintage',
+      typeLabel: 'VINTAGE SERIES • Retro Collection',
       id: `w-${i}`,
       index: i
     }));
 
     const nbaItems = (img.jerseys.nba || []).map((src, i) => ({
       src,
-      type: 'apex',
-      typeLabel: 'APEX SERIES • NBA Cutout',
+      type: 'nba',
+      typeLabel: 'NBA SERIES • Pro Performance',
       id: `n-${i}`,
       index: i
     }));
-
     let source = [];
     let seriesName = '';
-    let nameFormat = 'num'; // 'num', 'alpha', 'alpha-num'
+    let nameFormat = 'num';
 
     if (activeMainCat === 'hangerView') {
       source = vintageItems;
@@ -121,13 +119,11 @@ const Design = () => {
 
   return (
     <div className="min-h-screen bg-[#020617] font-inter text-slate-200 pb-24 overflow-x-hidden">
-      {/* --- NAVBAR --- */}
-      <nav className={`h-20 flex items-center justify-between px-6 md:px-12  w-full top-0 z-[100] bg-transparent backdrop-blur-sm  `}>
+      <nav className={`h-20 flex items-center justify-between px-6 md:px-12  w-full top-0 z-[100] lg:bg-transparent bg-white/5 backdrop-blur-sm  `}>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors cursor-pointer group"
-        >
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors cursor-pointer group">
+          <ArrowLeft size={16} />
           Back
         </button>
 
@@ -138,8 +134,6 @@ const Design = () => {
           </div>
         </div>
       </nav>
-
-      {/* --- HERO SECTION --- */}
       <section className="relative h-full md:h-[100vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <video autoPlay loop muted playsInline className="w-full h-full object-cover scale-105">
@@ -148,8 +142,7 @@ const Design = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/80 to-transparent z-10" />
           <div className="absolute inset-0 backdrop-blur-[2px] z-10" />
         </div>
-
-        <div className="max-w-7xl w-full mx-auto px-6 md:px-12 relative z-20 grid md:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl w-full mx-auto px-6 md:px-12 relative z-20 flex flex-col-reverse md:grid md:grid-cols-2 gap-12 items-center py-24 md:py-0">
           <div className="animate-in fade-in slide-in-from-left duration-1000 font-black">
             <h1 className="text-5xl md:text-8xl mb-4 tracking-tighter uppercase italic leading-none">
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-800 via-blue-500 to-blue-900">JJS-Track</span> <br />
@@ -179,15 +172,19 @@ const Design = () => {
               ))}
             </div>
           </div>
-          <div className="hidden md:flex  justify-end animate-in fade-in slide-in-from-right duration-1000">
-            <img src={img.jerseys.vintage[4]} alt="Featured Jersey" className="h-[70vh] object-contain drop-shadow-[0_20px_50px_rgba(37,99,235,0.2)] transform translate-x-[-80px]" />
+          <div className="flex justify-center md:justify-end animate-in fade-in slide-in-from-top md:slide-in-from-right duration-1000 relative">
+            <div className="absolute inset-0 bg-blue-600/20 blur-[100px] rounded-full scale-75 md:scale-100" />
+            <img
+              src={img.jerseys.vintage[6]}
+              alt="Featured Jersey"
+              className="h-[40vh] md:h-[70vh] object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] md:transform md:translate-x-[-80px] z-10 scale-125 md:scale-100"
+            />
           </div>
         </div>
       </section>
 
-      {/* --- CONTENT SECTION --- */}
-      <div className="max-w-[1600px] mx-auto px-6 md:px-12 mt-20 flex flex-col lg:flex-row gap-12">
-        {/* Sidebar Categories */}
+      {/* whole */}
+      <div className="max-w-[1600px] mx-auto px-6 md:px-12 mt-20 flex flex-col lg:flex-row gap-10">
         <aside className="w-full lg:w-72 shrink-0">
           <div className="sticky top-28 space-y-12">
             <div className="pt-4">
@@ -201,53 +198,72 @@ const Design = () => {
                   <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em] mt-1">Design Collections</span>
                 </div>
               </div>
-
-              <div className="space-y-3 mt-10">
-                <div className="space-y-2">
-                  {SUB_CATEGORIES.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setActiveSubCat(cat.id)}
-                      className={`w-full text-left p-4 rounded-xl transition-all group flex items-center justify-between border ${activeSubCat === cat.id ? 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-900/10' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
-                    >
-                      <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-widest leading-none mb-1">
-                          {cat.id === 'all' ? cat.label : (
-                            activeMainCat === 'fullConcept' ? 'APEX SERIES' : (
-                              activeMainCat === 'hangerView' ? 'VINTAGE SERIES' : 'NBA'
-                            )
-                          )}
-                        </h4>
-                        <p className={`text-[9px] font-bold uppercase tracking-wider ${activeSubCat === cat.id ? 'text-blue-100' : 'text-slate-500'}`}>{cat.subLabel}</p>
+              {/* Side */}
+              <div className="hidden lg:flex flex-col space-y-12">
+                <div className="flex flex-col space-y-6">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { icon: Wind, label: 'Cool-Fit', sub: 'Breathable', color: 'text-blue-400' },
+                      { icon: Maximize2, label: 'Stretch', sub: 'Spandex', color: 'text-purple-400' },
+                      { icon: Feather, label: 'Light', sub: 'Ultra-thin', color: 'text-emerald-400' },
+                      { icon: Waves, label: 'Dry', sub: 'Wicking', color: 'text-cyan-400' },
+                    ].map((tech, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group overflow-hidden">
+                        <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${tech.color} shrink-0 transition-transform`}>
+                          <tech.icon size={20} />
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none mb-1">{tech.label}</span>
+                          <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">{tech.sub}</span>
+                        </div>
                       </div>
-                      {activeSubCat === cat.id && <ChevronRight size={14} className="text-white" />}
-                    </button>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+                <div className="p-8 px-6 min-h-[280px] rounded-[2rem] bg-gradient-to-br from-blue-200/20 to-blue-900/10 backdrop-blur-md border border-white/5 text-white relative overflow-hidden group shadow-2xl overflow-hidden">
+                  <div className="absolute -right-20 -top-1 w-80 h-80 opacity-40 group-hover:opacity-60 group-hover:scale-105 transition-all duration-700 pointer-events-none">
+                    <img src={img.lbj} alt="lebron" className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+                  </div>
+                  <div className="relative z-10 pt-24">
+                    <h3 className="text-3xl font-black italic uppercase leading-[0.8] mb-4">BUILT <br />FOR <span className="text-blue-400">ELITE</span> <br />BALLERS</h3>
+                    <p className="text-[10px] font-bold text-blue-100/60 uppercase tracking-widest leading-relaxed mb-6">Engineered for peak performance on every court.</p>
+                  </div>
                 </div>
               </div>
             </div>
-
-
-            <div>
-              <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em] mb-6">Material</h3>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Spandy Fabric</p>
-                <ul className="space-y-3">
-                  {['Stretchable', 'Smooth & Soft', 'Lightweight', 'Moisture-Wicking'].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      <CheckCircle2 size={12} className="text-blue-500" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+            <div className="hidden lg:block space-y-3 pb-10">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Size Charts</h3>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Jersey Guide</span>
+                  <div className="group relative aspect-[14/13] bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-blue-500/30 transition-all flex items-center justify-center">
+                    <img src={img.sctop1} alt="Jersey Size Chart" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Shorts Guide</span>
+                  <div className="group relative aspect-[14/13] bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-blue-500/30 transition-all flex items-center justify-center">
+                    <img src={img.scbot} alt="Shorts Size Chart" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="p-12 px-6 h-full w-70 rounded-[1rem] bg-blue-600/10 backdrop-blur-md border border-white/10 text-white relative overflow-hidden group shadow-2xl shadow-blue-900/40">
-              <div className="absolute -right-20 -top-1 w-72 h-72 opacity-60 group-hover:opacity-70 group-hover:scale-110 transition-all duration-500 pointer-events-none">
-                <img src={img.lbj} alt="lebron" className="w-full h-full object-contain  drop-shadow-[0_20px_40px_rgba(0,0,0,0.4)]" />
-              </div>
-              <h3 className="text-2xl font-black italic uppercase leading-[0.8] mb-4 relative z-10">BUILT <br />FOR <span className="text-blue-400">ELITE</span> <br />BALLERS</h3>
-              <p className="text-[10px] font-semibold text-stone-100 uppercase tracking-widest leading-relaxed mb-4 relative z-10">Designed to elevate your game. Made to match your ambition.</p>
+          </div>
+          <div className="p-8 rounded-[1rem] bg-transparent border border-white/10 text-white relative overflow-hidden group shadow-2xl shadow-blue-500/20">
+            <div className="relative z-10">
+              <h3 className="text-2xl font-black italic uppercase italic leading-none mb-4">WANT YOUR <br /> OWN <span className="text-blue-200">DESIGN?</span></h3>
+              <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest leading-relaxed mb-6">Join with us to create your own custom design.</p>
+              <button
+                onClick={() => navigate('/signup')}
+                className="w-full py-4 bg-white text-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl"
+              >
+                Contact Us
+              </button>
+            </div>
+            <div className="absolute -right-4 bottom-6 opacity-60 transition-transform duration-700">
+              <img src={img.jjslogo1} alt="jjs logo" className="h-40" />
             </div>
           </div>
         </aside>
@@ -264,7 +280,7 @@ const Design = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-2xl overflow-x-auto no-scrollbar w-full xl:w-auto">
+            <div className="flex items-center gap-1 p-1.5 bg-white/5 rounded-2xl overflow-x-auto no-scrollbar w-full xl:w-auto">
               {MAIN_CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
@@ -272,15 +288,13 @@ const Design = () => {
                     setActiveMainCat(cat.id);
                     setActiveSubCat('all');
                   }}
-                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeMainCat === cat.id ? 'bg-white text-slate-900 shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                  className={`px-4 lg:px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeMainCat === cat.id ? 'bg-white text-slate-900 shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
                 >
                   {cat.label}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Grid */}
           <main className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredDesigns.map((design) => (
               <div
@@ -293,7 +307,7 @@ const Design = () => {
               >
                 <div className="aspect-[5/4] relative overflow-hidden flex items-center justify-center p-12">
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                  <img src={design.src} alt={design.name} className="max-w-full max-h-[130vh] object-cover relative transition-all duration-500 drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]" />
+                  <img src={design.src} alt={design.name} className="max-w-full max-h-[90vh] object-cover relative transition-all duration-500 drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]" />
                   <div className="absolute inset-0 z-999 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-100">
                     <div className="bg-white/10 backdrop-blur-md text-white w-14 h-14 rounded-full flex items-center justify-center border border-white/20 transform scale-50 group-hover:scale-100 transition-all duration-500 z-999">
                       <Maximize2 size={22} />
@@ -319,88 +333,79 @@ const Design = () => {
           )}
         </div>
       </div>
-
-      {/* --- PREVIEW MODAL --- */}
       {isPreviewOpen && selectedDesign && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-10 bg-[#020617]/98 backdrop-blur-3xl overflow-hidden">
-          <div className="relative w-full max-w-7xl h-full md:h-[90vh] bg-[#020617] md:rounded-[4rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 fade-in duration-500 border border-white/10">
-            {/* Close Button & Action Bar */}
+        <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden">
+          <div className="relative w-full max-w-6xl h-full md:h-[88vh] rounded-[5px] md:rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 fade-in duration-500 border-white/10 md:border">
             <div className="absolute top-0 left-0 w-full p-8 flex items-center justify-between z-50 bg-gradient-to-b from-[#020617] to-transparent">
               <button
                 onClick={() => setIsPreviewOpen(false)}
-                className="flex items-center gap-3 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-white/5 hover:bg-white/10 text-white rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group cursor-pointer"
               >
-                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                Back to Designs
+                <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+                Back
               </button>
 
               <div className="flex items-center gap-4">
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest hidden sm:block">Design ID: {selectedDesign.id}</span>
-                <button onClick={() => navigate('/signup')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20">Order Custom</button>
               </div>
             </div>
-
-            {/* Left Side: Sticky Visuals */}
-            <div className="w-full md:w-1/2 relative h-[50vh] md:h-full flex items-center justify-center p-12 bg-[#020617] overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#ffffff22_1px,transparent_1px)] bg-[size:40px_40px]" />
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-transparent" />
+            <div className="w-full md:w-1/2 relative h-[45%] md:h-full flex items-center justify-center p-6 md:p-12 bg-white overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#00000022_1px,transparent_1px)] bg-[size:30px_30px]" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-transparent" />
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                 <img
                   src={selectedDesign.src}
                   alt={selectedDesign.name}
-                  className="max-w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] scale-90 md:scale-100"
+                  className="max-w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.2)] scale-110 md:scale-100"
                 />
               </div>
               <div className="absolute bottom-12 left-12 hidden md:block">
-                <h4 className="text-6xl font-black italic text-white/5 uppercase tracking-tighter leading-none mb-2">AUTHENTIC</h4>
+                <h4 className="text-6xl font-black italic text-slate-800/50 uppercase tracking-tighter leading-none mb-2 select-none">AUTHENTIC</h4>
                 <div className="flex items-center gap-3">
-                  <img src={img.jjslogo1} alt="Logo" className="w-8 h-8 object-contain opacity-20" />
-                  <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">JJSTRACK APPAREL</span>
+                  <img src={img.jjslogo1} alt="Logo" className="w-8 h-8 object-contain opacity-50 grayscale" />
+                  <span className="text-[10px] font-black text-slate-800/50 uppercase tracking-[0.4em]">JJS-DESIGN</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Side: Scrollable Details */}
-            <div className="flex-1 bg-white/[0.02] backdrop-blur-sm p-8 md:p-16 flex flex-col h-full border-l border-white/5 overflow-y-auto no-scrollbar scroll-smooth">
+
+            {/* Right preview */}
+            <div className="flex-[55%] md:flex-1 bg-black/70 lg:bg-white/[0.02] backdrop-blur-sm p-5 md:p-16 flex flex-col h-full md:border-l border-white/5 overflow-y-auto no-scrollbar scroll-smooth">
               <div className="max-w-xl mx-auto w-full py-20 md:py-0">
                 <header className="mb-12">
-                  <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-3 mb-9 mt-6">
                     <span className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black text-white uppercase tracking-widest shadow-xl shadow-blue-600/20">
                       {selectedDesign.typeLabel.split('•')[0].trim()}
                     </span>
                     <div className="h-px w-12 bg-white/10" />
                     <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Elite Collection</span>
                   </div>
-                  <h2 className="text-6xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-[0.8] mb-8">{selectedDesign.name}</h2>
-                  <p className="text-sm font-bold text-blue-400 uppercase tracking-[0.2em] leading-relaxed max-w-sm">{selectedDesign.fabric}</p>
+                  <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-[0.8] mb-8">{selectedDesign.name}</h2>
+                  <p className="text-[11px] md:text-sm font-bold text-blue-400 uppercase tracking-[0.2em] leading-relaxed max-w-sm">{selectedDesign.fabric}</p>
                 </header>
 
                 <div className="space-y-16">
-                  {/* Specs List */}
                   <div className="space-y-8">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-500">
-                        <Sparkles size={18} />
-                      </div>
                       <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Quality Specifications</h4>
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       {[
-                        'High-Definition Sublimation Print',
-                        'Premium Prime-Spandex Fabric',
-                        'Moisture-Wicking & Breathable',
-                        'Lightweight Game-Ready Texture',
-                        'Durable Athletic Construction'
-                      ].map((feature, i) => (
-                        <div key={i} className="flex items-center gap-5 p-6 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.05] transition-all group">
-                          <CheckCircle2 size={18} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-white/70 uppercase tracking-widest">{feature}</span>
+                        { label: 'HD Sublimation Print', icon: Zap },
+                        { label: 'Premium Spandex Fabric', icon: Shirt },
+                        { label: 'Aero-Dry Cool', icon: Wind },
+                        { label: 'NBA Cut', icon: Maximize2 },
+                        { label: 'Direct to Garment', icon: Shield },
+                        { label: 'Precision Tailored Fit', icon: Ruler }
+                      ].map((spec, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 md:p-4 rounded-[5px] md:rounded-xl bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.08] transition-all group">
+                          <spec.icon size={14} className="text-blue-300 shrink-0 group-hover:scale-110 transition-transform" />
+                          <span className="text-[9px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest">{spec.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Contact List */}
                   <div className="space-y-8 pt-12 border-t border-white/5">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
@@ -409,36 +414,29 @@ const Design = () => {
                       <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Direct Contacts</h4>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
-                        { icon: MessageSquare, label: 'Facebook Messenger', value: 'jjsportswearph', link: 'https://facebook.com/jjsportswearph', color: 'text-blue-400' },
-                        { icon: Phone, label: 'Contact Number', value: '0912 345 6789', link: 'tel:09123456789', color: 'text-emerald-400' },
-                        { icon: Mail, label: 'Email Address', value: 'contact@jjstrack.com', link: 'mailto:contact@jjstrack.com', color: 'text-amber-400' }
+                        { icon: MessageSquare, label: 'Messenger', value: 'jjsportswearph', link: 'https://www.facebook.com/JennoelJennyl', color: 'text-blue-400' },
+                        { icon: Phone, label: 'Call Us', value: '0908 997 2332', link: 'tel:0908 997 2332', color: 'text-emerald-400' },
+                        { icon: Mail, label: 'Email', value: 'jjsportswearph@gmail.com', link: 'mailto:jjsportswearph@gmail.com', color: 'text-amber-400' }
                       ].map((contact, i) => (
                         <a
                           key={i}
                           href={contact.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all group"
+                          className="flex flex-col p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all group text-center items-center"
                         >
-                          <div className="flex items-center gap-5">
-                            <contact.icon size={20} className={contact.color} />
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">{contact.label}</span>
-                              <span className="text-xs font-bold text-white uppercase tracking-wider">{contact.value}</span>
-                            </div>
-                          </div>
-                          <ChevronRight size={16} className="text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                          <contact.icon size={18} className={`${contact.color} mb-3`} />
+                          <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">{contact.label}</span>
+                          <span className="text-[10px] font-bold text-white uppercase tracking-wider truncate w-full">{contact.value}</span>
                         </a>
                       ))}
                     </div>
                   </div>
-
-                  {/* Footer Info */}
-                  <div className="pb-12 text-center sm:text-left">
-                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] leading-relaxed">
-                      © 2026 JJSTRACK APPAREL. <br className="sm:hidden" /> ALL RIGHTS RESERVED.
+                  <div className="pb-8 text-center">
+                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-[0.3em] leading-relaxed">
+                      © 2026 JJS-DESIGN SYSTEM • PREMIUM CRAFTSMANSHIP
                     </p>
                   </div>
                 </div>

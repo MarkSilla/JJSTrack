@@ -2,6 +2,7 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 
 const playerSchema = new mongoose.Schema({
+  nickname: String,
   surname: String,
   firstName: String,
   number: String,
@@ -30,6 +31,7 @@ const bookingItemSchema = new mongoose.Schema({
   size: String,
   addOn: String,
   addOnPrice: { type: Number, default: 0 },
+  notes: String,
 });
 
 // ✅ Same step schema as orderModel
@@ -109,6 +111,7 @@ const bookingSchema = new mongoose.Schema({
     name: String,
     price: Number,
     quantity: Number,
+    notes: String,
   }],
   repairDescription: String,
   photos: [String],

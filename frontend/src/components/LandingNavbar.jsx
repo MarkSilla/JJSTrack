@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import img from '../assets/img.js'
+import { AuthContext } from '../context/Context.jsx'
 
 const LandingNavbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const navigate = useNavigate()
+
+  const { isAuthenticated } = useContext(AuthContext)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,8 +18,12 @@ const LandingNavbar = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const handleSignIn = () => {
-    navigate('/login')
+  const handleAuthAction = () => {
+    if (isAuthenticated) {
+      navigate('/login')
+    } else {
+      navigate('/login')
+    }
   }
 
   return (
@@ -170,13 +177,13 @@ const LandingNavbar = () => {
           </div>
           <div className="flex-1 flex justify-end items-center">
             <button
-              onClick={handleSignIn}
+              onClick={handleAuthAction}
               className={`hidden xl:block px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
-              Sign In
+              {isAuthenticated ? 'Sign in' : 'Sign In'}
             </button>
             <div
               className={` xl:hidden flex w-10 h-10 cursor-pointer items-center justify-center rounded-lg transition-all duration-500 ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
@@ -265,13 +272,13 @@ const LandingNavbar = () => {
             </ul>
             <div className="border-t-2 border-black/3 0 mt-6"></div>
             <button
-              onClick={handleSignIn}
+              onClick={handleAuthAction}
               className={`mt-6 w-full px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-white/20 text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
-              Sign In
+              {isAuthenticated ? 'Dashboard' : 'Sign In'}
             </button>
           </div>
         )

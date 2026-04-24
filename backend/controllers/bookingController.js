@@ -97,6 +97,7 @@ const normalizeBookingItems = (items = []) =>
       size: item?.size || '',
       addOn: item?.addOn || 'None',
       addOnPrice: normalizeCurrency(item?.addOnPrice),
+      notes: String(item?.notes || '').trim(),
     }))
     .filter((item) => item.unitPrice >= 0);
 
@@ -119,7 +120,7 @@ const getBookingAddOnMeta = (addOnId) =>
   };
 
 const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
-  const fullName = [participant.firstName, participant.surname]
+  const fullName = [participant.nickname, participant.firstName, participant.surname]
     .filter(Boolean)
     .join(' ')
     .trim();
@@ -640,6 +641,7 @@ export const createBooking = async (req, res) => {
         size: '',
         addOn: 'None',
         addOnPrice: 0,
+        notes: option.notes,
       }));
     } else if (normalizedItems.length === 0 && bookingType === 'jersey' && players) {
       normalizedItems = buildParticipantInvoiceItems({
@@ -1176,13 +1178,14 @@ export const convertBookingToOrder = async (req, res) => {
           type: 'Repair',
           qty: option.quantity || 1,
           unitPrice: option.price,
+          notes: option.notes || '',
         });
       }
     }
 
     // Calculate total price from items
     const totalPrice = items.reduce((sum, item) => {
-      const itemTotal = (item.unitPrice * item.qty) + (item.addOnPrice || 0);
+      const itemTotal = (item.unitPrice * item.qty) + ((item.addOnPrice || 0) * item.qty);
       return sum + itemTotal;
     }, 0);
 

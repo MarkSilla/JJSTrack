@@ -1,4 +1,3 @@
-// Existing imports
 import invoice from './invoice.png'
 import jersey from './jersey.jpg'
 import jjslogo1 from './jjs.png'
@@ -12,6 +11,8 @@ import ruler from './ruler.svg'
 import clip from './jjsclip.mp4'
 import panorama from './panoramajjs.png'
 import manikin from './maniq.jpg'
+import scbot from './SCBOT.png'
+import sctop1 from './SCTOP1.png'
 import front from './shop1.png'
 import w_fd1 from './jersey/whitebg/FD1.png'
 import w_fd2 from './jersey/whitebg/FD 2.png'
@@ -25,22 +26,6 @@ import w_rd3 from './jersey/whitebg/RD3.png'
 import w_rd4 from './jersey/whitebg/RD4.png'
 import w_rd5 from './jersey/whitebg/RD5.png'
 import w_rd6 from './jersey/whitebg/RD6.png'
-import lbg from './lbg.png'
-
-
-// No BG Category
-import n_fd1 from './jersey/bgnodesign/FD1.png'
-import n_fd2 from './jersey/bgnodesign/FD 2.png'
-import n_fd3 from './jersey/bgnodesign/FD3.png'
-import n_fd4 from './jersey/bgnodesign/FD4.png'
-import n_fd5 from './jersey/bgnodesign/FD5.png'
-import n_fd6 from './jersey/bgnodesign/FD6.png'
-import n_rd1 from './jersey/bgnodesign/RD1.png'
-import n_rd2 from './jersey/bgnodesign/RD2.png'
-import n_rd3 from './jersey/bgnodesign/RD3.png'
-import n_rd4 from './jersey/bgnodesign/RD4.png'
-import n_rd5 from './jersey/bgnodesign/RD5.png'
-import n_rd6 from './jersey/bgnodesign/RD6.png'
 import i0 from './jersey/Item 0.png'
 import i1 from './jersey/item1.png'
 import i2 from './jersey/item2.png'
@@ -71,8 +56,6 @@ import d11 from './jersey/ITEMD_11.png'
 import rh1 from './jersey/rhry.png'
 import rh2 from './jersey/rhry2.png'
 import lbj from './lbg.png'
-
-// New Imports
 import s1 from './jersey/SLF1.jpg'
 import s2 from './jersey/SLF2.jpg'
 import s3 from './jersey/SLF3.jpg'
@@ -118,7 +101,6 @@ import nb5 from './jersey/nb (5).jpg'
 import nb6 from './jersey/nb (6).jpg'
 import nb7 from './jersey/nb (7).jpg'
 import nb8 from './jersey/nb8.png'
-
 const img = {
     invoice,
     lbj,
@@ -134,6 +116,8 @@ const img = {
     clip,
     panorama,
     manikin,
+    scbot,
+    sctop1,
     front,
     jerseys: {
         vintage: [

@@ -1,22 +1,20 @@
 import React from 'react'
 import { MdEdit, MdLink, MdImage } from 'react-icons/md'
 
-const PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: true },
+const BASE_PRODUCT_TYPES = [
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: false },
     { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
-    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
-    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
 ]
 
 const OPTIONAL_PRODUCT_TYPES = [
-    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750, needsShortSize: false },
-    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700, needsShortSize: false },
+    { id: 'warmer', label: 'Long Sleeve Warmer', price: 750 },
+    { id: 'hoodie', label: 'Hoodie T-shirt', price: 700 },
 ]
 
 const POCKET_PRICE = 100
 
 const getPlayerPrice = (player) => {
-    const product = PRODUCT_TYPES.find((p) => p.id === player.productType)
+    const product = BASE_PRODUCT_TYPES.find((p) => p.id === player.productType)
     if (!product) return 0
 
     let total = product.price
@@ -31,6 +29,11 @@ const getPlayerPrice = (player) => {
 
     return total
 }
+
+const getAddOnLabels = (player) =>
+    OPTIONAL_PRODUCT_TYPES
+        .filter((p) => (Array.isArray(player.addOns) ? player.addOns.includes(p.id) : false))
+        .map((p) => p.label)
 
 const ReviewBlock = ({ title, onEdit, children }) => (
     <div className="mb-5 font-inter">
@@ -72,7 +75,8 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                     {players.length > 0 ? (
                         <div className="space-y-2">
                             {players.map((pl, i) => {
-                                const product = PRODUCT_TYPES.find((p) => p.id === pl.productType)
+                                const product = BASE_PRODUCT_TYPES.find((p) => p.id === pl.productType)
+                                const addOnLabels = getAddOnLabels(pl)
                                 const price = getPlayerPrice(pl)
 
                                 return (
@@ -83,7 +87,7 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                             </span>
                                             <div className="min-w-0">
                                                 <p className="text-gray-800 text-sm font-medium truncate">
-                                                    {[pl.firstName, pl.surname].filter(Boolean).join(' ')}
+                                                    {pl.nickname || `Player ${i + 1}`}
                                                 </p>
                                                 <p className="text-gray-400 text-xs">
                                                     {product?.label || '-'} - {pl.jerseySize || '-'}
