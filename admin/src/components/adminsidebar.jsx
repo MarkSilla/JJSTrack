@@ -5,17 +5,28 @@ import {
 } from 'lucide-react'
 import img from '../assets/img.js'
 
+const isPathActive = (pathname, targetPath, matchNested = false) => {
+    if (!targetPath) return false
+    return pathname === targetPath || (matchNested && pathname.startsWith(`${targetPath}/`))
+}
+
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/admin/dashboard' },
     { icon: Calendar, label: 'Appointment', description: 'Manage appointments', path: '/admin/appointment' },
     {
         icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
         subItems: [
-            { label: 'All Orders', path: '/admin/orders' },
+            { label: 'All Orders', path: '/admin/orders', matchNested: true },
             { label: 'Released', path: '/admin/released' },
         ]
     },
-    { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/admin/inventory' },
+    {
+        icon: Package, label: 'Inventory', description: 'Manage stocks',
+        subItems: [
+            { label: 'Current Stock', path: '/admin/inventory' },
+            { label: 'History', path: '/admin/inventory/history' },
+        ]
+    },
     { icon: Users, label: 'Staff', description: 'Manage staff', path: '/admin/staff' },
     { icon: BarChart3, label: 'Report', description: 'View Data', path: '/admin/report' },
     { icon: QrCode, label: 'QR Scanner', description: 'Scan QR codes', path: '/admin/qr-scanner' },
@@ -33,6 +44,22 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
     const setMobileExpanded = setIsMobileExpanded ?? (() => { })
 
     const [expandedMenus, setExpandedMenus] = useState({})
+
+    useEffect(() => {
+        const nextExpanded = navItems.reduce((acc, item) => {
+            if (item.subItems?.some((subItem) => isPathActive(location.pathname, subItem.path, subItem.matchNested))) {
+                acc[item.label] = true
+            }
+            return acc
+        }, {})
+
+        if (Object.keys(nextExpanded).length === 0) return
+
+        setExpandedMenus(prev => ({
+            ...prev,
+            ...nextExpanded,
+        }))
+    }, [location.pathname])
 
     const toggleSubMenu = (label) => {
         if (isDesktopCollapsed && !isSmallScreen) {
@@ -115,7 +142,9 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                 <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
                     <ul className={`space-y-1.5 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
                         {navItems.map((item) => {
-                            const isActive = item.path ? location.pathname === item.path : item.subItems?.some(sub => location.pathname === sub.path)
+                            const isActive = item.path
+                                ? isPathActive(location.pathname, item.path, item.matchNested)
+                                : item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))
                             const isExpanded = expandedMenus[item.label]
 
                             return (
@@ -165,7 +194,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                                     {item.subItems && isExpanded && showLabel && (
                                         <ul className="mt-1 space-y-1 px-3 ml-6 border-l border-gray-700">
                                             {item.subItems.map((subItem) => {
-                                                const isSubActive = location.pathname === subItem.path
+                                                const isSubActive = isPathActive(location.pathname, subItem.path, subItem.matchNested)
                                                 return (
                                                     <li key={subItem.path}>
                                                         <Link
@@ -195,7 +224,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                                                         <Link
                                                             key={subItem.path}
                                                             to={subItem.path}
-                                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${location.pathname === subItem.path ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
+                                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${isPathActive(location.pathname, subItem.path, subItem.matchNested) ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
                                                         >
                                                             {subItem.label}
                                                         </Link>

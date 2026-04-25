@@ -12,6 +12,7 @@ import QRScanner from './pages/content/qrscanner'
 import ReleasedItems from './pages/content/released'
 import AdStaff from './pages/content/AdStaff'
 import AdInventory from './pages/content/AdInventory'
+import AdInventoryHistory from './pages/content/AdInventoryHistory'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { StockAlertProvider } from './context/StockAlertContext'
 import { GlobalStockAlert } from './components/GlobalStockAlert'
@@ -56,6 +57,7 @@ function AppRoutes() {
                 <Route path='released' element={<ReleasedItems />} />
                 <Route path='staff' element={<AdStaff />} />
                 <Route path='inventory' element={<AdInventory />} />
+                <Route path='inventory/history' element={<AdInventoryHistory />} />
             </Route>
         </Routes>
     )

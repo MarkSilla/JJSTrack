@@ -22,6 +22,7 @@ const numberInputStyle = `../../services/inventoryApi.js
 
 const CATEGORIES = ["All", "Sewing", "Fabric", "Fastener", "Tool", "Notions"];
 const STATUS_OPTIONS = ["All", "In Stock", "Low Stock", "Out of Stock"];
+const UNIT_OPTIONS = ["pcs", "yards", "meters"];
 
 const SORT_INVENTORY_OPTIONS = [
   { value: 'newest', label: 'Newest → Oldest' },
@@ -63,6 +64,56 @@ function mapActivityRecord(activity) {
 }
 
 // HELPERS 
+function formatQty(value) {
+  const numericValue = Number(value) || 0;
+  return Number.isInteger(numericValue)
+    ? `${numericValue}`
+    : numericValue.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function formatShortDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatDateInput(value) {
+  if (!value) return new Date().toISOString().slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function getSortedBatches(item) {
+  const batches = Array.isArray(item?.batches) ? item.batches : [];
+  return [...batches].sort((left, right) => new Date(left.receivedAt) - new Date(right.receivedAt));
+}
+
+function getBatchCount(item) {
+  return Number(item?.batchCount) || getSortedBatches(item).length;
+}
+
+function getOldestBatch(item) {
+  return getSortedBatches(item)[0] || null;
+}
+
+function getAverageUnitCost(item) {
+  const averageCost = Number(item?.averageUnitPrice);
+  if (Number.isFinite(averageCost) && averageCost > 0) {
+    return averageCost;
+  }
+  return Number(item?.unitPrice) || 0;
+}
+
+function getCurrentValue(item) {
+  const currentValue = Number(item?.currentStockValue);
+  if (Number.isFinite(currentValue)) {
+    return currentValue;
+  }
+  return (Number(item?.stock) || 0) * getAverageUnitCost(item);
+}
+
 function getStatus(item) {
   if (item.stock === 0) return "Out of Stock";
   if (item.stock < (item.minStock || 5)) return "Low Stock";
@@ -203,6 +254,10 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
           <span className="inline-flex items-center gap-1 text-xs text-slate-400 mt-0.5">
             <Tag size={10} /> {item.category}
           </span>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}
+            {getOldestBatch(item) ? ` • oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : ""}
+          </p>
         </div>
         <StatusBadge status={status} />
       </div>
@@ -210,9 +265,20 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
       <div className="mb-3">
         <div className="flex justify-between text-xs text-slate-500 mb-1.5">
           <span>Stock Level</span>
-          <span className="font-semibold text-gray-800 tabular-nums">{item.stock}/{getMaxStock(item)} {item.unit}</span>
+          <span className="font-semibold text-gray-800 tabular-nums">{formatQty(item.stock)}/{formatQty(getMaxStock(item))} {item.unit}</span>
         </div>
         <StockBar item={item} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="rounded-lg bg-slate-50 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400">Avg Cost</p>
+          <p className="text-sm font-bold text-slate-800">{fmt(getAverageUnitCost(item))}</p>
+        </div>
+        <div className="rounded-lg bg-slate-50 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400">Current Value</p>
+          <p className="text-sm font-bold text-slate-800">{fmt(getCurrentValue(item))}</p>
+        </div>
       </div>
 
       <div className="flex gap-2 pt-1">
@@ -220,11 +286,11 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
           <>
             <button onClick={() => onAdjust(item, "increase")}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
-              <ArrowUpCircle size={13} /> Add Stock
+              <ArrowUpCircle size={13} /> Receive Batch
             </button>
             <button onClick={() => onAdjust(item, "decrease")}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
-              <ArrowDownCircle size={13} /> Remove
+              <ArrowDownCircle size={13} /> Use FIFO
             </button>
             <button onClick={() => onUpdate(item)}
               className="flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
@@ -248,7 +314,9 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
 
 function UpdateModal({ item, onConfirm, onClose }) {
   const categoryButtonRef = useRef(null);
+  const unitButtonRef = useRef(null);
   const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
+  const [unitMenuStyle, setUnitMenuStyle] = useState({});
   const [form, setForm] = useState({
     name: item.name || "",
     category: item.category || "Sewing",
@@ -258,6 +326,7 @@ function UpdateModal({ item, onConfirm, onClose }) {
   });
   const [confirmModal, setConfirmModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showUnitModal, setShowUnitModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Check if form has changed from original
@@ -291,8 +360,7 @@ function UpdateModal({ item, onConfirm, onClose }) {
 
   const fields = [
     { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
-    { key: "unit", label: "Unit", type: "text", placeholder: "e.g. pcs, rolls" },
-    { key: "unitPrice", label: "Price per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
+    { key: "unitPrice", label: "Default Cost per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
     { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
   ];
 
@@ -372,6 +440,59 @@ function UpdateModal({ item, onConfirm, onClose }) {
             </div>
           </div>
 
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
+            <div className="relative">
+              <button
+                ref={unitButtonRef}
+                onClick={() => {
+                  const next = !showUnitModal;
+                  if (!next) {
+                    setShowUnitModal(false);
+                    return;
+                  }
+                  const rect = unitButtonRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setUnitMenuStyle({
+                      position: 'fixed',
+                      top: rect.bottom + window.scrollY + 6,
+                      left: rect.left + window.scrollX,
+                      minWidth: rect.width,
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                      zIndex: 9999,
+                      backgroundColor: 'white',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                    });
+                  }
+                  setShowUnitModal(true);
+                }}
+                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.unit}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
+              </button>
+              {showUnitModal && (
+                <div style={unitMenuStyle}>
+                  {UNIT_OPTIONS.map(u => (
+                    <button
+                      key={u}
+                      onClick={() => {
+                        set("unit", u);
+                        setShowUnitModal(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {fields.filter(f => f.key !== "name").map(f => (
             <div key={f.key} className="mb-4">
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -430,16 +551,87 @@ function UpdateModal({ item, onConfirm, onClose }) {
 function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   const [adjType, setAdjType] = useState(initialType);
   const [amount, setAmount] = useState("");
+  const [unitPrice, setUnitPrice] = useState(String(item.unitPrice ?? ""));
+  const [receivedAt, setReceivedAt] = useState(() => formatDateInput(new Date()));
+  const [fifoPreview, setFifoPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const openBatches = useMemo(() => getSortedBatches(item), [item]);
+  const parsedAmount = Number(amount);
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (adjType !== "decrease" || !parsedAmount || parsedAmount <= 0) {
+      setFifoPreview(null);
+      setPreviewError("");
+      setPreviewLoading(false);
+      return undefined;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError("");
+
+    inventoryApi
+      .previewFifo(item._id, parsedAmount)
+      .then((data) => {
+        if (!ignore) {
+          setFifoPreview(data);
+        }
+      })
+      .catch((error) => {
+        if (!ignore) {
+          setFifoPreview(null);
+          setPreviewError(
+            error?.response?.data?.message || "Failed to preview FIFO deduction"
+          );
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setPreviewLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [adjType, item._id, parsedAmount]);
 
   const handleConfirm = () => {
-    const n = parseInt(amount);
-    if (!n || n < 1) return;
-    onConfirm(item._id, adjType, n);
+    const quantity = Number(amount);
+    if (!quantity || quantity < 1) return;
+
+    if (adjType === "increase") {
+      if (unitPrice === "") {
+        alert("Batch cost per unit is required");
+        return;
+      }
+
+      const nextUnitPrice = Number(unitPrice);
+      if (!Number.isFinite(nextUnitPrice) || nextUnitPrice < 0) {
+        alert("Batch cost cannot be negative");
+        return;
+      }
+
+      onConfirm(item._id, adjType, quantity, {
+        unitPrice: nextUnitPrice,
+        receivedAt,
+      });
+      return;
+    }
+
+    if (fifoPreview && !fifoPreview.canFulfill) {
+      alert("Requested quantity exceeds available FIFO stock");
+      return;
+    }
+
+    onConfirm(item._id, adjType, quantity);
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-white w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
 
         <div className="flex items-start justify-between mb-1">
@@ -455,35 +647,170 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
         <div className="bg-slate-50 rounded-xl px-4 py-3 my-4 flex items-center justify-between">
           <span className="text-sm text-slate-500">Current Stock</span>
           <span className="text-xl font-black text-gray-900 tabular-nums">
-            {item.stock}/{getMaxStock(item)} <span className="text-sm font-normal text-slate-400">{item.unit}</span>
+            {formatQty(item.stock)}/{formatQty(getMaxStock(item))} <span className="text-sm font-normal text-slate-400">{item.unit}</span>
           </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
+            <p className="text-lg font-black text-gray-900 mt-1">{getBatchCount(item)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Avg Cost</p>
+            <p className="text-lg font-black text-gray-900 mt-1">{fmt(getAverageUnitCost(item))}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Current Value</p>
+            <p className="text-lg font-black text-gray-900 mt-1">{fmt(getCurrentValue(item))}</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
           <button onClick={() => setAdjType("increase")}
             className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "increase" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
-            <ArrowUpCircle size={15} /> Increase
+            <ArrowUpCircle size={15} /> Receive Batch
           </button>
           <button onClick={() => setAdjType("decrease")}
             className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "decrease" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-500"}`}>
-            <ArrowDownCircle size={15} /> Decrease
+            <ArrowDownCircle size={15} /> Use FIFO
           </button>
         </div>
 
-        <div className="mb-5">
+        <div className="mb-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
-          <input type="number" min="1" value={amount} onChange={e => setAmount(e.target.value)}
+          <input type="number" min="1" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
             placeholder="Enter amount…"
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
         </div>
+
+        {adjType === "increase" ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Batch Cost per Unit</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={unitPrice}
+                  onChange={e => setUnitPrice(e.target.value)}
+                  placeholder="e.g. 120.00"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
+                <input
+                  type="date"
+                  value={receivedAt}
+                  onChange={e => setReceivedAt(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5">
+              <p className="text-sm font-bold text-gray-900 mb-1">New FIFO batch</p>
+              <p className="text-sm text-slate-600">
+                This stock will be stored as a separate batch and will not merge with older stock.
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4 mb-5">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <p className="text-sm font-bold text-gray-900 mb-1">FIFO deduction</p>
+              <p className="text-sm text-slate-600">
+                The oldest batch is always consumed first for quality control and accurate costing.
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
+                <span className="text-xs text-slate-400">{openBatches.length} active</span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {openBatches.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">
+                    No active batches.
+                  </div>
+                ) : openBatches.map(batch => (
+                  <div key={batch.id || batch.batchId} className="rounded-xl border border-slate-200 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{batch.batchCode}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Received {formatShortDate(batch.receivedAt)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-800">{formatQty(batch.quantity)} {item.unit}</p>
+                        <p className="text-xs text-slate-400">{fmt(batch.unitPrice || 0)}/unit</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">FIFO Preview</p>
+                {fifoPreview?.totalCost > 0 && (
+                  <span className="text-xs font-semibold text-slate-500">Cost {fmt(fifoPreview.totalCost)}</span>
+                )}
+              </div>
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                {previewLoading ? (
+                  <div className="px-4 py-4 text-sm text-slate-400">Calculating FIFO preview...</div>
+                ) : previewError ? (
+                  <div className="px-4 py-4 text-sm text-red-500">{previewError}</div>
+                ) : !parsedAmount ? (
+                  <div className="px-4 py-4 text-sm text-slate-400">Enter a quantity to preview which batches will be used.</div>
+                ) : !fifoPreview?.breakdown?.length ? (
+                  <div className="px-4 py-4 text-sm text-slate-400">No eligible batch found for this deduction.</div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {fifoPreview.breakdown.map(entry => (
+                      <div key={entry.batchId} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{entry.batchCode}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {formatShortDate(entry.receivedAt)} • {fmt(entry.unitPrice || 0)}/unit
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-red-600">-{formatQty(entry.willUse)} {item.unit}</p>
+                          <p className="text-xs text-slate-400">{fmt(entry.lineCost || 0)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {fifoPreview && !fifoPreview.canFulfill && (
+                <p className="text-xs font-medium text-red-500 mt-2">
+                  Short by {formatQty(fifoPreview.shortfall)} {item.unit}.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             Cancel
           </button>
-          <button onClick={handleConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-            <Check size={15} /> Confirm
+          <button
+            onClick={handleConfirm}
+            disabled={adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+              adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
+                ? "bg-slate-300 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            <Check size={15} /> {adjType === "increase" ? "Receive Batch" : "Confirm FIFO"}
           </button>
         </div>
       </div>
@@ -567,16 +894,27 @@ function DuplicateItemModal({ existingItem, newData, onUpdateExisting, onClose }
   );
 }
 
-function AddItemModal({ onConfirm, onClose, inventory = [] }) {
+function AddItemModal({ onConfirm, onClose }) {
   const categoryButtonRef = useRef(null);
+  const unitButtonRef = useRef(null);
   const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
-  const [form, setForm] = useState({ name: "", category: "Sewing", stock: "", minStock: "", unit: "pcs", unitPrice: "" });
+  const [unitMenuStyle, setUnitMenuStyle] = useState({});
+  const [form, setForm] = useState({
+    name: "",
+    category: "Sewing",
+    stock: "",
+    minStock: "",
+    unit: "pcs",
+    unitPrice: "",
+    receivedAt: formatDateInput(new Date()),
+  });
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showUnitModal, setShowUnitModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleConfirm = () => {
     if (!form.name.trim()) return;
-    const stockValue = parseInt(form.stock) || 0;
+    const stockValue = Number(form.stock) || 0;
     const minStockValue = parseInt(form.minStock) || 5;
     
     if (stockValue < 0) {
@@ -588,6 +926,11 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
       alert("Min stock cannot be negative");
       return;
     }
+
+    if (stockValue > 0 && form.unitPrice === "") {
+      alert("Batch cost per unit is required when receiving stock");
+      return;
+    }
     
     const newData = {
       name: form.name.trim(),
@@ -595,7 +938,8 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
       stock: stockValue,
       minStock: minStockValue,
       unit: form.unit || "pcs",
-      unitPrice: parseFloat(form.unitPrice) || 0,
+      unitPrice: Number(form.unitPrice) || 0,
+      receivedAt: form.receivedAt || formatDateInput(new Date()),
     };
     
     onConfirm(newData);
@@ -605,21 +949,20 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
     { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
     { key: "stock", label: "Current Stock", type: "number", placeholder: "e.g. 50" },
     { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
-    { key: "unit", label: "Unit", type: "text", placeholder: "e.g. pcs, rolls" },
-    { key: "unitPrice", label: "Price per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
+    { key: "unitPrice", label: "Batch Cost per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
   ];
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Add New Item</h3>
-            <p className="text-xs text-slate-400">Fill in supply details</p>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+            <h3 className="text-lg font-black text-gray-900">Add Item / Receive Batch</h3>
+            <p className="text-xs text-slate-400">Create a new item or add a new FIFO batch to an existing one</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
-        </div>
 
         <div className="mb-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
@@ -684,8 +1027,61 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
           </div>
         </div>
 
-        {fields.filter(f => f.key !== "name").map(f => (
-          <div key={f.key} className="mb-4">
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
+          <div className="relative">
+            <button
+              ref={unitButtonRef}
+              onClick={() => {
+                const next = !showUnitModal;
+                if (!next) {
+                  setShowUnitModal(false);
+                  return;
+                }
+                const rect = unitButtonRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setUnitMenuStyle({
+                    position: 'fixed',
+                    top: rect.bottom + window.scrollY + 6,
+                    left: rect.left + window.scrollX,
+                    minWidth: rect.width,
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                    zIndex: 9999,
+                    backgroundColor: 'white',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                  });
+                }
+                setShowUnitModal(true);
+              }}
+              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.unit}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
+              </button>
+              {showUnitModal && (
+                <div style={unitMenuStyle}>
+                  {UNIT_OPTIONS.map(u => (
+                    <button
+                      key={u}
+                      onClick={() => {
+                        set("unit", u);
+                      setShowUnitModal(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+          {fields.filter(f => f.key !== "name").map(f => (
+            <div key={f.key} className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               {f.label}
             </label>
@@ -695,14 +1091,24 @@ function AddItemModal({ onConfirm, onClose, inventory = [] }) {
               onChange={e => set(f.key, e.target.value)}
               placeholder={f.placeholder}
               step={f.step || undefined}
-              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
+            </div>
+          ))}
+
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
+            <input
+              type="date"
+              value={form.receivedAt}
+              onChange={e => set("receivedAt", e.target.value)}
+              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
+            />
           </div>
-        ))}
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           <button onClick={handleConfirm} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-            <Plus size={15} /> Add New Item
+            <Plus size={15} /> Save Item / Batch
           </button>
         </div>
       </div>
@@ -733,7 +1139,6 @@ const [sortBy, setSortBy] = useState('newest');
   const [adjModal, setAdjModal] = useState(null);
   const [addModal, setAddModal] = useState(false);
   const [updateModal, setUpdateModal] = useState(null);
-  const [duplicateModal, setDuplicateModal] = useState(null);
   const [similarModal, setSimilarModal] = useState(null);
   const [pendingAddData, setPendingAddData] = useState(null);
   const [archiveConfirm, setArchiveConfirm] = useState({ show: false, id: null, isRestore: false, itemName: '' });
@@ -895,12 +1300,12 @@ const [sortBy, setSortBy] = useState('newest');
   const outCount = activeInventory.filter(i => getStatus(i) === "Out of Stock").length;
   const inStockCount = activeInventory.filter(i => getStatus(i) === "In Stock").length;
 
-  const totalValue = useMemo(() => {
-    return activeInventory.reduce((sum, item) => sum + (getMaxStock(item) * (item.unitPrice || 0)), 0);
+  const totalBatchCount = useMemo(() => {
+    return activeInventory.reduce((sum, item) => sum + getBatchCount(item), 0);
   }, [activeInventory]);
 
   const currentValue = useMemo(() => {
-    return activeInventory.reduce((sum, item) => sum + ((item.stock || 0) * (item.unitPrice || 0)), 0);
+    return activeInventory.reduce((sum, item) => sum + getCurrentValue(item), 0);
   }, [activeInventory]);
 
   const filtered = useMemo(() => {
@@ -924,23 +1329,23 @@ const [sortBy, setSortBy] = useState('newest');
 
 const STAT_CARDS = [
     { label: "Total Items", value: activeInventory.length, sub: "Active supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
-    { label: "Total Value", value: fmt(totalValue), sub: "Current inventory cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
-    { label: "Current Value", value: fmt(currentValue), sub: "Current stock cost", icon: Layers, accent: "#8B5CF6", bgAccent: "#FAF5FF" },
+    { label: "Open Batches", value: totalBatchCount, sub: "FIFO layers on hand", icon: Layers, accent: "#7C3AED", bgAccent: "#F5F3FF" },
+    { label: "Current Value", value: fmt(currentValue), sub: "Exact batch-based cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
     { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
     { label: "Out of Stock", value: outCount, sub: "Critical - reorder ASAP", icon: XCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
     { label: "Archived", value: archivedInventory.length, sub: "Out of service", icon: Archive, accent: "#6366F1", bgAccent: "#EEF2FF" }
   ];
 
-  const handleAdjust = async (itemId, type, amount) => {
+  const handleAdjust = async (itemId, type, amount, options = {}) => {
     try {
-      const updatedItem = await inventoryApi.adjustStock(itemId, type, amount);
+      const updatedItem = await inventoryApi.adjustStock(itemId, type, amount, options);
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
       await fetchActivities();
       setAdjModal(null);
     } catch (err) {
       console.error("Failed to adjust stock:", err);
-      alert("Failed to adjust stock");
+      alert(err?.response?.data?.message || "Failed to adjust stock");
     }
   };
 
@@ -954,9 +1359,10 @@ const STAT_CARDS = [
       );
 
       if (existingItem) {
-        // Show duplicate modal instead of adding
-        setDuplicateModal({ existingItem, newData: data });
-        setPendingAddData(data);
+        const result = await inventoryApi.createInventory(data);
+        setInventory(inv => inv.map(i => i._id === result._id ? result : i));
+        await fetchActivities();
+        setAddModal(false);
         return;
       }
 
@@ -1018,14 +1424,6 @@ const STAT_CARDS = [
       }
       setPendingAddData(null);
     }
-  };
-
-  const handleUpdateFromDuplicate = (existingItem) => {
-    // Close add and duplicate modals, open update modal for the existing item
-    setAddModal(false);
-    setDuplicateModal(null);
-    setPendingAddData(null);
-    setUpdateModal(existingItem);
   };
 
   const handleUpdate = async (itemId, data) => {
@@ -1255,7 +1653,7 @@ const STAT_CARDS = [
             </button>
             <button onClick={() => setAddModal(true)}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
-              <Plus size={15} /> Add New Item
+              <Plus size={15} /> Add New Stock
             </button>
           </div>
         </div>
@@ -1321,7 +1719,7 @@ const STAT_CARDS = [
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                {["Item Name", "SKU", "Category", "Price per Unit", "Stock", "Total Price (Max)", "Total Price (Current)", "Status", "Date Added", "Last Activity", "Actions"].map(h => (
+                {["Item Name", "SKU", "Category", "Avg Cost / Unit", "Stock", "Open Batches", "Current Value", "Status", "Date Added", "Last Activity", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-4 py-2.5">{h}</th>
                 ))}
               </tr>
@@ -1333,6 +1731,10 @@ const STAT_CARDS = [
                   <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-bold text-gray-900">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}
+                        {getOldestBatch(item) ? ` • oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : ""}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
@@ -1345,17 +1747,21 @@ const STAT_CARDS = [
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(item.unitPrice || 0)}</span>
+                      <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(getAverageUnitCost(item))}</span>
+                      <p className="text-[10px] text-slate-400 mt-1">Default {fmt(item.unitPrice || 0)}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900 tabular-nums">{item.stock}/{getMaxStock(item)}</span>
+                      <span className="font-bold text-gray-900 tabular-nums">{formatQty(item.stock)}/{formatQty(getMaxStock(item))}</span>
                       <span className="text-slate-400 text-xs"> {item.unit}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-blue-600 tabular-nums">{fmt(getMaxStock(item) * (item.unitPrice || 0))}</span>
+                      <span className="text-sm font-bold text-blue-600 tabular-nums">{getBatchCount(item)}</span>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {getOldestBatch(item) ? `Oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : "No batches"}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt((item.stock || 0) * (item.unitPrice || 0))}</span>
+                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt(getCurrentValue(item))}</span>
                     </td>
 
                     <td className="px-4 py-3"><StatusBadge status={getStatus(item)} /></td>
@@ -1374,11 +1780,11 @@ const STAT_CARDS = [
                         {!showArchived ? (
                           <>
                             <button onClick={() => setAdjModal({ item, type: "increase" })}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Add Stock">
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Receive Batch">
                               <ArrowUpCircle size={14} />
                             </button>
                             <button onClick={() => setAdjModal({ item, type: "decrease" })}
-                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Remove Stock">
+                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Use FIFO">
                               <ArrowDownCircle size={14} />
                             </button>
                             <button onClick={() => setUpdateModal(item)}
@@ -1465,7 +1871,6 @@ const STAT_CARDS = [
         <AddItemModal
           onConfirm={handleAddItem}
           onClose={() => setAddModal(false)}
-          inventory={inventory}
         />
       )}
       {updateModal && (
@@ -1473,17 +1878,6 @@ const STAT_CARDS = [
           item={updateModal}
           onConfirm={handleUpdate}
           onClose={() => setUpdateModal(null)}
-        />
-      )}
-      {duplicateModal && (
-        <DuplicateItemModal
-          existingItem={duplicateModal.existingItem}
-          newData={duplicateModal.newData}
-          onUpdateExisting={handleUpdateFromDuplicate}
-          onClose={() => {
-            setDuplicateModal(null);
-            setPendingAddData(null);
-          }}
         />
       )}
       {similarModal && (

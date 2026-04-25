@@ -52,6 +52,11 @@ const PAGE_META = [
         subtitle: 'Monitor stock levels, adjustments, and item records.'
     },
     {
+        match: /^\/admin\/inventory\/history$/,
+        title: 'Inventory History',
+        subtitle: 'Review detailed stock movement, FIFO usage, and audit activity.'
+    },
+    {
         match: /^\/admin\/report$/,
         title: 'Reports',
         subtitle: 'Generate and view detailed business reports.'

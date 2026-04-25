@@ -380,6 +380,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           ...item,
           stock: Number(item?.stock) || 0,
           unitPrice: Number(item?.unitPrice) || 0,
+          currentStockValue: Number(item?.currentStockValue) || 0,
         }));
         setInventory(normalizedInventory);
 
@@ -515,7 +516,8 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     }).length;
     const outOfStock = activeItems.filter((item) => item.stock === 0).length;
     const totalValue = activeItems.reduce(
-      (sum, item) => sum + item.stock * item.unitPrice,
+      (sum, item) =>
+        sum + (Number(item.currentStockValue) || (item.stock * item.unitPrice)),
       0
     );
 

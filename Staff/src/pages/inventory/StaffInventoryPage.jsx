@@ -109,6 +109,7 @@ function UseItemModal({ item, onConfirm, onClose, submitting }) {
             <input
               type="number"
               min="1"
+              step="0.01"
               max={stock}
               value={qty}
               onChange={(event) => setQty(event.target.value)}
@@ -129,7 +130,7 @@ function UseItemModal({ item, onConfirm, onClose, submitting }) {
             </p>
             <p className="text-sm text-slate-600">
               This will deduct the quantity directly from the real backend
-              inventory.
+              inventory using FIFO, so the oldest batch is used first.
             </p>
           </div>
 

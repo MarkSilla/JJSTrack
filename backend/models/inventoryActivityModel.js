@@ -1,5 +1,40 @@
 import mongoose from "mongoose";
 
+const inventoryActivityBatchSchema = new mongoose.Schema(
+  {
+    batchId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    batchCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "",
+    },
+    quantity: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    unitPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lineCost: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    receivedAt: {
+      type: Date,
+    },
+  },
+  { _id: false }
+);
+
 const inventoryActivitySchema = new mongoose.Schema(
   {
     inventoryId: {
@@ -66,6 +101,15 @@ const inventoryActivitySchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+    batchBreakdown: {
+      type: [inventoryActivityBatchSchema],
+      default: [],
+    },
+    totalCost: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   { timestamps: true }

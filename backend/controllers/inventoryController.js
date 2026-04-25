@@ -8,6 +8,17 @@ import {
   shouldCreateInventoryRestockNotification,
 } from "../utils/notificationHelpers.js";
 import { broadcastInventoryChange } from "../utils/inventorySocketServer.js";
+import {
+  appendInventoryBatch,
+  applyFifoDeduction,
+  ensureBatchState,
+  getInventoryBatchSummary,
+  normalizeMoney,
+  normalizeQuantity,
+  normalizeUnit,
+  previewFifoDeduction,
+  serializeBatch,
+} from "../utils/inventoryBatchHelpers.js";
 
 // Helper function to normalize item names - STRICT normalization
 const normalizeName = (name) => {
@@ -16,6 +27,17 @@ const normalizeName = (name) => {
     .trim()
     .replace(/\s+/g, "") // Remove ALL spaces
     .replace(/[^a-z0-9]/g, ""); // Keep only letters and numbers (remove all special chars, accents, etc)
+};
+
+const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const formatNumber = (value) => {
+  const numericValue = Number(value) || 0;
+  if (Number.isInteger(numericValue)) {
+    return `${numericValue}`;
+  }
+
+  return numericValue.toFixed(2).replace(/\.?0+$/, "");
 };
 
 // Resolve per-item stock ceiling used for current/max tracking
@@ -88,7 +110,7 @@ const resolveActorInfo = async (req) => {
 };
 
 const formatQuantity = (amount, unit) => {
-  const qty = Number(amount) || 0;
+  const qty = formatNumber(amount);
   return unit ? `${qty} ${unit}` : `${qty}`;
 };
 
@@ -132,16 +154,91 @@ const serializeActivity = (activity) => ({
   _id: activity._id,
   inventoryId: activity.inventoryId,
   inventoryName: activity.inventoryName,
+  inventorySku: activity.inventorySku || "",
+  category: activity.category || "",
   actionType: activity.actionType,
   type: mapActivityType(activity.actionType),
   text: buildActivityText(activity),
   amount: activity.amount,
   unit: activity.unit,
+  previousStock: Math.max(0, Number(activity.previousStock) || 0),
+  newStock: Math.max(0, Number(activity.newStock) || 0),
   performedByName: activity.performedByName,
   performedByRole: activity.performedByRole,
   createdAt: activity.createdAt,
   note: activity.note || "",
+  totalCost: Math.max(0, Number(activity.totalCost) || 0),
+  batchBreakdown: Array.isArray(activity.batchBreakdown)
+    ? activity.batchBreakdown.map((entry) => ({
+        batchId: entry.batchId || "",
+        batchCode: entry.batchCode || "",
+        quantity: Math.max(0, Number(entry.quantity) || 0),
+        unitPrice: Math.max(0, Number(entry.unitPrice) || 0),
+        lineCost: Math.max(0, Number(entry.lineCost) || 0),
+        receivedAt: entry.receivedAt || null,
+      }))
+    : [],
 });
+
+const buildActivityBatchBreakdown = (entries = []) =>
+  entries.map((entry) => ({
+    batchId: entry.batchId || entry.id || "",
+    batchCode: entry.batchCode || "",
+    quantity: normalizeQuantity(entry.quantity ?? entry.willUse),
+    unitPrice: normalizeMoney(entry.unitPrice),
+    lineCost: normalizeMoney(entry.lineCost),
+    receivedAt: entry.receivedAt ? new Date(entry.receivedAt) : undefined,
+  }));
+
+const buildFifoNote = (breakdown = []) => {
+  if (!Array.isArray(breakdown) || breakdown.length === 0) {
+    return "";
+  }
+
+  return breakdown
+    .map((entry) => `${entry.batchCode || "BATCH"}:${formatNumber(entry.quantity ?? entry.willUse)}`)
+    .join(", ");
+};
+
+const hydrateInventoryForSave = (inventory) => {
+  if (!inventory) return getInventoryBatchSummary();
+
+  if (inventory.name) {
+    inventory.normalizedName = normalizeName(inventory.name);
+  }
+  if (inventory.unit != null) {
+    inventory.normalizedUnit = normalizeUnit(inventory.unit);
+  }
+  inventory.unitPrice = normalizeMoney(inventory.unitPrice);
+
+  const summary = ensureBatchState(inventory);
+  inventory.stock = summary.stock;
+  inventory.maxStock = Math.max(resolveStockCap(inventory), summary.stock);
+
+  return summary;
+};
+
+const serializeInventory = (inventory) => {
+  const source = inventory?.toObject ? inventory.toObject() : { ...inventory };
+  const summary = getInventoryBatchSummary(source);
+
+  return {
+    ...source,
+    normalizedUnit: normalizeUnit(source.unit),
+    stock: summary.stock,
+    unitPrice: normalizeMoney(source.unitPrice),
+    batchCount: summary.batchCount,
+    currentStockValue: summary.currentStockValue,
+    averageUnitPrice: summary.averageUnitPrice,
+    oldestBatchDate: summary.oldestBatch?.receivedAt
+      ? new Date(summary.oldestBatch.receivedAt).toISOString()
+      : null,
+    newestBatchDate: summary.newestBatch?.receivedAt
+      ? new Date(summary.newestBatch.receivedAt).toISOString()
+      : null,
+    batches: summary.batches.map(serializeBatch),
+  };
+};
 
 const notifyInventoryClients = ({ actionType, inventory }) => {
   if (!inventory?._id) return;
@@ -169,6 +266,8 @@ const logInventoryActivity = async ({
   previousStock = 0,
   newStock = 0,
   note = "",
+  batchBreakdown = [],
+  totalCost = 0,
 }) => {
   if (!inventory?._id || !actionType) return;
 
@@ -189,6 +288,8 @@ const logInventoryActivity = async ({
       performedByName: actor.performedByName,
       performedByRole: actor.performedByRole,
       note,
+      batchBreakdown: buildActivityBatchBreakdown(batchBreakdown),
+      totalCost: normalizeMoney(totalCost),
     });
   } catch (error) {
     console.error("Failed to log inventory activity:", error);
@@ -221,7 +322,7 @@ const generateSKU = async (category) => {
 export const getAllInventory = async (req, res) => {
   try {
     const inventory = await Inventory.find().sort({ createdAt: -1 });
-    res.status(200).json(inventory);
+    res.status(200).json(inventory.map(serializeInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -231,7 +332,7 @@ export const getInventoryActivity = async (req, res) => {
   try {
     const parsedLimit = parseInt(req.query.limit, 10);
     const limit = Number.isFinite(parsedLimit)
-      ? Math.min(Math.max(parsedLimit, 1), 100)
+      ? Math.min(Math.max(parsedLimit, 1), 500)
       : 20;
 
     const activities = await InventoryActivity.find()
@@ -252,7 +353,35 @@ export const getInventoryById = async (req, res) => {
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
-    res.status(200).json(inventory);
+    res.status(200).json(serializeInventory(inventory));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const previewInventoryFifo = async (req, res) => {
+  try {
+    const requestedQuantity = normalizeQuantity(
+      req.query.quantity ?? req.body?.quantity
+    );
+
+    if (requestedQuantity <= 0) {
+      return res.status(400).json({ message: "Quantity must be greater than 0" });
+    }
+
+    const inventory = await Inventory.findById(req.params.id);
+    if (!inventory) {
+      return res.status(404).json({ message: "Inventory item not found" });
+    }
+
+    const preview = previewFifoDeduction(inventory, requestedQuantity);
+
+    res.status(200).json({
+      inventoryId: inventory._id,
+      itemName: inventory.name,
+      unit: inventory.unit || "",
+      ...preview,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -263,7 +392,7 @@ export const getInventoryByCategory = async (req, res) => {
   try {
     const { category } = req.params;
     const inventory = await Inventory.find({ category }).sort({ createdAt: -1 });
-    res.status(200).json(inventory);
+    res.status(200).json(inventory.map(serializeInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -272,7 +401,17 @@ export const getInventoryByCategory = async (req, res) => {
 // Create new inventory item or update if exists
 export const createInventory = async (req, res) => {
   try {
-    const { name, category, stock, minStock, unit, description, supplier, unitPrice } = req.body;
+    const {
+      name,
+      category,
+      stock,
+      minStock,
+      unit,
+      description,
+      supplier,
+      unitPrice,
+      receivedAt,
+    } = req.body;
 
     // Validation
     if (!name || !category || !unit) {
@@ -280,38 +419,93 @@ export const createInventory = async (req, res) => {
     }
 
     const normalizedName = normalizeName(name);
-    const stockValue = parseInt(stock) || 0;
-    const minStockValue = parseInt(minStock) || 5;
+    const normalizedUnit = normalizeUnit(unit);
+    const unitMatcher = new RegExp(`^${escapeRegExp(String(unit).trim())}$`, "i");
+    const stockValue = normalizeQuantity(stock);
+    const hasMinStock = minStock != null && minStock !== "";
+    const hasUnitPrice = unitPrice != null && unitPrice !== "";
+    const minStockValue = hasMinStock ? Math.max(0, Number(minStock) || 0) : 5;
+    const unitPriceValue = hasUnitPrice ? normalizeMoney(unitPrice) : 0;
 
-    // Check if item already exists by normalizedName
+    // Check if item already exists by normalizedName + normalizedUnit
     const existingItem = await Inventory.findOne({
       normalizedName,
-      archived: false
+      archived: false,
+      $or: [
+        { normalizedUnit },
+        { unit: unitMatcher },
+      ],
     });
 
     if (existingItem) {
-      // Item exists - update stock instead of creating new one
-      const previousStock = existingItem.stock;
-      const newStock = previousStock + stockValue;
-      existingItem.stock = newStock;
-      existingItem.maxStock = Math.max(resolveStockCap(existingItem), newStock);
+      const previousSummary = hydrateInventoryForSave(existingItem);
+      const previousStock = previousSummary.stock;
+      const previousMinStock = existingItem.minStock;
+
+      existingItem.name = name.trim();
+      existingItem.category = category;
+      existingItem.unit = unit;
+      existingItem.normalizedName = normalizedName;
+      existingItem.normalizedUnit = normalizedUnit;
+      if (hasMinStock) existingItem.minStock = minStockValue;
+      existingItem.description = description ?? existingItem.description ?? "";
+      existingItem.supplier = supplier ?? existingItem.supplier ?? "";
+      if (hasUnitPrice) {
+        existingItem.unitPrice = unitPriceValue;
+      } else {
+        existingItem.unitPrice = normalizeMoney(existingItem.unitPrice);
+      }
+
+      let createdBatch = null;
+      if (stockValue > 0) {
+        createdBatch = appendInventoryBatch(existingItem, {
+          quantity: stockValue,
+          unitPrice: hasUnitPrice ? unitPriceValue : normalizeMoney(existingItem.unitPrice),
+          receivedAt,
+          supplier: supplier ?? existingItem.supplier ?? "",
+          note: "Received through create inventory flow",
+        });
+      }
+
       existingItem.lastActivityDate = new Date();
-      
+
+      const updatedSummary = hydrateInventoryForSave(existingItem);
+      existingItem.maxStock = Math.max(resolveStockCap(existingItem), updatedSummary.stock);
+
       const updatedInventory = await existingItem.save();
       await logInventoryActivity({
         req,
         inventory: updatedInventory,
-        actionType: "increase",
+        actionType: stockValue > 0 ? "increase" : "update",
         amount: stockValue,
         previousStock,
-        newStock,
-        note: "Stock increased through create inventory flow",
+        newStock: updatedSummary.stock,
+        note:
+          stockValue > 0
+            ? `New FIFO batch received${createdBatch ? ` (${createdBatch.batchCode})` : ""}`
+            : "Inventory item details updated through create inventory flow",
+        batchBreakdown: createdBatch
+          ? [
+              {
+                batchId: createdBatch._id?.toString?.(),
+                batchCode: createdBatch.batchCode,
+                quantity: createdBatch.quantity,
+                unitPrice: createdBatch.unitPrice,
+                lineCost: normalizeMoney(createdBatch.quantity * createdBatch.unitPrice),
+                receivedAt: createdBatch.receivedAt,
+              },
+            ]
+          : [],
+        totalCost: createdBatch
+          ? normalizeMoney(createdBatch.quantity * createdBatch.unitPrice)
+          : 0,
       });
       if (
+        stockValue > 0 &&
         shouldCreateInventoryRestockNotification({
           inventory: updatedInventory,
           previousStock,
-          previousMinStock: existingItem.minStock,
+          previousMinStock,
         })
       ) {
         await createInventoryEventNotification({
@@ -326,15 +520,18 @@ export const createInventory = async (req, res) => {
         req,
         inventory: updatedInventory,
         previousStock,
-        previousMinStock: existingItem.minStock,
+        previousMinStock,
       });
       notifyInventoryClients({
-        actionType: "increase",
+        actionType: stockValue > 0 ? "increase" : "update",
         inventory: updatedInventory,
       });
       return res.status(200).json({
-        ...updatedInventory.toObject(),
-        message: "Item already exists. Stock updated.",
+        ...serializeInventory(updatedInventory),
+        message:
+          stockValue > 0
+            ? "Existing item restocked as a new FIFO batch."
+            : "Existing item details updated.",
         isUpdate: true
       });
     }
@@ -344,20 +541,36 @@ export const createInventory = async (req, res) => {
 
     // Item doesn't exist - create new one
     const newInventory = new Inventory({
-      name,
+      name: name.trim(),
       sku: generatedSKU,
       normalizedName,
+      normalizedUnit,
       category,
-      stock: stockValue,
+      stock: 0,
       initialStock: stockValue,
       maxStock: stockValue,
       minStock: minStockValue,
       unit,
       description: description || "",
       supplier: supplier || "",
-      unitPrice: unitPrice || 0,
+      unitPrice: hasUnitPrice ? unitPriceValue : 0,
+      batches: [],
+      nextBatchSequence: 1,
       lastActivityDate: new Date(),
     });
+
+    let openingBatch = null;
+    if (stockValue > 0) {
+      openingBatch = appendInventoryBatch(newInventory, {
+        quantity: stockValue,
+        unitPrice: hasUnitPrice ? unitPriceValue : 0,
+        receivedAt,
+        supplier: supplier || "",
+        note: "Opening stock batch",
+      });
+    }
+
+    hydrateInventoryForSave(newInventory);
 
     const savedInventory = await newInventory.save();
     await logInventoryActivity({
@@ -366,8 +579,23 @@ export const createInventory = async (req, res) => {
       actionType: "create",
       amount: stockValue,
       previousStock: 0,
-      newStock: savedInventory.stock,
+      newStock: normalizeQuantity(savedInventory.stock),
       note: "New inventory item created",
+      batchBreakdown: openingBatch
+        ? [
+            {
+              batchId: openingBatch._id?.toString?.(),
+              batchCode: openingBatch.batchCode,
+              quantity: openingBatch.quantity,
+              unitPrice: openingBatch.unitPrice,
+              lineCost: normalizeMoney(openingBatch.quantity * openingBatch.unitPrice),
+              receivedAt: openingBatch.receivedAt,
+            },
+          ]
+        : [],
+      totalCost: openingBatch
+        ? normalizeMoney(openingBatch.quantity * openingBatch.unitPrice)
+        : 0,
     });
     await createInventoryEventNotification({
       req,
@@ -386,7 +614,7 @@ export const createInventory = async (req, res) => {
       inventory: savedInventory,
     });
     res.status(201).json({
-      ...savedInventory.toObject(),
+      ...serializeInventory(savedInventory),
       message: "New item created.",
       isUpdate: false
     });
@@ -398,39 +626,137 @@ export const createInventory = async (req, res) => {
 // Update inventory item
 export const updateInventory = async (req, res) => {
   try {
-    const { name, category, stock, minStock, unit, description, supplier, unitPrice } = req.body;
+    const {
+      name,
+      category,
+      stock,
+      minStock,
+      unit,
+      description,
+      supplier,
+      unitPrice,
+      receivedAt,
+    } = req.body;
 
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
-    // Update fields if provided
-    const previousStock = inventory.stock;
+    const previousSummary = hydrateInventoryForSave(inventory);
+    const previousStock = previousSummary.stock;
     const previousMinStock = inventory.minStock;
-    if (name) inventory.name = name;
-    if (category) inventory.category = category;
-    if (stock != null) {
-      const nextStock = Math.max(0, Number(stock) || 0);
-      inventory.stock = nextStock;
-      inventory.maxStock = Math.max(resolveStockCap(inventory), nextStock);
-      inventory.lastActivityDate = new Date();
+    const hasUnitPrice = unitPrice != null && unitPrice !== "";
+
+    const nextName = name ? name.trim() : inventory.name;
+    const nextUnit = unit ?? inventory.unit;
+    const nextNormalizedName = normalizeName(nextName);
+    const nextNormalizedUnit = normalizeUnit(nextUnit);
+    const nextUnitMatcher = new RegExp(
+      `^${escapeRegExp(String(nextUnit).trim())}$`,
+      "i"
+    );
+
+    const conflictingInventory = await Inventory.findOne({
+      _id: { $ne: inventory._id },
+      normalizedName: nextNormalizedName,
+      archived: false,
+      $or: [
+        { normalizedUnit: nextNormalizedUnit },
+        { unit: nextUnitMatcher },
+      ],
+    }).lean();
+
+    if (conflictingInventory) {
+      return res.status(400).json({
+        message: "Another active inventory item already uses the same name and unit.",
+      });
     }
-    if (minStock != null) inventory.minStock = minStock;
-    if (unit) inventory.unit = unit;
+
+    inventory.name = nextName;
+    inventory.normalizedName = nextNormalizedName;
+    inventory.unit = nextUnit;
+    inventory.normalizedUnit = nextNormalizedUnit;
+    if (category) inventory.category = category;
+    if (minStock != null) inventory.minStock = Math.max(0, Number(minStock) || 0);
     if (description != null) inventory.description = description;
     if (supplier != null) inventory.supplier = supplier;
-    if (unitPrice != null) inventory.unitPrice = unitPrice;
+    if (hasUnitPrice) inventory.unitPrice = normalizeMoney(unitPrice);
 
+    let batchBreakdown = [];
+    let totalCost = 0;
+
+    if (stock != null) {
+      const nextStock = normalizeQuantity(stock);
+
+      if (nextStock > previousStock) {
+        const addedQuantity = normalizeQuantity(nextStock - previousStock);
+        const addedBatch = appendInventoryBatch(inventory, {
+          quantity: addedQuantity,
+          unitPrice:
+            hasUnitPrice
+              ? normalizeMoney(unitPrice)
+              : normalizeMoney(inventory.unitPrice),
+          receivedAt,
+          supplier: supplier ?? inventory.supplier ?? "",
+          note: "Stock synced through update inventory flow",
+        });
+
+        if (addedBatch) {
+          batchBreakdown = [
+            {
+              batchId: addedBatch._id?.toString?.(),
+              batchCode: addedBatch.batchCode,
+              quantity: addedBatch.quantity,
+              unitPrice: addedBatch.unitPrice,
+              lineCost: normalizeMoney(addedBatch.quantity * addedBatch.unitPrice),
+              receivedAt: addedBatch.receivedAt,
+            },
+          ];
+          totalCost = normalizeMoney(addedBatch.quantity * addedBatch.unitPrice);
+        }
+      } else if (nextStock < previousStock) {
+        const deduction = applyFifoDeduction(
+          inventory,
+          normalizeQuantity(previousStock - nextStock)
+        );
+
+        if (!deduction.success) {
+          return res.status(400).json({
+            message: "Unable to reduce stock below available FIFO batches.",
+            ...deduction,
+          });
+        }
+
+        batchBreakdown = deduction.breakdown.map((entry) => ({
+          batchId: entry.batchId,
+          batchCode: entry.batchCode,
+          quantity: entry.willUse,
+          unitPrice: entry.unitPrice,
+          lineCost: entry.lineCost,
+          receivedAt: entry.receivedAt,
+        }));
+        totalCost = normalizeMoney(deduction.totalCost);
+      }
+    }
+
+    inventory.lastActivityDate = new Date();
+
+    const updatedSummary = hydrateInventoryForSave(inventory);
     const updatedInventory = await inventory.save();
     await logInventoryActivity({
       req,
       inventory: updatedInventory,
       actionType: "update",
-      amount: Math.abs(updatedInventory.stock - previousStock),
+      amount: Math.abs(updatedSummary.stock - previousStock),
       previousStock,
-      newStock: updatedInventory.stock,
-      note: "Inventory item updated",
+      newStock: updatedSummary.stock,
+      note:
+        batchBreakdown.length > 0
+          ? `Inventory item updated with FIFO batch impact (${buildFifoNote(batchBreakdown)})`
+          : "Inventory item updated",
+      batchBreakdown,
+      totalCost,
     });
     if (
       shouldCreateInventoryRestockNotification({
@@ -457,7 +783,7 @@ export const updateInventory = async (req, res) => {
       actionType: "update",
       inventory: updatedInventory,
     });
-    res.status(200).json(updatedInventory);
+    res.status(200).json(serializeInventory(updatedInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -466,8 +792,9 @@ export const updateInventory = async (req, res) => {
 // Adjust stock (increase or decrease)
 export const adjustStock = async (req, res) => {
   try {
-    const { type, amount } = req.body;
-    const adjustmentAmount = Number(amount);
+    const { type, amount, unitPrice, receivedAt, supplier } = req.body;
+    const adjustmentAmount = normalizeQuantity(amount);
+    const hasUnitPrice = unitPrice != null && unitPrice !== "";
 
     if (!type || !adjustmentAmount || adjustmentAmount <= 0) {
       return res.status(400).json({ message: "Invalid type or amount" });
@@ -478,16 +805,61 @@ export const adjustStock = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
-    // Adjust current stock and keep maxStock as highest reached value
-    const previousStock = inventory.stock;
+    const previousSummary = hydrateInventoryForSave(inventory);
+    const previousStock = previousSummary.stock;
     const previousMinStock = inventory.minStock;
     const currentCap = resolveStockCap(inventory);
+    let batchBreakdown = [];
+    let totalCost = 0;
 
     if (type === "increase") {
-      inventory.stock = inventory.stock + adjustmentAmount;
-      inventory.maxStock = Math.max(currentCap, inventory.stock);
+      const incomingUnitPrice =
+        hasUnitPrice
+          ? normalizeMoney(unitPrice)
+          : normalizeMoney(inventory.unitPrice);
+
+      const addedBatch = appendInventoryBatch(inventory, {
+        quantity: adjustmentAmount,
+        unitPrice: incomingUnitPrice,
+        receivedAt,
+        supplier: supplier ?? inventory.supplier ?? "",
+        note: "Received through adjust stock flow",
+      });
+
+      inventory.unitPrice = incomingUnitPrice;
+      inventory.maxStock = Math.max(currentCap, normalizeQuantity(previousStock + adjustmentAmount));
+
+      if (addedBatch) {
+        batchBreakdown = [
+          {
+            batchId: addedBatch._id?.toString?.(),
+            batchCode: addedBatch.batchCode,
+            quantity: addedBatch.quantity,
+            unitPrice: addedBatch.unitPrice,
+            lineCost: normalizeMoney(addedBatch.quantity * addedBatch.unitPrice),
+            receivedAt: addedBatch.receivedAt,
+          },
+        ];
+        totalCost = normalizeMoney(addedBatch.quantity * addedBatch.unitPrice);
+      }
     } else if (type === "decrease") {
-      inventory.stock = Math.max(0, inventory.stock - adjustmentAmount);
+      const deduction = applyFifoDeduction(inventory, adjustmentAmount);
+      if (!deduction.success) {
+        return res.status(400).json({
+          message: "Insufficient stock available across FIFO batches.",
+          ...deduction,
+        });
+      }
+
+      batchBreakdown = deduction.breakdown.map((entry) => ({
+        batchId: entry.batchId,
+        batchCode: entry.batchCode,
+        quantity: entry.willUse,
+        unitPrice: entry.unitPrice,
+        lineCost: entry.lineCost,
+        receivedAt: entry.receivedAt,
+      }));
+      totalCost = normalizeMoney(deduction.totalCost);
       inventory.maxStock = currentCap;
     } else {
       return res.status(400).json({ message: "Invalid adjustment type" });
@@ -496,6 +868,7 @@ export const adjustStock = async (req, res) => {
     // Update lastActivityDate on stock adjustment
     inventory.lastActivityDate = new Date();
 
+    const updatedSummary = hydrateInventoryForSave(inventory);
     const updatedInventory = await inventory.save();
     await logInventoryActivity({
       req,
@@ -503,8 +876,15 @@ export const adjustStock = async (req, res) => {
       actionType: type,
       amount: adjustmentAmount,
       previousStock,
-      newStock: updatedInventory.stock,
-      note: `Stock ${type}d through adjust stock flow`,
+      newStock: updatedSummary.stock,
+      note:
+        type === "decrease" && batchBreakdown.length > 0
+          ? `Stock deducted with FIFO batches (${buildFifoNote(batchBreakdown)})`
+          : type === "increase" && batchBreakdown.length > 0
+            ? `New FIFO batch received (${batchBreakdown[0].batchCode})`
+            : `Stock ${type}d through adjust stock flow`,
+      batchBreakdown,
+      totalCost,
     });
     if (
       type === "increase" &&
@@ -532,7 +912,15 @@ export const adjustStock = async (req, res) => {
       actionType: type,
       inventory: updatedInventory,
     });
-    res.status(200).json(updatedInventory);
+    res.status(200).json({
+      ...serializeInventory(updatedInventory),
+      lastAdjustment: {
+        type,
+        amount: adjustmentAmount,
+        totalCost,
+        batchBreakdown,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -546,6 +934,7 @@ export const archiveInventory = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
+    hydrateInventoryForSave(inventory);
     inventory.archived = true;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -566,7 +955,7 @@ export const archiveInventory = async (req, res) => {
       actionType: "archive",
       inventory: updatedInventory,
     });
-    res.status(200).json(updatedInventory);
+    res.status(200).json(serializeInventory(updatedInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -580,6 +969,7 @@ export const restoreInventory = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
+    hydrateInventoryForSave(inventory);
     inventory.archived = false;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -600,7 +990,7 @@ export const restoreInventory = async (req, res) => {
       actionType: "restore",
       inventory: updatedInventory,
     });
-    res.status(200).json(updatedInventory);
+    res.status(200).json(serializeInventory(updatedInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -614,6 +1004,7 @@ export const deleteInventory = async (req, res) => {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
+    hydrateInventoryForSave(inventory);
     inventory.archived = true;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -634,7 +1025,7 @@ export const deleteInventory = async (req, res) => {
       actionType: "archive",
       inventory: updatedInventory,
     });
-    res.status(200).json(updatedInventory);
+    res.status(200).json(serializeInventory(updatedInventory));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -643,7 +1034,7 @@ export const deleteInventory = async (req, res) => {
 // Get inventory statistics
 export const getInventoryStats = async (req, res) => {
   try {
-    const inventory = await Inventory.find();
+    const inventory = (await Inventory.find()).map(serializeInventory);
 
     const totalItems = inventory.length;
     const lowStock = inventory.filter((item) => {
@@ -651,13 +1042,16 @@ export const getInventoryStats = async (req, res) => {
       return item.stock > 0 && item.stock / stockCap < 0.2;
     }).length;
     const outOfStock = inventory.filter((item) => item.stock === 0).length;
-    const totalValue = inventory.reduce((sum, item) => sum + item.stock * item.unitPrice, 0);
+    const totalValue = inventory.reduce(
+      (sum, item) => sum + normalizeMoney(item.currentStockValue),
+      0
+    );
 
     res.status(200).json({
       totalItems,
       lowStock,
       outOfStock,
-      totalValue,
+      totalValue: normalizeMoney(totalValue),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -678,7 +1072,9 @@ export const searchInventory = async (req, res) => {
       filter.category = category;
     }
 
-    const results = await Inventory.find(filter).sort({ createdAt: -1 });
+    const results = (await Inventory.find(filter).sort({ createdAt: -1 })).map(
+      serializeInventory
+    );
 
     // Filter by status if provided
     let filtered = results;

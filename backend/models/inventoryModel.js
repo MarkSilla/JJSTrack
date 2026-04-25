@@ -1,5 +1,57 @@
 import mongoose from "mongoose";
 
+const inventoryBatchSchema = new mongoose.Schema(
+  {
+    sequence: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    batchCode: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    initialQuantity: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    receivedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    unitPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    supplier: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    note: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 const inventorySchema = new mongoose.Schema(
   {
     name: {
@@ -15,6 +67,13 @@ const inventorySchema = new mongoose.Schema(
       uppercase: true,
     },
     normalizedName: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    normalizedUnit: {
       type: String,
       required: true,
       lowercase: true,
@@ -67,6 +126,15 @@ const inventorySchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
+    },
+    batches: {
+      type: [inventoryBatchSchema],
+      default: [],
+    },
+    nextBatchSequence: {
+      type: Number,
+      default: 1,
+      min: 1,
     },
     lastActivityDate: {
       type: Date,

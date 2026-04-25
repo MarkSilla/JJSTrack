@@ -3,6 +3,7 @@ import {
   getAllInventory,
   getInventoryActivity,
   getInventoryById,
+  previewInventoryFifo,
   getInventoryByCategory,
   createInventory,
   updateInventory,
@@ -23,6 +24,7 @@ router.get("/activity", authMiddleware, getInventoryActivity);
 router.get("/stats", getInventoryStats);
 router.get("/search", searchInventory);
 router.get("/category/:category", getInventoryByCategory);
+router.get("/:id/fifo-preview", authMiddleware, previewInventoryFifo);
 router.get("/:id", getInventoryById);
 
 // Protected routes

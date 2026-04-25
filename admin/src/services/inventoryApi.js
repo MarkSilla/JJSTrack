@@ -95,15 +95,28 @@ export const inventoryApi = {
   },
 
   // Adjust stock (increase or decrease)
-  adjustStock: async (id, type, amount) => {
+  adjustStock: async (id, type, amount, options = {}) => {
     try {
       const response = await api.patch(`/inventory/${id}/adjust`, {
         type,
         amount,
+        ...options,
       });
       return response.data;
     } catch (error) {
       console.error('Error adjusting stock:', error);
+      throw error;
+    }
+  },
+
+  previewFifo: async (id, quantity) => {
+    try {
+      const response = await api.get(`/inventory/${id}/fifo-preview`, {
+        params: { quantity },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error previewing FIFO deduction:', error);
       throw error;
     }
   },
