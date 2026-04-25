@@ -5,6 +5,7 @@ import orderModel from '../models/orderModel.js';
 import userModel from '../models/userModel.js';
 import { buildAssignmentQuery, getAssignmentCandidates } from './assignmentAccess.js';
 import { createNotification } from './notificationHelpers.js';
+import { getPrimaryRepairOptionName } from './repairDisplay.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REMINDER_WINDOWS = new Set([0, 1, 2]);
@@ -101,9 +102,7 @@ const getBookingSubjectLabel = (booking = {}) => {
   }
 
   if (booking?.bookingType === 'repair') {
-    return (
-      String(booking?.repairDescription || booking?.service || 'Repair').trim() || 'Repair'
-    );
+    return getPrimaryRepairOptionName(booking, 'Repair');
   }
 
   return String(booking?.service || booking?.bookingType || 'Booking').trim() || 'Booking';

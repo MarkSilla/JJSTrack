@@ -39,6 +39,9 @@ const EMPTY_SLOT_INFO = {
     jerseyOrgIsFull: false,
 }
 
+const getRepairDisplayLabel = (booking = {}) =>
+    booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair'
+
 const LIVE_REFRESH_MS = 5000
 
 const BookingModal = ({ booking, onClose }) => {
@@ -122,7 +125,10 @@ const Appointment = () => {
                             dateKey,
                             date: dateKey ? formatDateForUi(dateKey) : 'N/A',
                             time: booking.pickupSlot || 'Not specified',
-                            service: booking.service || booking.bookingType || 'Booking',
+                            service:
+                                booking.bookingType === 'repair'
+                                    ? getRepairDisplayLabel(booking)
+                                    : booking.service || booking.bookingType || 'Booking',
                             status: booking.status || 'Pending',
                         }
                     })

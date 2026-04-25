@@ -31,6 +31,8 @@ const STATUS_CONFIG = {
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const LIVE_REFRESH_MS = 5000;
+const getRepairDisplayLabel = (booking = {}) =>
+    booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair';
 
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
@@ -164,7 +166,7 @@ const AdAppointment = () => {
                         : new Date(booking.createdAt).toISOString().split('T')[0],
                     time: booking.pickupSlot || '09:00 AM',
                     customer: booking.contact?.fullName || 'Unknown Customer',
-                    service: booking.service,
+                    service: booking.bookingType === 'repair' ? getRepairDisplayLabel(booking) : booking.service,
                     type: booking.bookingType === 'organizational' ? 'org' : booking.bookingType,
                     status: mapStatus(booking.status),
                     staff: booking.assignedTailor || 'Unassigned',

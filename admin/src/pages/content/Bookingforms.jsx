@@ -352,6 +352,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 })
 
                 bookingData.selectedOptions = optionsArray
+                bookingData.service = optionsArray[0]?.name || service
                 bookingData.items = optionsArray.map(option => ({
                     description: option.name,
                     type: 'Repair',

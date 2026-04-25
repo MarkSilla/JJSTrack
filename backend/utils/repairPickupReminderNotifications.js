@@ -1,6 +1,7 @@
 import bookingModel from '../models/bookingModel.js';
 import notificationModel from '../models/notificationModel.js';
 import { createNotification } from './notificationHelpers.js';
+import { getPrimaryRepairOptionName } from './repairDisplay.js';
 
 const REMINDER_LEAD_MS = 30 * 60 * 1000;
 const SYNC_INTERVAL_MS = 60 * 1000;
@@ -90,7 +91,7 @@ const getBookingReferenceLabel = (booking = {}) =>
   ).trim();
 
 const getRepairSubjectLabel = (booking = {}) =>
-  String(booking?.repairDescription || booking?.service || 'Repair').trim() || 'Repair';
+  getPrimaryRepairOptionName(booking, 'Repair');
 
 const getPickupSlotLabel = (pickupSlot = '') => {
   const slotKey = String(pickupSlot || '').trim().toLowerCase();

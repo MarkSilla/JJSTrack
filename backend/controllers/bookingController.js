@@ -11,6 +11,7 @@ import {
   maybeCreateBookingReadyForPickupNotification,
   maybeCreateBookingReleasedNotification,
 } from '../utils/userNotificationEvents.js';
+import { getPrimaryRepairOptionName } from '../utils/repairDisplay.js';
 import {
   emitBackofficeOrdersFeedRefresh,
   emitBookingTrackingUpdate,
@@ -203,7 +204,7 @@ const getBookingSubjectLabel = (booking = {}) => {
   }
 
   if (booking?.bookingType === 'repair') {
-    return String(booking?.service || booking?.repairDescription || 'Repair').trim() || 'Repair';
+    return getPrimaryRepairOptionName(booking, 'Repair');
   }
 
   return String(booking?.service || booking?.teamName || booking?.orgName || '').trim();
@@ -637,6 +638,17 @@ export const createBooking = async (req, res) => {
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
 
     const normalizedSelectedOptions = normalizeSelectedOptions(selectedOptions);
+    const resolvedService =
+      bookingType === 'repair'
+        ? getPrimaryRepairOptionName(
+            {
+              service,
+              selectedOptions: normalizedSelectedOptions,
+              repairDescription,
+            },
+            'Repair'
+          )
+        : service;
     let normalizedItems = normalizeBookingItems(items);
 
     if (normalizedItems.length === 0 && bookingType === 'repair' && normalizedSelectedOptions.length > 0) {
@@ -709,7 +721,7 @@ export const createBooking = async (req, res) => {
     const bookingData = {
       userId: req.userId,
       bookingType,
-      service,
+      service: resolvedService,
       selectedOptions: normalizedSelectedOptions,
       repairDescription,
       photos: normalizedPhotos,
@@ -1114,7 +1126,7 @@ export const convertBookingToOrder = async (req, res) => {
     ];
 
     if (booking.bookingType === 'repair') {
-      item = `Repair - ${booking.service}`;
+      item = `Repair - ${getPrimaryRepairOptionName(booking, 'Repair')}`;
       steps = [
         { label: 'Drop Off', done: true, date: new Date().toLocaleDateString(), time: '9:00 AM' },
         { label: 'Sewing', done: false },
@@ -1212,7 +1224,7 @@ export const convertBookingToOrder = async (req, res) => {
     } else if (items.length === 0 && booking.bookingType === 'repair' && booking.selectedOptions) {
       for (const option of booking.selectedOptions) {
         items.push({
-          description: `${booking.service} - ${option.name}`,
+          description: option.name || getPrimaryRepairOptionName(booking, 'Repair'),
           type: 'Repair',
           qty: option.quantity || 1,
           unitPrice: option.price,

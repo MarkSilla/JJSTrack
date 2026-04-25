@@ -8,6 +8,8 @@ import { bookingApi } from '../../services/bookingApi';
 
 const getBookingDisplayId = (booking = {}) =>
     String(booking?.bookingId || booking?.displayId || booking?.id || booking?._id || 'N/A');
+const getRepairDisplayLabel = (booking = {}) =>
+    booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair';
 
 const SORT_OPTIONS = [
     { value: 'newest', label: 'Newest → Oldest' },
@@ -61,7 +63,8 @@ function ReleasedItemDetail({ booking, onBack }) {
     const steps = booking.steps || booking.productionProgress || [];
     const teamRoster = booking.teamRoster || booking.players || booking.members || [];
     const isJersey = String(booking.type || booking.service || '').toLowerCase().includes('jersey');
-    const isRepair = String(booking.type || booking.service || '').toLowerCase().includes('repair');
+    const repairDisplayLabel = getRepairDisplayLabel(booking);
+    const isRepair = String(booking.type || repairDisplayLabel || booking.service || '').toLowerCase().includes('repair');
 
     return (
         <div className="font-inter flex flex-col gap-4 pb-8">
@@ -87,7 +90,7 @@ function ReleasedItemDetail({ booking, onBack }) {
                         {booking.customerName}
                     </h1>
                     <p className="text-xs text-slate-400 font-medium mb-4">
-                        {booking.service || booking.type || 'Service'}
+                        {isRepair ? repairDisplayLabel : booking.service || booking.type || 'Service'}
                     </p>
                     <div className="flex flex-wrap gap-y-1.5 gap-x-5">
                         {booking.contact?.phone && (

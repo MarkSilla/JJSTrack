@@ -2,6 +2,7 @@ import orderModel from '../models/orderModel.js';
 import bookingModel from '../models/bookingModel.js';
 import notificationModel from '../models/notificationModel.js';
 import { createNotification } from './notificationHelpers.js';
+import { getPrimaryRepairOptionName } from './repairDisplay.js';
 import { normalizeWorkflowStatus } from './workflowStatus.js';
 
 const normalizeEntityId = (value) =>
@@ -28,9 +29,7 @@ const getBookingSubjectLabel = (booking = {}) => {
   }
 
   if (booking?.bookingType === 'repair') {
-    return (
-      String(booking?.repairDescription || booking?.service || 'Repair').trim() || 'Repair'
-    );
+    return getPrimaryRepairOptionName(booking, 'Repair');
   }
 
   return String(booking?.service || '').trim() || 'Booking';

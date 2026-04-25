@@ -77,12 +77,17 @@ const getBookingReference = (booking = {}) => {
     return suffix ? `BK-${suffix}` : "Booking";
 };
 
+const getRepairDisplayLabel = (booking = {}) =>
+    booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || "Repair";
+
 const getBookingTaskLabel = (booking = {}) => {
     const steps = Array.isArray(booking.steps) ? booking.steps : [];
     const activeStep = steps.find((step) => step?.active) || steps.find((step) => !step?.done);
     const statusText = String(booking.status || "").trim();
     const stage = activeStep?.label || statusText || "Pending";
-    const service = booking.service || booking.bookingType || "Service";
+    const service = booking.bookingType === "repair"
+        ? getRepairDisplayLabel(booking)
+        : booking.service || booking.bookingType || "Service";
     return `${getBookingReference(booking)} • ${service} • ${stage}`;
 };
 
@@ -97,7 +102,9 @@ const buildBookingTaskLabel = (booking = {}) => {
     const activeStep = steps.find((step) => step?.active) || steps.find((step) => !step?.done);
     const statusText = String(booking.status || "").trim();
     const stage = activeStep?.label || statusText || "Pending";
-    const service = booking.service || booking.bookingType || "Service";
+    const service = booking.bookingType === "repair"
+        ? getRepairDisplayLabel(booking)
+        : booking.service || booking.bookingType || "Service";
     return `${getBookingReference(booking)} - ${service} - ${stage}`;
 };
 

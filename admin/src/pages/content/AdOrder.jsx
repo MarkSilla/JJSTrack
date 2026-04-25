@@ -20,6 +20,8 @@ import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
 
 const FALLBACK_REFRESH_MS = 60000;
+const getRepairDisplayLabel = (booking = {}) =>
+    booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +64,7 @@ const getBookingDisplayLabel = (booking = {}) => {
     }
 
     if (booking.bookingType === 'repair') {
-        return booking.service || booking.repairDescription || 'Repair';
+        return getRepairDisplayLabel(booking);
     }
 
     return booking.service || booking.teamName || booking.orgName || booking.bookingType || 'Service';

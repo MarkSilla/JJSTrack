@@ -938,6 +938,21 @@ function AddItemModal({ settings, onConfirm, onClose }) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showUnitModal, setShowUnitModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const hasAllRequiredFields =
+    form.name.trim() !== "" &&
+    form.category &&
+    form.unit &&
+    form.stock !== "" &&
+    form.unitPrice !== "" &&
+    String(form.receivedAt || "").trim() !== "";
+  const stockValue = Number(form.stock);
+  const unitPriceValue = Number(form.unitPrice);
+  const isSaveDisabled =
+    !hasAllRequiredFields ||
+    Number.isNaN(stockValue) ||
+    stockValue < 0 ||
+    Number.isNaN(unitPriceValue) ||
+    unitPriceValue < 0;
 
   const handleConfirm = () => {
     if (!form.name.trim()) return;
@@ -1131,7 +1146,15 @@ function AddItemModal({ settings, onConfirm, onClose }) {
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-          <button onClick={handleConfirm} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <button
+            onClick={handleConfirm}
+            disabled={isSaveDisabled}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+              isSaveDisabled
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
             <Plus size={15} /> Save Item / Batch
           </button>
         </div>

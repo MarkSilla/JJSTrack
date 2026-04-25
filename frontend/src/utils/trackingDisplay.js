@@ -13,6 +13,13 @@ const extractSuffixAfterDash = (value = '') => {
     return normalizeValue(match?.[1] || '')
 }
 
+const getRepairDisplayLabel = (entry = {}) =>
+    normalizeValue(entry?.selectedOptions?.[0]?.name) ||
+    normalizeValue(entry?.service) ||
+    normalizeValue(entry?.repairDescription) ||
+    normalizeValue(entry?.item) ||
+    'Repair'
+
 export const getTrackingDisplayName = (entry = {}) => {
     const bookingType = normalizeValue(entry?.bookingType).toLowerCase()
 
@@ -33,12 +40,7 @@ export const getTrackingDisplayName = (entry = {}) => {
     }
 
     if (bookingType === 'repair') {
-        return (
-            normalizeValue(entry?.repairDescription) ||
-            normalizeValue(entry?.service) ||
-            normalizeValue(entry?.item) ||
-            'Repair'
-        )
+        return getRepairDisplayLabel(entry)
     }
 
     const serviceType = normalizeValue(entry?.serviceType).toLowerCase()

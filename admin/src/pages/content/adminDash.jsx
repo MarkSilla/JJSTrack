@@ -46,6 +46,9 @@ const normalizeServiceLabel = (service) => {
   return "Service";
 };
 
+const getRepairDisplayLabel = (booking = {}) =>
+  booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || "Repair";
+
 const getBookingDisplayLabel = (booking = {}) => {
   if (booking.bookingType === "jersey") {
     return booking.teamName || booking.service || "Team Jersey";
@@ -56,7 +59,7 @@ const getBookingDisplayLabel = (booking = {}) => {
   }
 
   if (booking.bookingType === "repair") {
-    return booking.service || booking.repairDescription || "Repair";
+    return getRepairDisplayLabel(booking);
   }
 
   return booking.service || booking.teamName || booking.orgName || normalizeServiceLabel(booking.bookingType);
