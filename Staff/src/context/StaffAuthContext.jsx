@@ -36,6 +36,14 @@ export const StaffAuthProvider = ({ children }) => {
     }
 
     checkAuthentication()
+
+    // Listen for custom auth state change event
+    const handleAuthStateChange = () => {
+      checkAuthentication()
+    }
+
+    window.addEventListener('staff-auth-changed', handleAuthStateChange)
+    return () => window.removeEventListener('staff-auth-changed', handleAuthStateChange)
   }, [])
 
   const logout = () => {

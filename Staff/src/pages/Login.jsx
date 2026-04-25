@@ -57,6 +57,10 @@ function Login() {
             localStorage.setItem('staffToken', data.token)
             localStorage.setItem('rememberStaffEmail', normalizedEmail)
             localStorage.setItem('staffUser', JSON.stringify(data.staff))
+            
+            // Notify auth context of the change
+            window.dispatchEvent(new Event('staff-auth-changed'))
+            
             navigate('/staff/dashboard')
         } catch (err) {
             setError(err.message || 'Unable to login right now.')

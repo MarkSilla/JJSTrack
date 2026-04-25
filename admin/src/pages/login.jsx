@@ -80,6 +80,9 @@ function Login() {
                     localStorage.removeItem('rememberAdminEmail')
                 }
 
+                // Notify auth context of the change
+                window.dispatchEvent(new Event('admin-auth-changed'))
+
                 // Redirect to dashboard
                 navigate('/admin/dashboard')
             }

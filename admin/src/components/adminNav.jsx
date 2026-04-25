@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
     Bell, Menu, X, User, LogOut, Settings
 } from 'lucide-react'
+import { AdminAuthContext } from '../context/AdminAuthContext'
 import { getInventoryUpdatesWebSocketUrl } from '../services/inventoryApi'
 import { notificationApi } from '../services/notificationApi'
 
@@ -77,6 +78,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const notificationRefreshTimeoutRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
+    const { logout } = useContext(AdminAuthContext)
 
     // ← DAGDAG ITO
     const currentPage = PAGE_TITLES[location.pathname] ?? { title: pageTitle, subtitle: pageSubtitle }
@@ -255,8 +257,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     }, [loadNotifications])
 
     const handleLogout = () => {
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('rememberAdminEmail')
+        logout()
         navigate('/')
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -13,6 +13,7 @@ import {
     getNotificationUpdatesWebSocketUrl,
     notificationApi,
 } from '../services/notificationApi.js'
+import { StaffAuthContext } from '../context/StaffAuthContext.jsx'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -77,6 +78,7 @@ const StaffNav = ({ onToggleSidebar }) => {
     const notificationIdsRef = useRef(new Set())
     const navigate = useNavigate()
     const location = useLocation()
+    const { logout } = useContext(StaffAuthContext)
 
     const user = useMemo(() => {
         try {
@@ -316,10 +318,7 @@ const StaffNav = ({ onToggleSidebar }) => {
     }, [loadNotifications])
 
     const handleLogout = () => {
-        localStorage.removeItem('staffToken')
-        sessionStorage.removeItem('staffToken')
-        localStorage.removeItem('rememberStaffEmail')
-        localStorage.removeItem('staffUser')
+        logout()
         navigate('/')
     }
 
