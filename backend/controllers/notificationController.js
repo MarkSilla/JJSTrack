@@ -3,6 +3,7 @@ import notificationModel from '../models/notificationModel.js';
 import { getRequestActor } from '../utils/requestActor.js';
 import { resolveNotificationAudience } from '../utils/notificationHelpers.js';
 import { syncUpcomingBookingNotifications } from '../utils/bookingReminderNotifications.js';
+import { syncUpcomingAssignedTaskNotifications } from '../utils/staffNotificationEvents.js';
 
 const serializeNotification = (notification) => ({
   _id: notification._id,
@@ -18,21 +19,42 @@ const serializeNotification = (notification) => ({
   metadata: notification.metadata || {},
 });
 
-const getAudienceForRequest = async (req) => {
+const getNotificationScopeForRequest = async (req) => {
   const actor = await getRequestActor(req);
 
   if (!actor) {
     return null;
   }
 
-  return resolveNotificationAudience(actor.role);
+  const audience = resolveNotificationAudience(actor.role);
+  const actorId =
+    actor?._id && mongoose.isValidObjectId(actor._id) ? actor._id : null;
+
+  if (audience === 'user' && !actorId) {
+    return null;
+  }
+
+  return {
+    audience,
+    actorId,
+  };
+};
+
+const buildNotificationQuery = ({ audience, actorId }) => {
+  const query = { audience };
+
+  if ((audience === 'user' || audience === 'staff') && actorId) {
+    query.recipientId = actorId;
+  }
+
+  return query;
 };
 
 export const getNotifications = async (req, res) => {
   try {
-    const audience = await getAudienceForRequest(req);
+    const scope = await getNotificationScopeForRequest(req);
 
-    if (!audience) {
+    if (!scope) {
       return res.status(403).json({
         success: false,
         message: 'Unable to resolve notification audience',
@@ -44,13 +66,21 @@ export const getNotifications = async (req, res) => {
       ? Math.min(Math.max(parsedLimit, 1), 50)
       : 10;
 
-    if (audience === 'admin') {
+    if (scope.audience === 'admin') {
       await syncUpcomingBookingNotifications();
     }
 
+    if (scope.audience === 'staff' && scope.actorId) {
+      await syncUpcomingAssignedTaskNotifications({
+        staffUserId: scope.actorId,
+      });
+    }
+
+    const query = buildNotificationQuery(scope);
+
     const [notifications, unreadCount] = await Promise.all([
-      notificationModel.find({ audience }).sort({ createdAt: -1 }).limit(limit).lean(),
-      notificationModel.countDocuments({ audience, isRead: false }),
+      notificationModel.find(query).sort({ createdAt: -1 }).limit(limit).lean(),
+      notificationModel.countDocuments({ ...query, isRead: false }),
     ]);
 
     res.json({
@@ -70,9 +100,9 @@ export const getNotifications = async (req, res) => {
 export const markNotificationAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const audience = await getAudienceForRequest(req);
+    const scope = await getNotificationScopeForRequest(req);
 
-    if (!audience) {
+    if (!scope) {
       return res.status(403).json({
         success: false,
         message: 'Unable to resolve notification audience',
@@ -86,8 +116,9 @@ export const markNotificationAsRead = async (req, res) => {
       });
     }
 
+    const query = buildNotificationQuery(scope);
     const notification = await notificationModel.findOneAndUpdate(
-      { _id: id, audience },
+      { ...query, _id: id },
       { isRead: true, readAt: new Date() },
       { new: true }
     );
@@ -114,17 +145,18 @@ export const markNotificationAsRead = async (req, res) => {
 
 export const markAllNotificationsAsRead = async (req, res) => {
   try {
-    const audience = await getAudienceForRequest(req);
+    const scope = await getNotificationScopeForRequest(req);
 
-    if (!audience) {
+    if (!scope) {
       return res.status(403).json({
         success: false,
         message: 'Unable to resolve notification audience',
       });
     }
 
+    const query = buildNotificationQuery(scope);
     const result = await notificationModel.updateMany(
-      { audience, isRead: false },
+      { ...query, isRead: false },
       { isRead: true, readAt: new Date() }
     );
 

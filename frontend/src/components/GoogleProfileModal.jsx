@@ -276,6 +276,7 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
 
       if (response.success) {
         localStorage.setItem('user', JSON.stringify(response.user));
+        window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: response.user }));
         onSuccess(response.user);
         onClose();
       } else {

@@ -4,6 +4,8 @@ import { GiSewingMachine } from 'react-icons/gi'
 import { bookingApi } from '../../../services/bookingApi'
 import img from '../../assets/img.js'
 import { useParams } from 'react-router-dom'
+import { getTrackingReferenceId } from '../../utils/trackingReference.js'
+import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 
 const useUser = () => ({ name: 'Juan' })
 
@@ -58,18 +60,7 @@ const normalizeInvoiceStatus = (booking) => {
     return 'Pending'
 }
 
-const shouldShowInvoice = (booking) => {
-    const bookingStatus = String(booking?.status || '').toLowerCase()
-    return Boolean(
-        booking?.paid ||
-        booking?.isPickedUp ||
-        booking?.pickedUpAt ||
-        booking?.paidAt ||
-        bookingStatus === 'released' ||
-        bookingStatus.includes('scan') ||
-        bookingStatus === 'completed'
-    )
-}
+const shouldShowInvoice = (booking) => normalizeInvoiceStatus(booking) === 'Paid'
 
 const mapBookingTypeToItemType = (bookingType) => {
     const type = String(bookingType || '').toLowerCase()
@@ -162,15 +153,16 @@ const Invoices = () => {
 
                             return {
                                 id: booking._id,
+                                referenceId: getTrackingReferenceId(booking),
                                 invoiceNumber: booking?.invoice?.invoiceNumber || `INV-${booking._id.slice(-6).toUpperCase()}`,
                                 customerName: billTo.name,
-                                itemName: booking?.service || 'N/A',
-                                orderItem: booking?.service || 'N/A',
+                                itemName: getTrackingDisplayName(booking),
+                                orderItem: getTrackingDisplayName(booking),
                                 amount,
                                 status: normalizeInvoiceStatus(booking),
                                 date: booking?.invoice?.date || (booking?.createdAt ? new Date(booking.createdAt).toLocaleDateString('en-PH') : 'N/A'),
                                 dueDate: booking?.invoice?.dueDate || booking?.pickupDate || 'N/A',
-                                orderId: booking?.orderId || booking._id,
+                                orderId: getTrackingReferenceId(booking),
                                 items,
                                 billTo,
                                 taxRate: toNumeric(booking?.invoice?.taxRate),
@@ -212,7 +204,7 @@ const Invoices = () => {
 
     // Stats
     const paidAmount = invoices.filter(i => i.status === 'Paid').reduce((sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0), 0)
-    const pendingAmount = invoices.filter(i => i.status === 'Pending').reduce((sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0), 0)
+    const paidCount = invoices.filter(i => i.status === 'Paid').length
     const totalAmount = invoices.reduce((sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0), 0)
 
     return (
@@ -228,7 +220,7 @@ const Invoices = () => {
                 <div className="flex items-center justify-center h-80">
                     <div className="text-center">
                         <MdReceipt size={48} className="mx-auto mb-4 text-gray-300" />
-                        <p className="text-gray-600">No invoices found</p>
+                        <p className="text-gray-600">No paid invoices found</p>
                     </div>
                 </div>
             ) : (
@@ -260,7 +252,7 @@ const Invoices = () => {
                             <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
                                 {[
                                     { label: 'Paid', value: `₱${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-400/20 text-emerald-300' },
-                                    { label: 'Pending', value: `₱${pendingAmount.toLocaleString('en-PH')}`, sub: 'Outstanding', icon: MdAccessTime, color: 'bg-amber-400/20 text-amber-300' },
+                                    { label: 'Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Paid only', icon: MdReceipt, color: 'bg-amber-400/20 text-amber-300' },
                                     { label: 'Total', value: `₱${totalAmount.toLocaleString('en-PH')}`, sub: `${invoices.length} Invoices`, icon: MdReceipt, color: 'bg-blue-400/20 text-blue-300' },
                                 ].map(({ label, value, sub, icon: Icon, color }) => (
                                     <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/15 transition-all">
@@ -308,7 +300,7 @@ const Invoices = () => {
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between mb-3">
-                                                <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>{inv.id}</span>
+                                                <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>{inv.referenceId || 'N/A'}</span>
                                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 uppercase tracking-wider ${statusStyle(inv.status)}`}>
                                                     {statusIcon(inv.status)}
                                                     {inv.status}
@@ -347,8 +339,8 @@ const Invoices = () => {
                                                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-200 tracking-wide uppercase leading-none">Invoice</h2>
                                                 <div className="mt-3 space-y-1 text-[11px] sm:text-sm">
                                                     <div className="flex justify-center sm:justify-end gap-3 leading-tight">
-                                                        <span className="text-gray-400 min-w-[70px]">Invoice #:</span>
-                                                        <span className="text-gray-700 font-bold font-mono">{invoice.id}</span>
+                                                        <span className="text-gray-400 min-w-[70px]">Booking ID:</span>
+                                                        <span className="text-gray-700 font-bold font-mono">{invoice.referenceId || 'N/A'}</span>
                                                     </div>
                                                     <div className="flex justify-center sm:justify-end gap-3 leading-tight">
                                                         <span className="text-gray-400 min-w-[70px]">Date:</span>
@@ -382,7 +374,7 @@ const Invoices = () => {
                                                 <div className="w-32 h-32 bg-white rounded-xl flex items-center justify-center p-1">
                                                     <img src={img.qrcode} alt="QR Code" className="w-full h-full object-contain rounded-lg" />
                                                 </div>
-                                                <p className="text-xs font-mono text-gray-500 mt-2">{invoice.id}</p>
+                                                <p className="text-xs font-mono text-gray-500 mt-2">{invoice.referenceId || 'N/A'}</p>
                                             </div>
                                         </div>
 

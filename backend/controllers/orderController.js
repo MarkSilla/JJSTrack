@@ -6,6 +6,15 @@ import QRCode from 'qrcode';
 import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { getRequestActor } from '../utils/requestActor.js';
 import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+import {
+  maybeCreateOrderReadyForPickupNotification,
+  maybeCreateOrderReleasedNotification,
+} from '../utils/userNotificationEvents.js';
+import {
+  emitBackofficeOrdersFeedRefresh,
+  emitOrderTrackingUpdate,
+} from '../utils/trackingUpdateEvents.js';
+import { maybeCreateStaffAssignmentNotification } from '../utils/staffNotificationEvents.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
@@ -165,6 +174,9 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    const previousStatus = order.status;
+    const previousAssignedTailor = order.assignedTailor;
+
     if (assignedTailor) order.assignedTailor = assignedTailor;
     if (estimatedCompletion) order.estimatedCompletion = estimatedCompletion;
     if (notes) order.notes = notes;
@@ -186,6 +198,12 @@ export const updateOrderStatus = async (req, res) => {
     if (nextStatus) order.status = nextStatus;
 
     await order.save();
+    emitOrderTrackingUpdate(order);
+    await maybeCreateOrderReadyForPickupNotification({
+      req,
+      order,
+      previousStatus,
+    });
 
     res.json({
       success: true,
@@ -221,6 +239,7 @@ export const updateOrderSteps = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    const previousStatus = order.status;
     const nextSteps = steps || order.steps;
 
     const nextStatus = resolveWorkflowStatus({
@@ -233,6 +252,12 @@ export const updateOrderSteps = async (req, res) => {
     if (players) order.players = players;
 
     await order.save();
+    emitOrderTrackingUpdate(order);
+    await maybeCreateOrderReadyForPickupNotification({
+      req,
+      order,
+      previousStatus,
+    });
 
     res.json({
       success: true,
@@ -266,7 +291,7 @@ export const cancelOrder = async (req, res) => {
     }
 
     // Check if order can be cancelled
-    if (order.status === 'Completed' || order.status === 'Cancelled') {
+    if (['Completed', 'Released', 'Cancelled'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         message: `Cannot cancel an order that is already ${order.status}`
@@ -275,6 +300,7 @@ export const cancelOrder = async (req, res) => {
 
     order.status = 'Cancelled';
     await order.save();
+    emitOrderTrackingUpdate(order);
 
     res.json({
       success: true,
@@ -306,6 +332,7 @@ export const deleteOrder = async (req, res) => {
     }
 
     await invoiceModel.deleteMany({ orderId: id });
+    emitBackofficeOrdersFeedRefresh();
 
     res.json({
       success: true,
@@ -336,8 +363,16 @@ export const assignEmployee = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    const previousAssignedTailor = order.assignedTailor;
     order.assignedTailor = employeeId;
     await order.save();
+    emitOrderTrackingUpdate(order);
+    await maybeCreateStaffAssignmentNotification({
+      req,
+      entityType: 'order',
+      entity: order,
+      previousAssignedTailor,
+    });
 
     res.json({
       success: true,
@@ -426,12 +461,14 @@ export const markAsReleased = async (req, res) => {
       });
     }
 
+    const previousReleased = order.isReleased;
     order.isReleased = true;
     order.releasedAt = new Date();
     order.status = 'Released';  // Set status to Released when QR is scanned
     order.paid = true;  // Mark as paid when scanned
     order.paidAt = new Date();
     await order.save();
+    emitOrderTrackingUpdate(order, 'released');
 
     // Update associated invoice status to "Paid"
     await invoiceModel.findOneAndUpdate(
@@ -439,6 +476,11 @@ export const markAsReleased = async (req, res) => {
       { status: 'Paid', updatedAt: new Date() },
       { new: true }
     );
+    await maybeCreateOrderReleasedNotification({
+      req,
+      order,
+      previousReleased,
+    });
 
     res.json({
       success: true,

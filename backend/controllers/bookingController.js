@@ -7,6 +7,16 @@ import userModel from '../models/userModel.js';
 import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
 import { createNotification } from '../utils/notificationHelpers.js';
+import {
+  maybeCreateBookingReadyForPickupNotification,
+  maybeCreateBookingReleasedNotification,
+} from '../utils/userNotificationEvents.js';
+import {
+  emitBackofficeOrdersFeedRefresh,
+  emitBookingTrackingUpdate,
+  emitOrderTrackingUpdate,
+} from '../utils/trackingUpdateEvents.js';
+import { maybeCreateStaffAssignmentNotification } from '../utils/staffNotificationEvents.js';
 
 const isEnvAdminRequest = (req) => req.userId === 'admin';
 
@@ -727,6 +737,7 @@ export const createBooking = async (req, res) => {
 
     console.log('Booking object created, saving to database...');
     await booking.save();
+    emitBookingTrackingUpdate(booking, 'created');
     console.log('Booking saved successfully:', booking._id);
 
     await createBookingAdminNotification({
@@ -954,6 +965,7 @@ export const updateBooking = async (req, res) => {
     console.log('💾 Saving booking with status:', booking.status, 'steps:', booking.steps);
     booking.steps = booking.steps || [];
     await booking.save();
+    emitBookingTrackingUpdate(booking);
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
     await maybeCreateBookingStatusNotification({
@@ -961,9 +973,20 @@ export const updateBooking = async (req, res) => {
       booking,
       previousStatus,
     });
+    await maybeCreateBookingReadyForPickupNotification({
+      req,
+      booking,
+      previousStatus,
+    });
     await maybeCreateBookingAssignmentNotification({
       req,
       booking,
+      previousAssignedTailor,
+    });
+    await maybeCreateStaffAssignmentNotification({
+      req,
+      entityType: 'booking',
+      entity: booking,
       previousAssignedTailor,
     });
     await maybeCreateBookingPickupNotification({
@@ -1022,7 +1045,13 @@ export const updateBookingStatus = async (req, res) => {
     if (adminNotes) booking.adminNotes = adminNotes;
 
     await booking.save();
+    emitBookingTrackingUpdate(booking);
     await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingReadyForPickupNotification({
       req,
       booking,
       previousStatus,
@@ -1048,6 +1077,8 @@ export const deleteBooking = async (req, res) => {
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
+
+    emitBackofficeOrdersFeedRefresh();
 
     res.json({
       success: true,
@@ -1112,6 +1143,13 @@ export const convertBookingToOrder = async (req, res) => {
     });
 
     await order.save();
+    emitOrderTrackingUpdate(order, 'created');
+    await maybeCreateStaffAssignmentNotification({
+      req,
+      entityType: 'order',
+      entity: order,
+      previousAssignedTailor: '',
+    });
 
     // Update booking with order reference
     booking.orderId = order._id;
@@ -1192,6 +1230,7 @@ export const convertBookingToOrder = async (req, res) => {
     booking.items = items;
     booking.totalPrice = totalPrice;
     await booking.save();
+    emitBookingTrackingUpdate(booking, 'converted');
     await createBookingConvertedNotification({
       req,
       booking,
@@ -1252,7 +1291,7 @@ export const cancelBooking = async (req, res) => {
     }
 
     // Check if booking can be cancelled
-    if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+    if (['Completed', 'Released', 'Cancelled'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
         message: `Cannot cancel a booking that is already ${booking.status}`
@@ -1263,6 +1302,7 @@ export const cancelBooking = async (req, res) => {
     const previousStatus = booking.status;
     booking.status = 'Cancelled';
     await booking.save();
+    emitBookingTrackingUpdate(booking, 'cancelled');
     await maybeCreateBookingStatusNotification({
       req,
       booking,
@@ -1271,11 +1311,15 @@ export const cancelBooking = async (req, res) => {
 
     // If there's an associated order, cancel it too
     if (booking.orderId) {
-      await orderModel.findByIdAndUpdate(
+      const cancelledOrder = await orderModel.findByIdAndUpdate(
         booking.orderId,
         { status: 'Cancelled' },
         { new: true }
       );
+
+      if (cancelledOrder) {
+        emitOrderTrackingUpdate(cancelledOrder, 'cancelled');
+      }
     }
 
     res.json({
@@ -1412,6 +1456,7 @@ export const markAsPickedUp = async (req, res) => {
       });
     }
 
+    const previousPickedUp = booking.isPickedUp;
     const previousStatus = booking.status;
     booking.isPickedUp = true;
     booking.pickedUpAt = new Date();
@@ -1419,6 +1464,7 @@ export const markAsPickedUp = async (req, res) => {
     booking.paid = true;  // Mark as paid when scanned
     booking.paidAt = new Date();
     await booking.save();
+    emitBookingTrackingUpdate(booking, 'released');
     await maybeCreateBookingStatusNotification({
       req,
       booking,
@@ -1431,6 +1477,11 @@ export const markAsPickedUp = async (req, res) => {
       { status: 'Paid', updatedAt: new Date() },
       { new: true }
     );
+    await maybeCreateBookingReleasedNotification({
+      req,
+      booking,
+      previousPickedUp,
+    });
 
     res.json({
       success: true,

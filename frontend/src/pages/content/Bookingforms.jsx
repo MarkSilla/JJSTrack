@@ -468,11 +468,11 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isRepair) {
             switch (step) {
-                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} notes={notes} setNotes={setNotes} />
+                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} repairNotes={repairNotes} setRepairNote={setRepairNote} notes={notes} setNotes={setNotes} />
                 case 3: return <StepPhoto photos={photos} setPhotos={setPhotos} skipPhoto={() => setStep(4)} />
                 case 4: return <StepDetails details={details} setDetail={setDetail} readOnly />
                 case 5: return <StepPickup selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedSlot={selectedSlot} setSelectedSlot={setSelectedSlot} />
-                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} notes={notes} />
+                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} repairNotes={repairNotes} notes={notes} />
                 default: return null
             }
         }

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
 import { staffApi } from '../../services/staffApi.js';
+import useOrderFeedSocket from '../../hooks/useOrderFeedSocket.js';
 
 import {
     EMPLOYEE_POOL,
@@ -18,7 +19,7 @@ import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
 
-const LIVE_REFRESH_MS = 5000;
+const FALLBACK_REFRESH_MS = 60000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -216,10 +217,14 @@ export default function AdOrder() {
         const intervalId = window.setInterval(() => {
             if (document.visibilityState !== 'visible') return;
             fetchOrdersAndBookings(true);
-        }, LIVE_REFRESH_MS);
+        }, FALLBACK_REFRESH_MS);
 
         return () => window.clearInterval(intervalId);
     }, [fetchOrdersAndBookings]);
+
+    useOrderFeedSocket(() => {
+        fetchOrdersAndBookings(true);
+    });
 
     useEffect(() => {
         const preset = location.state?.dashboardPreset;

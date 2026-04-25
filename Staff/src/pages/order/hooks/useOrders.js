@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { bookingApi } from '../../../services/bookingApi';
+import { orderApi } from '../../../services/orderApi.js';
+import useOrderFeedSocket from '../../../hooks/useOrderFeedSocket.js';
+import {
+    isStandaloneBookingTask,
+    mapBookingToTask,
+    mapOrderToTask,
+} from '../../../utils/taskMappers.js';
 
 const STATUS_FLOW = ['Pending', 'In Progress', 'Completed'];
-
-const capitalize = (str) => {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
+const FALLBACK_REFRESH_MS = 60000;
 
 const getDerivedStatus = (order) => {
     if (!order) return 'Pending';
@@ -63,47 +66,68 @@ const useOrders = () => {
     const [error, setError] = useState(null);
 
     // Fetch bookings function
-    const fetchBookings = useCallback(async () => {
+    const fetchBookings = useCallback(async (silent = false) => {
         try {
-            setLoading(true);
-            setError(null);
-            const response = await bookingApi.getAllBookings();
-            const bookings = response.bookings || response.data || [];
-            
-            // Map bookings to order format
-            const orders = Array.isArray(bookings) ? bookings.map(booking => ({
-                id: booking._id || booking.id,
-                displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
-                customer: booking.contact?.fullName || booking.customerName || 'Unknown',
-                item: booking.service || booking.bookingType || 'Service',
-                status: booking.status || 'Pending',
-                date: booking.pickupDate || booking.createdAt,
-                steps: booking.steps || [],
-                assignedTailor: booking.assignedTailor,
-                serviceType: capitalize(booking.bookingType) || booking.serviceType || 'Service',
-                serviceTitle: booking.service || booking.bookingType || 'Service',
-                dueDate: booking.pickupDate || booking.dueDate,
-                ...booking
-            })) : [];
-            
-            setStaffOrders(orders);
+            if (!silent) {
+                setLoading(true);
+                setError(null);
+            }
+            const [bookingResponse, orderResponse] = await Promise.allSettled([
+                bookingApi.getAllBookings(),
+                orderApi.getAllOrders(),
+            ]);
+
+            const bookingItems =
+                bookingResponse.status === 'fulfilled'
+                    ? bookingResponse.value?.bookings || bookingResponse.value?.data || []
+                    : [];
+            const orderItems =
+                orderResponse.status === 'fulfilled'
+                    ? orderResponse.value?.orders || orderResponse.value?.data || []
+                    : [];
+
+            const mappedBookings = Array.isArray(bookingItems)
+                ? bookingItems.filter(isStandaloneBookingTask).map(mapBookingToTask)
+                : [];
+            const mappedOrders = Array.isArray(orderItems)
+                ? orderItems.map(mapOrderToTask)
+                : [];
+
+            const mergedTasks = [...mappedOrders, ...mappedBookings].sort((first, second) => {
+                const firstTime = getOrderSortTime(first);
+                const secondTime = getOrderSortTime(second);
+                return secondTime - firstTime;
+            });
+
+            setStaffOrders(mergedTasks);
         } catch (err) {
             console.error('Failed to fetch bookings:', err);
-            setError('Failed to load orders.');
-            setStaffOrders([]);
+            if (!silent) {
+                setError('Failed to load orders.');
+                setStaffOrders([]);
+            }
         } finally {
-            setLoading(false);
+            if (!silent) {
+                setLoading(false);
+            }
         }
     }, []);
 
-    // Fetch on mount and auto-refresh every 30 seconds
+    // Fetch on mount with a slower polling fallback in case the socket disconnects
     useEffect(() => {
-        fetchBookings();
+        fetchBookings(false);
         
-        const interval = setInterval(fetchBookings, 30000);
+        const interval = setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            fetchBookings(true);
+        }, FALLBACK_REFRESH_MS);
         
         return () => clearInterval(interval);
     }, [fetchBookings]);
+
+    useOrderFeedSocket(() => {
+        fetchBookings(true);
+    });
 
     const filteredOrders = useMemo(() => {
         let result = staffOrders.filter(o =>

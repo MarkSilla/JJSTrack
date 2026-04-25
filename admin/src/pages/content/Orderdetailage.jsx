@@ -8,8 +8,9 @@ import OrderDetail from './AdOrder/Orderdetail';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus, getActiveStepIndex } from '../../utils/helpers.js';
 import { computeOrderEarnings, convertBooking } from './AdOrder.jsx';
+import useOrderFeedSocket from '../../hooks/useOrderFeedSocket.js';
 
-const LIVE_REFRESH_MS = 5000;
+const FALLBACK_REFRESH_MS = 60000;
 
 export default function OrderDetailPage() {
     const { orderId } = useParams();  
@@ -75,10 +76,14 @@ export default function OrderDetailPage() {
         const intervalId = window.setInterval(() => {
             if (document.visibilityState !== 'visible') return;
             fetchAll(true);
-        }, LIVE_REFRESH_MS);
+        }, FALLBACK_REFRESH_MS);
 
         return () => window.clearInterval(intervalId);
     }, [fetchAll]);
+
+    useOrderFeedSocket(() => {
+        fetchAll(true);
+    });
     const activeOrder = useMemo(
         () => orders.find(o => (o.id || o._id) === orderId) ?? null,
         [orders, orderId]

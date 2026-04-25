@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import { appointmentApi } from '../../../services/appointmentApi'
 import { bookingApi } from '../../../services/bookingApi'
+import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
 import { MdClose, MdCalendarToday, MdAccessTime, MdInfo, MdCheckCircle, MdPending, MdEventAvailable } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import '../../styles/calendar.css'
@@ -574,7 +575,7 @@ const Appointment = () => {
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-semibold text-[#0f172a]">{b.service || 'Booking'}</p>
                                                     <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                                                        {(b.date || formatDateForUi(b.dateKey))} | {(b.orderId || b._id || '').toString().slice(-8)}
+                                                        {(b.date || formatDateForUi(b.dateKey))} | {getTrackingReferenceCode(b, { includeHash: false })}
                                                     </p>
                                                 </div>
                                                 <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 ${sc}`}>

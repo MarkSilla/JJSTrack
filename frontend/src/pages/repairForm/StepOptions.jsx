@@ -1,7 +1,18 @@
 import { MdCheck, MdAdd, MdRemove, MdInfo } from 'react-icons/md'
 import { REPAIR_OPTIONS } from './constants'
 
-const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, repairDescription, setRepairDescription, notes, setNotes }) => {
+const StepOptions = ({
+    selectedOptions,
+    toggleOption,
+    quantities,
+    setQuantity,
+    repairDescription,
+    setRepairDescription,
+    repairNotes = {},
+    setRepairNote = () => {},
+    notes,
+    setNotes,
+}) => {
     const total = REPAIR_OPTIONS
         .filter((o) => selectedOptions.includes(o.id))
         .reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0)

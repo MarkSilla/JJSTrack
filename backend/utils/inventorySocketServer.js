@@ -1,4 +1,5 @@
 import { WebSocket, WebSocketServer } from "ws";
+import { registerSocketUpgradeRoute } from "./socketUpgradeRouter.js";
 
 let inventorySocketServer = null;
 
@@ -15,8 +16,13 @@ export const attachInventorySocketServer = (server) => {
   }
 
   inventorySocketServer = new WebSocketServer({
+    noServer: true,
+  });
+
+  registerSocketUpgradeRoute({
     server,
     path: "/inventory-updates",
+    socketServer: inventorySocketServer,
   });
 
   inventorySocketServer.on("connection", (socket) => {

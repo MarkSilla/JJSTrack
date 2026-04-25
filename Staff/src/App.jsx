@@ -1,5 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { StaffAuthProvider } from './context/StaffAuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import PublicRoute from './components/PublicRoute'
 import Login from './pages/Login'
 import StaffLayout from './layout/Stafflayout'
 import Dashboard from './pages/dashboard'
@@ -8,37 +10,23 @@ import ArchivesPage from './pages/ArchivesPage'
 import StaffInventoryPage from './pages/inventory/StaffInventoryPage'
 
 function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const token = localStorage.getItem('staffToken')
-        if (token) {
-            setIsAuthenticated(true)
-        } else {
-            setIsAuthenticated(false)
-        }
-        setLoading(false)
-    }, [])
-
-    if (loading) {
-        return <div className="flex items-center justify-center h-screen"><span>Loading...</span></div>
-    }
-
     return (
-        <Router>
-            <Routes>
-                {/* Redirect to dashboard if already authenticated */}
-                <Route path="/" element={isAuthenticated ? <Navigate to="/staff/dashboard" replace /> : <Login />} />
+        <StaffAuthProvider>
+            <Router>
+                <Routes>
+                    {/* Public routes */}
+                    <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
 
-                <Route path="/staff" element={<StaffLayout />}>
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="orders" element={<OrderPage />} />
-                    <Route path="archives" element={<ArchivesPage />} />
-                    <Route path="inventory" element={<StaffInventoryPage />} />
-                </Route>
-            </Routes>
-        </Router>
+                    {/* Protected routes */}
+                    <Route path="/staff" element={<ProtectedRoute><StaffLayout /></ProtectedRoute>}>
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="orders" element={<OrderPage />} />
+                        <Route path="archives" element={<ArchivesPage />} />
+                        <Route path="inventory" element={<StaffInventoryPage />} />
+                    </Route>
+                </Routes>
+            </Router>
+        </StaffAuthProvider>
     )
 }
 

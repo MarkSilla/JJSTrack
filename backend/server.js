@@ -16,6 +16,9 @@ import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import chatConversationModel from './models/chatConversationModel.js';
 import { attachInventorySocketServer } from './utils/inventorySocketServer.js';
+import { attachNotificationSocketServer } from './utils/notificationSocketServer.js';
+import { startRepairPickupReminderScheduler } from './utils/repairPickupReminderNotifications.js';
+import { syncPendingReadyForPickupNotifications } from './utils/userNotificationEvents.js';
 
 import dns from 'dns';
 dotenv.config();
@@ -88,6 +91,9 @@ const startServer = async () => {
   await connectDB();
   await syncChatConversationIndexes();
   attachInventorySocketServer(server);
+  attachNotificationSocketServer(server);
+  await syncPendingReadyForPickupNotifications();
+  startRepairPickupReminderScheduler();
   server.listen(port, () => console.log('Server started on Port: ' + port));
 };
 

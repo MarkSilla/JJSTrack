@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
     ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon
 } from 'lucide-react';
 import { bookingApi } from '../services/bookingApi';
+import { orderApi } from '../services/orderApi.js';
+import {
+    isStandaloneBookingTask,
+    mapBookingToTask,
+    mapOrderToTask,
+} from '../utils/taskMappers.js';
+import useOrderFeedSocket from '../hooks/useOrderFeedSocket.js';
+
+const FALLBACK_REFRESH_MS = 60000;
 
 const parseScheduleDate = (value) => {
     if (!value) return null;
@@ -52,8 +61,8 @@ const buildScheduleEntries = (bookings = []) =>
 
             const { time, ampm } = splitTimeLabel(booking.pickupSlot);
             const customerName = booking.contact?.fullName || booking.customer || 'Customer';
-            const serviceName = booking.service || booking.bookingType || 'Service';
-            const location = booking.contact?.address || booking.bookingType || 'Assigned booking';
+            const serviceName = booking.service || booking.item || booking.serviceType || booking.bookingType || 'Service';
+            const location = booking.contact?.address || booking.serviceType || booking.bookingType || 'Assigned booking';
 
             return {
                 id: booking._id,
@@ -80,12 +89,13 @@ const buildAlerts = (bookings = []) => {
         .map((booking) => {
             const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion);
             const customerName = booking.contact?.fullName || booking.customer || 'Customer';
+            const taskName = booking.service || booking.item || booking.serviceType || booking.bookingType || 'Task';
 
             if (scheduleDate && scheduleDate < today && booking.status !== 'Completed') {
                 return {
                     type: 'overdue',
                     title: `${customerName} is overdue`,
-                    desc: `${booking.service || booking.bookingType || 'Booking'} was scheduled for ${scheduleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`,
+                    desc: `${taskName} was scheduled for ${scheduleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`,
                 };
             }
 
@@ -93,7 +103,7 @@ const buildAlerts = (bookings = []) => {
                 return {
                     type: 'pending',
                     title: `${customerName} is waiting`,
-                    desc: `${booking.service || booking.bookingType || 'Booking'} still needs attention from the team.`,
+                    desc: `${taskName} still needs attention from the team.`,
                 };
             }
 
@@ -112,38 +122,82 @@ const Dashboard = () => {
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const fetchTasks = useCallback(async (silent = false) => {
         const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => {};
 
-        const fetchBookings = async () => {
-            try {
-                const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
-                if (!token) {
-                    setLoading(false);
-                    return;
-                }
+        try {
+            if (!silent) {
+                setLoading(true);
+            }
 
-                const data = await bookingApi.getAllBookings();
-                if (data.success) {
-                    const bookings = Array.isArray(data.bookings) ? data.bookings : [];
-                    const nextSchedules = buildScheduleEntries(bookings);
-                    const nextAlerts = buildAlerts(bookings);
+            const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
+            if (!token) {
+                setLoading(false);
+                return;
+            }
 
-                    setTasks(bookings);
-                    setAlerts(nextAlerts);
-                    setSchedules(nextSchedules);
-                    updateCalendarEntries(nextSchedules);
-                }
-            } catch (error) {
-                console.error('Error fetching bookings:', error);
-            } finally {
+            const [bookingResponse, orderResponse] = await Promise.allSettled([
+                bookingApi.getAllBookings(),
+                orderApi.getAllOrders(),
+            ]);
+
+            const bookings =
+                bookingResponse.status === 'fulfilled' && bookingResponse.value?.success
+                    ? Array.isArray(bookingResponse.value.bookings)
+                        ? bookingResponse.value.bookings
+                        : []
+                    : [];
+            const orders =
+                orderResponse.status === 'fulfilled' && orderResponse.value?.success
+                    ? Array.isArray(orderResponse.value.orders)
+                        ? orderResponse.value.orders
+                        : []
+                    : [];
+
+            const mergedTasks = [
+                ...orders.map(mapOrderToTask),
+                ...bookings.filter(isStandaloneBookingTask).map(mapBookingToTask),
+            ].sort((first, second) => {
+                const firstDate = parseScheduleDate(first.pickupDate || first.estimatedCompletion || first.createdAt);
+                const secondDate = parseScheduleDate(second.pickupDate || second.estimatedCompletion || second.createdAt);
+                return (secondDate?.getTime?.() || 0) - (firstDate?.getTime?.() || 0);
+            });
+
+            const nextSchedules = buildScheduleEntries(mergedTasks);
+            const nextAlerts = buildAlerts(mergedTasks);
+
+            setTasks(mergedTasks);
+            setAlerts(nextAlerts);
+            setSchedules(nextSchedules);
+            updateCalendarEntries(nextSchedules);
+        } catch (error) {
+            console.error('Error fetching staff tasks:', error);
+        } finally {
+            if (!silent) {
                 setLoading(false);
             }
-        };
-
-        fetchBookings();
-        return () => updateCalendarEntries([]);
+        }
     }, [setCalendarEntries]);
+
+    useEffect(() => {
+        fetchTasks(false);
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            fetchTasks(true);
+        }, FALLBACK_REFRESH_MS);
+
+        return () => {
+            window.clearInterval(intervalId);
+            if (typeof setCalendarEntries === 'function') {
+                setCalendarEntries([]);
+            }
+        };
+    }, [fetchTasks, setCalendarEntries]);
+
+    useOrderFeedSocket(() => {
+        fetchTasks(true);
+    });
 
     const summaryStats = {
         totalTasks: tasks.length,
@@ -291,10 +345,12 @@ const Dashboard = () => {
                                     {tasks.map((task) => (
                                         <tr key={task._id} className="hover:bg-slate-50/70 transition-colors">
                                             <td className="px-6 py-3.5">
-                                                <span className="text-sm font-medium text-slate-800 block min-w-[150px]">{task.service}</span>
+                                                <span className="text-sm font-medium text-slate-800 block min-w-[150px]">
+                                                    {task.service || task.item || task.serviceType || 'Assigned task'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-3.5 hidden sm:table-cell text-xs text-slate-400 whitespace-nowrap font-medium">
-                                                {task.pickupDate} {task.pickupSlot}
+                                                {task.pickupDate || task.estimatedCompletion || task.dueDate || 'TBA'} {task.pickupSlot || ''}
                                             </td>
                                             <td className="px-6 py-3.5">
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor('Normal')}`}>

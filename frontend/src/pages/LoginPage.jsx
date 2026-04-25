@@ -46,7 +46,7 @@ const LoginPage = () => {
         // Save to context
         login(response.user);
         alert('Login successful!');
-        navigate('/home');
+        navigate('/home', { replace: true });
       } else {
         setError(response.message || 'Login failed');
       }
@@ -77,7 +77,7 @@ const LoginPage = () => {
         localStorage.setItem("user", JSON.stringify(response.user));
 
         // Navigate to home first, then show modal from there
-        navigate('/home');
+        navigate('/home', { replace: true });
       } else {
         setError(response.message || 'Google login failed');
       }
@@ -91,7 +91,7 @@ const LoginPage = () => {
 
   const handleProfileSuccess = (updatedUser) => {
     alert('Profile completed successfully!');
-    navigate('/home');
+    navigate('/home', { replace: true });
   };
 
   return (

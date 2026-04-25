@@ -7,6 +7,7 @@ import {
 import OrderStatusTracker from './OrderStatusTracker';
 import useOrderDetails from '../hooks/useOrderDetails';
 import { bookingApi } from '../../../services/bookingApi';
+import { orderApi } from '../../../services/orderApi.js';
 import img from '../../../assets/img';
 
 const STATUS_CONFIG = {
@@ -162,7 +163,11 @@ const OrderDetails = ({ orderId, onBack }) => {
         // Save steps to backend
         try {
             console.log('💾 Saving production steps to backend:', { orderId, updatedSteps });
-            await bookingApi.updateBooking(orderId, { steps: updatedSteps });
+            if (order?.isBooking) {
+                await bookingApi.updateBooking(orderId, { steps: updatedSteps });
+            } else {
+                await orderApi.updateOrder(orderId, { steps: updatedSteps });
+            }
             console.log('✅ Production steps saved successfully');
         } catch (err) {
             console.error('❌ Error saving production steps:', err);

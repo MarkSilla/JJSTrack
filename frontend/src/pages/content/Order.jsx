@@ -13,6 +13,13 @@ import { orderApi }   from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate } from 'react-router-dom'
 import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
+import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
+import {
+    getTrackingReferenceCode,
+    getTrackingReferenceId,
+    getTrackingReferenceLabel,
+} from '../../utils/trackingReference.js'
+import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 
 const STEP_ICON = {
     'dropped off': MdMoveToInbox,
@@ -22,12 +29,22 @@ const STEP_ICON = {
     'pick-up':     MdLocalShipping,
 }
 
-const LIVE_REFRESH_MS = 5000
+const TRACKING_REFRESH_DEBOUNCE_MS = 250
+const FALLBACK_REFRESH_MS = 60000
 const SORT_OPTIONS = [
     { value: 'latest', label: 'Latest First' },
     { value: 'service-asc', label: 'Service Type (A-Z)' },
     { value: 'service-desc', label: 'Service Type (Z-A)' },
 ]
+const ORDER_STATUS_FILTERS = ['All Orders', 'In Progress', 'Completed', 'Released', 'Cancelled']
+const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 'in-progress'])
+const FULFILLED_TRACKING_STATUSES = new Set(['completed', 'released'])
+const CLOSED_TRACKING_STATUSES = new Set(['completed', 'released', 'cancelled'])
+
+const normalizeTrackingStatus = (status = '') => String(status || '').trim().toLowerCase()
+const isActiveTrackingStatus = (status = '') => ACTIVE_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
+const isFulfilledTrackingStatus = (status = '') => FULFILLED_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
+const isClosedTrackingStatus = (status = '') => CLOSED_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
 
 const getServiceTypeLabel = (entry = {}) => {
     const serviceType = String(entry.serviceType || '').trim()
@@ -160,6 +177,7 @@ const StatusBadge = ({ status }) => {
         'Approved':    'bg-blue-50 text-blue-600 border-blue-200',
         'In Progress': 'bg-orange-50 text-orange-600 border-orange-200',
         'Completed':   'bg-green-50 text-green-600 border-green-200',
+        'Released':    'bg-cyan-50 text-cyan-700 border-cyan-200',
         'Cancelled':   'bg-red-50 text-red-500 border-red-200',
     }
     return (
@@ -174,6 +192,9 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     const navigate  = useNavigate()
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
+    const referenceCode = getTrackingReferenceCode(order)
+    const referenceId = getTrackingReferenceId(order)
+    const referenceLabel = getTrackingReferenceLabel(order)
     const bookingRefId = typeof order.bookingId === 'string'
         ? order.bookingId
         : order.bookingId?._id
@@ -185,9 +206,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         normalizedStatus === 'completed' ||
         normalizedStatus === 'released'
     )
-    const displayName = isBooking
-        ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
-        : order.item
+    const displayName = getTrackingDisplayName(order)
     const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
 
     const [qrCode, setQrCode] = useState(null)
@@ -244,6 +263,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 
     const iconMap = {
         'Order ID': MdTag,
+        'Booking ID': MdTag,
         'Status': MdCheckCircle,
         'Item/Service': MdShoppingBag,
         'Service Type': MdInfo,
@@ -260,9 +280,9 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     }
 
     const fields = [
-        { label: 'Order ID',     value: order.orderId || order._id },
+        { label: referenceLabel, value: referenceId },
         { label: 'Status',       value: order.status },
-        { label: 'Item/Service', value: order.item || order.service },
+        { label: 'Item/Service', value: getTrackingDisplayName(order) },
         { label: 'Service Type', value: serviceTypeLabel },
         { label: 'Date Placed',  value: order.date || new Date(order.createdAt).toLocaleDateString() },
         { label: 'Est. Completion', value: order.estimatedCompletion },
@@ -307,7 +327,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                     </div>
                     <div className="min-w-0 flex-1">
                         <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
-                        <p className="text-[10px] text-gray-400 mt-0.5">#{order.orderId || order._id?.slice(-8)}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{referenceCode}</p>
                     </div>
                 </div>
                 <button 
@@ -502,9 +522,8 @@ const OrderCard = ({ order, onCancel }) => {
     const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
-    const displayName = isBooking
-        ? `${order.bookingType.charAt(0).toUpperCase() + order.bookingType.slice(1)} Request`
-        : order.item
+    const referenceCode = getTrackingReferenceCode(order)
+    const displayName = getTrackingDisplayName(order)
     const steps = order.steps || []
     const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
 
@@ -555,7 +574,7 @@ const OrderCard = ({ order, onCancel }) => {
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
                             <span className="truncate max-w-[120px] sm:max-w-none">
-                                #{order.orderId || order._id?.slice(-8)}
+                                {referenceCode}
                             </span>
                             <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
                             <span>{order.date || new Date(order.createdAt).toLocaleDateString()}</span>
@@ -582,7 +601,7 @@ const OrderCard = ({ order, onCancel }) => {
                 <div className="px-4 sm:px-5 pb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
                         { label: 'Customer', value: order.contact?.fullName },
-                        { label: 'Service',  value: order.service },
+                        { label: 'Service',  value: getTrackingDisplayName(order) },
                         { label: 'Contact',  value: order.contact?.phone || order.contact?.email },
                         { label: 'Pickup',   value: order.pickupDate },
                     ].map(({ label, value }) => (
@@ -622,9 +641,9 @@ const OrderCard = ({ order, onCancel }) => {
                             <span className="sm:hidden">Chat</span>
                         </button>
                     )}
-                    {order.status !== 'Completed' && order.status !== 'Cancelled' && (
+                    {!isClosedTrackingStatus(order.status) && (
                         <button
-                            onClick={() => onCancel(order._id, displayName, order.bookingId)}
+                            onClick={() => onCancel(order._id, displayName, isBooking ? order._id : null)}
                             className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
                         >
                             Cancel
@@ -698,7 +717,6 @@ const SkeletonCard = () => (
 
 // ─── Mobile Filter Sheet ──────────────────────
 const FilterSheet = ({ active, onSelect, onClose }) => {
-    const filters = ['All Orders', 'In Progress', 'Completed', 'Cancelled']
     return (
         <div className="fixed inset-0 z-50 flex flex-col justify-end sm:hidden" onClick={onClose}>
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
@@ -710,7 +728,7 @@ const FilterSheet = ({ active, onSelect, onClose }) => {
                     </button>
                 </div>
                 <div className="space-y-2">
-                    {filters.map(f => (
+                    {ORDER_STATUS_FILTERS.map(f => (
                         <button
                             key={f}
                             onClick={() => { onSelect(f); onClose() }}
@@ -733,7 +751,7 @@ const Order = () => {
     const [sortBy,       setSortBy]       = useState('latest')
     const [orders,       setOrders]       = useState([])
     const [bookings,     setBookings]     = useState([])
-    const [stats,        setStats]        = useState({ total: 0, inProgress: 0, completed: 0 })
+    const [stats,        setStats]        = useState({ total: 0, inProgress: 0, fulfilled: 0 })
     const [loading,      setLoading]      = useState(true)
     const [error,        setError]        = useState(null)
     const [showFilter,   setShowFilter]   = useState(false)
@@ -742,6 +760,7 @@ const Order = () => {
     const mainRef = useRef(null)
     const searchTimeoutRef = useRef(null)
     const hasInitializedSearchRef = useRef(false)
+    const refreshTimeoutRef = useRef(null)
 
     const handleScroll = (e) => {
         setShowStickySearch(e.target.scrollTop > 300)
@@ -780,14 +799,55 @@ const Order = () => {
     // Re-fetch on filter change
     useEffect(() => { fetchData(activeFilter, searchQuery) }, [activeFilter, fetchData])
 
-    // Auto-refresh to get updates from admin without manual reload
+    const scheduleSilentRefresh = useCallback(() => {
+        if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current)
+        }
+
+        refreshTimeoutRef.current = window.setTimeout(() => {
+            refreshTimeoutRef.current = null
+            fetchData(activeFilter, searchQuery, { silent: true })
+        }, TRACKING_REFRESH_DEBOUNCE_MS)
+    }, [activeFilter, searchQuery, fetchData])
+
+    useTrackingUpdatesSocket(() => {
+        scheduleSilentRefresh()
+    })
+
+    // Fallback refresh if socket reconnect is delayed
     useEffect(() => {
         const interval = setInterval(() => {
             if (document.visibilityState !== 'visible') return
             fetchData(activeFilter, searchQuery, { silent: true })
-        }, LIVE_REFRESH_MS)
+        }, FALLBACK_REFRESH_MS)
         return () => clearInterval(interval);
     }, [activeFilter, searchQuery, fetchData])
+
+    useEffect(() => {
+        const handleWindowFocus = () => {
+            scheduleSilentRefresh()
+        }
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                scheduleSilentRefresh()
+            }
+        }
+
+        window.addEventListener('focus', handleWindowFocus)
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        return () => {
+            window.removeEventListener('focus', handleWindowFocus)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [scheduleSilentRefresh])
+
+    useEffect(() => () => {
+        if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current)
+        }
+    }, [])
 
     // Debounced search
     useEffect(() => {
@@ -814,7 +874,7 @@ const Order = () => {
     // Stats from API
     useEffect(() => {
         orderApi.getOrderStats()
-            .then(d => { if (d.success) setStats({ total: d.stats.total, inProgress: d.stats.inProgress, completed: d.stats.completed }) })
+            .then(d => { if (d.success) setStats({ total: d.stats.total, inProgress: d.stats.inProgress, fulfilled: d.stats.completed }) })
             .catch(console.error)
     }, [])
 
@@ -824,8 +884,8 @@ const Order = () => {
         setStats(prev => ({
             ...prev,
             total:      all.length,
-            inProgress: all.filter(i => i.status === 'In Progress' || i.status === 'Pending').length,
-            completed:  all.filter(i => i.status === 'Completed').length,
+            inProgress: all.filter(i => isActiveTrackingStatus(i.status)).length,
+            fulfilled:  all.filter(i => isFulfilledTrackingStatus(i.status)).length,
         }))
     }, [orders, bookings])
 
@@ -882,7 +942,7 @@ const Order = () => {
                         {[
                             { label: 'Total',       value: stats.total,      icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300'  },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop,        color: 'bg-amber-400/20 text-amber-300' },
-                            { label: 'Completed',   value: stats.completed,  icon: MdDoneAll,     color: 'bg-green-400/20 text-green-300' },
+                            { label: 'Fulfilled',   value: stats.fulfilled,  icon: MdDoneAll,     color: 'bg-green-400/20 text-green-300' },
                         ].map(({ label, value, icon, color }) => (
                             <div key={label} className="bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-2.5">
                                 {/* Mobile: icon + label on top, number below */}
@@ -960,7 +1020,7 @@ const Order = () => {
 
                     {/* Desktop filter tabs */}
                     <div className="hidden sm:flex items-center gap-1.5">
-                        {['All Orders', 'In Progress', 'Completed', 'Cancelled'].map(filter => (
+                        {ORDER_STATUS_FILTERS.map(filter => (
                             <button key={filter} onClick={() => setActiveFilter(filter)}
                                 className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer
                                     ${activeFilter === filter ? 'bg-[#0F172A] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import notificationModel from '../models/notificationModel.js';
 import { getRequestActor } from './requestActor.js';
+import { broadcastNotificationCreated } from './notificationSocketServer.js';
 
 export const resolveNotificationAudience = (role = 'user') => {
   if (role === 'admin') return 'admin';
@@ -30,6 +31,7 @@ export const createNotification = async ({
   title,
   message,
   route = '',
+  recipientId,
   entityId,
   entityModel = '',
   metadata = {},
@@ -51,6 +53,10 @@ export const createNotification = async ({
       createdByRole: actor.createdByRole,
     };
 
+    if (recipientId && mongoose.isValidObjectId(recipientId)) {
+      payload.recipientId = recipientId;
+    }
+
     if (actor.createdById) {
       payload.createdById = actor.createdById;
     }
@@ -59,7 +65,9 @@ export const createNotification = async ({
       payload.entityId = entityId;
     }
 
-    return await notificationModel.create(payload);
+    const createdNotification = await notificationModel.create(payload);
+    broadcastNotificationCreated(createdNotification);
+    return createdNotification;
   } catch (error) {
     console.error('Failed to create notification:', error);
     return null;

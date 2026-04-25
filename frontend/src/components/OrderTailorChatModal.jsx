@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MessageCircle, Paperclip, Send, UserRound, X } from 'lucide-react';
 import { chatApi } from '../../services/chatApi';
+import { getTrackingReferenceCode } from '../utils/trackingReference.js';
 
 const fileToDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -276,7 +277,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
   }, [conversation, order]);
 
   const modalRefCode = useMemo(() => {
-    return conversation?.subjectLabel || order?.orderId || `#${String(order?._id || '').slice(-6).toUpperCase()}`;
+    return conversation?.subjectLabel || getTrackingReferenceCode(order);
   }, [conversation, order]);
 
   return (

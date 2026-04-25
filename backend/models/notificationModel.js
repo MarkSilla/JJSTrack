@@ -29,6 +29,12 @@ const notificationSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    recipientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
     entityId: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
@@ -67,5 +73,7 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ audience: 1, createdAt: -1 });
 notificationSchema.index({ audience: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ audience: 1, recipientId: 1, createdAt: -1 });
+notificationSchema.index({ audience: 1, recipientId: 1, isRead: 1, createdAt: -1 });
 
 export default mongoose.model('Notification', notificationSchema);

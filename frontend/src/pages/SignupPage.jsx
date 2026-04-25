@@ -228,7 +228,7 @@ const SignupPage = () => {
         fullName: user.displayName || user.email.split('@')[0],
         photoURL: user.photoURL || '',
       });
-      if (response.success) { alert('Google signup successful!'); navigate('/home'); }
+      if (response.success) { alert('Google signup successful!'); navigate('/home', { replace: true }); }
       else setError(response.message || 'Google signup failed');
     } catch (err) {
       setError(err.message || 'Google signup failed. Please try again.');

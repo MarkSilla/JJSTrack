@@ -1,5 +1,11 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { bookingApi } from '../../../services/bookingApi';
+import { orderApi } from '../../../services/orderApi.js';
+import useOrderFeedSocket from '../../../hooks/useOrderFeedSocket.js';
+import {
+    mapBookingToTaskDetail,
+    mapOrderToTaskDetail,
+} from '../../../utils/taskMappers.js';
 
 const SERVICE_STEPS = {
     "Team Jersey": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
@@ -9,113 +15,56 @@ const SERVICE_STEPS = {
 
 const useOrderDetails = (orderId) => {
     const [order, setOrder] = useState(null);
-    
-    useEffect(() => {
-        const fetchOrderDetails = async () => {
-            if (!orderId) {
-                setOrder(null);
-                return;
-            }
-            
-            try {
-                const response = await bookingApi.getBookingById(orderId);
-                const booking = response.booking || response.data || response;
-                
-                if (booking) {
-                    // Map booking to order format that OrderDetails expects
-                    const mappedOrder = {
-                        // Basic info
-                        id: booking._id || booking.id,
-                        _id: booking._id,
-                        displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
-                        
-                        // Team/Org info
-                        teamName: booking.teamName || booking.orgName || booking.service || 'Order',
-                        team: booking.teamName || booking.orgName,
-                        category: booking.bookingType || 'Service',
-                        
-                        // Customer/Contact info
-                        customer: booking.contact?.fullName || 'Unknown',
-                        customerName: booking.contact?.fullName || 'Unknown',
-                        contact: booking.contact || { fullName: 'Unknown', phone: 'N/A' },
-                        
-                        // Service info - Display bookingType as the type
-                        service: booking.service || booking.bookingType || 'Service',
-                        serviceType: booking.bookingType,
-                        serviceTitle: booking.service || booking.bookingType, // Fallback to bookingType if service is empty
-                        bookingType: booking.bookingType,
-                        type: booking.bookingType, // Add type field as well
-                        
-                        // Players/Roster
-                        teamRoster: booking.players || booking.members || [],
-                        players: booking.players || booking.members || [],
-                        
-                        // Items
-                        items: booking.items || [],
-                        
-                        // Steps/Progress
-                        steps: booking.steps || [],
-                        productionProgress: booking.steps || [],
-                        
-                        // Dates
-                        pickupDate: booking.pickupDate,
-                        pickupSlot: booking.pickupSlot,
-                        dropDate: booking.createdAt,
-                        dueDate: booking.pickupDate || booking.createdAt, // Use pickup date as due date, fallback to created date
-                        createdAt: booking.createdAt,
-                        
-                        // Status
-                        status: booking.status || 'Pending',
-                        
-                        // Repair/Design files
-                        photos: booking.photos || [],
-                        designImages: booking.photos || [],
-                        designFile: booking.designFile || booking.orgDesignFile,
-                        driveLink: booking.driveLink || booking.orgDriveLink,
-                        
-                        // Other
-                        assignedBy: booking.assignedTailor || 'Admin',
-                        assignedTailor: booking.assignedTailor,
-                        notes: booking.notes,
-                        adminNotes: booking.adminNotes,
-                        repairDescription: booking.repairDescription,
-                        
-                        // Keep everything from booking
-                        ...booking
-                    };
-                    console.log('✅ Mapped order:', {
-                        service: mappedOrder.service,
-                        serviceType: mappedOrder.serviceType,
-                        serviceTitle: mappedOrder.serviceTitle,
-                        bookingType: mappedOrder.bookingType,
-                        dueDate: mappedOrder.dueDate,
-                        pickupDate: mappedOrder.pickupDate,
-                        createdAt: mappedOrder.createdAt,
-                        dropDate: mappedOrder.dropDate
-                    });
-                    console.log('✅ Mapped order:', {
-                        service: mappedOrder.service,
-                        serviceType: mappedOrder.serviceType,
-                        serviceTitle: mappedOrder.serviceTitle,
-                        bookingType: mappedOrder.bookingType,
-                        dueDate: mappedOrder.dueDate,
-                        pickupDate: mappedOrder.pickupDate,
-                        createdAt: mappedOrder.createdAt,
-                        dropDate: mappedOrder.dropDate
-                    });
+
+    const fetchOrderDetails = useCallback(async () => {
+        if (!orderId) {
+            setOrder(null);
+            return;
+        }
+
+        try {
+            const [bookingResponse, orderResponse] = await Promise.allSettled([
+                bookingApi.getBookingById(orderId),
+                orderApi.getOrderById(orderId),
+            ]);
+
+            if (bookingResponse.status === 'fulfilled') {
+                const booking =
+                    bookingResponse.value?.booking || bookingResponse.value?.data || bookingResponse.value;
+
+                if (booking?._id || booking?.id) {
+                    const mappedOrder = mapBookingToTaskDetail(booking);
                     setOrder(mappedOrder);
-                } else {
-                    console.log('❌ No booking data found');
-                    setOrder(null);
+                    return;
                 }
-            } catch (err) {
-                console.error('Error fetching order details:', err);
-                setOrder(null);
             }
-        };
-        
-        fetchOrderDetails();
+
+            if (orderResponse.status === 'fulfilled') {
+                const rawOrder = orderResponse.value?.order || orderResponse.value?.data || orderResponse.value;
+                const invoice = orderResponse.value?.invoice || rawOrder?.invoice || null;
+
+                if (rawOrder?._id || rawOrder?.id) {
+                    const mappedOrder = mapOrderToTaskDetail(rawOrder, invoice);
+                    setOrder(mappedOrder);
+                    return;
+                }
+            }
+
+            console.log('No task data found');
+            setOrder(null);
+        } catch (err) {
+            console.error('Error fetching order details:', err);
+            setOrder(null);
+        }
     }, [orderId]);
+
+    useEffect(() => {
+        fetchOrderDetails();
+    }, [fetchOrderDetails]);
+
+    useOrderFeedSocket(() => {
+        fetchOrderDetails();
+    });
 
     const steps = useMemo(() => {
         if (!order) return [];

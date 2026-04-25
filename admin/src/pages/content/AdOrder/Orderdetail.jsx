@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText } from 'lucide-react';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';

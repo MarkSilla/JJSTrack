@@ -11,7 +11,25 @@ const ReviewBlock = ({ title, children }) => (
     </div>
 )
 
-const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription, teamName, players, orgName, members, designFile, driveLink, contact, notes }) => {
+const StepReview = ({
+    service,
+    selectedOptions,
+    details,
+    selectedDate,
+    selectedSlot,
+    photos,
+    quantities,
+    repairDescription,
+    repairNotes = {},
+    teamName,
+    players,
+    orgName,
+    members,
+    designFile,
+    driveLink,
+    contact,
+    notes,
+}) => {
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
     const isOrg = service === 'organizational'

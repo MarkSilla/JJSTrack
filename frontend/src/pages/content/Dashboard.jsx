@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import BookingModal from './Bookingforms'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
@@ -8,6 +8,9 @@ import {
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { bookingApi } from '../../../services/bookingApi'
+import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
+import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
+import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 import '../../styles/calendar.css'
 
 const useUser = () => {
@@ -34,6 +37,13 @@ const normalizeDateKey = (value) => {
     const parsed = new Date(value)
     return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
 }
+
+const TRACKING_REFRESH_DEBOUNCE_MS = 250
+const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 'in-progress'])
+
+const normalizeTrackingStatus = (status = '') => String(status || '').trim().toLowerCase()
+const isActiveTrackingStatus = (status = '') => ACTIVE_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
+const isPickupReadyTrackingStatus = (status = '') => normalizeTrackingStatus(status) === 'completed'
 
 // ─── Step icons — lowercase keys to match .toLowerCase() ───
 const STEP_ICON = {
@@ -118,8 +128,10 @@ const ProgressTracker = ({ steps }) => (
 const StatusBadge = ({ status }) => {
     const map = {
         'Pending':     'bg-yellow-50 text-yellow-600',
+        'Approved':    'bg-blue-50 text-blue-600',
         'In Progress': 'bg-blue-50 text-blue-600',
         'Completed':   'bg-green-50 text-green-600',
+        'Released':    'bg-cyan-50 text-cyan-700',
         'Cancelled':   'bg-red-50 text-red-500',
     }
     return (
@@ -135,11 +147,15 @@ const Dashboard = () => {
     const [orders, setOrders] = useState([])
     const [stats, setStats] = useState({ active: 0, pickupReady: 0, total: 0 })
     const [loading, setLoading] = useState(true)
+    const refreshTimeoutRef = useRef(null)
     const user = useUser()
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async ({ silent = false } = {}) => {
         try {
-            setLoading(true)
+            if (!silent) {
+                setLoading(true)
+            }
+
             const [bookingsRes, statsRes] = await Promise.all([
                 bookingApi.getBookings(),
                 bookingApi.getBookingStats ? bookingApi.getBookingStats() : Promise.resolve({ success: false }),
@@ -149,8 +165,8 @@ const Dashboard = () => {
                 setOrders(data)
                 // Compute stats from bookings if no stats API
                 setStats({
-                    active:       data.filter(b => b.status === 'In Progress' || b.status === 'Pending' || b.status === 'Approved').length,
-                    pickupReady:  data.filter(b => b.status === 'Completed').length,
+                    active:       data.filter(b => isActiveTrackingStatus(b.status)).length,
+                    pickupReady:  data.filter(b => isPickupReadyTrackingStatus(b.status)).length,
                     total:        data.length,
                 })
             }
@@ -158,11 +174,58 @@ const Dashboard = () => {
         } catch (error) {
             console.error('Error fetching dashboard data:', error)
         } finally {
-            setLoading(false)
+            if (!silent) {
+                setLoading(false)
+            }
         }
-    }
+    }, [])
 
-    useEffect(() => { fetchData() }, [])
+    useEffect(() => {
+        fetchData()
+    }, [fetchData])
+
+    const scheduleSilentRefresh = useCallback(() => {
+        if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current)
+        }
+
+        refreshTimeoutRef.current = window.setTimeout(() => {
+            refreshTimeoutRef.current = null
+            fetchData({ silent: true })
+        }, TRACKING_REFRESH_DEBOUNCE_MS)
+    }, [fetchData])
+
+    useTrackingUpdatesSocket(() => {
+        scheduleSilentRefresh()
+    }, { enabled: Boolean(user) })
+
+    useEffect(() => {
+        if (!user) return undefined
+
+        const handleWindowFocus = () => {
+            scheduleSilentRefresh()
+        }
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                scheduleSilentRefresh()
+            }
+        }
+
+        window.addEventListener('focus', handleWindowFocus)
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        return () => {
+            window.removeEventListener('focus', handleWindowFocus)
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+        }
+    }, [user, scheduleSilentRefresh])
+
+    useEffect(() => () => {
+        if (refreshTimeoutRef.current) {
+            clearTimeout(refreshTimeoutRef.current)
+        }
+    }, [])
 
     const handleDateClick = useCallback((arg) => {
         const dateKey = arg?.dateStr || toKey(arg.date)
@@ -327,7 +390,7 @@ const Dashboard = () => {
                         {/* Stat Cards */}
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto">
                             {[
-                                { label: 'My Orders',     value: stats.active || orders.length, sub: 'Active',   icon: MdShoppingBag,  bg: 'bg-blue-400/20',   text: 'text-blue-300'   },
+                                { label: 'My Orders',     value: stats.active,                   sub: 'Active',   icon: MdShoppingBag,  bg: 'bg-blue-400/20',   text: 'text-blue-300'   },
                                 { label: 'Pickup Ready',  value: stats.pickupReady || 0,         sub: 'Awaiting', icon: MdCheckCircle,  bg: 'bg-green-400/20',  text: 'text-green-300'  },
                                 { label: 'Total Orders',  value: stats.total || 0,               sub: 'Lifetime', icon: MdInventory,    bg: 'bg-orange-400/20', text: 'text-orange-300' },
                             ].map(({ label, value, sub, icon: Icon, bg, text }) => (
@@ -392,7 +455,7 @@ const Dashboard = () => {
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800">Order Tracker</h3>
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-semibold">
-                                    {orders.length} Active
+                                    {stats.active} Active
                                 </span>
                                 <button
                                     onClick={fetchData}
@@ -432,13 +495,13 @@ const Dashboard = () => {
                                         {/* Order header */}
                                         <div className="flex items-start justify-between gap-2 mb-1">
                                             <p className="text-xs sm:text-sm font-bold text-gray-800 truncate">
-                                                {order.service || order.item || order.itemName || order.bookingType || 'Booking'}
+                                                {getTrackingDisplayName(order)}
                                             </p>
                                             <StatusBadge status={order.status} />
                                         </div>
                                         <div className="flex items-center gap-2 mb-3">
                                             <span className="text-[10px] text-gray-400 font-mono">
-                                                #{order.orderId || order._id?.slice(-8)}
+                                                {getTrackingReferenceCode(order)}
                                             </span>
                                             {order.assignedTailor && (
                                                 <>

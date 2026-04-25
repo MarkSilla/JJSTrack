@@ -50,8 +50,30 @@ const buildClientUser = (user, extra = {}) => ({
   zipCode: user.zipCode,
   photoURL: user.photoURL,
   role: user.role,
+  isVerified: user.isVerified,
+  isGoogleUser: Boolean(user.firebaseUID),
   ...extra,
 });
+
+const buildFullAddressFromParts = ({
+  street = '',
+  brgyName = '',
+  cityName = '',
+  provinceName = '',
+  regionName = '',
+  zipCode = '',
+}) => {
+  const parts = [
+    street,
+    brgyName,
+    cityName,
+    provinceName,
+    regionName,
+    zipCode ? `${zipCode}, Philippines` : 'Philippines',
+  ].filter(Boolean);
+
+  return parts.join(', ');
+};
 
 // Send 6-digit verification code email
 const sendVerificationEmail = async (email, code, fullName) => {
@@ -181,7 +203,7 @@ export const getUserProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    res.json({ success: true, user });
+    res.json({ success: true, user: buildClientUser(user) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching user' });
   }
@@ -190,26 +212,150 @@ export const getUserProfile = async (req, res) => {
 // Update user profile
 export const updateUserProfile = async (req, res) => {
   try {
-    const { fullName, phoneNumber, address, email } = req.body;
-    
-    // Build update object with all provided fields
+    const {
+      fullName,
+      firstName,
+      lastName,
+      phoneNumber,
+      address,
+      street,
+      regionCode,
+      regionName,
+      provinceCode,
+      provinceName,
+      cityCode,
+      cityName,
+      brgyCode,
+      brgyName,
+      zipCode,
+    } = req.body;
+
+    const hasStructuredProfileUpdate = [
+      firstName,
+      lastName,
+      street,
+      regionCode,
+      regionName,
+      provinceCode,
+      provinceName,
+      cityCode,
+      cityName,
+      brgyCode,
+      brgyName,
+      zipCode,
+    ].some((value) => typeof value !== 'undefined');
+
     const updateData = {};
-    if (fullName) updateData.fullName = fullName;
-    if (phoneNumber) updateData.phoneNumber = phoneNumber;
-    if (address) updateData.address = address;
-    if (email) updateData.email = email;
-    
+
+    if (hasStructuredProfileUpdate) {
+      const trimmedFirstName = String(firstName || '').trim();
+      const trimmedLastName = String(lastName || '').trim();
+      const trimmedPhoneNumber = String(phoneNumber || '').trim();
+      const trimmedStreet = String(street || '').trim();
+      const trimmedRegionCode = String(regionCode || '').trim();
+      const trimmedRegionName = String(regionName || '').trim();
+      const trimmedProvinceCode = String(provinceCode || '').trim();
+      const trimmedProvinceName = String(provinceName || '').trim();
+      const trimmedCityCode = String(cityCode || '').trim();
+      const trimmedCityName = String(cityName || '').trim();
+      const trimmedBrgyCode = String(brgyCode || '').trim();
+      const trimmedBrgyName = String(brgyName || '').trim();
+      const trimmedZipCode = String(zipCode || '').trim();
+
+      if (!trimmedFirstName || !trimmedLastName) {
+        return res.status(400).json({ success: false, message: 'First name and last name are required' });
+      }
+
+      if (!trimmedPhoneNumber || trimmedPhoneNumber.length !== 11) {
+        return res.status(400).json({ success: false, message: 'Phone number must be exactly 11 digits' });
+      }
+
+      if (
+        !trimmedStreet ||
+        !trimmedRegionCode ||
+        !trimmedRegionName ||
+        !trimmedProvinceCode ||
+        !trimmedProvinceName ||
+        !trimmedCityCode ||
+        !trimmedCityName ||
+        !trimmedBrgyCode ||
+        !trimmedBrgyName
+      ) {
+        return res.status(400).json({ success: false, message: 'Complete address details are required' });
+      }
+
+      if (!trimmedZipCode || trimmedZipCode.length !== 4) {
+        return res.status(400).json({ success: false, message: 'ZIP code must be exactly 4 digits' });
+      }
+
+      const nextFullName = `${trimmedFirstName} ${trimmedLastName}`.trim();
+      const nextAddress = String(address || '').trim() || buildFullAddressFromParts({
+        street: trimmedStreet,
+        brgyName: trimmedBrgyName,
+        cityName: trimmedCityName,
+        provinceName: trimmedProvinceName,
+        regionName: trimmedRegionName,
+        zipCode: trimmedZipCode,
+      });
+
+      Object.assign(updateData, {
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        fullName: nextFullName,
+        phoneNumber: trimmedPhoneNumber,
+        address: nextAddress,
+        street: trimmedStreet,
+        regionCode: trimmedRegionCode,
+        regionName: trimmedRegionName,
+        provinceCode: trimmedProvinceCode,
+        provinceName: trimmedProvinceName,
+        cityCode: trimmedCityCode,
+        cityName: trimmedCityName,
+        brgyCode: trimmedBrgyCode,
+        brgyName: trimmedBrgyName,
+        zipCode: trimmedZipCode,
+      });
+    } else {
+      if (typeof fullName !== 'undefined') {
+        const trimmedFullName = String(fullName).trim();
+        if (!trimmedFullName) {
+          return res.status(400).json({ success: false, message: 'Full name is required' });
+        }
+        updateData.fullName = trimmedFullName;
+      }
+
+      if (typeof phoneNumber !== 'undefined') {
+        const trimmedPhoneNumber = String(phoneNumber).trim();
+        if (!trimmedPhoneNumber) {
+          return res.status(400).json({ success: false, message: 'Phone number is required' });
+        }
+        updateData.phoneNumber = trimmedPhoneNumber;
+      }
+
+      if (typeof address !== 'undefined') {
+        const trimmedAddress = String(address).trim();
+        if (!trimmedAddress) {
+          return res.status(400).json({ success: false, message: 'Address is required' });
+        }
+        updateData.address = trimmedAddress;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, message: 'No profile changes provided' });
+    }
+
     const user = await userModel.findByIdAndUpdate(
       req.userId,
       updateData,
-      { new: true }
+      { new: true, runValidators: true }
     );
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
-    res.json({ success: true, user });
+
+    res.json({ success: true, user: buildClientUser(user) });
   } catch (error) {
     console.error('Update User Profile Error:', error);
     res.status(500).json({ success: false, message: 'Error updating user' });
