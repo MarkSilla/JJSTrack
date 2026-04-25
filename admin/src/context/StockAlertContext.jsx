@@ -14,7 +14,7 @@ const getAlertLevel = (item = {}) => {
   const minStock = Math.max(0, Number(item?.minStock) || 5);
 
   if (stock === 0) return 'outOfStock';
-  if (stock < minStock) return 'lowStock';
+  if (stock <= minStock) return 'lowStock';
   return 'normal';
 };
 

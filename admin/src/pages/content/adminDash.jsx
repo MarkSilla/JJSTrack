@@ -512,7 +512,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     const totalItems = activeItems.length;
     const lowStock = activeItems.filter((item) => {
       const minStock = Number(item?.minStock) || 5;
-      return item.stock > 0 && item.stock < minStock;
+      return item.stock > 0 && item.stock <= minStock;
     }).length;
     const outOfStock = activeItems.filter((item) => item.stock === 0).length;
     const totalValue = activeItems.reduce(

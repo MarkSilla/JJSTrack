@@ -28,6 +28,26 @@ api.interceptors.request.use((config) => {
 });
 
 export const inventoryApi = {
+  getInventorySettings: async () => {
+    try {
+      const response = await api.get('/inventory/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching inventory settings:', error);
+      throw error;
+    }
+  },
+
+  updateInventorySettings: async (settings) => {
+    try {
+      const response = await api.put('/inventory/settings', settings);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating inventory settings:', error);
+      throw error;
+    }
+  },
+
   // Get all inventory items
   getAllInventory: async () => {
     try {

@@ -19,7 +19,7 @@ import { inventoryApi } from "../../services/inventoryApi";
 
 const getStatus = (stock, minStock) => {
   if (stock <= 0) return "Out of Stock";
-  if (stock < (Number(minStock) || 5)) return "Low Stock";
+  if (stock <= (Number(minStock) || 5)) return "Low Stock";
   return "In Stock";
 };
 
@@ -305,7 +305,7 @@ export default function StaffInventoryPage() {
   ).length;
   const lowStockCount = inventory.filter((item) => {
     const stock = Number(item.stock) || 0;
-    return stock > 0 && stock < (Number(item.minStock) || 5);
+    return stock > 0 && stock <= (Number(item.minStock) || 5);
   }).length;
   const outOfStockCount = inventory.filter(
     (item) => (Number(item.stock) || 0) <= 0

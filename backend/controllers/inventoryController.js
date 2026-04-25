@@ -19,6 +19,11 @@ import {
   previewFifoDeduction,
   serializeBatch,
 } from "../utils/inventoryBatchHelpers.js";
+import {
+  getInventoryStockSettings,
+  resolveInventoryUnitThreshold,
+  saveInventoryStockSettings,
+} from "../utils/inventorySettings.js";
 
 // Helper function to normalize item names - STRICT normalization
 const normalizeName = (name) => {
@@ -50,14 +55,17 @@ const resolveStockCap = (item = {}) => {
   return Number.isFinite(cap) && cap > 0 ? cap : 0;
 };
 
-const resolveInventoryAlertLevel = (item = {}) => {
+const resolveInventoryMinStock = (item = {}, thresholds = {}) =>
+  resolveInventoryUnitThreshold(item?.unit || item?.normalizedUnit, thresholds);
+
+const resolveInventoryAlertLevel = (item = {}, thresholds = {}) => {
   if (item?.archived) return "normal";
 
   const stock = Math.max(0, Number(item?.stock) || 0);
-  const minStock = Math.max(0, Number(item?.minStock) || 5);
+  const minStock = resolveInventoryMinStock(item, thresholds);
 
   if (stock === 0) return "outOfStock";
-  if (stock < minStock) return "lowStock";
+  if (stock <= minStock) return "lowStock";
   return "normal";
 };
 
@@ -218,14 +226,16 @@ const hydrateInventoryForSave = (inventory) => {
   return summary;
 };
 
-const serializeInventory = (inventory) => {
+const serializeInventory = (inventory, thresholds = {}) => {
   const source = inventory?.toObject ? inventory.toObject() : { ...inventory };
   const summary = getInventoryBatchSummary(source);
+  const minStock = resolveInventoryMinStock(source, thresholds);
 
   return {
     ...source,
     normalizedUnit: normalizeUnit(source.unit),
     stock: summary.stock,
+    minStock,
     unitPrice: normalizeMoney(source.unitPrice),
     batchCount: summary.batchCount,
     currentStockValue: summary.currentStockValue,
@@ -240,19 +250,21 @@ const serializeInventory = (inventory) => {
   };
 };
 
-const notifyInventoryClients = ({ actionType, inventory }) => {
+const notifyInventoryClients = ({ actionType, inventory, thresholds = {} }) => {
   if (!inventory?._id) return;
+
+  const minStock = resolveInventoryMinStock(inventory, thresholds);
 
   broadcastInventoryChange({
     actionType,
     inventoryId: inventory._id.toString(),
     stock: Math.max(0, Number(inventory.stock) || 0),
-    minStock: Math.max(0, Number(inventory.minStock) || 5),
+    minStock,
     unit: inventory.unit || "",
     name: inventory.name || "",
     sku: inventory.sku || "",
     category: inventory.category || "",
-    alertLevel: resolveInventoryAlertLevel(inventory),
+    alertLevel: resolveInventoryAlertLevel(inventory, thresholds),
     archived: Boolean(inventory.archived),
     updatedAt: new Date().toISOString(),
   });
@@ -321,8 +333,50 @@ const generateSKU = async (category) => {
 
 export const getAllInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const inventory = await Inventory.find().sort({ createdAt: -1 });
-    res.status(200).json(inventory.map(serializeInventory));
+    res.status(200).json(inventory.map((item) => serializeInventory(item, thresholds)));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getInventorySettings = async (req, res) => {
+  try {
+    const settings = await getInventoryStockSettings();
+    res.status(200).json(settings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateInventorySettings = async (req, res) => {
+  try {
+    const settings = await saveInventoryStockSettings(req.body);
+    const inventoryItems = await Inventory.find().select("_id unit normalizedUnit");
+
+    if (inventoryItems.length > 0) {
+      await Inventory.bulkWrite(
+        inventoryItems.map((item) => ({
+          updateOne: {
+            filter: { _id: item._id },
+            update: {
+              $set: {
+                minStock: resolveInventoryUnitThreshold(
+                  item.unit || item.normalizedUnit,
+                  settings.thresholds
+                ),
+              },
+            },
+          },
+        }))
+      );
+    }
+
+    res.status(200).json({
+      ...settings,
+      updatedItems: inventoryItems.length,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -349,11 +403,12 @@ export const getInventoryActivity = async (req, res) => {
 // Get inventory by ID
 export const getInventoryById = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
-    res.status(200).json(serializeInventory(inventory));
+    res.status(200).json(serializeInventory(inventory, thresholds));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -390,9 +445,10 @@ export const previewInventoryFifo = async (req, res) => {
 // Get inventory by category
 export const getInventoryByCategory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const { category } = req.params;
     const inventory = await Inventory.find({ category }).sort({ createdAt: -1 });
-    res.status(200).json(inventory.map(serializeInventory));
+    res.status(200).json(inventory.map((item) => serializeInventory(item, thresholds)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -401,11 +457,11 @@ export const getInventoryByCategory = async (req, res) => {
 // Create new inventory item or update if exists
 export const createInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const {
       name,
       category,
       stock,
-      minStock,
       unit,
       description,
       supplier,
@@ -422,9 +478,8 @@ export const createInventory = async (req, res) => {
     const normalizedUnit = normalizeUnit(unit);
     const unitMatcher = new RegExp(`^${escapeRegExp(String(unit).trim())}$`, "i");
     const stockValue = normalizeQuantity(stock);
-    const hasMinStock = minStock != null && minStock !== "";
+    const minStockValue = resolveInventoryUnitThreshold(unit, thresholds);
     const hasUnitPrice = unitPrice != null && unitPrice !== "";
-    const minStockValue = hasMinStock ? Math.max(0, Number(minStock) || 0) : 5;
     const unitPriceValue = hasUnitPrice ? normalizeMoney(unitPrice) : 0;
 
     // Check if item already exists by normalizedName + normalizedUnit
@@ -440,14 +495,14 @@ export const createInventory = async (req, res) => {
     if (existingItem) {
       const previousSummary = hydrateInventoryForSave(existingItem);
       const previousStock = previousSummary.stock;
-      const previousMinStock = existingItem.minStock;
+      const previousMinStock = resolveInventoryUnitThreshold(existingItem.unit, thresholds);
 
       existingItem.name = name.trim();
       existingItem.category = category;
       existingItem.unit = unit;
       existingItem.normalizedName = normalizedName;
       existingItem.normalizedUnit = normalizedUnit;
-      if (hasMinStock) existingItem.minStock = minStockValue;
+      existingItem.minStock = minStockValue;
       existingItem.description = description ?? existingItem.description ?? "";
       existingItem.supplier = supplier ?? existingItem.supplier ?? "";
       if (hasUnitPrice) {
@@ -525,9 +580,10 @@ export const createInventory = async (req, res) => {
       notifyInventoryClients({
         actionType: stockValue > 0 ? "increase" : "update",
         inventory: updatedInventory,
+        thresholds,
       });
       return res.status(200).json({
-        ...serializeInventory(updatedInventory),
+        ...serializeInventory(updatedInventory, thresholds),
         message:
           stockValue > 0
             ? "Existing item restocked as a new FIFO batch."
@@ -612,9 +668,10 @@ export const createInventory = async (req, res) => {
     notifyInventoryClients({
       actionType: "create",
       inventory: savedInventory,
+      thresholds,
     });
     res.status(201).json({
-      ...serializeInventory(savedInventory),
+      ...serializeInventory(savedInventory, thresholds),
       message: "New item created.",
       isUpdate: false
     });
@@ -626,11 +683,11 @@ export const createInventory = async (req, res) => {
 // Update inventory item
 export const updateInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const {
       name,
       category,
       stock,
-      minStock,
       unit,
       description,
       supplier,
@@ -645,7 +702,7 @@ export const updateInventory = async (req, res) => {
 
     const previousSummary = hydrateInventoryForSave(inventory);
     const previousStock = previousSummary.stock;
-    const previousMinStock = inventory.minStock;
+    const previousMinStock = resolveInventoryUnitThreshold(inventory.unit, thresholds);
     const hasUnitPrice = unitPrice != null && unitPrice !== "";
 
     const nextName = name ? name.trim() : inventory.name;
@@ -677,8 +734,8 @@ export const updateInventory = async (req, res) => {
     inventory.normalizedName = nextNormalizedName;
     inventory.unit = nextUnit;
     inventory.normalizedUnit = nextNormalizedUnit;
+    inventory.minStock = resolveInventoryUnitThreshold(nextUnit, thresholds);
     if (category) inventory.category = category;
-    if (minStock != null) inventory.minStock = Math.max(0, Number(minStock) || 0);
     if (description != null) inventory.description = description;
     if (supplier != null) inventory.supplier = supplier;
     if (hasUnitPrice) inventory.unitPrice = normalizeMoney(unitPrice);
@@ -782,8 +839,9 @@ export const updateInventory = async (req, res) => {
     notifyInventoryClients({
       actionType: "update",
       inventory: updatedInventory,
+      thresholds,
     });
-    res.status(200).json(serializeInventory(updatedInventory));
+    res.status(200).json(serializeInventory(updatedInventory, thresholds));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -792,6 +850,7 @@ export const updateInventory = async (req, res) => {
 // Adjust stock (increase or decrease)
 export const adjustStock = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const { type, amount, unitPrice, receivedAt, supplier } = req.body;
     const adjustmentAmount = normalizeQuantity(amount);
     const hasUnitPrice = unitPrice != null && unitPrice !== "";
@@ -807,7 +866,8 @@ export const adjustStock = async (req, res) => {
 
     const previousSummary = hydrateInventoryForSave(inventory);
     const previousStock = previousSummary.stock;
-    const previousMinStock = inventory.minStock;
+    const previousMinStock = resolveInventoryUnitThreshold(inventory.unit, thresholds);
+    inventory.minStock = previousMinStock;
     const currentCap = resolveStockCap(inventory);
     let batchBreakdown = [];
     let totalCost = 0;
@@ -911,9 +971,10 @@ export const adjustStock = async (req, res) => {
     notifyInventoryClients({
       actionType: type,
       inventory: updatedInventory,
+      thresholds,
     });
     res.status(200).json({
-      ...serializeInventory(updatedInventory),
+      ...serializeInventory(updatedInventory, thresholds),
       lastAdjustment: {
         type,
         amount: adjustmentAmount,
@@ -929,12 +990,14 @@ export const adjustStock = async (req, res) => {
 // Archive inventory item (instead of delete)
 export const archiveInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
     hydrateInventoryForSave(inventory);
+    inventory.minStock = resolveInventoryUnitThreshold(inventory.unit, thresholds);
     inventory.archived = true;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -954,8 +1017,9 @@ export const archiveInventory = async (req, res) => {
     notifyInventoryClients({
       actionType: "archive",
       inventory: updatedInventory,
+      thresholds,
     });
-    res.status(200).json(serializeInventory(updatedInventory));
+    res.status(200).json(serializeInventory(updatedInventory, thresholds));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -964,12 +1028,14 @@ export const archiveInventory = async (req, res) => {
 // Restore inventory item (from archive)
 export const restoreInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
     hydrateInventoryForSave(inventory);
+    inventory.minStock = resolveInventoryUnitThreshold(inventory.unit, thresholds);
     inventory.archived = false;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -989,8 +1055,9 @@ export const restoreInventory = async (req, res) => {
     notifyInventoryClients({
       actionType: "restore",
       inventory: updatedInventory,
+      thresholds,
     });
-    res.status(200).json(serializeInventory(updatedInventory));
+    res.status(200).json(serializeInventory(updatedInventory, thresholds));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -999,12 +1066,14 @@ export const restoreInventory = async (req, res) => {
 // Delete inventory item (kept for backwards compatibility)
 export const deleteInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const inventory = await Inventory.findById(req.params.id);
     if (!inventory) {
       return res.status(404).json({ message: "Inventory item not found" });
     }
 
     hydrateInventoryForSave(inventory);
+    inventory.minStock = resolveInventoryUnitThreshold(inventory.unit, thresholds);
     inventory.archived = true;
     inventory.lastActivityDate = new Date();
     const updatedInventory = await inventory.save();
@@ -1024,8 +1093,9 @@ export const deleteInventory = async (req, res) => {
     notifyInventoryClients({
       actionType: "archive",
       inventory: updatedInventory,
+      thresholds,
     });
-    res.status(200).json(serializeInventory(updatedInventory));
+    res.status(200).json(serializeInventory(updatedInventory, thresholds));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -1034,12 +1104,13 @@ export const deleteInventory = async (req, res) => {
 // Get inventory statistics
 export const getInventoryStats = async (req, res) => {
   try {
-    const inventory = (await Inventory.find()).map(serializeInventory);
+    const { thresholds } = await getInventoryStockSettings();
+    const inventory = (await Inventory.find()).map((item) => serializeInventory(item, thresholds));
 
     const totalItems = inventory.length;
     const lowStock = inventory.filter((item) => {
-      const stockCap = Math.max(1, resolveStockCap(item));
-      return item.stock > 0 && item.stock / stockCap < 0.2;
+      const minStock = Math.max(0, Number(item?.minStock) || 0);
+      return item.stock > 0 && item.stock <= minStock;
     }).length;
     const outOfStock = inventory.filter((item) => item.stock === 0).length;
     const totalValue = inventory.reduce(
@@ -1061,6 +1132,7 @@ export const getInventoryStats = async (req, res) => {
 // Search inventory
 export const searchInventory = async (req, res) => {
   try {
+    const { thresholds } = await getInventoryStockSettings();
     const { query, category, status } = req.query;
     let filter = {};
 
@@ -1072,18 +1144,17 @@ export const searchInventory = async (req, res) => {
       filter.category = category;
     }
 
-    const results = (await Inventory.find(filter).sort({ createdAt: -1 })).map(
-      serializeInventory
+    const results = (await Inventory.find(filter).sort({ createdAt: -1 })).map((item) =>
+      serializeInventory(item, thresholds)
     );
 
     // Filter by status if provided
     let filtered = results;
     if (status && status !== "All") {
       filtered = results.filter((item) => {
-        const stockCap = Math.max(1, resolveStockCap(item));
         if (status === "Out of Stock") return item.stock === 0;
-        if (status === "Low Stock") return item.stock > 0 && item.stock / stockCap < 0.2;
-        if (status === "In Stock") return item.stock / stockCap >= 0.2;
+        if (status === "Low Stock") return item.stock > 0 && item.stock <= (Number(item?.minStock) || 0);
+        if (status === "In Stock") return item.stock > (Number(item?.minStock) || 0);
         return true;
       });
     }

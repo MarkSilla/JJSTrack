@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Package, AlertTriangle, TrendingDown, RefreshCw, Search, Plus, ChevronDown, Pencil, Archive, RotateCcw, ArrowUpCircle, ArrowDownCircle, X, Check, Filter, BarChart3, Clock, ShoppingBag, Layers,
-  Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown,
+  Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown, Settings,
   Wrench, Sparkles, Link2,
 } from "lucide-react";
 import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi";
+import { useStockAlert } from "../../context/StockAlertContext";
 import { fmt } from "../../utils/helpers.js";
 
 const numberInputStyle = `../../services/inventoryApi.js
@@ -31,8 +32,41 @@ const SORT_INVENTORY_OPTIONS = [
   { value: 'name-za', label: 'Name Z → A' },
 ];
 
+const DEFAULT_INVENTORY_SETTINGS = {
+  thresholds: {
+    pcs: 5,
+    yards: 5,
+    meters: 5,
+  },
+};
+
+const LOW_STOCK_SETTING_UNITS = [
+  { key: "pcs", label: "PCS", helper: "Pieces and count-based stocks" },
+  { key: "yards", label: "YARDS", helper: "Fabric measured in yards" },
+  { key: "meters", label: "METERS", helper: "Fabric measured in meters" },
+];
+
 const SOCKET_RECONNECT_MS = 2500;
 const SOCKET_REFRESH_DEBOUNCE_MS = 200;
+
+function normalizeInventorySettings(settings) {
+  return {
+    thresholds: {
+      ...DEFAULT_INVENTORY_SETTINGS.thresholds,
+      ...(settings?.thresholds || {}),
+    },
+  };
+}
+
+function getUnitMinStock(settings, unit) {
+  const unitKey = String(unit || "pcs").trim().toLowerCase();
+  const normalizedSettings = normalizeInventorySettings(settings);
+  const thresholdValue =
+    normalizedSettings.thresholds?.[unitKey] ??
+    normalizedSettings.thresholds?.pcs ??
+    DEFAULT_INVENTORY_SETTINGS.thresholds.pcs;
+  return Math.max(0, Number(thresholdValue) || 0);
+}
 
 // Format time for activity log
 function formatActivityTime(date) {
@@ -116,7 +150,7 @@ function getCurrentValue(item) {
 
 function getStatus(item) {
   if (item.stock === 0) return "Out of Stock";
-  if (item.stock < (item.minStock || 5)) return "Low Stock";
+  if (item.stock <= (item.minStock || 5)) return "Low Stock";
   return "In Stock";
 }
 
@@ -312,7 +346,7 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
   );
 }
 
-function UpdateModal({ item, onConfirm, onClose }) {
+function UpdateModal({ item, settings, onConfirm, onClose }) {
   const categoryButtonRef = useRef(null);
   const unitButtonRef = useRef(null);
   const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
@@ -322,7 +356,6 @@ function UpdateModal({ item, onConfirm, onClose }) {
     category: item.category || "Sewing",
     unit: item.unit || "pcs",
     unitPrice: item.unitPrice || "",
-    minStock: item.minStock || 5
   });
   const [confirmModal, setConfirmModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -333,18 +366,10 @@ function UpdateModal({ item, onConfirm, onClose }) {
   const hasChanges = form.name !== item.name || 
                      form.category !== item.category || 
                      form.unit !== item.unit || 
-                     form.unitPrice !== item.unitPrice || 
-                     form.minStock !== item.minStock;
+                     form.unitPrice !== item.unitPrice;
 
   const handleConfirm = () => {
     if (!form.name.trim()) return;
-    const minStockValue = parseInt(form.minStock) || 5;
-    
-    if (minStockValue < 0) {
-      alert("Min stock cannot be negative");
-      return;
-    }
-    
     setConfirmModal(true);
   };
 
@@ -354,14 +379,12 @@ function UpdateModal({ item, onConfirm, onClose }) {
       category: form.category,
       unit: form.unit || "pcs",
       unitPrice: parseFloat(form.unitPrice) || 0,
-      minStock: parseInt(form.minStock) || 5,
     });
   };
 
   const fields = [
     { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
     { key: "unitPrice", label: "Default Cost per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
-    { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
   ];
 
   return (
@@ -491,6 +514,11 @@ function UpdateModal({ item, onConfirm, onClose }) {
                 </div>
               )}
             </div>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
+              <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
+              Update it from Inventory Settings.
+            </p>
           </div>
 
           {fields.filter(f => f.key !== "name").map(f => (
@@ -894,7 +922,7 @@ function DuplicateItemModal({ existingItem, newData, onUpdateExisting, onClose }
   );
 }
 
-function AddItemModal({ onConfirm, onClose }) {
+function AddItemModal({ settings, onConfirm, onClose }) {
   const categoryButtonRef = useRef(null);
   const unitButtonRef = useRef(null);
   const [categoryMenuStyle, setCategoryMenuStyle] = useState({});
@@ -903,7 +931,6 @@ function AddItemModal({ onConfirm, onClose }) {
     name: "",
     category: "Sewing",
     stock: "",
-    minStock: "",
     unit: "pcs",
     unitPrice: "",
     receivedAt: formatDateInput(new Date()),
@@ -915,15 +942,9 @@ function AddItemModal({ onConfirm, onClose }) {
   const handleConfirm = () => {
     if (!form.name.trim()) return;
     const stockValue = Number(form.stock) || 0;
-    const minStockValue = parseInt(form.minStock) || 5;
     
     if (stockValue < 0) {
       alert("Current stock cannot be negative");
-      return;
-    }
-    
-    if (minStockValue < 0) {
-      alert("Min stock cannot be negative");
       return;
     }
 
@@ -936,7 +957,6 @@ function AddItemModal({ onConfirm, onClose }) {
       name: form.name.trim(),
       category: form.category,
       stock: stockValue,
-      minStock: minStockValue,
       unit: form.unit || "pcs",
       unitPrice: Number(form.unitPrice) || 0,
       receivedAt: form.receivedAt || formatDateInput(new Date()),
@@ -948,7 +968,6 @@ function AddItemModal({ onConfirm, onClose }) {
   const fields = [
     { key: "name", label: "Item Name", type: "text", placeholder: "e.g. Sewing Needles" },
     { key: "stock", label: "Current Stock", type: "number", placeholder: "e.g. 50" },
-    { key: "minStock", label: "Min Stock", type: "number", placeholder: "e.g. 5" },
     { key: "unitPrice", label: "Batch Cost per Unit", type: "number", placeholder: "e.g. 25.50", step: "0.01" },
   ];
 
@@ -1078,6 +1097,11 @@ function AddItemModal({ onConfirm, onClose }) {
               </div>
             )}
           </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
+            <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
+            Change it from Inventory Settings.
+          </p>
         </div>
 
           {fields.filter(f => f.key !== "name").map(f => (
@@ -1116,6 +1140,116 @@ function AddItemModal({ onConfirm, onClose }) {
   );
 }
 
+function InventorySettingsModal({ settings, onConfirm, onClose, saving }) {
+  const normalizedSettings = normalizeInventorySettings(settings);
+  const [form, setForm] = useState({
+    pcs: normalizedSettings.thresholds.pcs,
+    yards: normalizedSettings.thresholds.yards,
+    meters: normalizedSettings.thresholds.meters,
+  });
+
+  useEffect(() => {
+    const nextSettings = normalizeInventorySettings(settings);
+    setForm({
+      pcs: nextSettings.thresholds.pcs,
+      yards: nextSettings.thresholds.yards,
+      meters: nextSettings.thresholds.meters,
+    });
+  }, [settings]);
+
+  const setThreshold = (unit, value) => {
+    setForm((current) => ({
+      ...current,
+      [unit]: value,
+    }));
+  };
+
+  const handleSave = () => {
+    const payload = {
+      thresholds: {
+        pcs: Math.max(0, Number(form.pcs) || 0),
+        yards: Math.max(0, Number(form.yards) || 0),
+        meters: Math.max(0, Number(form.meters) || 0),
+      },
+    };
+
+    onConfirm(payload);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-[70] sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
+        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-black text-gray-900">Low Stock Settings</h3>
+            <p className="text-xs text-slate-400">Set the alert threshold by unit. These values will be used across the whole inventory.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          {LOW_STOCK_SETTING_UNITS.map((unit) => (
+            <div key={unit.key} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-xs font-black tracking-[0.18em] text-slate-500">{unit.label}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{unit.helper}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Settings size={16} />
+                </div>
+              </div>
+
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Minimum stock before low alert
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form[unit.key]}
+                onChange={(event) => setThreshold(unit.key, event.target.value)}
+                className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500 bg-white"
+              />
+              <p className="text-[11px] text-slate-400 mt-2">
+                Low stock will trigger when available stock is below this value.
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 mb-5">
+          <p className="text-sm font-semibold text-blue-900">Applies to all inventory items with the same unit</p>
+          <p className="text-xs text-blue-700 mt-1">
+            Add New Stock will no longer ask for minimum stock. The alert threshold now follows the unit setting automatically.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:bg-blue-400"
+          >
+            <Check size={15} />
+            {saving ? "Saving..." : "Save Settings"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InventorySystem() {
   return (
     <>
@@ -1127,8 +1261,10 @@ export default function InventorySystem() {
 
 function InventorySystemContent() {
   const location = useLocation();
+  const { checkInventory } = useStockAlert();
   const [inventory, setInventory] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [inventorySettings, setInventorySettings] = useState(DEFAULT_INVENTORY_SETTINGS);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
@@ -1136,6 +1272,8 @@ const [sortBy, setSortBy] = useState('newest');
   const [showSort, setShowSort] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
+  const [settingsModal, setSettingsModal] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [adjModal, setAdjModal] = useState(null);
   const [addModal, setAddModal] = useState(false);
   const [updateModal, setUpdateModal] = useState(null);
@@ -1158,13 +1296,15 @@ const [sortBy, setSortBy] = useState('newest');
         setLoading(true);
       }
 
-      const [inventoryData, activityData] = await Promise.all([
+      const [inventoryData, activityData, settingsData] = await Promise.all([
         inventoryApi.getAllInventory(),
         inventoryApi.getInventoryActivity(20),
+        inventoryApi.getInventorySettings(),
       ]);
 
       setInventory(inventoryData);
       setActivities(activityData.map(mapActivityRecord));
+      setInventorySettings(normalizeInventorySettings(settingsData));
       setError(null);
       setLastSyncedAt(new Date());
     } catch (err) {
@@ -1174,6 +1314,7 @@ const [sortBy, setSortBy] = useState('newest');
         setError("Failed to load inventory");
         setInventory([]);
         setActivities([]);
+        setInventorySettings(DEFAULT_INVENTORY_SETTINGS);
       }
     } finally {
       if (showLoader) {
@@ -1308,6 +1449,11 @@ const [sortBy, setSortBy] = useState('newest');
     return activeInventory.reduce((sum, item) => sum + getCurrentValue(item), 0);
   }, [activeInventory]);
 
+  const normalizedInventorySettings = useMemo(
+    () => normalizeInventorySettings(inventorySettings),
+    [inventorySettings]
+  );
+
   const filtered = useMemo(() => {
     let items = [];
     const source = showArchived ? archivedInventory : activeInventory;
@@ -1435,6 +1581,22 @@ const STAT_CARDS = [
     } catch (err) {
       console.error("Failed to update item:", err);
       alert("Failed to update item");
+    }
+  };
+
+  const handleSaveSettings = async (settingsPayload) => {
+    try {
+      setSavingSettings(true);
+      const updatedSettings = await inventoryApi.updateInventorySettings(settingsPayload);
+      setInventorySettings(normalizeInventorySettings(updatedSettings));
+      await refreshInventoryPage();
+      await checkInventory();
+      setSettingsModal(false);
+    } catch (err) {
+      console.error("Failed to save inventory settings:", err);
+      alert(err?.response?.data?.message || "Failed to save low stock settings");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -1651,10 +1813,44 @@ const STAT_CARDS = [
               <RefreshCw size={14} />
               Sync Now
             </button>
+            <button
+              onClick={() => setSettingsModal(true)}
+              className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <Settings size={14} />
+              Low Stock Settings
+            </button>
             <button onClick={() => setAddModal(true)}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
               <Plus size={15} /> Add New Stock
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 mb-3">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <Settings size={15} className="text-blue-600" />
+                Low Stock Thresholds
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Alerts trigger based on the selected unit settings below.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {LOW_STOCK_SETTING_UNITS.map((unit) => (
+                <span
+                  key={unit.key}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold"
+                >
+                  {unit.label}
+                  <span className="text-blue-600">
+                    {getUnitMinStock(normalizedInventorySettings, unit.key)}
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1869,6 +2065,7 @@ const STAT_CARDS = [
       )}
       {addModal && (
         <AddItemModal
+          settings={normalizedInventorySettings}
           onConfirm={handleAddItem}
           onClose={() => setAddModal(false)}
         />
@@ -1876,8 +2073,17 @@ const STAT_CARDS = [
       {updateModal && (
         <UpdateModal
           item={updateModal}
+          settings={normalizedInventorySettings}
           onConfirm={handleUpdate}
           onClose={() => setUpdateModal(null)}
+        />
+      )}
+      {settingsModal && (
+        <InventorySettingsModal
+          settings={normalizedInventorySettings}
+          onConfirm={handleSaveSettings}
+          onClose={() => !savingSettings && setSettingsModal(false)}
+          saving={savingSettings}
         />
       )}
       {similarModal && (
