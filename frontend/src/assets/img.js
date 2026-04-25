@@ -101,6 +101,8 @@ import nb5 from './jersey/nb (5).jpg'
 import nb6 from './jersey/nb (6).jpg'
 import nb7 from './jersey/nb (7).jpg'
 import nb8 from './jersey/nb8.png'
+import fit from './fit.jfif'
+import desi from './desi.jpg'
 const img = {
     invoice,
     lbj,
@@ -119,6 +121,8 @@ const img = {
     scbot,
     sctop1,
     front,
+    desi,
+    fit,
     jerseys: {
         vintage: [
             w_fd1, w_fd2, w_fd3, w_fd4, w_fd5, w_fd6, w_rd1, w_rd2, w_rd3, w_rd4, w_rd5, w_rd6,

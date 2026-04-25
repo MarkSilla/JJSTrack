@@ -20,7 +20,7 @@ const LandingNavbar = () => {
 
   const handleAuthAction = () => {
     if (isAuthenticated) {
-      navigate('/home')
+      navigate('/login')
     } else {
       navigate('/login')
     }
@@ -183,7 +183,7 @@ const LandingNavbar = () => {
                 : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
-              {isAuthenticated ? 'Dashboard' : 'Sign In'}
+              {isAuthenticated ? 'Sign In' : 'Sign In'}
             </button>
             <div
               className={` xl:hidden flex w-10 h-10 cursor-pointer items-center justify-center rounded-lg transition-all duration-500 ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
@@ -278,7 +278,7 @@ const LandingNavbar = () => {
                 : 'bg-white/20 text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
-              {isAuthenticated ? 'Dashboard' : 'Sign In'}
+              {isAuthenticated ? 'Sign In' : 'Sign In'}
             </button>
           </div>
         )

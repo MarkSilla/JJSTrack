@@ -335,108 +335,139 @@ const Design = () => {
       </div>
       {isPreviewOpen && selectedDesign && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden">
-          <div className="relative w-full max-w-6xl h-full md:h-[88vh] rounded-[5px] md:rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 fade-in duration-500 border-white/10 md:border">
-            <div className="absolute top-0 left-0 w-full p-8 flex items-center justify-between z-50 bg-gradient-to-b from-[#020617] to-transparent">
-              <button
-                onClick={() => setIsPreviewOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-white/5 hover:bg-white/10 text-white rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all backdrop-blur-md border border-white/10 group cursor-pointer"
-              >
-                <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
-                Back
-              </button>
+          <div
+            className="absolute inset-0 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-700"
+            onClick={() => setIsPreviewOpen(false)}
+          />
+          <div className="relative w-[95%] max-w-7xl h-[85vh] md:h-[85vh] rounded-[1.5rem] shadow-[0_0_80px_-20px_rgba(59,130,246,0.3)] flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 fade-in duration-700 border border-white/10 bg-[#020617]/50">
+            <button
+              onClick={() => setIsPreviewOpen(false)}
+              className="absolute top-6 right-6 z-[100] w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 backdrop-blur-md group"
+            >
+              <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+            </button>
 
-              <div className="flex items-center gap-4">
+            <div className="absolute top-0 left-0 w-full p-8 flex items-center justify-between z-50 pointer-events-none">
+              <div className="flex items-center gap-4 mr-16">
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest hidden sm:block">Design ID: {selectedDesign.id}</span>
               </div>
             </div>
-            <div className="w-full md:w-1/2 relative h-[45%] md:h-full flex items-center justify-center p-6 md:p-12 bg-white overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#00000022_1px,transparent_1px)] bg-[size:30px_30px]" />
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-transparent" />
+            <div className="w-full md:w-1/2 relative h-[45%] md:h-full flex items-center justify-center p-6 md:p-12 bg-[#f8fafc] overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] bg-[size:30px_30px]" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 via-transparent to-transparent" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-blue-500/10 blur-[100px] rounded-full" />
+
               <div className="relative z-10 w-full h-full flex items-center justify-center">
                 <img
                   src={selectedDesign.src}
                   alt={selectedDesign.name}
-                  className="max-w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.2)] scale-110 md:scale-100"
+                  className="max-w-full h-full object-contain drop-shadow-[0_60px_100px_rgba(0,0,0,0.15)] scale-110 md:scale-100 hover:scale-105 transition-transform duration-700"
                 />
               </div>
+
               <div className="absolute bottom-12 left-12 hidden md:block">
-                <h4 className="text-6xl font-black italic text-slate-800/50 uppercase tracking-tighter leading-none mb-2 select-none">AUTHENTIC</h4>
+                <h4 className="text-7xl font-black italic text-slate-900/10 uppercase tracking-tighter leading-none mb-2 select-none">AUTHENTIC</h4>
                 <div className="flex items-center gap-3">
-                  <img src={img.jjslogo1} alt="Logo" className="w-8 h-8 object-contain opacity-50 grayscale" />
-                  <span className="text-[10px] font-black text-slate-800/50 uppercase tracking-[0.4em]">JJS-DESIGN</span>
+                  <div className="w-8 h-8 rounded-full bg-slate-900/5 flex items-center justify-center">
+                    <img src={img.jjslogo1} alt="Logo" className="w-5 h-5 object-contain opacity-40 grayscale" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-900/30 uppercase tracking-[0.4em]">JJS-DESIGN • PREMIUM</span>
                 </div>
               </div>
             </div>
-
-
-            {/* Right preview */}
-            <div className="flex-[55%] md:flex-1 bg-black/70 lg:bg-white/[0.02] backdrop-blur-sm p-5 md:p-16 flex flex-col h-full md:border-l border-white/5 overflow-y-auto no-scrollbar scroll-smooth">
-              <div className="max-w-xl mx-auto w-full py-20 md:py-0">
+            <div className="flex-[55%] md:flex-1 bg-gradient-to-br from-white/[0.03] to-transparent backdrop-blur-2xl p-6 md:p-16 flex flex-col h-full md:border-l border-white/10 overflow-y-auto no-scrollbar scroll-smooth">
+              <div className="max-w-xl mx-auto w-full pt-16 pb-12 md:pt-12">
                 <header className="mb-12">
-                  <div className="flex items-center gap-3 mb-9 mt-6">
-                    <span className="px-4 py-2 rounded-xl bg-blue-600 text-[10px] font-black text-white uppercase tracking-widest shadow-xl shadow-blue-600/20">
-                      {selectedDesign.typeLabel.split('•')[0].trim()}
-                    </span>
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="flex items-center gap-2">
+                      <span className="px-4 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                        {selectedDesign.typeLabel.split('•')[0].trim()}
+                      </span>
+                    </div>
                     <div className="h-px w-12 bg-white/10" />
                     <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Elite Collection</span>
                   </div>
-                  <h2 className="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter italic leading-[0.8] mb-8">{selectedDesign.name}</h2>
-                  <p className="text-[11px] md:text-sm font-bold text-blue-400 uppercase tracking-[0.2em] leading-relaxed max-w-sm">{selectedDesign.fabric}</p>
+
+                  <h2 className="text-5xl md:text-8xl font-black text-white uppercase tracking-tighter italic leading-[0.8] mb-10 group">
+                    {selectedDesign.name.split(' ').map((word, i) => (
+                      <span key={i} className={i === 1 ? "text-blue-500" : "text-white"}>
+                        {word}{' '}
+                        {i === 0 && <br />}
+                      </span>
+                    ))}
+                  </h2>
+
+                  <div className="flex items-center gap-4 mb-8">
+                    <p className="text-[11px] md:text-sm font-bold text-white/60 uppercase tracking-[0.2em] leading-relaxed max-w-sm">
+                      {selectedDesign.fabric}
+                    </p>
+                  </div>
                 </header>
 
                 <div className="space-y-16">
                   <div className="space-y-8">
-                    <div className="flex items-center gap-4">
-                      <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Quality Specifications</h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
+                        Quality Specifications
+                      </h4>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       {[
-                        { label: 'HD Sublimation Print', icon: Zap },
-                        { label: 'Premium Spandex Fabric', icon: Shirt },
-                        { label: 'Aero-Dry Cool', icon: Wind },
-                        { label: 'NBA Cut', icon: Maximize2 },
-                        { label: 'Direct to Garment', icon: Shield },
-                        { label: 'Precision Tailored Fit', icon: Ruler }
+                        { label: 'HD Sublimation Print', icon: Zap, color: 'text-yellow-400' },
+                        { label: 'Premium Spandex Fabric', icon: Shirt, color: 'text-blue-400' },
+                        { label: 'Aero-Dry Cool', icon: Wind, color: 'text-cyan-400' },
+                        { label: 'NBA Professional Cut', icon: Maximize2, color: 'text-purple-400' },
+                        { label: 'Direct to Garment', icon: Shield, color: 'text-emerald-400' },
+                        { label: 'Precision Fit', icon: Ruler, color: 'text-rose-400' }
                       ].map((spec, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 md:p-4 rounded-[5px] md:rounded-xl bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.08] transition-all group">
-                          <spec.icon size={14} className="text-blue-300 shrink-0 group-hover:scale-110 transition-transform" />
-                          <span className="text-[9px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest">{spec.label}</span>
+                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-blue-500/30 hover:bg-white/[0.08] transition-all group">
+                          <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${spec.color} shrink-0 group-hover:scale-110 transition-all`}>
+                            <spec.icon size={18} />
+                          </div>
+                          <span className="text-[10px] font-black text-white/80 uppercase tracking-widest leading-tight">{spec.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-8 pt-12 border-t border-white/5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
-                        <MessageSquare size={18} />
-                      </div>
-                      <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Direct Contacts</h4>
+                  <div className="space-y-10 pt-12 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
+                        Direct Inquiries
+                      </h4>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {[
-                        { icon: MessageSquare, label: 'Messenger', value: 'jjsportswearph', link: 'https://www.facebook.com/JennoelJennyl', color: 'text-blue-400' },
-                        { icon: Phone, label: 'Call Us', value: '0908 997 2332', link: 'tel:0908 997 2332', color: 'text-emerald-400' },
-                        { icon: Mail, label: 'Email', value: 'jjsportswearph@gmail.com', link: 'mailto:jjsportswearph@gmail.com', color: 'text-amber-400' }
+                        { icon: MessageSquare, label: 'Messenger', value: 'jjsportswearph', link: 'https://www.facebook.com/JennoelJennyl', color: 'bg-blue-500/10 text-blue-400' },
+                        { icon: Phone, label: 'Call Us', value: '0908 997 2332', link: 'tel:0908 997 2332', color: 'bg-emerald-500/10 text-emerald-400' },
+                        { icon: Mail, label: 'Email', value: 'jjsportswearph@gmail.com', link: 'mailto:jjsportswearph@gmail.com', color: 'bg-amber-500/10 text-amber-400' }
                       ].map((contact, i) => (
                         <a
                           key={i}
                           href={contact.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex flex-col p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all group text-center items-center"
+                          className="flex flex-col p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all group items-center text-center"
                         >
-                          <contact.icon size={18} className={`${contact.color} mb-3`} />
+                          <div className={`w-12 h-12 rounded-full ${contact.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                            <contact.icon size={20} />
+                          </div>
                           <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">{contact.label}</span>
-                          <span className="text-[10px] font-bold text-white uppercase tracking-wider truncate w-full">{contact.value}</span>
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest truncate w-full group-hover:text-white transition-colors">{contact.value}</span>
                         </a>
                       ))}
                     </div>
                   </div>
-                  <div className="pb-8 text-center">
-                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-[0.3em] leading-relaxed">
-                      © 2026 JJS-DESIGN SYSTEM • PREMIUM CRAFTSMANSHIP
+
+                  <div className="pb-12 text-center">
+                    <div className="flex items-center justify-center gap-3 mb-4 opacity-20 grayscale">
+                      <img src={img.jjslogo1} alt="Logo" className="w-6 h-6 object-contain" />
+                      <div className="w-1 h-1 rounded-full bg-white" />
+                      <span className="text-[8px] font-black text-white uppercase tracking-[0.4em]">JJS TRACK</span>
+                    </div>
+                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] leading-relaxed">
+                      CRAFTING EXCELLENCE • EST. 2026
                     </p>
                   </div>
                 </div>

@@ -79,27 +79,37 @@ const LandingPage = () => {
       <LandingNavbar />
       <main className="flex-grow">
         <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-black to-indigo-600 opacity-100"></div>
-          <img src={img.shop} alt="JJS shop" className="absolute inset-0 w-full h-full object-cover opacity-40" />
-          <div className="relative z-10 text-center px-4">
+          <div className="absolute inset-0 bg-[#020617]">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[150px]" />
+            <div className="absolute inset-0 opacity-[0.15] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+          </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r bg-clip-text text-transparent bg-gradient-to-r from-blue-900 via-blue-300 to-blue-500 mb-9 leading-tight">
-              JJS TRACK
-            </h1>
-            <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              All-in-one web application. Track orders, manage clients, and grow your business with precision and style.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button onClick={() => navigate('/signup')} className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 text-lg font-medium transition-colors">
-                Register Now!
+          <img src={img.shop} alt="JJS shop" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-transparent to-[#020617]" />
+
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center">
+            <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom duration-700">
+              <h1 className="text-5xl md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase italic">
+                <span className="text-white">JJS</span>
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-600">TRACK</span>
+              </h1>
+              <p className="text-lg md:text-xl text-slate-100/60 max-w-2xl mx-auto font-medium leading-relaxed">
+                <br className="hidden md:block" />
+                We Create, Repair, and Elevate Team and Company Uniforms.</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+              <button
+                onClick={() => navigate('/signup')}
+                className="group relative px-12 py-5 bg-white text-[#020617] rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all hover:bg-blue-500 hover:text-white hover:scale-105 active:scale-95 shadow-2xl shadow-white/10"
+              >
+                Sign Up Now!
               </button>
-
-
-
             </div>
           </div>
-          <div className="absolute bottom-0  left-1/2 -translate-x-1/2 z-10 animate-bounce duration-400 justify-center items-center flex">
-            <span className="material-symbols-outlined text-white text-4xl opacity-80">keyboard_arrow_down</span>
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-opacity cursor-pointer">
+
+            <div className="w-1 h-12 bg-gradient-to-b from-blue-500 to-transparent animate-bounce" />
           </div>
         </section >
         <section id="features" className="relative px-4 px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
@@ -110,82 +120,81 @@ const LandingPage = () => {
             <p className="text-md md:text-lg mb-12 max-w-3xl mx-auto">
               Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-4 lg:gap-6 justify-center">
-              <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-blue-600">assignment</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 px-4">
+              {[
+                { icon: 'assignment', title: 'Order Tracking', desc: 'Track every order from measurement to delivery with real-time status updates.' },
+                { icon: 'group', title: 'Client Management', desc: 'Build lasting relationships with detailed client profiles and history.' },
+                { icon: 'straighten', title: 'Measurements Database', desc: 'Store and access precise measurements instantly. Never lose a detail.' },
+                { icon: 'inventory_2', title: 'Inventory Control', desc: 'Monitor fabric stock and supplies in real-time to prevent shortages.' }
+              ].map((f, i) => (
+                <div key={i} className="group bg-white rounded-[2rem] p-10 text-left border border-gray-100 shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-20px_rgba(37,99,235,0.1)] transition-all duration-500 cursor-pointer">
+                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-blue-600 transition-colors duration-500">
+                    <span className="material-symbols-outlined text-blue-600 group-hover:text-white transition-colors duration-500 text-2xl">{f.icon}</span>
+                  </div>
+                  <h3 className="text-md font-black text-[#0F172A] mb-4 tracking-tight uppercase">{f.title}</h3>
+                  <p className="text-[#64748b] text-sm font-medium leading-relaxed">{f.desc}</p>
                 </div>
-                <h3 className="text-lg font-bold text-[#0F172A] mb-2">Order Tracking</h3>
-                <p className="text-[#475569] text-sm">Track every order from measurement to delivery with real-time status updates.</p>
-              </div>
-              <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-blue-600">group</span>
-                </div>
-                <h3 className="text-lg font-bold text-[#0F172A] mb-2">Client Management</h3>
-                <p className="text-[#475569] text-sm">Build lasting relationships with detailed client profiles and history.</p>
-              </div>
-              <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-blue-600">straighten</span>
-                </div>
-                <h3 className="text-lg font-bold text-[#0F172A] mb-2">Measurements Database</h3>
-                <p className="text-[#475569] text-sm">Store and access precise measurements instantly. Never lose a detail.</p>
-              </div>
-              <div className="bg-[#D5DBEC] rounded-2xl py-10 px-6 text-left shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-blue-600">inventory_2</span>
-                </div>
-                <h3 className="text-lg font-bold text-[#0F172A] mb-2">Inventory Control</h3>
-                <p className="text-[#475569] text-sm">Monitor fabric stock and supplies in real-time to prevent shortages.</p>
-              </div>
+              ))}
             </div>
           </div>
         </section>
         <section id="about" className="relative py-16 md:py-24 overflow-hidden bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-4">
-            <div className="text-center mb-10 md:mb-12">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Curated Features</h1>
+            <div className="text-center mb-5 md:mb-12">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Our Expertise</h1>
               <div className="border-b-2 border-yellow-400 w-16 md:w-24 mx-auto"></div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[280px] md:min-h-[320px] group">
-                <div className="absolute inset-0 bg-[#0F172A]">
-                  <img src={img.shop} alt="Fit Profiles" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-3">
+              <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[300px] md:min-h-[350px] group cursor-pointer" onClick={() => navigate('/designs')}>
+                <div className="absolute inset-0 bg-[#0F172A]/90 ">
+                  <img src={img.jerseys.nba[3]} alt="Custom Sportswear" className=" w-full h-full object-cover opacity-60 group-hover:opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A] via-[#0F172A]/40 to-transparent" />
                 </div>
-                {/* Top Left */}
-                <div className="relative z-10 p-6 md:p-8 flex flex-col justify-end h-full text-left text-white">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-sm text-yellow-400">content_cut</span>
-                    <span className="text-xs uppercase font-thin tracking-wider text-yellow-400">JJS Management</span>
+                <div className="relative z-10 p-8 md:p-12 flex flex-col justify-center h-full text-left text-white max-w-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-1px bg-yellow-400" />
+                    <span className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-400">Elite Collections</span>
                   </div>
-                  <h3 className="text-xl md:text-2xl font-normal font-playfair mb-2">Personalized Fit Profiles</h3>
-                  <p className="text-sm text-white font-light">We save your measurements and preferences to ensure every sportswear piece or altered garment fits you perfectly, every time.</p>
+                  <h3 className="text-4xl md:text-6xl font-extrabold font-playfair   mb-4 leading-none uppercase tracking-tight">
+                    JJS <br /> <span className="text-blue-400">Sportswear</span> Design
+                  </h3>
+                  <p className="text-sm md:text-base text-white/80 font-medium mb-8 leading-relaxed">
+                    Elevate your team's presence with professional-grade jerseys. Fully customizable colors, logos, and elite spandex fabrics.
+                  </p>
+                  <div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate('/designs'); }}
+                      className="inline-flex items-center gap-3 bg-blue-400 text-white px-8 py-3.5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-blue-300 hover:scale-105 transition-all shadow-xl shadow-blue-400/20"
+                    >
+                      Explore Our Designs
+                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              {/* Top Right */}
-              <div className="bg-[#0F172A] rounded-none  p-8 flex flex-col justify-center min-h-[250px] md:min-h-[320px] text-left">
-                <h3 className="text-xl md:text-2xl font-bold font-playfair text-white mb-3">Custom Sportswear <span className="text-yellow-400">Design</span></h3>
-                <p className="text-white font-light text-sm md:text-base mb-6">Create jerseys and sportswear tailored to your team's identity. Choose your colors, logos, names, and numbers—designed for comfort, durability, and performance.</p>
-                <div>
-                  <button
-                    onClick={() => navigate('/designs')}
-                    className="inline-block border-b-2 border-yellow-400 text-white px-4 md:px-6 py-2 rounded-lg font-medium cursor-pointer
-                    hover:shadow-[0_3px_1px_#facc15] transition-all duration-300"
-                  >
-                    View Designs
-                  </button>
+              <div className="relative bg-[#0F172A] rounded-none overflow-hidden min-h-[280px] md:min-h-[350px] group">
+                <div className="absolute inset-0">
+                  <img src={img.fit} alt="Fit Profiles" className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity" />
+                </div>
+                <div className="relative z-10 p-8 flex flex-col justify-center h-full text-left text-white">
+                  <h3 className="text-xl md:text-2xl font-bold font-playfair mb-3">Personalized <br /> Fit Profiles</h3>
+                  <p className="text-white/60 font-medium text-xs md:text-sm leading-relaxed mb-6">
+                    We securely store your measurements and style preferences to ensure every piece fits perfectly, every time you order.
+                  </p>
                 </div>
               </div>
-              {/* Bottom Left */}
-              <div className="bg-[#F8FAFC] border border-gray-300 rounded-none  p-8 md:p-10 flex flex-col justify-center min-h-[250px] md:min-h-[320px] text-left">
-                <div className="mb-4">
-                  <span className="material-symbols-outlined text-3xl text-[#0F172A]">straighten</span>
+              <div className="relative rounded-none overflow-hidden min-h-[250px] md:min-h-[320px] group">
+                <div className="absolute inset-0 bg-[#0F172A]">
+                  <img src={img.desi} alt="Repair" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent opacity-60" />
                 </div>
-                <h3 className="text-xl md:text-2xl font-bold font-playfair text-[#0F172A] mb-3">Clothing Repair & Alterations</h3>
-                <p className="text-[#475569] font-light text-sm md:text-base">From resizing and hemming to zipper replacement and repairs, we restore and adjust your clothes to look and feel just right.</p>
+                <div className="relative z-10 p-8 md:p-10 flex flex-col justify-center h-full text-left text-white">
+                  <h3 className="text-xl md:text-2xl font-bold font-playfair text-white mb-3">Clothing Repair & Alterations</h3>
+                  <p className="text-white/70 font-light text-sm md:text-base leading-relaxed">
+                    From resizing and hemming to zipper replacement and repairs, we restore and adjust your clothes to look and feel just right.
+                  </p>
+                </div>
               </div>
-              {/* Bottom Right */}
               <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[280px] md:min-h-[320px] group">
                 <div className="absolute inset-0 bg-[#0F172A]">
                   <img src={img.jersey} alt="jersey" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity" />
