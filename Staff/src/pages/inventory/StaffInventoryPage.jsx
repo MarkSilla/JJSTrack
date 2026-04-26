@@ -14,6 +14,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { inventoryApi } from "../../services/inventoryApi";
 
@@ -339,9 +340,10 @@ export default function StaffInventoryPage() {
       ]);
 
       setUseModal(null);
+      toast.success(`${item.name} stock updated successfully.`);
     } catch (useError) {
       console.error("Failed to deduct inventory:", useError);
-      alert(readErrorMessage(useError, "Failed to update inventory stock"));
+      toast.error(readErrorMessage(useError, "Failed to update inventory stock"));
     } finally {
       setSubmittingUse(false);
     }

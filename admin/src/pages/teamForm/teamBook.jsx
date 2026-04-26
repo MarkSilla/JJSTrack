@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { toast } from 'sonner'
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
@@ -122,7 +123,7 @@ const TeamBook = () => {
 
             const token = localStorage.getItem('token')
             if (!token) {
-                alert('Please login first')
+                toast.error('Please login first')
                 setLoading(false)
                 return
             }
@@ -130,7 +131,7 @@ const TeamBook = () => {
             const userStr = localStorage.getItem('user')
             const user = userStr ? JSON.parse(userStr) : null
             if (!user) {
-                alert('User not found. Please login again.')
+                toast.error('User not found. Please login again.')
                 setLoading(false)
                 return
             }
@@ -155,14 +156,14 @@ const TeamBook = () => {
 
             const response = await bookingApi.createBooking(bookingData)
             if (response.success || response._id) {
-                alert('Team booking submitted! Awaiting admin approval.')
+                toast.success('Team booking submitted! Awaiting admin approval.')
                 navigate('/home')
             } else {
-                alert('Submit failed: ' + (response.message || 'Unknown error'))
+                toast.error('Submit failed: ' + (response.message || 'Unknown error'))
             }
         } catch (err) {
             console.error(err)
-            alert('Error: ' + err.message)
+            toast.error('Error: ' + err.message)
         } finally {
             setLoading(false)
         }

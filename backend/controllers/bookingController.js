@@ -41,6 +41,20 @@ const getBookingOwnerId = (booking) =>
   booking?.userId?.toString?.() ||
   '';
 
+const normalizeStepLabel = (label = '') =>
+  String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+const hasReachedDropOffStep = (steps = []) =>
+  Array.isArray(steps) &&
+  steps.some((step) => {
+    const label = normalizeStepLabel(step?.label);
+    return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
+  });
+
 const ensureBookingId = async (booking) => {
   if (!booking?._id || booking.bookingId) {
     return booking;
@@ -1308,6 +1322,13 @@ export const cancelBooking = async (req, res) => {
     // Check ownership - allow if user owns booking or is admin/staff
     if (!isAdminStaff && booking.userId?.toString() !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!isAdminStaff && hasReachedDropOffStep(booking.steps)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This booking can no longer be cancelled after it has been dropped off'
+      });
     }
 
     // Check if booking can be cancelled

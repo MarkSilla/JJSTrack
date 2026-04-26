@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { orderApi } from '../../services/orderApi.js';
 import { bookingApi } from '../../services/bookingApi.js';
 import { EMPLOYEE_POOL, SERVICE_STEPS, PIECE_RATES } from './AdOrder/Constants.js';
@@ -218,10 +219,11 @@ export default function OrderDetailPage() {
             }
 
             await fetchAll(true);
+            toast.success('Pickup schedule updated successfully.');
             return true;
         } catch (error) {
             console.error('Failed to update pickup schedule:', error);
-            alert(error?.response?.data?.message || 'Failed to update schedule. Please try again.');
+            toast.error(error?.response?.data?.message || 'Failed to update schedule. Please try again.');
             return false;
         }
     };

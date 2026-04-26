@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';
@@ -162,9 +163,10 @@ export default function OrderDetail({
             setShowCancelConfirm(false);
             setIsMenuOpen(false);
             setActiveOrderId(null);
+            toast.success('Order cancelled successfully.');
         } catch (error) {
             console.error('Failed to cancel order:', error);
-            alert('Failed to cancel order. Please try again.');
+            toast.error('Failed to cancel order. Please try again.');
             setShowCancelConfirm(false);
         } finally {
             setCancelLoading(false);
@@ -183,9 +185,10 @@ export default function OrderDetail({
             setShowArchiveConfirm(false);
             setIsMenuOpen(false);
             setActiveOrderId(null);
+            toast.success('Order archived successfully.');
         } catch (error) {
             console.error('Failed to archive order:', error);
-            alert('Failed to archive order. Please try again.');
+            toast.error('Failed to archive order. Please try again.');
             setShowArchiveConfirm(false);
         } finally {
             setArchiveLoading(false);

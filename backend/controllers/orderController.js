@@ -19,6 +19,20 @@ import { maybeCreateStaffAssignmentNotification } from '../utils/staffNotificati
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
 
+const normalizeStepLabel = (label = '') =>
+  String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
+const hasReachedDropOffStep = (steps = []) =>
+  Array.isArray(steps) &&
+  steps.some((step) => {
+    const label = normalizeStepLabel(step?.label);
+    return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
+  });
+
 const buildOrderLookupQuery = (rawId = '') => {
   const id = String(rawId || '').trim();
 
@@ -288,6 +302,13 @@ export const cancelOrder = async (req, res) => {
     // Check ownership - allow if user owns order or is admin/staff
     if (!isAdminStaff && getOrderOwnerId(order) !== req.userId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!isAdminStaff && hasReachedDropOffStep(order.steps)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This order can no longer be cancelled after it has been dropped off'
+      });
     }
 
     // Check if order can be cancelled

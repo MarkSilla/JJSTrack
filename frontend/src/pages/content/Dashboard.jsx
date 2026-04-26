@@ -381,8 +381,7 @@ const Dashboard = () => {
                             </div>
                             <button
                                 onClick={() => setShowBooking(true)}
-                                className="flex items-center justify-center sm:justify-start gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"
-                            >
+className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"                            >
                                 Book Now <MdAdd size={16} />
                             </button>
                         </div>

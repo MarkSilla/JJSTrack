@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { toast } from 'sonner'
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import { bookingApi } from '../../../services/bookingApi'
 import TeamStepPlayers from './TeamStepPlayers'
@@ -109,7 +110,7 @@ const TeamBook = () => {
             
             const token = localStorage.getItem('token') || sessionStorage.getItem('token')
             if (!token) {
-                alert('Please login to submit booking')
+                toast.error('Please login to submit booking')
                 return
             }
 
@@ -128,14 +129,14 @@ const TeamBook = () => {
             const response = await bookingApi.createBooking(bookingData)
             
             if (response.success || response._id) {
-                alert('Team booking submitted successfully! Awaiting admin approval for pickup scheduling.')
+                toast.success('Team booking submitted successfully! Awaiting admin approval for pickup scheduling.')
                 navigate('/home')
             } else {
-                alert('Error: ' + (response.message || 'Failed to submit booking'))
+                toast.error('Error: ' + (response.message || 'Failed to submit booking'))
             }
         } catch (err) {
             console.error('Submit error:', err)
-            alert('Error submitting booking. Please try again.')
+            toast.error('Error submitting booking. Please try again.')
         } finally {
             setLoading(false)
         }

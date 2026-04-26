@@ -48,22 +48,9 @@ const playBeep = (audioContext, frequency, duration, delay = 0) => {
 
 const runAlertPattern = (audioContext, type = 'warning') => {
   try {
-    if (type === 'lowStock') {
-      playBeep(audioContext, 800, 0.28, 0);
-      playBeep(audioContext, 800, 0.28, 0.38);
-      return true;
-    }
-
     if (type === 'dueSoon') {
       playBeep(audioContext, 760, 0.24, 0);
       playBeep(audioContext, 920, 0.24, 0.24);
-      return true;
-    }
-
-    if (type === 'outOfStock') {
-      playBeep(audioContext, 1000, 0.32, 0);
-      playBeep(audioContext, 1000, 0.32, 0.24);
-      playBeep(audioContext, 1200, 0.38, 0.48);
       return true;
     }
 
@@ -116,7 +103,6 @@ export const initAlertSound = () => {
   unlockHandlersAttached = true;
 };
 
-// Sound Alert Utility for inventory notifications
 export const playAlertSound = async (type = 'warning') => {
   try {
     const audioContext = getAudioContext();

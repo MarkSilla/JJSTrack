@@ -9,6 +9,7 @@ import { GiSewingMachine } from 'react-icons/gi'
 import { 
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { orderApi }   from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -46,6 +47,18 @@ const normalizeTrackingStatus = (status = '') => String(status || '').trim().toL
 const isActiveTrackingStatus = (status = '') => ACTIVE_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
 const isFulfilledTrackingStatus = (status = '') => FULFILLED_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
 const isClosedTrackingStatus = (status = '') => CLOSED_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+const hasReachedDropOffStep = (steps = []) =>
+    Array.isArray(steps) &&
+    steps.some((step) => {
+        const label = normalizeStepLabel(step?.label)
+        return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active)
+    })
 
 const getServiceTypeLabel = (entry = {}) => {
     const serviceType = String(entry.serviceType || '').trim()
@@ -527,6 +540,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const displayName = getTrackingDisplayName(order)
     const steps = order.steps || []
     const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
+    const canCancel = !isClosedTrackingStatus(order.status) && !hasReachedDropOffStep(steps)
 
     const loadQRCode = async () => {
         if (loadingQR || qrCode) return
@@ -538,7 +552,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
             setQrCode(response.qrCode)
         } catch (error) {
             console.error('Error fetching QR code:', error)
-            alert('Failed to load QR code')
+            toast.error('Failed to load QR code')
         } finally {
             setLoadingQR(false)
         }
@@ -642,9 +656,9 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             <span className="sm:hidden">Chat</span>
                         </button>
                     )}
-                    {!isClosedTrackingStatus(order.status) && (
+                    {canCancel && (
                         <button
-                            onClick={() => onCancel(order._id, displayName, isBooking ? order._id : null)}
+                            onClick={() => onCancel(order)}
                             className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
                         >
                             Cancel
@@ -958,33 +972,62 @@ const Order = () => {
     const handleFilterSelect = (f) => setActiveFilter(f)
     const displayedItems = sortOrders([...orders, ...bookings], sortBy)
 
-    const handleCancelOrder = async (orderId, orderName, bookingId) => {
-        if (!window.confirm(`Are you sure you want to cancel "${orderName}"? This action cannot be undone.`)) {
+    const handleCancelOrder = (order) => {
+        const orderId = order?._id || order?.id
+        const bookingId = order?.bookingType ? orderId : null
+        const orderName = getTrackingDisplayName(order)
+
+        if (!orderId) {
+            toast.error('Unable to cancel this item right now.')
             return
         }
 
-        try {
-            let response;
-            
-            // If bookingId exists, cancel the booking (which will also cancel the order)
-            if (bookingId) {
-                response = await bookingApi.cancelBooking(bookingId)
-            } else {
-                // Fallback to order cancellation if no bookingId
-                response = await orderApi.cancelOrder(orderId)
-            }
-            
-            if (response.success) {
-                alert('Order cancelled successfully')
-                // Refresh the orders list
-                fetchData(activeFilter, searchQuery)
-            } else {
-                alert('Failed to cancel order: ' + (response.message || 'Unknown error'))
-            }
-        } catch (error) {
-            alert('Error cancelling order: ' + error.message)
-            console.error('Cancel order error:', error)
+        if (hasReachedDropOffStep(order?.steps)) {
+            toast.error(`This ${bookingId ? 'booking' : 'order'} can no longer be cancelled after it has been dropped off.`)
+            return
         }
+
+        const orderLabel = orderName ? `"${orderName}"` : 'this order'
+        const confirmationId = `cancel-order-${bookingId || orderId}`
+
+        toast(`Cancel ${orderLabel}?`, {
+            id: confirmationId,
+            description: 'This action cannot be undone.',
+            duration: 12000,
+            action: {
+                label: 'Yes, cancel',
+                onClick: () => {
+                    toast.dismiss(confirmationId)
+                    toast.promise(
+                        (async () => {
+                            try {
+                                const response = bookingId
+                                    ? await bookingApi.cancelBooking(bookingId)
+                                    : await orderApi.cancelOrder(orderId)
+
+                                if (!response.success) {
+                                    throw new Error(response.message || 'Unknown error')
+                                }
+
+                                await fetchData(activeFilter, searchQuery, { silent: true })
+                                return response
+                            } catch (error) {
+                                console.error('Cancel order error:', error)
+                                throw error
+                            }
+                        })(),
+                        {
+                            loading: `Cancelling ${orderLabel}...`,
+                            success: 'Order cancelled successfully',
+                            error: (error) => `Failed to cancel order: ${error?.message || 'Unknown error'}`,
+                        }
+                    )
+                },
+            },
+            cancel: {
+                label: 'Keep order',
+            },
+        })
     }
 
     return (

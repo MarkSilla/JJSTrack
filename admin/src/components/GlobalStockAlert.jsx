@@ -2,8 +2,14 @@ import { useStockAlert } from '../context/StockAlertContext';
 import { StockAlertModal } from './StockAlertModal';
 
 export function GlobalStockAlert() {
-  const { showStockAlert, dismissAlert, lowStockItems, outOfStockItems } =
-    useStockAlert();
+  const {
+    showStockAlert,
+    dismissAlert,
+    lowStockItems,
+    outOfStockItems,
+    dueSoonItems,
+    overdueItems,
+  } = useStockAlert();
 
   if (!showStockAlert) return null;
 
@@ -11,6 +17,8 @@ export function GlobalStockAlert() {
     <StockAlertModal
       lowStockItems={lowStockItems}
       outOfStockItems={outOfStockItems}
+      dueSoonItems={dueSoonItems}
+      overdueItems={overdueItems}
       onClose={dismissAlert}
     />
   );

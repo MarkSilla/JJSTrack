@@ -1,11 +1,37 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { bookingApi } from '../services/bookingApi';
+import useOrderFeedSocket from '../hooks/useOrderFeedSocket';
+import { orderApi } from '../services/orderApi';
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from '../services/inventoryApi';
+import { buildDueDateAlerts } from '../utils/alertMonitor';
 import { initAlertSound, playAlertSound } from '../utils/soundAlert';
 
 const StockAlertContext = createContext();
 const SOCKET_RECONNECT_MS = 1000;
 const SOCKET_REFRESH_DEBOUNCE_MS = 75;
-const ALERT_POLL_INTERVAL_MS = 1000;
+const INVENTORY_ALERT_POLL_INTERVAL_MS = 1000;
+const DUE_DATE_ALERT_POLL_INTERVAL_MS = 60000;
+
+const createEmptyAlertCollections = () => ({
+  lowStockItems: [],
+  outOfStockItems: [],
+  dueSoonItems: [],
+  overdueItems: [],
+});
+
+const createEmptyAlertSnapshots = () => ({
+  lowStock: [],
+  outOfStock: [],
+  dueSoon: [],
+  overdue: [],
+});
+
+const normalizeCollection = (payload, key) => {
+  if (Array.isArray(payload?.[key])) return payload[key];
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
 
 const getAlertLevel = (item = {}) => {
   if (item?.archived) return 'normal';
@@ -18,102 +44,180 @@ const getAlertLevel = (item = {}) => {
   return 'normal';
 };
 
-const sortAlertItems = (items = []) =>
+const sortInventoryAlertItems = (items = []) =>
   [...items].sort((left, right) =>
     String(left?.name || '').localeCompare(String(right?.name || ''))
   );
 
-const getSortedIds = (items = []) =>
-  items.map((item) => item?._id).filter(Boolean).sort();
+const getSortedAlertKeys = (items = []) =>
+  items
+    .map((item) => item?.alertKey || item?._id || item?.id || '')
+    .filter(Boolean)
+    .sort();
+
+const hasActiveAlerts = (collections = createEmptyAlertCollections()) =>
+  Object.values(collections).some((items) => Array.isArray(items) && items.length > 0);
+
+const getPrioritySoundType = (changedFlags, nextCollections) => {
+  if (changedFlags.overdue && nextCollections.overdueItems.length > 0) {
+    return 'overdue';
+  }
+
+  if (changedFlags.outOfStock && nextCollections.outOfStockItems.length > 0) {
+    return 'outOfStock';
+  }
+
+  if (changedFlags.dueSoon && nextCollections.dueSoonItems.length > 0) {
+    return 'dueSoon';
+  }
+
+  if (changedFlags.lowStock && nextCollections.lowStockItems.length > 0) {
+    return 'lowStock';
+  }
+
+  return '';
+};
 
 export function StockAlertProvider({ children }) {
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [outOfStockItems, setOutOfStockItems] = useState([]);
-  const isCheckingRef = useRef(false);
-  const lastAlertedItemsRef = useRef({ low: [], outOfStock: [] });
+  const [dueSoonItems, setDueSoonItems] = useState([]);
+  const [overdueItems, setOverdueItems] = useState([]);
+  const isCheckingInventoryRef = useRef(false);
+  const isCheckingDueDatesRef = useRef(false);
+  const lastAlertedItemsRef = useRef(createEmptyAlertSnapshots());
   const userDismissedRef = useRef(false);
   const socketRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const refreshTimeoutRef = useRef(null);
-  const alertItemsRef = useRef({ lowStock: [], outOfStock: [] });
+  const alertItemsRef = useRef(createEmptyAlertCollections());
 
-  const syncAlertState = useCallback(({ nextLowStockItems = [], nextOutOfStockItems = [] }) => {
-    const normalizedLowStockItems = sortAlertItems(nextLowStockItems);
-    const normalizedOutOfStockItems = sortAlertItems(nextOutOfStockItems);
-
-    const lowStockIds = getSortedIds(normalizedLowStockItems);
-    const outOfStockIds = getSortedIds(normalizedOutOfStockItems);
-    const lastLowIds = [...lastAlertedItemsRef.current.low].sort();
-    const lastOutIds = [...lastAlertedItemsRef.current.outOfStock].sort();
-
-    const lowStockChanged =
-      JSON.stringify(lowStockIds) !== JSON.stringify(lastLowIds);
-    const outOfStockChanged =
-      JSON.stringify(outOfStockIds) !== JSON.stringify(lastOutIds);
-
-    alertItemsRef.current = {
-      lowStock: normalizedLowStockItems,
-      outOfStock: normalizedOutOfStockItems,
+  const syncAlertState = useCallback((partialCollections = {}) => {
+    const nextCollections = {
+      lowStockItems: sortInventoryAlertItems(
+        partialCollections.lowStockItems ?? alertItemsRef.current.lowStockItems
+      ),
+      outOfStockItems: sortInventoryAlertItems(
+        partialCollections.outOfStockItems ?? alertItemsRef.current.outOfStockItems
+      ),
+      dueSoonItems: [...(partialCollections.dueSoonItems ?? alertItemsRef.current.dueSoonItems)],
+      overdueItems: [...(partialCollections.overdueItems ?? alertItemsRef.current.overdueItems)],
     };
 
-    setLowStockItems(normalizedLowStockItems);
-    setOutOfStockItems(normalizedOutOfStockItems);
+    const nextSnapshots = {
+      lowStock: getSortedAlertKeys(nextCollections.lowStockItems),
+      outOfStock: getSortedAlertKeys(nextCollections.outOfStockItems),
+      dueSoon: getSortedAlertKeys(nextCollections.dueSoonItems),
+      overdue: getSortedAlertKeys(nextCollections.overdueItems),
+    };
 
-    if (lowStockChanged || outOfStockChanged) {
+    const changedFlags = {
+      lowStock:
+        JSON.stringify(nextSnapshots.lowStock) !==
+        JSON.stringify(lastAlertedItemsRef.current.lowStock),
+      outOfStock:
+        JSON.stringify(nextSnapshots.outOfStock) !==
+        JSON.stringify(lastAlertedItemsRef.current.outOfStock),
+      dueSoon:
+        JSON.stringify(nextSnapshots.dueSoon) !==
+        JSON.stringify(lastAlertedItemsRef.current.dueSoon),
+      overdue:
+        JSON.stringify(nextSnapshots.overdue) !==
+        JSON.stringify(lastAlertedItemsRef.current.overdue),
+    };
+
+    alertItemsRef.current = nextCollections;
+
+    setLowStockItems(nextCollections.lowStockItems);
+    setOutOfStockItems(nextCollections.outOfStockItems);
+    setDueSoonItems(nextCollections.dueSoonItems);
+    setOverdueItems(nextCollections.overdueItems);
+
+    if (Object.values(changedFlags).some(Boolean)) {
       userDismissedRef.current = false;
-      lastAlertedItemsRef.current = {
-        low: lowStockIds,
-        outOfStock: outOfStockIds,
-      };
+      lastAlertedItemsRef.current = nextSnapshots;
 
-      if (outOfStockChanged && normalizedOutOfStockItems.length > 0) {
-        playAlertSound('outOfStock');
-      } else if (lowStockChanged && normalizedLowStockItems.length > 0) {
-        playAlertSound('lowStock');
+      const nextSoundType = getPrioritySoundType(changedFlags, nextCollections);
+      if (nextSoundType) {
+        playAlertSound(nextSoundType);
       }
     }
 
-    if (
-      !userDismissedRef.current &&
-      (normalizedLowStockItems.length > 0 || normalizedOutOfStockItems.length > 0)
-    ) {
+    if (!userDismissedRef.current && hasActiveAlerts(nextCollections)) {
       setShowStockAlert(true);
       return;
     }
 
-    if (normalizedLowStockItems.length === 0 && normalizedOutOfStockItems.length === 0) {
+    if (!hasActiveAlerts(nextCollections)) {
       setShowStockAlert(false);
       userDismissedRef.current = false;
-      lastAlertedItemsRef.current = { low: [], outOfStock: [] };
+      lastAlertedItemsRef.current = createEmptyAlertSnapshots();
     }
   }, []);
 
   const checkInventory = useCallback(async () => {
-    if (isCheckingRef.current) return;
+    if (isCheckingInventoryRef.current) return;
 
     try {
-      isCheckingRef.current = true;
+      isCheckingInventoryRef.current = true;
       const inventory = await inventoryApi.getAllInventory();
-      const activeItems = (Array.isArray(inventory) ? inventory : []).filter(
-        (item) => !item.archived
-      );
+      const activeItems = normalizeCollection(inventory).filter((item) => !item.archived);
 
       syncAlertState({
-        nextLowStockItems: activeItems.filter((item) => getAlertLevel(item) === 'lowStock'),
-        nextOutOfStockItems: activeItems.filter((item) => getAlertLevel(item) === 'outOfStock'),
+        lowStockItems: activeItems.filter((item) => getAlertLevel(item) === 'lowStock'),
+        outOfStockItems: activeItems.filter((item) => getAlertLevel(item) === 'outOfStock'),
       });
     } catch (error) {
       console.error('Error checking inventory:', error);
     } finally {
-      isCheckingRef.current = false;
+      isCheckingInventoryRef.current = false;
+    }
+  }, [syncAlertState]);
+
+  const checkDueDateAlerts = useCallback(async () => {
+    if (isCheckingDueDatesRef.current) return;
+
+    try {
+      isCheckingDueDatesRef.current = true;
+
+      const [ordersResponse, bookingsResponse] = await Promise.allSettled([
+        orderApi.getAllOrders(),
+        bookingApi.getAllBookings(),
+      ]);
+
+      const orders =
+        ordersResponse.status === 'fulfilled'
+          ? normalizeCollection(ordersResponse.value, 'orders')
+          : [];
+      const bookings =
+        bookingsResponse.status === 'fulfilled'
+          ? normalizeCollection(bookingsResponse.value, 'bookings')
+          : [];
+
+      const nextDueAlerts = buildDueDateAlerts({
+        orders,
+        bookings,
+        routeBuilder: ({ id }) => (id ? `/admin/orders/${id}` : '/admin/orders'),
+      });
+
+      syncAlertState(nextDueAlerts);
+    } catch (error) {
+      console.error('Error checking due date alerts:', error);
+    } finally {
+      isCheckingDueDatesRef.current = false;
     }
   }, [syncAlertState]);
 
   useEffect(() => {
     initAlertSound();
     void checkInventory();
-  }, [checkInventory]);
+    void checkDueDateAlerts();
+  }, [checkDueDateAlerts, checkInventory]);
+
+  useOrderFeedSocket(() => {
+    void checkDueDateAlerts();
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -165,19 +269,19 @@ export function StockAlertProvider({ children }) {
               typeof message.alertLevel === 'string'
                 ? message.alertLevel
                 : getAlertLevel(liveItem);
-            const currentLowStockItems = alertItemsRef.current.lowStock.filter(
+            const currentLowStockItems = alertItemsRef.current.lowStockItems.filter(
               (item) => item?._id !== liveItem._id
             );
-            const currentOutOfStockItems = alertItemsRef.current.outOfStock.filter(
+            const currentOutOfStockItems = alertItemsRef.current.outOfStockItems.filter(
               (item) => item?._id !== liveItem._id
             );
 
             syncAlertState({
-              nextLowStockItems:
+              lowStockItems:
                 nextAlertLevel === 'lowStock'
                   ? [...currentLowStockItems, liveItem]
                   : currentLowStockItems,
-              nextOutOfStockItems:
+              outOfStockItems:
                 nextAlertLevel === 'outOfStock'
                   ? [...currentOutOfStockItems, liveItem]
                   : currentOutOfStockItems,
@@ -239,10 +343,22 @@ export function StockAlertProvider({ children }) {
   useEffect(() => {
     const interval = setInterval(() => {
       void checkInventory();
-    }, ALERT_POLL_INTERVAL_MS);
+    }, INVENTORY_ALERT_POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [checkInventory]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      void checkDueDateAlerts();
+    }, DUE_DATE_ALERT_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [checkDueDateAlerts]);
 
   const dismissAlert = () => {
     userDismissedRef.current = true;
@@ -256,7 +372,10 @@ export function StockAlertProvider({ children }) {
         setShowStockAlert,
         lowStockItems,
         outOfStockItems,
+        dueSoonItems,
+        overdueItems,
         checkInventory,
+        checkDueDateAlerts,
         dismissAlert,
       }}
     >

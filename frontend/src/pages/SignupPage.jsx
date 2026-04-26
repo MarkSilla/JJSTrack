@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
+import { toast } from 'sonner';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
@@ -228,7 +229,7 @@ const SignupPage = () => {
         fullName: user.displayName || user.email.split('@')[0],
         photoURL: user.photoURL || '',
       });
-      if (response.success) { alert('Google signup successful!'); navigate('/home', { replace: true }); }
+      if (response.success) { toast.success('Google signup successful!'); navigate('/home', { replace: true }); }
       else setError(response.message || 'Google signup failed');
     } catch (err) {
       setError(err.message || 'Google signup failed. Please try again.');

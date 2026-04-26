@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
+import { toast } from 'sonner'
 import img from '../../assets/img.js'
 
 // Repair steps
@@ -392,11 +393,13 @@ const BookingModal = ({ isOpen, onClose }) => {
             console.log('Booking response:', response)
 
             if (response.success || response._id || response.booking) {
-                alert('Booking submitted successfully! We will contact you soon.')
+                toast.success('Booking submitted successfully! We will contact you soon.')
                 resetForm()
                 onClose()
             } else {
-                setError(response.message || 'Failed to create booking')
+                const errorMessage = response.message || 'Failed to create booking'
+                setError(errorMessage)
+                toast.error(errorMessage)
             }
         } catch (err) {
             console.error('Booking submission error:', err)
@@ -420,6 +423,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
             console.error('Final error message to display:', errorMsg)
             setError(errorMsg)
+            toast.error(errorMsg)
         } finally {
             setLoading(false)
         }

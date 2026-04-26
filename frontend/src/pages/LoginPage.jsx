@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
+import { toast } from 'sonner';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
@@ -45,7 +46,7 @@ const LoginPage = () => {
       if (response.success) {
         // Save to context
         login(response.user);
-        alert('Login successful!');
+        toast.success('Login successful!');
         navigate('/home', { replace: true });
       } else {
         setError(response.message || 'Login failed');
@@ -90,7 +91,7 @@ const LoginPage = () => {
   };
 
   const handleProfileSuccess = (updatedUser) => {
-    alert('Profile completed successfully!');
+    toast.success('Profile completed successfully!');
     navigate('/home', { replace: true });
   };
 

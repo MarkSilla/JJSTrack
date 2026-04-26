@@ -540,12 +540,12 @@ const Appointment = () => {
                             )}
                         </div>
 
-                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col">
                             <h3 className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-blue-600/60 mb-4 flex items-center gap-2">
                                 <span className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 inline-block" />
                                 Your Bookings
                             </h3>
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
                                 {loading ? (
                                     <div className="text-center py-6 text-gray-400 text-sm">Loading appointments...</div>
                                 ) : error ? (

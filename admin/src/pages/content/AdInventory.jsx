@@ -5,6 +5,7 @@ import {
   Tag, CheckCircle2, AlertCircle, XCircle, SlidersHorizontal, ArrowUpDown, Settings,
   Wrench, Sparkles, Link2,
 } from "lucide-react";
+import { toast } from "sonner";
 import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi";
 import { useStockAlert } from "../../context/StockAlertContext";
@@ -632,13 +633,13 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 
     if (adjType === "increase") {
       if (unitPrice === "") {
-        alert("Batch cost per unit is required");
+        toast.error("Batch cost per unit is required");
         return;
       }
 
       const nextUnitPrice = Number(unitPrice);
       if (!Number.isFinite(nextUnitPrice) || nextUnitPrice < 0) {
-        alert("Batch cost cannot be negative");
+        toast.error("Batch cost cannot be negative");
         return;
       }
 
@@ -650,7 +651,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
     }
 
     if (fifoPreview && !fifoPreview.canFulfill) {
-      alert("Requested quantity exceeds available FIFO stock");
+      toast.error("Requested quantity exceeds available FIFO stock");
       return;
     }
 
@@ -959,12 +960,12 @@ function AddItemModal({ settings, onConfirm, onClose }) {
     const stockValue = Number(form.stock) || 0;
     
     if (stockValue < 0) {
-      alert("Current stock cannot be negative");
+      toast.error("Current stock cannot be negative");
       return;
     }
 
     if (stockValue > 0 && form.unitPrice === "") {
-      alert("Batch cost per unit is required when receiving stock");
+      toast.error("Batch cost per unit is required when receiving stock");
       return;
     }
     
@@ -1512,9 +1513,10 @@ const STAT_CARDS = [
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
       await fetchActivities();
       setAdjModal(null);
+      toast.success(type === "increase" ? "Stock batch received successfully." : "Stock usage recorded successfully.");
     } catch (err) {
       console.error("Failed to adjust stock:", err);
-      alert(err?.response?.data?.message || "Failed to adjust stock");
+      toast.error(err?.response?.data?.message || "Failed to adjust stock");
     }
   };
 
@@ -1532,6 +1534,7 @@ const STAT_CARDS = [
         setInventory(inv => inv.map(i => i._id === result._id ? result : i));
         await fetchActivities();
         setAddModal(false);
+        toast.success("Inventory item updated successfully.");
         return;
       }
 
@@ -1560,9 +1563,10 @@ const STAT_CARDS = [
       }
       await fetchActivities();
       setAddModal(false);
+      toast.success(result.isUpdate ? "Inventory item updated successfully." : "Inventory item added successfully.");
     } catch (err) {
       console.error("Failed to add item:", err);
-      alert("Failed to add item");
+      toast.error("Failed to add item");
     }
   };
 
@@ -1587,9 +1591,10 @@ const STAT_CARDS = [
         }
         await fetchActivities();
         setAddModal(false);
+        toast.success(result.isUpdate ? "Inventory item updated successfully." : "Inventory item added successfully.");
       } catch (err) {
         console.error("Failed to add item:", err);
-        alert("Failed to add item");
+        toast.error("Failed to add item");
       }
       setPendingAddData(null);
     }
@@ -1601,9 +1606,10 @@ const STAT_CARDS = [
       setInventory(inv => inv.map(i => i._id === itemId ? updatedItem : i));
       await fetchActivities();
       setUpdateModal(null);
+      toast.success("Item updated successfully.");
     } catch (err) {
       console.error("Failed to update item:", err);
-      alert("Failed to update item");
+      toast.error("Failed to update item");
     }
   };
 
@@ -1615,9 +1621,10 @@ const STAT_CARDS = [
       await refreshInventoryPage();
       await checkInventory();
       setSettingsModal(false);
+      toast.success("Low stock settings saved successfully.");
     } catch (err) {
       console.error("Failed to save inventory settings:", err);
-      alert(err?.response?.data?.message || "Failed to save low stock settings");
+      toast.error(err?.response?.data?.message || "Failed to save low stock settings");
     } finally {
       setSavingSettings(false);
     }
@@ -1648,9 +1655,10 @@ const STAT_CARDS = [
       setInventory(inv => inv.map(i => i._id === id ? updatedItem : i));
       await fetchActivities();
       setArchiveConfirm({ show: false, id: null, isRestore: false, itemName: '' });
+      toast.success(isRestore ? "Item restored successfully." : "Item archived successfully.");
     } catch (err) {
       console.error("Failed to archive/restore item:", err);
-      alert(archiveConfirm.isRestore ? "Failed to restore item" : "Failed to archive item");
+      toast.error(archiveConfirm.isRestore ? "Failed to restore item" : "Failed to archive item");
     }
   };
 

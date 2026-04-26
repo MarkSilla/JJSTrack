@@ -4,6 +4,7 @@ import {
     Package, Shirt, ChevronRight, Wrench, Scissors, FileText, CheckCircle2, Inbox, Image as ImageIcon, Eye, X,
     ExternalLink, Link as LinkIcon
 } from 'lucide-react';
+import { toast } from 'sonner';
 import OrderStatusTracker from './OrderStatusTracker';
 import useOrderDetails from '../hooks/useOrderDetails';
 import { bookingApi } from '../../../services/bookingApi';
@@ -170,9 +171,10 @@ const OrderDetails = ({ orderId, onBack }) => {
                 await orderApi.updateOrder(orderId, { steps: updatedSteps });
             }
             console.log('✅ Production steps saved successfully');
+            toast.success('Progress saved successfully.');
         } catch (err) {
             console.error('❌ Error saving production steps:', err);
-            alert('Failed to save progress. Changes won\'t be retained on reload.');
+            toast.error('Failed to save progress. Changes won\'t be retained on reload.');
         }
         
         setShowConfirmModal(false);
