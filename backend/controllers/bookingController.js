@@ -949,9 +949,9 @@ export const getBookingById = async (req, res) => {
 export const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, adminNotes, contact, pickupDate, pickupSlot, steps, assignedTailor } = req.body;
+    const { status, adminNotes, contact, pickupDate, pickupSlot, steps, assignedTailor, isArchived } = req.body;
 
-    console.log('📝 UpdateBooking request:', { id, assignedTailor, status, hasAssignedTailor: !!assignedTailor });
+    console.log('UpdateBooking request:', { id, assignedTailor, status, hasAssignedTailor: !!assignedTailor });
 
     const booking = await bookingModel.findById(id);
 
@@ -997,6 +997,7 @@ export const updateBooking = async (req, res) => {
       console.log('🎯 Setting assignedTailor:', assignedTailor);
       booking.assignedTailor = assignedTailor;
     }
+    if (isArchived !== undefined) booking.isArchived = isArchived;
 
     console.log('💾 Saving booking with status:', booking.status, 'steps:', booking.steps);
     booking.steps = booking.steps || [];

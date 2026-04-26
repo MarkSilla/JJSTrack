@@ -172,7 +172,7 @@ export const getOrderById = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, stepIndex, assignedTailor, estimatedCompletion, notes } = req.body;
+    const { status, stepIndex, assignedTailor, estimatedCompletion, notes, isArchived } = req.body;
 
     const order = await orderModel.findById(id);
     if (!order) {
@@ -200,6 +200,7 @@ export const updateOrderStatus = async (req, res) => {
     if (assignedTailor) order.assignedTailor = assignedTailor;
     if (estimatedCompletion) order.estimatedCompletion = estimatedCompletion;
     if (notes) order.notes = notes;
+    if (isArchived !== undefined) order.isArchived = isArchived;
 
     // Step update
     if (isAdminStaff && stepIndex !== undefined && order.steps[stepIndex]) {

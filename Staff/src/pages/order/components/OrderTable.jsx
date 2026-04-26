@@ -22,34 +22,13 @@ const OrderTable = ({ orders, selectedOrderId, onOrderClick, getDerivedStatus, g
                 <table className="w-full text-left">
                     <thead className="sticky top-0 z-10">
                         <tr className="border-b border-gray-100 bg-white">
-                            {/* Col 1 — Order ID */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                                Order ID
-                            </th>
-                            {/* Col 2 — Customer */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                                Customer
-                            </th>
-                            {/* Col 3 — Type (hidden on mobile) */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap hidden md:table-cell">
-                                Type
-                            </th>
-                            {/* Col 4 — Item (hidden on smaller screens) */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap hidden lg:table-cell">
-                                Item
-                            </th>
-                            {/* Col 5 — Status */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                                Status
-                            </th>
-                            {/* Col 6 — Step (hidden on smaller screens) */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap hidden xl:table-cell">
-                                Current Step
-                            </th>
-                            {/* Col 7 — Due Date */}
-                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap hidden sm:table-cell">
-                                Due Date
-                            </th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Order ID</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Customer</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Type</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Item</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Progress</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Due Date</th>
+                            <th className="px-5 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">Status</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    ArrowLeft, User, Phone, Check, Users, AlertTriangle,
+    ArrowLeft, User, Phone, Check, Users, AlertTriangle, Archive,
     Package, Shirt, ChevronRight, Wrench, Scissors, FileText, CheckCircle2, Inbox, Image as ImageIcon, Eye, X,
     ExternalLink, Link as LinkIcon
 } from 'lucide-react';
@@ -44,7 +44,7 @@ const ConfirmationModal = ({ isOpen, stageName, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-gray-900/60 transition-opacity" onClick={onCancel} />
+            <div className="absolute inset-0 bg-gray-900/60 transition-opacity" onClick={onCancel} />
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center"
                 style={{ animation: 'modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
 
@@ -82,6 +82,44 @@ const ConfirmationModal = ({ isOpen, stageName, onConfirm, onCancel }) => {
     );
 };
 
+const ArchiveConfirmModal = ({ isOpen, onConfirm, onCancel, isArchiving }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-gray-900/60 transition-opacity backdrop-blur-sm" onClick={!isArchiving ? onCancel : undefined} />
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center"
+                style={{ animation: 'modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4 text-amber-500 border border-amber-100">
+                    <Archive size={32} strokeWidth={2} />
+                </div>
+
+                <h3 className="text-xl font-black text-gray-900 tracking-tight mb-2">Save to Archive?</h3>
+                <p className="text-[13px] font-medium text-gray-500 leading-relaxed mb-8 px-2">
+                    Are you sure you want to move this order to the archives? This will finalize the record and mark it as completely processed.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={onCancel}
+                        disabled={isArchiving}
+                        className="py-3.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[11px] uppercase tracking-widest rounded-2xl transition-all active:scale-[0.97] disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isArchiving}
+                        className="py-3.5 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] uppercase tracking-widest rounded-2xl transition-all shadow-[0_4px_12px_rgba(245,158,11,0.25)] active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {isArchiving ? 'Saving...' : 'Yes, Archive'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const OrderDetails = ({ orderId, onBack }) => {
     const { order, steps: initialSteps, currentStepIdx: initialStepIdx, statusLabel } = useOrderDetails(orderId);
     const [productionSteps, setProductionSteps] = useState([]);
@@ -91,6 +129,8 @@ const OrderDetails = ({ orderId, onBack }) => {
     const [rosterPage, setRosterPage] = useState(0);
     const [orgImageIdx, setOrgImageIdx] = useState(0);
     const [zoomType, setZoomType] = useState(null);
+    const [isArchiving, setIsArchiving] = useState(false);
+    const [showArchiveModal, setShowArchiveModal] = useState(false);
 
     const ROWS_PER_PAGE = 7;
     const orgImages = order?.designImages || (order?.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
@@ -161,7 +201,7 @@ const OrderDetails = ({ orderId, onBack }) => {
 
         setProductionSteps(updatedSteps);
         setCurrentIdx(index + 1 < updatedSteps.length ? index + 1 : updatedSteps.length);
-        
+
         // Save steps to backend
         try {
             console.log('💾 Saving production steps to backend:', { orderId, updatedSteps });
@@ -176,9 +216,32 @@ const OrderDetails = ({ orderId, onBack }) => {
             console.error('❌ Error saving production steps:', err);
             toast.error('Failed to save progress. Changes won\'t be retained on reload.');
         }
-        
+
         setShowConfirmModal(false);
         setPendingIdx(null);
+    };
+
+    const handleArchiveClick = () => {
+        setShowArchiveModal(true);
+    };
+
+    const confirmArchive = async () => {
+        setIsArchiving(true);
+        try {
+            if (order?.isBooking) {
+                await bookingApi.updateBooking(orderId, { isArchived: true, completedAt: new Date().toISOString() });
+            } else {
+                await orderApi.updateOrder(orderId, { isArchived: true, completedAt: new Date().toISOString() });
+            }
+            alert('Order successfully saved to archives!');
+            setShowArchiveModal(false);
+            onBack(); // Return to order list
+        } catch (error) {
+            console.error('Error archiving order:', error);
+            alert('Failed to archive order. Please try again.');
+        } finally {
+            setIsArchiving(false);
+        }
     };
 
     const formatScheduleDate = (dateStr) => {
@@ -286,24 +349,21 @@ const OrderDetails = ({ orderId, onBack }) => {
                             <span className="font-normal">{order ? getPickupSlotDisplay(order.pickupSlot, 'Not set') : 'Loading...'}</span>
                         </div>
                     </div>
+
+                    {(derivedLabel === 'Completed' || statusLabel === 'Cancelled' || order?.status === 'Cancelled' || order?.status === 'CANCELLED') && (
+                        <button
+                            onClick={handleArchiveClick}
+                            disabled={isArchiving}
+                            className="mt-3 w-full py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-700 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all border border-amber-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                        >
+                            <Archive size={14} />
+                            {isArchiving ? 'Saving...' : 'Save to Archive'}
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Client Notes Section */}
-            {order?.notes && (
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
-                    <div className="bg-amber-100 p-2.5 rounded-xl shrink-0">
-                        <FileText size={20} className="text-amber-600" />
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-black tracking-widest uppercase text-amber-600 mb-1">Client Customization Notes</h4>
-                        <p className="text-sm font-bold text-amber-900 leading-relaxed italic">
-                            "{order.notes}"
-                        </p>
-                    </div>
-                </div>
-            )}
-
             <OrderStatusTracker
                 steps={productionSteps}
                 currentStepIdx={currentIdx}
@@ -480,12 +540,23 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
                         </div>
                     )}
+                    {order?.notes && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+                            <div className="bg-amber-100 p-2.5 rounded-xl shrink-0">
+                                <FileText size={20} className="text-amber-600" />
+                            </div>
+                            <div>
+                                <h4 className="text-[10px] font-black tracking-widest uppercase text-amber-600 mb-1">Client Customization Notes</h4>
+                                <p className="text-sm font-bold text-amber-900 leading-relaxed italic">
+                                    "{order.notes}"
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {order.type === 'REPAIR' && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col"
-                            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)', minHeight: '438px' }}>
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col shadow-sm">
                             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
-                                <Wrench size={15} className="text-blue-500 shrink-0" />
                                 <h2 className="text-sm font-bold text-gray-800">Repair Specification</h2>
                                 <span className="ml-auto text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full tracking-wide">
                                     {order.items?.length || 0} Tasks
@@ -493,62 +564,37 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
 
                             <div className="p-6 flex flex-col gap-6">
-                                {(order.notes || order.repairImage) && (
-                                    <div className="flex flex-col md:flex-row gap-4">
-                                        {order.notes && (
-                                            <div className="flex-1 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <FileText size={13} className="text-gray-500" />
-                                                    <span className="text-md font-black text-black uppercase tracking-widest">Repair Notes</span>
-                                                </div>
-                                                <div className="text-[12px] font-medium text-gray-700 leading-relaxed">
-                                                    {order.notes}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {order.repairImage && (
-                                            <div className="w-full md:w-64 h-40 shrink-0 relative group rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
-                                                <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
-                                                    <img src={order.repairImage} alt="Repair Reference" className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]" onError={e => { e.currentTarget.src = img.sample; }} />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
-                                                        <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
-                                                            <Eye size={13} /> Click to expand
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                {order.notes && (
+                                    <div className="bg-amber-50/30 rounded-2xl p-5 border border-amber-100/50">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-[11px] font-black text-amber-900 uppercase tracking-widest">Repair Notes</span>
+                                        </div>
+                                        <div className="text-[13px] font-bold text-amber-900/80 leading-relaxed italic">
+                                            {order.notes}
+                                        </div>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
                                     <div className="flex items-center gap-2 px-1">
-                                        <Scissors size={13} className="text-gray-400" />
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Task Breakdown</span>
+                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Task Breakdown</span>
                                     </div>
                                     <div className="space-y-2">
                                         {order.items?.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-gray-50 bg-white shadow-sm transition-all hover:border-blue-100 group">
+                                            <div key={idx} className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-white shadow-sm transition-all hover:border-blue-200 group">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
-                                                        <CheckCircle2 size={16} />
-                                                    </div>
                                                     <div>
-                                                        <div className="text-sm font-bold text-gray-800">{item.name}</div>
-                                                        <div className="text-[10px] font-semibold text-gray-400">Quantity: {item.qty}</div>
+                                                        <div className="text-[14px] font-bold text-slate-800">{item.name}</div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight">Quantity: {item.qty}</div>
                                                     </div>
                                                 </div>
-                                                <div className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-tighter rounded-md">
-                                                    Verified
+                                                <div className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-100">
+                                                    Active
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="mt-auto px-5 py-3 bg-gray-50/30 border-t border-gray-100">
-
                             </div>
                         </div>
                     )}
@@ -616,6 +662,38 @@ const OrderDetails = ({ orderId, onBack }) => {
                 </div>
 
                 <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4 lg:sticky lg:top-4 ">
+                    {order.type === 'REPAIR' && (
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                                <ImageIcon size={13} className="text-gray-400 shrink-0" />
+                                <h3 className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Repair Reference</h3>
+                            </div>
+                            <div className="p-3">
+                                <div className="relative group rounded-xl border border-gray-200 bg-slate-50 overflow-hidden flex items-center justify-center h-[180px]">
+                                    {order.repairImage ? (
+                                        <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
+                                            <img
+                                                src={order.repairImage}
+                                                alt="Repair Reference"
+                                                className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.05]"
+                                                onError={e => { e.currentTarget.src = img.sample; }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                                <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                    <Eye size={13} /> View Large
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 text-slate-300">
+                                            <ImageIcon size={32} strokeWidth={1.5} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">No Image<br />Available</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                         style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                         <div className="px-4 py-4.25 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
@@ -654,12 +732,12 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
 
                             {/* Total Price Section */}
-{(() => {
+                            {(() => {
                                 // Use backend totalPrice first, fallback to items sum, then 0
-                                const calculatedTotal = order.totalPrice ?? 
-                                    items.reduce((sum, item) => sum + (item.qty * (item.unitPrice || 0) + ((item.addOnPrice || 0) * item.qty)), 0) ?? 
+                                const calculatedTotal = order.totalPrice ??
+                                    items.reduce((sum, item) => sum + (item.qty * (item.unitPrice || 0) + ((item.addOnPrice || 0) * item.qty)), 0) ??
                                     0;
-                                    
+
                                 return (
                                     <div className="flex items-center gap-3 px-4 bg-blue-50/50 border-t border-gray-200" style={{ height: '52px' }}>
                                         <span className="w-8 shrink-0" />
@@ -766,6 +844,13 @@ const OrderDetails = ({ orderId, onBack }) => {
                 stageName={pendingStageName}
                 onConfirm={confirmStepChange}
                 onCancel={() => { setShowConfirmModal(false); setPendingIdx(null); }}
+            />
+
+            <ArchiveConfirmModal
+                isOpen={showArchiveModal}
+                isArchiving={isArchiving}
+                onConfirm={confirmArchive}
+                onCancel={() => setShowArchiveModal(false)}
             />
         </div>
     );

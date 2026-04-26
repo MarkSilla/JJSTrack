@@ -269,7 +269,7 @@ const StaffNav = ({ onToggleSidebar }) => {
 
                             // Add to ref set
                             notificationIdsRef.current.add(incomingNotification._id)
-                            
+
                             // Add to notifications list
                             const updated = upsertNotifications(current, [incomingNotification]).slice(0, NOTIFICATION_LIMIT)
                             return updated
@@ -318,12 +318,16 @@ const StaffNav = ({ onToggleSidebar }) => {
                 clearTimeout(notificationReconnectTimeoutRef.current)
             }
 
-            if (
-                notificationSocketRef.current &&
-                (notificationSocketRef.current.readyState === WebSocket.OPEN ||
-                    notificationSocketRef.current.readyState === WebSocket.CONNECTING)
-            ) {
-                notificationSocketRef.current.close()
+            if (notificationSocketRef.current) {
+                const ws = notificationSocketRef.current
+                ws.onmessage = null
+                ws.onerror = null
+                ws.onclose = null
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close()
+                } else if (ws.readyState === WebSocket.CONNECTING) {
+                    ws.onopen = () => ws.close()
+                }
             }
         }
     }, [loadNotifications])

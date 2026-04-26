@@ -90,12 +90,16 @@ const useOrderFeedSocket = (onRefresh, { enabled = true } = {}) => {
         clearTimeout(refreshTimeoutRef.current);
       }
 
-      if (
-        socketRef.current &&
-        (socketRef.current.readyState === WebSocket.OPEN ||
-          socketRef.current.readyState === WebSocket.CONNECTING)
-      ) {
-        socketRef.current.close();
+      if (socketRef.current) {
+        const ws = socketRef.current;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          ws.onopen = () => ws.close();
+        }
       }
     };
   }, [enabled]);

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { Search, Maximize2, X, Sparkles, Info, MessageSquare, ArrowLeft, Phone, Mail, ShoppingBag, CheckCircle2, ChevronRight, Filter, Shirt, Wind, Shield, Cloud, Ruler, Zap, Feather, Waves, Image as ImageIcon } from 'lucide-react';
 import img from '../assets/img';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/Context';
 const MAIN_CATEGORIES = [
   { id: 'hangerView', label: 'Hanger View', bgStyle: 'tailoring' },
   { id: 'fullConcept', label: 'Full Concept', bgStyle: 'showcase' },
@@ -21,6 +22,15 @@ const Design = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated } = useContext(AuthContext);
+
+  const handleBack = () => {
+    if (isAuthenticated) {
+      navigate('/home');
+    } else {
+      navigate('/');
+    }
+  };
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -121,7 +131,7 @@ const Design = () => {
     <div className="min-h-screen bg-[#020617] font-inter text-slate-200 pb-24 overflow-x-hidden">
       <nav className={`h-20 flex items-center justify-between px-6 md:px-12  w-full top-0 z-[100] lg:bg-transparent bg-white/5 backdrop-blur-sm  `}>
         <button
-          onClick={() => navigate('/')}
+          onClick={handleBack}
           className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors cursor-pointer group">
           <ArrowLeft size={16} />
           Back
@@ -190,7 +200,7 @@ const Design = () => {
             <div className="pt-4">
               <div
                 className="flex items-center gap-4 mb-14 group cursor-pointer"
-                onClick={() => navigate('/')}
+                onClick={handleBack}
               >
                 <img src={img.jjslogo1} alt="Logo" className="w-14 h-14 object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-3" />
                 <div className="flex flex-col">

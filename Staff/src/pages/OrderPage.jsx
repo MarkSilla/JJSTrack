@@ -144,7 +144,7 @@ return (
             setSortOption={setSortOption}
         />
 
-        <div className="flex-1">
+        <div className="flex-1 hidden md:block">
             <OrderTable
                 orders={filteredOrders}
                 selectedOrderId={selectedOrderId}
