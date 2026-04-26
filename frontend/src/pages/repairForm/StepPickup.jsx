@@ -38,23 +38,23 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
 
                 <div className="flex items-center gap-2 mb-4">
                     <MdAccessTime size={16} className="text-blue-500/70" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Select Time Slot</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Select Time Range</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
                     {TIME_SLOTS.map((slot) => {
-                        const active = selectedSlot === slot.id
+                        const active = selectedSlot === slot.id || selectedSlot === slot.range
                         return (
                             <button
                                 key={slot.id}
-                                onClick={() => setSelectedSlot(slot.id)}
+                                onClick={() => setSelectedSlot(slot.range)}
                                 className={`flex flex-col items-center py-5 rounded-xl border-2 transition-all duration-200 cursor-pointer
                   ${active
                                         ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-100'
                                         : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:shadow-md'
                                     }`}
                             >
-                                <span className={`font-bold text-sm ${active ? 'text-blue-600' : 'text-gray-600'}`}>{slot.label}</span>
-                                <span className={`text-xs mt-1.5 ${active ? 'text-gray-500' : 'text-gray-400'}`}>{slot.range}</span>
+                                <span className={`font-bold text-sm text-center ${active ? 'text-blue-600' : 'text-gray-700'}`}>{slot.label}</span>
+                                <span className={`mt-1 text-xs text-center ${active ? 'text-blue-500' : 'text-gray-500'}`}>{slot.range}</span>
                             </button>
                         )
                     })}

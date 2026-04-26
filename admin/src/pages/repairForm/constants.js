@@ -16,9 +16,9 @@ export const REPAIR_OPTIONS = [
 ]
 
 export const TIME_SLOTS = [
-    { id: 'morning', label: 'Morning', range: '08:00 AM – 12:00 PM' },
-    { id: 'afternoon', label: 'Afternoon', range: '01:00 PM – 05:00 PM' },
-    { id: 'evening', label: 'Evening', range: '05:00 PM – 08:00 PM' },
+    { id: 'morning', label: 'Morning', range: '08:00 AM - 12:00 PM' },
+    { id: 'afternoon', label: 'Afternoon', range: '01:00 PM - 05:00 PM' },
+    { id: 'evening', label: 'Evening', range: '05:00 PM - 08:00 PM' },
 ]
 
 export const SERVICES = [

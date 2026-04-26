@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, Edit, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText } from 'lucide-react';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
 import TeamRoster from './Teamroster';
@@ -33,8 +33,13 @@ export default function OrderDetail({
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [bookingExtras, setBookingExtras] = useState(null);
 
-    const isForApproval = useMemo(() => getDerivedStatus(activeOrder) === 'For Approval', [activeOrder]);
-    const isCancelled = useMemo(() => getDerivedStatus(activeOrder) === 'Cancelled', [activeOrder]);
+    const derivedStatus = useMemo(() => getDerivedStatus(activeOrder), [activeOrder]);
+    const isForApproval = useMemo(() => derivedStatus === 'For Approval', [derivedStatus]);
+    const isCancelled = useMemo(() => derivedStatus === 'Cancelled', [derivedStatus]);
+    const isRescheduleLocked = useMemo(
+        () => derivedStatus === 'Completed' || derivedStatus === 'Released',
+        [derivedStatus]
+    );
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
 
     useEffect(() => {
@@ -221,7 +226,7 @@ export default function OrderDetail({
                                 <AlertCircle size={14} /> RUSH
                             </span>
                         )}
-                        {getDerivedStatus(activeOrder) === 'Overdue' && (
+                        {derivedStatus === 'Overdue' && (
                             <span className="text-[11px] lg:text-xs font-bold text-white bg-red-500 px-3 py-1.5 rounded-lg tracking-wider">OVERDUE</span>
                         )}
                         {isForApproval && (
@@ -237,12 +242,14 @@ export default function OrderDetail({
                         </button>
                         {isMenuOpen && (
                             <div className="absolute right-0 top-12 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl py-2 z-20">
-                                <button className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors bg-transparent border-none cursor-pointer">
-                                    <Edit size={16} className="text-gray-400" /> Edit Order
-                                </button>
                                 <button
-                                    onClick={() => { setShowRescheduleModal(true); setIsMenuOpen(false); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors border-b border-gray-50 bg-transparent border-none cursor-pointer"
+                                    onClick={() => {
+                                        if (isRescheduleLocked) return;
+                                        setShowRescheduleModal(true);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    disabled={isRescheduleLocked}
+                                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:bg-transparent disabled:cursor-not-allowed flex items-center gap-3 transition-colors border-b border-gray-50 bg-transparent border-none cursor-pointer"
                                 >
                                     <CalendarClock size={16} className="text-gray-400" /> Reschedule
                                 </button>
@@ -332,12 +339,13 @@ export default function OrderDetail({
                                     Set Pickup Date & Time
                                 </button>
                             )}
-                            <button className="w-full bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
-                                <Edit size={18} /> Edit Order Details
-                            </button>
                             <button
-                                onClick={() => setShowRescheduleModal(true)}
-                                className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
+                                onClick={() => {
+                                    if (isRescheduleLocked) return;
+                                    setShowRescheduleModal(true);
+                                }}
+                                disabled={isRescheduleLocked}
+                                className="w-full bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
                             >
                                 <CalendarClock size={18} /> Reschedule Delivery
                             </button>
@@ -408,17 +416,23 @@ export default function OrderDetail({
                             assignedEmployee={assignedEmployee}
                             earningsPreview={earningsPreview}
                             participants={rosterPlayers}
+                            bookingExtras={bookingExtras}
                         />
                     </div>
                 </div>
             </div>
 
             <RescheduleModal
-                isOpen={showRescheduleModal}
+                isOpen={showRescheduleModal && !isRescheduleLocked}
                 onClose={() => { setShowRescheduleModal(false); setApprovalMode(false); }}
                 onConfirm={(date, time) => { handleRescheduleConfirm(date, time); setApprovalMode(false); }}
                 mode={approvalMode ? 'approve' : 'reschedule'}
                 currentDate={activeOrder?.pickupDate || new Date().toISOString().split('T')[0]}
+                isRepairSchedule={
+                    String(bookingExtras?.bookingType || activeOrder?.bookingType || activeOrder?.serviceType || '')
+                        .trim()
+                        .toLowerCase() === 'repair'
+                }
             />
 
             {/* Cancel Confirmation Modal */}

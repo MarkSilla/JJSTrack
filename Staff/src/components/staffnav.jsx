@@ -59,6 +59,17 @@ const upsertNotifications = (current = [], incoming = []) => {
     })
 }
 
+const resolveNotificationRoute = (notification = {}) => {
+    const baseRoute = String(notification?.route || '').trim()
+    const entityId = String(notification?.entityId || '').trim()
+
+    if (baseRoute === '/staff/orders' && entityId) {
+        return `/staff/orders/${entityId}`
+    }
+
+    return baseRoute
+}
+
 const StaffNav = ({ onToggleSidebar }) => {
     const [showDropdown, setShowDropdown] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -383,8 +394,10 @@ const StaffNav = ({ onToggleSidebar }) => {
 
         setShowNotifications(false)
 
-        if (notification.route && notification.route !== location.pathname) {
-            navigate(notification.route)
+        const targetRoute = resolveNotificationRoute(notification)
+
+        if (targetRoute && targetRoute !== location.pathname) {
+            navigate(targetRoute)
         }
     }
 

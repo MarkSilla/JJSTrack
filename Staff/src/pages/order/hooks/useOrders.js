@@ -53,7 +53,8 @@ const getOrderSortTime = (order) => {
         }
     }
 
-    return parseDateValue(order.dueDate || order.pickupDate || order.createdAt || order.date);
+    // Sort by booking creation date (newest first), not by due date
+    return parseDateValue(order.createdAt || order.date || 0);
 };
 
 const useOrders = () => {

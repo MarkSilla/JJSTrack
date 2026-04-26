@@ -274,7 +274,8 @@ export default function AdOrder() {
             }
         }
 
-        return parseDateValue(order.invoice?.dueDate || order.estimatedCompletion || order.pickupDate || order.createdAt || order.date);
+        // Sort by booking creation date (newest first), not by due date
+        return parseDateValue(order.createdAt || order.date || 0);
     };
 
     const getServiceTypeKey = (order) => {

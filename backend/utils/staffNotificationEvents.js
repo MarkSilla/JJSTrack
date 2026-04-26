@@ -115,6 +115,11 @@ const getBookingScheduleLabel = (booking = {}) =>
 
 const getOrderScheduleLabel = (order = {}) => String(order?.estimatedCompletion || '').trim();
 
+const resolveStaffTaskRoute = (entityId = '') => {
+  const targetId = normalizeEntityId(entityId);
+  return targetId ? `/staff/orders/${targetId}` : '/staff/orders';
+};
+
 const buildAssignmentNotificationSignature = ({
   entityType,
   entityId,
@@ -330,7 +335,7 @@ export const maybeCreateStaffAssignmentNotification = async ({
     type: normalizedEntityType,
     title: isReassigned ? 'Task reassigned to you' : 'New task assigned to you',
     message: `${subjectLabel} (${reference}) was ${isReassigned ? 'reassigned' : 'assigned'} to you.${scheduleSuffix}`,
-    route: '/staff/orders',
+    route: resolveStaffTaskRoute(entity?._id),
     entityId: entity._id,
     entityModel: normalizedEntityType === 'order' ? 'Order' : 'Booking',
     metadata: {
@@ -436,7 +441,7 @@ const syncUpcomingAssignedTaskNotificationsInternal = async ({ staffUserId }) =>
           scheduleDate,
           daysUntilSchedule,
         }),
-        route: '/staff/orders',
+        route: resolveStaffTaskRoute(order?._id),
         entityId: order._id,
         entityModel: 'Order',
         createdByRole: 'system',
@@ -491,7 +496,7 @@ const syncUpcomingAssignedTaskNotificationsInternal = async ({ staffUserId }) =>
           scheduleDate,
           daysUntilSchedule,
         }),
-        route: '/staff/orders',
+        route: resolveStaffTaskRoute(booking?._id),
         entityId: booking._id,
         entityModel: 'Booking',
         createdByRole: 'system',

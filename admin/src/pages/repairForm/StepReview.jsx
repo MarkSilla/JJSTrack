@@ -14,7 +14,7 @@ const ReviewBlock = ({ title, children }) => (
 const StepReview = ({ service, selectedOptions, details, selectedDate, selectedSlot, photos, quantities, repairDescription }) => {
     const chosen = REPAIR_OPTIONS.filter((o) => selectedOptions.includes(o.id))
     const total = chosen.reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0)
-    const slot = TIME_SLOTS.find((s) => s.id === selectedSlot)
+    const slot = TIME_SLOTS.find((s) => s.id === selectedSlot || s.range === selectedSlot)
 
     return (
         <section>
@@ -81,8 +81,8 @@ const StepReview = ({ service, selectedOptions, details, selectedDate, selectedS
                     <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
                         <dt className="text-gray-400 font-medium">Date</dt>
                         <dd className="text-gray-800">{selectedDate || '—'}</dd>
-                        <dt className="text-gray-400 font-medium">Time Slot</dt>
-                        <dd className="text-gray-800">{slot ? `${slot.label} (${slot.range})` : '—'}</dd>
+                        <dt className="text-gray-400 font-medium">Time Range</dt>
+                        <dd className="text-gray-800">{slot ? slot.range : '—'}</dd>
                     </dl>
                 </ReviewBlock>
             </div>

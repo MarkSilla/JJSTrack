@@ -9,6 +9,7 @@ import useOrderDetails from '../hooks/useOrderDetails';
 import { bookingApi } from '../../../services/bookingApi';
 import { orderApi } from '../../../services/orderApi.js';
 import img from '../../../assets/img';
+import { getPickupSlotDisplay } from '../../../utils/pickupSlot.js';
 
 const STATUS_CONFIG = {
     Completed: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Completed' },
@@ -277,6 +278,10 @@ const OrderDetails = ({ orderId, onBack }) => {
                         <div className="flex items-center gap-2 text-xs font-bold">
                             <span className="opacity-50 text-red-500">Due Date:</span>
                             <span className="text-red-600 font-normal">{order ? (formatScheduleDate(order.dueDate) || formatScheduleDate(order.pickupDate) || 'Not set') : 'Loading...'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-bold">
+                            <span className="opacity-50">Pickup Time:</span>
+                            <span className="font-normal">{order ? getPickupSlotDisplay(order.pickupSlot, 'Not set') : 'Loading...'}</span>
                         </div>
                     </div>
                 </div>

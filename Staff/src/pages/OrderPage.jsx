@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Inbox, RefreshCw } from 'lucide-react';
 import useOrders from './order/hooks/useOrders';
 import OrderFilters from './order/components/OrderFilters';
@@ -14,6 +15,9 @@ const KPI_CARDS = [
 ];
 
 const OrderPage = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { orderId: selectedOrderId } = useParams();
     const {
         filteredOrders,
         counts,
@@ -32,11 +36,18 @@ const OrderPage = () => {
         refetchBookings,
     } = useOrders();
 
-    const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const handleOrderClick = (orderId) => setSelectedOrderId(orderId);
-    const handleBack = () => setSelectedOrderId(null);
+    useEffect(() => {
+        const presetFilterStatus = location.state?.dashboardPreset?.filterStatus;
+
+        if (typeof presetFilterStatus === 'string') {
+            setFilterStatus(presetFilterStatus);
+        }
+    }, [location.state, setFilterStatus]);
+
+    const handleOrderClick = (orderId) => navigate(`/staff/orders/${orderId}`);
+    const handleBack = () => navigate('/staff/orders');
 
     const handleManualRefresh = async () => {
         setIsRefreshing(true);

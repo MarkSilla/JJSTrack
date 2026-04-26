@@ -3,6 +3,7 @@ import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import { appointmentApi } from '../../../services/appointmentApi'
 import { bookingApi } from '../../../services/bookingApi'
 import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
+import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 import { MdClose, MdCalendarToday, MdAccessTime, MdInfo, MdCheckCircle, MdPending, MdEventAvailable } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import '../../styles/calendar.css'
@@ -124,7 +125,7 @@ const Appointment = () => {
                             ...booking,
                             dateKey,
                             date: dateKey ? formatDateForUi(dateKey) : 'N/A',
-                            time: booking.pickupSlot || 'Not specified',
+                            time: getPickupSlotDisplay(booking.pickupSlot, 'Not specified'),
                             service:
                                 booking.bookingType === 'repair'
                                     ? getRepairDisplayLabel(booking)

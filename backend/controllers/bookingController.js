@@ -10,6 +10,7 @@ import { createNotification } from '../utils/notificationHelpers.js';
 import {
   maybeCreateBookingReadyForPickupNotification,
   maybeCreateBookingReleasedNotification,
+  maybeCreateBookingRescheduleNotification,
 } from '../utils/userNotificationEvents.js';
 import { getPrimaryRepairOptionName } from '../utils/repairDisplay.js';
 import {
@@ -228,6 +229,7 @@ const resolveBookingNotificationRoute = (booking = {}, fallbackOrderId = '') => 
     fallbackOrderId ||
     booking?.orderId?._id?.toString?.() ||
     booking?.orderId?.toString?.() ||
+    booking?._id?.toString?.() ||
     '';
 
   return orderId ? `/admin/orders/${orderId}` : '/admin/orders';
@@ -757,7 +759,7 @@ export const createBooking = async (req, res) => {
       booking,
       title: 'New booking submitted',
       message: `${contact.fullName} submitted a ${bookingType} booking for ${service}.`,
-      route: '/admin/orders',
+      route: resolveBookingNotificationRoute(booking),
       metadata: {
         event: 'submitted',
       },
@@ -1002,6 +1004,12 @@ export const updateBooking = async (req, res) => {
       previousAssignedTailor,
     });
     await maybeCreateBookingPickupNotification({
+      req,
+      booking,
+      previousPickupDate,
+      previousPickupSlot,
+    });
+    await maybeCreateBookingRescheduleNotification({
       req,
       booking,
       previousPickupDate,

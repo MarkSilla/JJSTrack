@@ -44,6 +44,7 @@ export default function OrderList({
         { label: 'Pending Approval', value: 'For Approval' },
         { label: 'Completed', value: 'Completed' },
         { label: 'Released', value: 'Released' },
+        { label: 'Overdue', value: 'Overdue' },
     ];
 
     // Width classes: full-width mode vs the original fixed side-panel width

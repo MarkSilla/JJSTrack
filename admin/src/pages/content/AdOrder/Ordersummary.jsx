@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { isOverdue, getDropDate } from '../../../utils/helpers.js';
+import { getPickupSlotDisplay } from '../../../utils/pickupSlot.js';
 
 const PESO_SYMBOL = '\u20B1';
 
@@ -24,7 +25,7 @@ const getParticipantName = (participant, index) => {
 const getItemTotal = (item) =>
     ((Number(item?.qty) || 1) * (Number(item?.unitPrice) || 0)) + (Number(item?.addOnPrice) || 0);
 
-export default function OrderSummary({ activeOrder, assignedEmployee, participants = [] }) {
+export default function OrderSummary({ activeOrder, assignedEmployee, participants = [], bookingExtras = null }) {
     const displayItems = useMemo(() => {
         const invoiceItems = Array.isArray(activeOrder?.invoice?.items) ? activeOrder.invoice.items : [];
         const participantList = Array.isArray(participants) ? participants : [];
@@ -58,6 +59,9 @@ export default function OrderSummary({ activeOrder, assignedEmployee, participan
         return Number(activeOrder?.invoice?.total || activeOrder?.totalPrice || 0);
     }, [activeOrder, displayItems]);
 
+    const displayDueDate = bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion || 'N/A';
+    const displayTimeRange = getPickupSlotDisplay(bookingExtras?.pickupSlot || activeOrder?.pickupSlot || '', 'N/A');
+
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="bg-blue-50/50 p-4 border-b border-gray-50">
@@ -69,11 +73,15 @@ export default function OrderSummary({ activeOrder, assignedEmployee, participan
                     </div>
                     <div className="flex justify-between items-center text-sm">
                         <span className="font-semibold text-gray-500">Due Date</span>
-                        <span className={`font-bold ${isOverdue(activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion) ? 'text-red-500' : 'text-gray-900'}`}>
+                        <span className={`font-bold ${isOverdue(bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion) ? 'text-red-500' : 'text-gray-900'}`}>
                             {activeOrder?.invoice?.dueDate
                                 ? new Date(activeOrder.invoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                : activeOrder?.estimatedCompletion || 'N/A'}
+                                : displayDueDate}
                         </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="font-semibold text-gray-500">Pickup Time</span>
+                        <span className="font-bold text-gray-900">{displayTimeRange}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                         <span className="font-semibold text-gray-500">Assigned To</span>

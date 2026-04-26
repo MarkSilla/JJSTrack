@@ -36,7 +36,7 @@ const StepReview = ({
 
     const chosen = isRepair ? REPAIR_OPTIONS.filter((o) => (selectedOptions || []).includes(o.id)) : []
     const total = isRepair ? chosen.reduce((s, o) => s + o.price * (quantities?.[o.id] || 1), 0) : 0
-    const slot = isRepair ? TIME_SLOTS.find((s) => s.id === selectedSlot) : null
+    const slot = isRepair ? TIME_SLOTS.find((s) => s.id === selectedSlot || s.range === selectedSlot) : null
 
     return (
         <section>
@@ -152,8 +152,8 @@ const StepReview = ({
                         <dl className="grid grid-cols-[100px_1fr] gap-y-2.5 text-sm">
                             <dt className="text-gray-400 font-medium">Date</dt>
                             <dd className="text-gray-800">{selectedDate || '—'}</dd>
-                            <dt className="text-gray-400 font-medium">Time Slot</dt>
-                            <dd className="text-gray-800">{slot ? `${slot.label} (${slot.range})` : '—'}</dd>
+                            <dt className="text-gray-400 font-medium">Time Range</dt>
+                            <dd className="text-gray-800">{slot ? slot.range : '—'}</dd>
                         </dl>
                     </ReviewBlock>
                 )}

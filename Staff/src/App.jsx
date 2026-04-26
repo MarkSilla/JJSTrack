@@ -21,6 +21,7 @@ function App() {
                     <Route path="/staff" element={<ProtectedRoute><StaffLayout /></ProtectedRoute>}>
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<OrderPage />} />
+                        <Route path="orders/:orderId" element={<OrderPage />} />
                         <Route path="archives" element={<ArchivesPage />} />
                         <Route path="inventory" element={<StaffInventoryPage />} />
                     </Route>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
     ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon
 } from 'lucide-react';
@@ -11,6 +11,7 @@ import {
     mapOrderToTask,
 } from '../utils/taskMappers.js';
 import useOrderFeedSocket from '../hooks/useOrderFeedSocket.js';
+import { getPickupSlotDisplay } from '../utils/pickupSlot.js';
 
 const FALLBACK_REFRESH_MS = 60000;
 
@@ -30,10 +31,10 @@ const formatDateKey = (date) => {
 };
 
 const splitTimeLabel = (pickupSlot) => {
-    const raw = String(pickupSlot || 'TBA').trim();
+    const raw = getPickupSlotDisplay(pickupSlot, 'TBA');
     const match = raw.match(/^(.+?)\s*(AM|PM)$/i);
 
-    if (!match) {
+    if (!match || raw.includes(' - ')) {
         return { time: raw, ampm: '' };
     }
 
@@ -114,6 +115,7 @@ const buildAlerts = (bookings = []) => {
 };
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const outletContext = useOutletContext() || {};
     const toggleCalendar = outletContext.toggleCalendar;
     const setCalendarEntries = outletContext.setCalendarEntries;
@@ -121,6 +123,7 @@ const Dashboard = () => {
     const [alerts, setAlerts] = useState([]);
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
+    const upcomingScheduleRef = useRef(null);
 
     const fetchTasks = useCallback(async (silent = false) => {
         const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => {};
@@ -207,11 +210,37 @@ const Dashboard = () => {
     };
 
     const summaryCards = [
-        { label: 'Total Tasks', value: summaryStats.totalTasks, icon: ClipboardList, accent: "#3B82F6", bgAccent: "#EFF6FF", sub: '12 Applicants to process' },
-        { label: 'Pending', value: summaryStats.pending, icon: Clock, accent: "#F59E0B", bgAccent: "#FFFBEB", sub: 'Documents pending approval' },
-        { label: 'In Progress', value: summaryStats.inProgress, icon: Loader, accent: "#7C3AED", bgAccent: "#F5F3FF", sub: 'Deployment tasks ongoing' },
-        { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Interviews wrapped up' },
+        { label: 'Total Tasks', value: summaryStats.totalTasks, icon: ClipboardList, accent: "#3B82F6", bgAccent: "#EFF6FF", sub: '12 Applicants to process', filterStatus: 'All' },
+        { label: 'Pending', value: summaryStats.pending, icon: Clock, accent: "#F59E0B", bgAccent: "#FFFBEB", sub: 'Documents pending approval', filterStatus: 'Pending' },
+        { label: 'In Progress', value: summaryStats.inProgress, icon: Loader, accent: "#7C3AED", bgAccent: "#F5F3FF", sub: 'Deployment tasks ongoing', filterStatus: 'In Progress' },
+        { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Interviews wrapped up', filterStatus: 'Completed' },
     ];
+
+    const upcomingSchedules = useMemo(() => schedules.slice(0, 5), [schedules]);
+
+    const openOrdersPage = useCallback((filterStatus = 'All') => {
+        navigate('/staff/orders', {
+            state: {
+                dashboardPreset: { filterStatus },
+            },
+        });
+    }, [navigate]);
+
+    const openTaskDetails = useCallback((taskId) => {
+        if (!taskId) return;
+        navigate(`/staff/orders/${taskId}`);
+    }, [navigate]);
+
+    const scrollToUpcomingSchedule = useCallback(() => {
+        if (upcomingScheduleRef.current) {
+            upcomingScheduleRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        if (typeof toggleCalendar === 'function') {
+            toggleCalendar();
+        }
+    }, [toggleCalendar]);
 
     const getPriorityColor = (priority) => {
         switch (priority) {
@@ -271,10 +300,12 @@ const Dashboard = () => {
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {summaryCards.map(({ icon, label, value, sub, accent }, idx) => (
-                    <div
+                {summaryCards.map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
+                    <button
                         key={idx}
-                        className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+                        type="button"
+                        onClick={() => openOrdersPage(filterStatus)}
+                        className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none"
                         style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
                     >
                         <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
@@ -293,7 +324,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </button>
                 ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
@@ -306,7 +337,11 @@ const Dashboard = () => {
                             <h3 className="text-sm font-semibold text-slate-800">Today's Tasks</h3>
                         </div>
                         {tasks.length > 0 ? (
-                            <button className="text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                            <button
+                                type="button"
+                                onClick={() => openOrdersPage('All')}
+                                className="text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                            >
                                 View all
                             </button>
                         ) : (
@@ -325,7 +360,11 @@ const Dashboard = () => {
                             <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
                                 You have a clean slate. Get ahead by preparing for your upcoming schedules.
                             </p>
-                            <button className="mt-5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+                            <button
+                                type="button"
+                                onClick={scrollToUpcomingSchedule}
+                                className="mt-5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                            >
                                 Check Upcoming
                             </button>
                         </div>
@@ -343,14 +382,18 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {tasks.map((task) => (
-                                        <tr key={task._id} className="hover:bg-slate-50/70 transition-colors">
+                                        <tr
+                                            key={task._id}
+                                            onClick={() => openTaskDetails(task._id || task.id)}
+                                            className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                                        >
                                             <td className="px-6 py-3.5">
                                                 <span className="text-sm font-medium text-slate-800 block min-w-[150px]">
                                                     {task.service || task.item || task.serviceType || 'Assigned task'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3.5 hidden sm:table-cell text-xs text-slate-400 whitespace-nowrap font-medium">
-                                                {task.pickupDate || task.estimatedCompletion || task.dueDate || 'TBA'} {task.pickupSlot || ''}
+                                                {task.pickupDate || task.estimatedCompletion || task.dueDate || 'TBA'} {getPickupSlotDisplay(task.pickupSlot)}
                                             </td>
                                             <td className="px-6 py-3.5">
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor('Normal')}`}>
@@ -364,7 +407,14 @@ const Dashboard = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3.5 text-center">
-                                                <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mx-auto block border border-slate-200 cursor-pointer">
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        openTaskDetails(task._id || task.id);
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mx-auto block border border-slate-200 cursor-pointer"
+                                                >
                                                     <MoreVertical className="w-3.5 h-3.5" />
                                                 </button>
                                             </td>
@@ -409,7 +459,7 @@ const Dashboard = () => {
                         )}
                     </div>
                     {/* Schedule */}
-                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-[282px]">
+                    <div ref={upcomingScheduleRef} className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-[282px]">
                         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex items-center gap-2.5 shrink-0">
                             <div className="text-green-600 rounded-lg">
                                 <CalendarIcon size={20} />
@@ -427,8 +477,12 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-                                {schedules.slice(0, 5).map((schedule, i) => (
-                                    <div key={i} className="flex gap-3">
+                                {upcomingSchedules.map((schedule, i) => (
+                                    <div
+                                        key={i}
+                                        onClick={() => openTaskDetails(schedule.id)}
+                                        className="flex w-full gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-slate-50 cursor-pointer border-none bg-transparent"
+                                    >
                                         <div className="flex flex-col items-end min-w-[38px]">
                                             <span className="text-xs font-semibold text-slate-500">{schedule.time}</span>
                                             <span className="text-[10px] text-slate-400">{schedule.ampm}</span>

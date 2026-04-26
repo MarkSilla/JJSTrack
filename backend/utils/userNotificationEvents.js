@@ -42,6 +42,11 @@ const getBookingTypeLabel = (bookingType = '') => {
   return 'booking';
 };
 
+const resolveUserTrackingRoute = (entityId = '') => {
+  const targetId = normalizeEntityId(entityId);
+  return targetId ? `/order/${targetId}` : '/order';
+};
+
 export const maybeCreateOrderReadyForPickupNotification = async ({
   req,
   order,
@@ -67,7 +72,7 @@ export const maybeCreateOrderReadyForPickupNotification = async ({
     type: 'order',
     title: 'Order ready for pickup',
     message: `Your ${subjectLabel} (${orderReference}) is ready for pickup.${pickupSuffix}`,
-    route: '/order',
+    route: resolveUserTrackingRoute(order?._id),
     entityId: order?._id,
     entityModel: 'Order',
     metadata: {
@@ -112,7 +117,7 @@ export const maybeCreateBookingReadyForPickupNotification = async ({
     type: 'booking',
     title: 'Booking ready for pickup',
     message: `Your ${bookingTypeLabel} booking for ${subjectLabel} (${bookingReference}) is ready for pickup.${pickupSuffix}`,
-    route: '/order',
+    route: resolveUserTrackingRoute(booking?._id),
     entityId: booking?._id,
     entityModel: 'Booking',
     metadata: {
@@ -148,7 +153,7 @@ export const maybeCreateOrderReleasedNotification = async ({
     type: 'order',
     title: 'Order received',
     message: `You have successfully received your ${subjectLabel} (${orderReference}) after QR verification.`,
-    route: '/order',
+    route: resolveUserTrackingRoute(order?._id),
     entityId: order?._id,
     entityModel: 'Order',
     metadata: {
@@ -184,7 +189,7 @@ export const maybeCreateBookingReleasedNotification = async ({
     type: 'booking',
     title: 'Booking received',
     message: `You have successfully received your ${bookingTypeLabel} booking for ${subjectLabel} (${bookingReference}) after QR verification.`,
-    route: '/order',
+    route: resolveUserTrackingRoute(booking?._id),
     entityId: booking?._id,
     entityModel: 'Booking',
     metadata: {
@@ -283,4 +288,73 @@ export const syncPendingReadyForPickupNotifications = async () => {
     console.error('Failed to sync ready-for-pickup notifications:', error);
     return 0;
   }
+};
+
+export const maybeCreateBookingRescheduleNotification = async ({
+  req,
+  booking,
+  previousPickupDate = '',
+  previousPickupSlot = '',
+}) => {
+  const recipientId = normalizeEntityId(booking?.userId);
+
+  if (!booking?._id || !recipientId) {
+    return null;
+  }
+
+  const previousDate = String(previousPickupDate || '').trim();
+  const previousSlot = String(previousPickupSlot || '').trim();
+  const nextDate = String(booking?.pickupDate || '').trim();
+  const nextSlot = String(booking?.pickupSlot || '').trim();
+
+  // Only notify if pickup date or slot actually changed
+  if (previousDate === nextDate && previousSlot === nextSlot) {
+    return null;
+  }
+
+  // Only notify if there was a previous schedule (meaning this is a reschedule, not initial schedule)
+  if (!previousDate && !previousSlot) {
+    return null;
+  }
+
+  const bookingReference = getBookingReferenceLabel(booking);
+  const bookingTypeLabel = getBookingTypeLabel(booking?.bookingType);
+  const subjectLabel = getBookingSubjectLabel(booking);
+
+  const formatSchedule = (date, slot) => {
+    const dateStr = String(date || '').trim();
+    const slotStr = String(slot || '').trim();
+    return [dateStr, slotStr].filter(Boolean).join(' at ');
+  };
+
+  const previousSchedule = formatSchedule(previousDate, previousSlot);
+  const nextSchedule = formatSchedule(nextDate, nextSlot);
+
+  if (!previousSchedule || !nextSchedule) {
+    return null;
+  }
+
+  return createNotification({
+    audience: 'user',
+    recipientId,
+    type: 'booking',
+    title: 'Booking pickup rescheduled',
+    message: `Your ${bookingTypeLabel} booking for ${subjectLabel} (${bookingReference}) pickup has been rescheduled from ${previousSchedule} to ${nextSchedule}.`,
+    route: resolveUserTrackingRoute(booking?._id),
+    entityId: booking?._id,
+    entityModel: 'Booking',
+    metadata: {
+      event: 'pickup_rescheduled',
+      bookingId: bookingReference,
+      bookingType: booking?.bookingType || '',
+      service: booking?.service || '',
+      previousPickupDate: previousDate || null,
+      previousPickupSlot: previousSlot || null,
+      pickupDate: nextDate || null,
+      pickupSlot: nextSlot || null,
+      previousSchedule,
+      nextSchedule,
+    },
+    req,
+  });
 };

@@ -59,6 +59,17 @@ const getEmptyNotificationState = (filter) => {
     return { title: 'No notifications yet', description: 'New updates will appear here.' }
 }
 
+const resolveNotificationRoute = (notification = {}) => {
+    const baseRoute = String(notification?.route || '').trim()
+    const entityId = String(notification?.entityId || '').trim()
+
+    if (baseRoute === '/admin/orders' && entityId) {
+        return `/admin/orders/${entityId}`
+    }
+
+    return baseRoute
+}
+
 const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '' }) => {
     const [showDropdown, setShowDropdown] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -307,8 +318,9 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             }
         }
         setShowNotifications(false)
-        if (notification.route && notification.route !== location.pathname) {
-            navigate(notification.route)
+        const targetRoute = resolveNotificationRoute(notification)
+        if (targetRoute && targetRoute !== location.pathname) {
+            navigate(targetRoute)
         }
     }
 

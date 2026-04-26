@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { orderApi }   from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import {
@@ -20,6 +20,7 @@ import {
     getTrackingReferenceLabel,
 } from '../../utils/trackingReference.js'
 import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
+import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 
 const STEP_ICON = {
     'dropped off': MdMoveToInbox,
@@ -275,7 +276,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         'Phone': MdPhone,
         'Email': MdEmail,
         'Pickup Date': MdDateRange,
-        'Pickup Slot': MdDateRange,
+        'Time Range': MdDateRange,
         'Address': MdLocationOn,
     }
 
@@ -294,7 +295,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
             { label: 'Phone',       value: order.contact?.phone },
             { label: 'Email',       value: order.contact?.email },
             { label: 'Pickup Date', value: order.pickupDate },
-            { label: 'Pickup Slot', value: order.pickupSlot },
+            { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
             { label: 'Address',     value: order.contact?.address },
         ]),
     ].filter(f => f.value)
@@ -515,7 +516,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 }
 
 // ─── Order Card ───────────────────────────────
-const OrderCard = ({ order, onCancel }) => {
+const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const [showModal, setShowModal] = useState(false)
     const [showChatModal, setShowChatModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
@@ -662,7 +663,14 @@ const OrderCard = ({ order, onCancel }) => {
                         </button>
                     )}
                     <button
-                        onClick={() => setShowModal(true)}
+                        onClick={() => {
+                            if (typeof onOpenDetails === 'function') {
+                                onOpenDetails(order)
+                                return
+                            }
+
+                            setShowModal(true)
+                        }}
                         className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
                     >
                         <QrCode size={12} />
@@ -673,7 +681,7 @@ const OrderCard = ({ order, onCancel }) => {
         </div>
 
         {/* ── Details Modal ── */}
-        {showModal && (
+        {showModal && !onOpenDetails && (
             <DetailsModal
                 order={order}
                 onClose={() => setShowModal(false)}
@@ -746,6 +754,8 @@ const FilterSheet = ({ active, onSelect, onClose }) => {
 
 // ─── Main Page ────────────────────────────────
 const Order = () => {
+    const navigate = useNavigate()
+    const { orderId: selectedOrderId } = useParams()
     const [searchQuery,  setSearchQuery]  = useState('')
     const [activeFilter, setActiveFilter] = useState('All Orders')
     const [sortBy,       setSortBy]       = useState('latest')
@@ -756,12 +766,14 @@ const Order = () => {
     const [error,        setError]        = useState(null)
     const [showFilter,   setShowFilter]   = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
+    const [selectedOrder, setSelectedOrder] = useState(null)
+    const [activeChatOrder, setActiveChatOrder] = useState(null)
 
     const mainRef = useRef(null)
     const searchTimeoutRef = useRef(null)
     const hasInitializedSearchRef = useRef(false)
     const refreshTimeoutRef = useRef(null)
-
+    
     const handleScroll = (e) => {
         setShowStickySearch(e.target.scrollTop > 300)
     }
@@ -888,6 +900,60 @@ const Order = () => {
             fulfilled:  all.filter(i => isFulfilledTrackingStatus(i.status)).length,
         }))
     }, [orders, bookings])
+
+    useEffect(() => {
+        let isActive = true
+
+        if (!selectedOrderId) {
+            setSelectedOrder(null)
+            return () => {
+                isActive = false
+            }
+        }
+
+        const existingOrder = [...orders, ...bookings].find((item) =>
+            String(item?._id || item?.id || '') === String(selectedOrderId)
+        )
+
+        if (existingOrder) {
+            setSelectedOrder(existingOrder)
+            return () => {
+                isActive = false
+            }
+        }
+
+        const loadSelectedOrder = async () => {
+            try {
+                const [orderResponse, bookingResponse] = await Promise.allSettled([
+                    orderApi.getOrderById(selectedOrderId),
+                    bookingApi.getBookingById(selectedOrderId),
+                ])
+
+                if (!isActive) return
+
+                const nextOrder =
+                    orderResponse.status === 'fulfilled'
+                        ? orderResponse.value?.order || orderResponse.value?.data || orderResponse.value
+                        : null
+                const nextBooking =
+                    bookingResponse.status === 'fulfilled'
+                        ? bookingResponse.value?.booking || bookingResponse.value?.data || bookingResponse.value
+                        : null
+
+                setSelectedOrder(nextOrder?._id ? nextOrder : nextBooking?._id ? nextBooking : null)
+            } catch {
+                if (isActive) {
+                    setSelectedOrder(null)
+                }
+            }
+        }
+
+        loadSelectedOrder()
+
+        return () => {
+            isActive = false
+        }
+    }, [selectedOrderId, orders, bookings])
 
     const handleFilterSelect = (f) => setActiveFilter(f)
     const displayedItems = sortOrders([...orders, ...bookings], sortBy)
@@ -1057,7 +1123,12 @@ const Order = () => {
 
                 {!loading && !error && displayedItems.length > 0 &&
                     displayedItems.map((item, idx) => (
-                        <OrderCard key={item._id || idx} order={item} onCancel={handleCancelOrder} />
+                        <OrderCard
+                            key={item._id || idx}
+                            order={item}
+                            onCancel={handleCancelOrder}
+                            onOpenDetails={(order) => navigate(`/order/${order?._id || order?.id}`)}
+                        />
                     ))
                 }
 
@@ -1111,6 +1182,23 @@ const Order = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {selectedOrder && (
+                <DetailsModal
+                    order={selectedOrder}
+                    onClose={() => navigate('/order')}
+                    onOpenChat={() => {
+                        setActiveChatOrder(selectedOrder)
+                        navigate('/order')
+                    }}
+                />
+            )}
+            {activeChatOrder && (
+                <OrderTailorChatModal
+                    order={activeChatOrder}
+                    onClose={() => setActiveChatOrder(null)}
+                />
             )}
         </main>
     )

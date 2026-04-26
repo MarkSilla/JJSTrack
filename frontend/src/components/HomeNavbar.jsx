@@ -52,6 +52,17 @@ const upsertNotifications = (current = [], incoming = []) => {
   return sortNotifications([...notificationMap.values()])
 }
 
+const resolveNotificationRoute = (notification = {}) => {
+  const baseRoute = String(notification?.route || '').trim()
+  const entityId = String(notification?.entityId || '').trim()
+
+  if (baseRoute === '/order' && entityId) {
+    return `/order/${entityId}`
+  }
+
+  return baseRoute
+}
+
 const HomeNavbar = ({ collapsed, setCollapsed }) => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -361,8 +372,10 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
 
     setShowNotifications(false)
 
-    if (notification.route && notification.route !== location.pathname) {
-      navigate(notification.route)
+    const targetRoute = resolveNotificationRoute(notification)
+
+    if (targetRoute && targetRoute !== location.pathname) {
+      navigate(targetRoute)
     }
   }
 

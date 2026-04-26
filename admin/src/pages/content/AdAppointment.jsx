@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import BookingModal from './Bookingforms.jsx';
 import { bookingApi } from '../../services/bookingApi.js';
+import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -164,7 +165,7 @@ const AdAppointment = () => {
                     date: booking.pickupDate
                         ? booking.pickupDate.substring(0, 10)
                         : new Date(booking.createdAt).toISOString().split('T')[0],
-                    time: booking.pickupSlot || '09:00 AM',
+                    time: getPickupSlotDisplay(booking.pickupSlot, '09:00 AM'),
                     customer: booking.contact?.fullName || 'Unknown Customer',
                     service: booking.bookingType === 'repair' ? getRepairDisplayLabel(booking) : booking.service,
                     type: booking.bookingType === 'organizational' ? 'org' : booking.bookingType,
@@ -208,7 +209,7 @@ const AdAppointment = () => {
 
     const selectedAppointments = useMemo(() => {
         return appointments.filter(app => app.date === selectedDateStr).sort((a, b) => {
-            return new Date(`1970/01/01 ${a.time}`) - new Date(`1970/01/01 ${b.time}`);
+            return getPickupSlotSortValue(a.time, '09:00 AM') - getPickupSlotSortValue(b.time, '09:00 AM');
         });
     }, [appointments, selectedDateStr]);
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, X, Scissors, Briefcase, CheckCircle2 } from 'lucide-react';
 import { bookingApi } from '../../../services/bookingApi.js';
+import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../../utils/pickupSlot.js';
+import { TIME_SLOTS } from '../../repairForm/constants.js';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -32,7 +34,7 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 const STEPS = ['date', 'time', 'confirm'];
 const STEP_LABELS = ['Date', 'Time', 'Confirm'];
 
-export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 'reschedule', currentDate }) {
+export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 'reschedule', currentDate, isRepairSchedule = false }) {
     if (!isOpen) return null;
 
     const today = new Date();
@@ -43,6 +45,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [step, setStep] = useState('date'); // 'date' | 'time' | 'confirm'
+    const [pendingDateSelection, setPendingDateSelection] = useState(null);
+    const [pendingTimeSelection, setPendingTimeSelection] = useState(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -53,6 +57,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
         setSelectedDateStr(nextDateStr);
         setSelectedTime('');
         setStep('date');
+        setPendingDateSelection(null);
+        setPendingTimeSelection(null);
 
         if (!Number.isNaN(nextDate.getTime())) {
             setCalendarDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
@@ -66,7 +72,7 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                 const response = await bookingApi.getAllBookings();
                 const mapped = response.bookings?.map(b => ({
                     date: b.pickupDate ? b.pickupDate.substring(0, 10) : new Date(b.createdAt).toISOString().split('T')[0],
-                    time: b.pickupSlot || '09:00 AM',
+                    time: getPickupSlotDisplay(b.pickupSlot, '09:00 AM'),
                     customer: b.contact?.fullName || 'Unknown',
                     type: b.bookingType === 'organizational' ? 'org' : b.bookingType,
                 })) || [];
@@ -97,10 +103,36 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
 
     const selectedAppointments = useMemo(() =>
         appointments.filter(a => a.date === selectedDateStr)
-            .sort((a, b) => new Date(`1970/01/01 ${a.time}`) - new Date(`1970/01/01 ${b.time}`))
+            .sort((a, b) => getPickupSlotSortValue(a.time, '09:00 AM') - getPickupSlotSortValue(b.time, '09:00 AM'))
     , [appointments, selectedDateStr]);
 
-    const bookedTimes = useMemo(() => selectedAppointments.map(a => a.time), [selectedAppointments]);
+    const bookedTimes = useMemo(() => {
+        if (!isRepairSchedule) {
+            return selectedAppointments.map((appointment) => appointment.time);
+        }
+
+        return selectedAppointments
+            .filter((appointment) => appointment.type === 'repair')
+            .map((appointment) => appointment.time);
+    }, [isRepairSchedule, selectedAppointments]);
+
+    const selectableTimeOptions = useMemo(() => {
+        if (isRepairSchedule) {
+            return TIME_SLOTS.map((slot) => ({
+                id: slot.id,
+                value: slot.range,
+                title: slot.label,
+                subtitle: slot.range,
+            }));
+        }
+
+        return AVAILABLE_TIMES.map((time) => ({
+            id: time,
+            value: time,
+            title: time,
+            subtitle: '',
+        }));
+    }, [isRepairSchedule]);
 
     const handleConfirm = () => {
         if (!selectedDateStr || !selectedTime) return;
@@ -113,6 +145,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
         setStep('date');
         setSelectedTime('');
         setSelectedDateStr(nextDateStr);
+        setPendingDateSelection(null);
+        setPendingTimeSelection(null);
         onClose();
     };
 
@@ -129,6 +163,58 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
     });
 
     const currentStepIndex = STEPS.indexOf(step);
+
+    const applyDateSelection = (dateStr) => {
+        setSelectedDateStr(dateStr);
+        setStep('time');
+        setSelectedTime('');
+        setPendingDateSelection(null);
+        setPendingTimeSelection(null);
+    };
+
+    const applyTimeSelection = (timeValue) => {
+        setSelectedTime(timeValue);
+        setPendingTimeSelection(null);
+    };
+
+    const pendingDateSummary = useMemo(() => {
+        if (!pendingDateSelection) return null;
+
+        const matches = appointments.filter((appointment) => appointment.date === pendingDateSelection);
+        if (matches.length === 0) return null;
+
+        const repairCount = matches.filter((appointment) => appointment.type === 'repair').length;
+        const jerseyCount = matches.filter((appointment) => appointment.type === 'jersey').length;
+        const orgCount = matches.filter((appointment) => appointment.type === 'org').length;
+
+        return {
+            total: matches.length,
+            repairCount,
+            jerseyCount,
+            orgCount,
+            dateLabel: new Date(`${pendingDateSelection}T00:00:00`).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+            }),
+        };
+        }, [appointments, pendingDateSelection]);
+
+    const pendingTimeSummary = useMemo(() => {
+        if (!pendingTimeSelection) return null;
+
+        const matches = selectedAppointments.filter(
+            (appointment) => appointment.type === 'repair' && appointment.time === pendingTimeSelection
+        );
+
+        if (matches.length === 0) return null;
+
+        return {
+            total: matches.length,
+            timeLabel: pendingTimeSelection,
+            customers: matches.slice(0, 3).map((appointment) => appointment.customer).filter(Boolean),
+        };
+    }, [pendingTimeSelection, selectedAppointments]);
 
     const renderCalendarCells = () => {
         const cells = [];
@@ -147,7 +233,16 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
             cells.push(
                 <button
                     key={d}
-                    onClick={() => { if (!isPastDate) { setSelectedDateStr(dateStr); setStep('time'); setSelectedTime(''); } }}
+                    onClick={() => {
+                        if (isPastDate) return;
+
+                        if (totalCount > 0) {
+                            setPendingDateSelection(dateStr);
+                            return;
+                        }
+
+                        applyDateSelection(dateStr);
+                    }}
                     disabled={isPastDate}
                     className={`
                         relative transition-all duration-200 border rounded-lg aspect-square flex flex-col items-center justify-center gap-0.5 p-1
@@ -314,25 +409,38 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                                 </div>
                             )}
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                <Clock size={12} /> Available Times
+                                <Clock size={12} /> {isRepairSchedule ? 'Available Time Ranges' : 'Available Times'}
                             </p>
-                            <div className="grid grid-cols-3 gap-1.5">
-                                {AVAILABLE_TIMES.map((time) => {
-                                    const isBooked = bookedTimes.includes(time);
-                                    const isSelected = selectedTime === time;
+                            <div className={`grid gap-1.5 ${isRepairSchedule ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                                {selectableTimeOptions.map((option) => {
+                                    const isBooked = bookedTimes.includes(option.value);
+                                    const isSelected = selectedTime === option.value;
                                     return (
                                         <button
-                                            key={time}
-                                            onClick={() => !isBooked && setSelectedTime(time)}
-                                            disabled={isBooked}
+                                            key={option.id}
+                                            onClick={() => {
+                                                if (isBooked && isRepairSchedule) {
+                                                    setPendingTimeSelection(option.value);
+                                                    return;
+                                                }
+
+                                                if (isBooked) return;
+                                                applyTimeSelection(option.value);
+                                            }}
+                                            disabled={isBooked && !isRepairSchedule}
                                             className={`
-                                                py-2 px-1 rounded-lg font-bold text-[11px] transition-all border
+                                                py-2 px-3 rounded-lg font-bold text-[11px] transition-all border
                                                 ${isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                : isBooked ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed line-through'
+                                                : isBooked ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-pointer'
                                                 : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 cursor-pointer'}
                                             `}
                                         >
-                                            {time}
+                                            <span className="block">{option.title}</span>
+                                            {option.subtitle && (
+                                                <span className={`mt-1 block text-[10px] font-semibold ${isSelected ? 'text-blue-100' : isBooked ? 'text-amber-600' : 'text-gray-400'}`}>
+                                                    {option.subtitle}
+                                                </span>
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -381,7 +489,7 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                                             <Clock size={15} className="text-blue-600" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Time</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{isRepairSchedule ? 'Time Range' : 'Time'}</p>
                                             <p className="text-sm font-bold text-gray-800 mt-0.5">{selectedTime}</p>
                                         </div>
                                     </div>
@@ -426,6 +534,117 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                     )}
                 </div>
             </div>
+
+            {pendingDateSummary && (
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/30"
+                        onClick={() => setPendingDateSelection(null)}
+                    />
+                    <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100">
+                            <h3 className="text-base font-bold text-gray-900">Use This Date?</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                {pendingDateSummary.dateLabel} already has a similar due date/schedule for other orders.
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-2">
+                            <p className="text-sm font-semibold text-gray-700">
+                                There {pendingDateSummary.total === 1 ? 'is' : 'are'} already {pendingDateSummary.total} scheduled booking{pendingDateSummary.total === 1 ? '' : 's'} on this date.
+                            </p>
+                            <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                                {pendingDateSummary.repairCount > 0 && (
+                                    <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100">
+                                        Repair: {pendingDateSummary.repairCount}
+                                    </span>
+                                )}
+                                {pendingDateSummary.jerseyCount > 0 && (
+                                    <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                                        Jersey: {pendingDateSummary.jerseyCount}
+                                    </span>
+                                )}
+                                {pendingDateSummary.orgCount > 0 && (
+                                    <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                                        Org: {pendingDateSummary.orgCount}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Are you sure you want to pick this date anyway?
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setPendingDateSelection(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => applyDateSelection(pendingDateSelection)}
+                                className="flex-1 py-2.5 rounded-xl border-none bg-blue-600 text-sm font-bold text-white hover:bg-blue-700 cursor-pointer"
+                            >
+                                Yes, Use Date
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {pendingTimeSummary && (
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/30"
+                        onClick={() => setPendingTimeSelection(null)}
+                    />
+                    <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100">
+                            <h3 className="text-base font-bold text-gray-900">Use This Time Range?</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                The repair time range <span className="font-semibold text-gray-700">{pendingTimeSummary.timeLabel}</span> is already assigned on this date.
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-2">
+                            <p className="text-sm font-semibold text-gray-700">
+                                There {pendingTimeSummary.total === 1 ? 'is' : 'are'} already {pendingTimeSummary.total} repair booking{pendingTimeSummary.total === 1 ? '' : 's'} in this same time range.
+                            </p>
+                            {pendingTimeSummary.customers.length > 0 && (
+                                <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                                    {pendingTimeSummary.customers.map((customer) => (
+                                        <span
+                                            key={customer}
+                                            className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-100"
+                                        >
+                                            {customer}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-xs text-gray-500">
+                                Are you sure you want to use this time range anyway?
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setPendingTimeSelection(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => applyTimeSelection(pendingTimeSelection)}
+                                className="flex-1 py-2.5 rounded-xl border-none bg-blue-600 text-sm font-bold text-white hover:bg-blue-700 cursor-pointer"
+                            >
+                                Yes, Use Range
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
