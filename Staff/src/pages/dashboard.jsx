@@ -53,9 +53,13 @@ const getScheduleColorClass = (status) => {
 
 const buildScheduleEntries = (bookings = []) =>
     bookings
-        .filter((booking) => booking.status !== 'Cancelled' && booking.status !== 'Released')
+        .filter((booking) => {
+            const derivedStatus = getStaffDerivedStatus(booking);
+            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed';
+        })
         .map((booking) => {
             const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion || booking.createdAt);
+            const derivedStatus = getStaffDerivedStatus(booking);
 
             if (!scheduleDate) {
                 return null;
@@ -75,8 +79,8 @@ const buildScheduleEntries = (bookings = []) =>
                 dateLabel: scheduleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 dateValue: scheduleDate.toISOString(),
                 dayKey: formatDateKey(scheduleDate),
-                status: booking.status,
-                colorClass: getScheduleColorClass(booking.status),
+                status: derivedStatus,
+                colorClass: getScheduleColorClass(derivedStatus),
             };
         })
         .filter(Boolean)
@@ -87,13 +91,17 @@ const buildAlerts = (bookings = []) => {
     today.setHours(0, 0, 0, 0);
 
     return bookings
-        .filter((booking) => booking.status !== 'Cancelled' && booking.status !== 'Released')
+        .filter((booking) => {
+            const derivedStatus = getStaffDerivedStatus(booking);
+            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed';
+        })
         .map((booking) => {
             const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion);
             const customerName = booking.contact?.fullName || booking.customer || 'Customer';
             const taskName = booking.service || booking.item || booking.serviceType || booking.bookingType || 'Task';
+            const derivedStatus = getStaffDerivedStatus(booking);
 
-            if (scheduleDate && scheduleDate < today && booking.status !== 'Completed') {
+            if (scheduleDate && scheduleDate < today && derivedStatus !== 'Completed') {
                 return {
                     type: 'overdue',
                     title: `${customerName} is overdue`,
@@ -101,7 +109,7 @@ const buildAlerts = (bookings = []) => {
                 };
             }
 
-            if (booking.status === 'Pending' || booking.status === 'Approved') {
+            if (derivedStatus === 'Pending') {
                 return {
                     type: 'pending',
                     title: `${customerName} is waiting`,

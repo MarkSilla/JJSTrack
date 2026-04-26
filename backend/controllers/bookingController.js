@@ -5,7 +5,10 @@ import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
 import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
-import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+import {
+  resolveEntityWorkflowStatus,
+  resolveWorkflowStatus,
+} from '../utils/workflowStatus.js';
 import { createNotification } from '../utils/notificationHelpers.js';
 import {
   maybeCreateBookingReadyForPickupNotification,
@@ -54,6 +57,11 @@ const hasReachedDropOffStep = (steps = []) =>
     const label = normalizeStepLabel(step?.label);
     return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
   });
+
+const serializeBookingWithWorkflowStatus = (booking = {}) => ({
+  ...(typeof booking?.toObject === 'function' ? booking.toObject() : booking),
+  status: resolveEntityWorkflowStatus(booking),
+});
 
 const ensureBookingId = async (booking) => {
   if (!booking?._id || booking.bookingId) {
@@ -893,7 +901,7 @@ export const getBookings = async (req, res) => {
 
     res.json({
       success: true,
-      bookings,
+      bookings: bookings.map((booking) => serializeBookingWithWorkflowStatus(booking)),
     });
   } catch (error) {
     console.error('Get Bookings Error:', error);
@@ -929,7 +937,7 @@ export const getBookingById = async (req, res) => {
 
     res.json({
       success: true,
-      booking,
+      booking: serializeBookingWithWorkflowStatus(booking),
     });
   } catch (error) {
     console.error('Get Booking By ID Error:', error);

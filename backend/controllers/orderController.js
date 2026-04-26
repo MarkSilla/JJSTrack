@@ -5,7 +5,10 @@ import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
 import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { getRequestActor } from '../utils/requestActor.js';
-import { resolveWorkflowStatus } from '../utils/workflowStatus.js';
+import {
+  resolveEntityWorkflowStatus,
+  resolveWorkflowStatus,
+} from '../utils/workflowStatus.js';
 import {
   maybeCreateOrderReadyForPickupNotification,
   maybeCreateOrderReleasedNotification,
@@ -32,6 +35,12 @@ const hasReachedDropOffStep = (steps = []) =>
     const label = normalizeStepLabel(step?.label);
     return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
   });
+
+const serializeOrderWithWorkflowStatus = (order = {}, invoice = null) => ({
+  ...(typeof order?.toObject === 'function' ? order.toObject() : order),
+  status: resolveEntityWorkflowStatus(order),
+  invoice,
+});
 
 const buildOrderLookupQuery = (rawId = '') => {
   const id = String(rawId || '').trim();
@@ -100,10 +109,7 @@ export const getOrders = async (req, res) => {
     const ordersWithInvoice = await Promise.all(
       orders.map(async (order) => {
         const invoice = await invoiceModel.findOne({ orderId: order._id });
-        return {
-          ...order.toObject(),
-          invoice,
-        };
+        return serializeOrderWithWorkflowStatus(order, invoice);
       })
     );
 
@@ -152,7 +158,7 @@ export const getOrderById = async (req, res) => {
 
     res.json({
       success: true,
-      order,
+      order: serializeOrderWithWorkflowStatus(order, invoice),
       invoice,
     });
 

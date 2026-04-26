@@ -14,6 +14,18 @@ export const isOverdue = (dueDateStr) => {
 };
 
 const normalizeOrderStatus = (status) => String(status || '').trim().toLowerCase();
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ');
+const hasReachedDropOffStep = (steps = []) =>
+    Array.isArray(steps) &&
+    steps.some((step) => {
+        const label = normalizeStepLabel(step?.label);
+        return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
+    });
 const isCompletedStatus = (order) => {
     const statusKey = normalizeOrderStatus(order.status);
     if (["completed", "complete", "released", "pick-up", "pick up", "pickup", "ready", "ready for pickup", "readyforpickup"].includes(statusKey)) return true;
@@ -26,9 +38,9 @@ export const getDerivedStatus = (order) => {
     if (normalizedStatus === "released") return "Released";
     const needsApproval = order?.serviceType === 'Team Jersey' || order?.serviceType === 'Organization';
     const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
-    if (needsApproval && !hasPickupDate) return "For Approval";
+    if (needsApproval && !hasPickupDate && !hasReachedDropOffStep(order?.steps)) return "For Approval";
     if (order.status !== 'Completed' && order.status !== 'Complete' && isOverdue(order.invoice?.dueDate)) return "Overdue";
-    if (order.status === "In Progress" || order.status === "In-Progress") return "In Progress";
+    if (order.status === "In Progress" || order.status === "In-Progress" || hasReachedDropOffStep(order?.steps)) return "In Progress";
     if (isCompletedStatus(order)) return "Completed";
     return "Pending";
 };

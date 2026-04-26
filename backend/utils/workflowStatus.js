@@ -19,12 +19,26 @@ const normalizeStatusKey = (status) =>
     .toLowerCase()
     .replace(/[_-]+/g, ' ');
 
+const normalizeStepLabel = (label = '') =>
+  String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ');
+
 export const normalizeWorkflowStatus = (status) => {
   if (!status) return status;
 
   const normalized = STATUS_ALIASES.get(normalizeStatusKey(status));
   return normalized || status;
 };
+
+export const hasReachedDropOffWorkflowStep = (steps = []) =>
+  Array.isArray(steps) &&
+  steps.some((step) => {
+    const label = normalizeStepLabel(step?.label);
+    return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
+  });
 
 export const isReadyForPickupWorkflow = (steps = []) => {
   if (!Array.isArray(steps) || steps.length === 0) {
@@ -53,5 +67,15 @@ export const resolveWorkflowStatus = ({ currentStatus, requestedStatus, steps })
     return 'Completed';
   }
 
+  if (hasReachedDropOffWorkflowStep(steps)) {
+    return 'In Progress';
+  }
+
   return nextStatus;
 };
+
+export const resolveEntityWorkflowStatus = (entity = {}) =>
+  resolveWorkflowStatus({
+    currentStatus: entity?.status,
+    steps: entity?.steps,
+  });

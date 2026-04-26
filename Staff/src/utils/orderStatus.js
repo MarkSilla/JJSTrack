@@ -13,6 +13,18 @@ const CLOSED_STATUSES = new Set([
 ]);
 
 const normalizeStatus = (status = '') => String(status || '').trim().toLowerCase();
+const normalizeStepLabel = (label = '') =>
+  String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+const hasReachedDropOffStep = (steps = []) =>
+  Array.isArray(steps) &&
+  steps.some((step) => {
+    const label = normalizeStepLabel(step?.label);
+    return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
+  });
 
 const parseScheduleDate = (value) => {
   if (!value) return null;
@@ -55,6 +67,9 @@ export const getStaffDerivedStatus = (order = {}) => {
   if (normalizedStatus === 'cancelled') return 'Cancelled';
   if (isOverdueTask(order)) return 'Overdue';
   if (normalizedStatus === 'in progress' || normalizedStatus === 'in-progress') {
+    return 'In Progress';
+  }
+  if (hasReachedDropOffStep(order?.steps)) {
     return 'In Progress';
   }
   if (CLOSED_STATUSES.has(normalizedStatus) && normalizedStatus !== 'cancelled') {

@@ -100,6 +100,14 @@ const sortOrders = (items = [], sortBy = 'latest') => {
     return sortedItems
 }
 
+const matchesActiveFilter = (order, filter) => {
+    const status = String(order?.status || '').trim()
+
+    if (filter === 'All Orders') return true
+    if (filter === 'In Progress') return status === 'In Progress' || status === 'In-Progress'
+    return status === filter
+}
+
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
     const label    = step.label?.toLowerCase().trim() ?? ''
@@ -803,7 +811,6 @@ const Order = () => {
         }
         try {
             const params = {}
-            if (filter !== 'All Orders') params.status = filter
             if (search.trim())           params.search = search.trim()
             const [od, bd] = await Promise.all([
                 orderApi.getOrders(params),
@@ -970,7 +977,10 @@ const Order = () => {
     }, [selectedOrderId, orders, bookings])
 
     const handleFilterSelect = (f) => setActiveFilter(f)
-    const displayedItems = sortOrders([...orders, ...bookings], sortBy)
+    const displayedItems = sortOrders(
+        [...orders, ...bookings].filter((item) => matchesActiveFilter(item, activeFilter)),
+        sortBy
+    )
 
     const handleCancelOrder = (order) => {
         const orderId = order?._id || order?.id
