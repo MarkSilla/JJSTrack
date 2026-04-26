@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 
 const STATUS_CONFIG = {
     "Completed": { color: "bg-emerald-100 text-emerald-700", label: "Completed", dot: "bg-emerald-500" },
+    "Released": { color: "bg-cyan-100 text-cyan-700", label: "Released", dot: "bg-cyan-500" },
     "In Progress": { color: "bg-blue-100 text-blue-700", label: "In Progress", dot: "bg-blue-500" },
     "Pending": { color: "bg-amber-100 text-amber-700", label: "Pending", dot: "bg-amber-500" },
     "Overdue": { color: "bg-red-100 text-red-700", label: "Overdue", dot: "bg-red-500" },
@@ -20,9 +21,16 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
     const statusConf = STATUS_CONFIG[derivedStatus] || STATUS_CONFIG['Pending'];
     const typeConf = TYPE_CONFIG[order.serviceType] || TYPE_CONFIG['Team Jersey'];
     const stepIdx = getActiveStepIndex(order);
-    const steps = order.steps || [];
-    const currentStep = steps[stepIdx]?.label || steps[stepIdx] || 'Pending';
-    const progressPercent = steps.length > 1 ? Math.round((stepIdx / (steps.length - 1)) * 100) : 0;
+    const steps = order.steps || order.productionProgress || [];
+    const isFinishedStatus = derivedStatus === 'Completed' || derivedStatus === 'Released';
+    const currentStep = isFinishedStatus
+        ? derivedStatus
+        : steps[stepIdx]?.step || steps[stepIdx]?.label || steps[stepIdx] || 'Pending';
+    const progressPercent = isFinishedStatus
+        ? 100
+        : steps.length > 1
+            ? Math.round((stepIdx / (steps.length - 1)) * 100)
+            : 0;
 
     return (
         <div
@@ -61,7 +69,12 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 ease-out"
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${derivedStatus === 'Released'
+                            ? 'bg-gradient-to-r from-cyan-500 to-cyan-600'
+                            : derivedStatus === 'Completed'
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600'
+                                : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                            }`}
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>

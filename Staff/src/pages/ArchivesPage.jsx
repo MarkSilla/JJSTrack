@@ -2,11 +2,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
-    ArrowLeft, User, Phone, CheckCheck, Activity, Scissors,
-    FileText, Image as ImageIcon
+    ArrowLeft, ArrowRight, User, Phone, CheckCheck, Activity, Scissors,
+    FileText, Image as ImageIcon, RotateCcw, XCircle
 } from 'lucide-react';
 import { bookingApi } from '../services/bookingApi';
+import { orderApi } from '../services/orderApi.js';
 import img from '../assets/img';
+
+const getDerivedOrderStatus = (order) => {
+    if (order?.status === "Cancelled") return "Cancelled";
+    if (order?.status === "Released") return "Released";
+    return order?.status || "Pending";
+};
 
 const mapBookingTypeToArchive = (bookingType) => {
     const typeMap = {
@@ -20,29 +27,44 @@ const mapBookingTypeToArchive = (bookingType) => {
 };
 
 const mapBookingToArchiveOrder = (booking) => {
+    const safeCustomerName = booking.contact?.fullName
+        || (typeof booking.customer === 'object' ? (booking.customer?.fullName || booking.customer?.name) : booking.customer)
+        || 'Unknown';
+    const safePhone = booking.contact?.phone
+        || (typeof booking.customer === 'object' ? booking.customer?.phone : null)
+        || booking.phone
+        || 'N/A';
+
+    const sourceStatus = getDerivedOrderStatus(booking);
+
     return {
+        ...booking,
         id: booking._id || booking.id,
         _id: booking._id,
         displayId: booking.bookingId || booking.orderId || booking._id || booking.id,
         type: mapBookingTypeToArchive(booking.bookingType),
         teamName: booking.teamName || booking.orgName || 'Order',
-        customerName: booking.contact?.fullName || booking.customer || 'Unknown',
-        customer: booking.contact?.fullName || booking.customer || 'Unknown',
-        contact: booking.contact?.phone || booking.phone || 'N/A',
+        customerName: String(safeCustomerName),
+        customer: String(safeCustomerName),
+        contact: String(safePhone),
         serviceTitle: booking.bookingType || booking.service || 'Service',
+        serviceName: booking.service || booking.bookingType || 'Service',
         items: booking.items || [],
         teamRoster: booking.players || booking.members || [],
         productionProgress: booking.steps || [],
         designImages: booking.photos || [],
         lineupImage: booking.photos?.[0] || booking.designFile || booking.orgDesignFile,
         repairImage: booking.photos?.[0] || booking.repairImage,
-        completedAt: booking.completedAt || booking.updatedAt || new Date().toISOString(),
+        completedAt: booking.archivedAt || booking.completedAt || booking.updatedAt || new Date().toISOString(),
+        archivedAt: booking.archivedAt || booking.completedAt || booking.updatedAt || new Date().toISOString(),
+        archivedBy: booking.archivedBy || '',
         dropDate: booking.createdAt,
         dueDate: booking.pickupDate || booking.createdAt,
         assignedBy: booking.assignedTailor || 'Admin',
         totalQty: booking.items?.reduce((sum, item) => sum + (item.qty || 0), 0) || 0,
-        notes: booking.notes,
-        ...booking,
+        notes: typeof booking.notes === 'object' ? '' : (booking.notes || ''),
+        isBooking: Boolean(booking.bookingType),
+        sourceStatus,
     };
 };
 
@@ -56,9 +78,9 @@ const fmtDate = (str) => {
 };
 
 const TYPE_CONFIG = {
-    TEAM_JERSEY: { label: 'Team Jersey', bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', icon: Package },
-    ORGANIZATIONAL: { label: 'Organizational', bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-200', icon: Users },
-    REPAIR: { label: 'Repair', bg: 'bg-violet-50', text: 'text-violet-800', border: 'border-violet-200', icon: Wrench },
+    TEAM_JERSEY: { label: 'Team Jersey', text: 'text-blue-600' },
+    ORGANIZATIONAL: { label: 'Organizational', text: 'text-indigo-600' },
+    REPAIR: { label: 'Repair', text: 'text-violet-600' },
 };
 
 const Pill = ({ bg, text, border, children, className = '' }) => (
@@ -94,6 +116,33 @@ const ItemIcon = ({ name = '' }) => {
     </span>;
 };
 
+const StatusBadge = ({ status }) => {
+    if (status === 'Cancelled') {
+        return (
+            <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                <XCircle size={11} />
+                Cancelled
+            </span>
+        );
+    }
+
+    if (status === 'Released') {
+        return (
+            <span className="inline-flex items-center gap-1.5 bg-cyan-50 text-cyan-700 border border-cyan-200 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                <CheckCircle2 size={11} />
+                Released
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+            <CheckCircle2 size={11} />
+            Archived
+        </span>
+    );
+};
+
 const MediaRenderer = ({ image, text, className = '' }) => {
     if (image) {
         return (
@@ -112,11 +161,12 @@ const ArchiveDetail = ({ order, onBack }) => {
     const [orgImageIdx, setOrgImageIdx] = useState(0);
     const [zoomType, setZoomType] = useState(null);
     const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
-    const customerName = order.customerName || order.customer;
+    const rawName = order.customerName || order.customer;
+    const customerName = typeof rawName === 'object' ? (rawName?.fullName || rawName?.name || 'Unknown') : (rawName || 'Unknown');
+    const archivedByLabel = order.archivedBy || '';
     const items = order.items || [];
     const steps = order.productionProgress || [];
     const teamRoster = order.teamRoster || [];
-    const TypeIcon = tc.icon;
 
     const orgImages = order.designImages || (order.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
 
@@ -145,23 +195,49 @@ const ArchiveDetail = ({ order, onBack }) => {
                         <Pill bg="bg-emerald-50" text="text-emerald-800" border="border-emerald-300">
                             <CheckCircle2 size={10} /> Completed
                         </Pill>
-                        <Pill bg={tc.bg} text={tc.text} border={tc.border}>
-                            <TypeIcon size={10} /> {tc.label}
-                        </Pill>
+                        <div className={`text-[11px] font-black uppercase tracking-widest ${tc.text} bg-slate-50 border border-slate-100 px-3 py-1 rounded-lg`}>
+                            {tc.label}
+                        </div>
                     </div>
-                    <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
-                        {order.teamName || order.category || order.serviceTitle}
-                    </h1>
-                    <p className="text-xs text-slate-400 font-medium mb-4">
-                        {order.serviceTitle}{order.category && order.teamName ? ` · ${order.category}` : ''}
-                    </p>
+                    {order.type === 'TEAM_JERSEY' && (
+                        <>
+                            <p className="text-xs text-slate-400 font-semibold mb-1 uppercase tracking-widest">Team Name</p>
+                            <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-4">
+                                {order.teamName || 'N/A'}
+                            </h1>
+                        </>
+                    )}
+                    {order.type === 'ORGANIZATIONAL' && (
+                        <>
+                            <p className="text-xs text-slate-400 font-semibold mb-1 uppercase tracking-widest">Company Name</p>
+                            <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-4">
+                                {order.teamName || order.orgName || 'N/A'}
+                            </h1>
+                        </>
+                    )}
+                    {order.type === 'REPAIR' && (
+                        <>
+                            <p className="text-xs text-slate-400 font-semibold mb-1 uppercase tracking-widest">Repair Type</p>
+                            <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-4">
+                                {order.serviceName || order.serviceTitle || 'Repair'}
+                            </h1>
+                        </>
+                    )}
                     <div className="flex flex-wrap gap-y-1.5 gap-x-5">
                         <span className="flex items-center gap-1.5 text-[13px] text-slate-600 font-medium">
                             <User size={13} className="text-slate-300" /> {customerName}
                         </span>
                         <span className="flex items-center gap-1.5 text-[13px] text-slate-600 font-medium">
-                            <Phone size={13} className="text-slate-300" /> {order.contact || '—'}
+                            <Phone size={13} className="text-slate-300" /> {typeof order.contact === 'object' ? (order.contact?.phone || '—') : (order.contact || '—')}
                         </span>
+                        {archivedByLabel && (
+                            <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
+                                Archived by
+                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md ml-1">
+                                    {archivedByLabel}
+                                </span>
+                            </span>
+                        )}
                         <span className="flex items-center gap-1.5 text-[13px] text-slate-400">
                             Assigned by
                             <span className="text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-md ml-1">
@@ -169,8 +245,23 @@ const ArchiveDetail = ({ order, onBack }) => {
                             </span>
                         </span>
                     </div>
+
+                    {/* Dates — inline on mobile, absolute on desktop */}
+                    <div className="grid grid-cols-3 gap-3 mt-4 sm:hidden">
+                        {[
+                            { label: 'Drop off', value: fmtDate(order.dropDate), color: 'text-slate-600' },
+                            { label: 'Due date', value: fmtDate(order.dueDate), color: 'text-red-600' },
+                            { label: 'Completed', value: fmtDate(order.completedAt), color: 'text-emerald-600' },
+                        ].map(({ label, value, color }) => (
+                            <div key={label} className="flex flex-col items-center bg-slate-50 rounded-xl py-2.5 px-2 border border-slate-100">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{label}</span>
+                                <span className={`text-[11px] font-extrabold ${color}`}>{value}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
+                {/* Dates — absolute on desktop */}
                 <div className="absolute top-6 right-6 hidden sm:flex flex-col gap-1.5 items-end">
                     {[
                         { label: 'Drop off', value: fmtDate(order.dropDate), color: 'text-slate-600' },
@@ -185,7 +276,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-start">
+            <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-start">
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
                     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
                         <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
@@ -205,7 +296,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                                         <CheckCircle2 size={15} className="text-white" strokeWidth={2.5} />
                                     </div>
                                     <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-6' : ''}`}>
-                                        <div className="text-[13px] font-bold text-slate-900 leading-snug">{step.step}</div>
+                                        <div className="text-[13px] font-bold text-slate-900 leading-snug">{step.label || step.step || 'Step'}</div>
                                         <div className="flex gap-3.5 mt-1 flex-wrap">
                                             {step.date && (
                                                 <span className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
@@ -236,7 +327,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                                 </span>
                             </div>
 
-                            <div className="max-w-full overflow-x-auto">
+                            <div className="max-w-full overflow-x-auto max-h-[420px] overflow-y-auto">
                                 <table className="w-full min-w-[560px] border-collapse relative">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-100">
@@ -360,67 +451,44 @@ const ArchiveDetail = ({ order, onBack }) => {
                     {order.type === 'REPAIR' && (
                         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                             <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <Wrench size={15} className="text-blue-500 shrink-0" />
-                                <span className="text-[13px] font-bold text-slate-800">Repair Specification</span>
+                                <span className="text-[13px] font-bold text-slate-800">Repair Details</span>
                                 <span className="ml-auto text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full tracking-wide">
                                     {items.length} Tasks
                                 </span>
                             </div>
 
-                            <div className="p-6 flex flex-col gap-6">
-                                {(order.notes || order.repairImage) && (
-                                    <div className="flex flex-col md:flex-row gap-4">
-                                        {order.notes && (
-                                            <div className="flex-1 bg-amber-50/50 rounded-xl p-4 border border-amber-100">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <FileText size={13} className="text-amber-500" />
-                                                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Repair Notes</span>
-                                                </div>
-                                                <div className="text-[12px] font-medium text-slate-700 leading-relaxed">
-                                                    {order.notes}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {order.repairImage && (
-                                            <div className="w-full md:w-64 h-40 shrink-0 relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center">
-                                                <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
-                                                    <img src={order.repairImage} alt="Repair Reference" className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]" onError={e => { e.currentTarget.src = img.sample; }} />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
-                                                        <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
-                                                            <Eye size={13} /> Click to expand
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                            <div className="p-6 flex flex-col gap-8">
+                                {order.notes && (
+                                    <div className="bg-amber-50/50 rounded-2xl p-5 border border-amber-100 flex flex-col">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <span className="text-[11px] font-black text-amber-600 uppercase tracking-widest">Repair Notes</span>
+                                        </div>
+                                        <div className="text-[13px] font-bold text-slate-700 leading-relaxed italic">
+                                            {order.notes}
+                                        </div>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
                                     <div className="flex items-center gap-2 px-1">
-                                        <Scissors size={13} className="text-slate-400" />
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Task Breakdown</span>
+                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Task Breakdown</span>
                                     </div>
                                     <div className="space-y-2">
                                         {items.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 bg-white shadow-sm">
+                                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-white shadow-sm">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-emerald-500">
-                                                        <CheckCircle2 size={16} />
-                                                    </div>
                                                     <div>
-                                                        <div className="text-sm font-bold text-slate-800">{item.name}</div>
-                                                        <div className="text-[10px] font-semibold text-slate-400">Quantity: {item.qty}</div>
+                                                        <div className="text-[14px] font-bold text-slate-800">{item.name || item.description || 'Repair Item'}</div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight">Quantity: {item.qty}</div>
                                                     </div>
                                                 </div>
-                                                <div className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-tighter rounded-md">
+                                                <div className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-emerald-100">
                                                     Completed
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
                                 {order.attachmentImage && (
                                     <MediaRenderer image={order.attachmentImage} text="Repair attachment" />
                                 )}
@@ -440,7 +508,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-slate-50/50">
+                            <div className="p-4 bg-slate-50/50 max-h-[500px] overflow-y-auto">
                                 <div className="relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center aspect-square md:aspect-[4/3]">
                                     <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('ORG')}>
                                         <img
@@ -520,9 +588,41 @@ const ArchiveDetail = ({ order, onBack }) => {
                     </div>
                 )}
 
-                <div className="flex flex-col gap-4 w-full lg:w-[40%] xl:w-[35%] lg:min-w-[340px]">
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
-                        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex flex-col gap-4 w-full lg:w-[35%] xl:w-[15%] lg:min-w-[340px]">
+                    {order.type === 'REPAIR' && (
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
+                            <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                                <ImageIcon size={14} className="text-slate-500" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Repair Reference</span>
+                            </div>
+                            <div className="p-3">
+                                <div className="relative group rounded-xl border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center h-[180px]">
+                                    {order.repairImage ? (
+                                        <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('REPAIR')}>
+                                            <img
+                                                src={order.repairImage}
+                                                alt="Repair Reference"
+                                                className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.05]"
+                                                onError={e => { e.currentTarget.src = img.sample; }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                                <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                    <Eye size={13} /> View Large
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 text-slate-300">
+                                            <ImageIcon size={32} strokeWidth={1.5} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-center">No Image<br />Available</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full ">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                             <Package size={14} className="text-slate-500" />
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Order Items</span>
                         </div>
@@ -554,57 +654,116 @@ const ArchiveDetail = ({ order, onBack }) => {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
 
-            <div className="flex items-center justify-between gap-4 p-5 md:px-7 md:py-5 rounded-3xl bg-gradient-to-br from-emerald-50 via-emerald-50 to-emerald-100/50 border border-emerald-200 shadow-sm flex-wrap">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl shrink-0 bg-white flex items-center justify-center shadow-sm border border-emerald-100">
-                        <Archive size={22} className="text-emerald-500" />
-                    </div>
+const RestoreConfirmModal = ({ order, onConfirm, onCancel, isRestoring }) => {
+    if (!order) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-start justify-between">
                     <div>
-                        <div className="text-[12px] font-black text-emerald-900 uppercase tracking-[0.15em] mb-1">Authenticated Archive Record</div>
-                        <p className="text-xs text-emerald-700/80 leading-relaxed font-bold italic tracking-tight">
-                            This order was verified and finalized on {fmtDate(order.completedAt)}.
+                        <h2 className="text-lg font-bold text-slate-900">Restore Archived Order</h2>
+                        <p className="text-sm text-slate-500 mt-1">
+                            This archived record will be returned to your active staff orders.
                         </p>
                     </div>
+                    <button
+                        onClick={onCancel}
+                        disabled={isRestoring}
+                        className="text-slate-400 hover:text-slate-600 disabled:opacity-50 bg-transparent border-none cursor-pointer ml-2"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
-                <div className="shrink-0 px-6 py-2 rounded-xl bg-white/80 backdrop-blur border border-emerald-200 text-[11px] font-black text-emerald-600 uppercase tracking-widest shadow-sm">
-                    Read Only History
+
+                <div className="p-6 bg-slate-50 space-y-3">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-emerald-700">Order ID: <span className="font-bold">{order.displayId || order.id}</span></p>
+                        <p className="text-xs font-semibold text-emerald-700 mt-1">Customer: <span className="font-bold">{order.customerName}</span></p>
+                    </div>
+                </div>
+
+                <div className="p-6 flex gap-3 border-t border-slate-100">
+                    <button
+                        onClick={onCancel}
+                        disabled={isRestoring}
+                        className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                    >
+                        Keep Archived
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={isRestoring}
+                        className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
+                    >
+                        {isRestoring ? 'Restoring...' : 'Restore'}
+                    </button>
                 </div>
             </div>
         </div>
     );
 };
 
-const ArchiveCard = ({ order, onClick }) => {
-    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.BOOKING;
-    const TypeIcon = tc.icon;
-    const orderDisplayId = order.displayId || order.id;
+const ArchiveCard = ({ order, onClick, onRestore, isRestoring }) => {
+    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
+    const fullId = order.displayId || order.id || '';
+    const shortId = fullId.length > 6 ? fullId.slice(-6) : fullId;
+
     return (
-        <button
-            onClick={() => onClick(order.id)}
-            className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer flex flex-col gap-3 shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-0.5"
-        >
+        <div className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm transition-all duration-300 hover:shadow-md">
             <div className="flex items-center justify-between gap-2">
-                <MonoTag>{orderDisplayId}</MonoTag>
-                <Pill bg={tc.bg} text={tc.text} border={tc.border}>
-                    <TypeIcon size={9} /> {tc.label}
-                </Pill>
+                <div className="font-mono text-[10px] font-black text-slate-400 bg-slate-100/50 px-2 py-1 rounded-lg border border-slate-200/50 text-center tracking-tighter">
+                    #{shortId}
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className={`text-[10px] font-black uppercase tracking-widest ${tc.text}`}>
+                        {tc.label}
+                    </div>
+                    <StatusBadge status={order.sourceStatus} />
+                </div>
             </div>
             <div>
-                <div className="text-[15px] font-extrabold text-slate-900 leading-snug">
-                    {order.teamName || order.category || order.serviceTitle}
+                <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-[15px] font-black text-slate-800 leading-none">
+                        {order.teamName || order.customerName}
+                    </h3>
+                    <span className="shrink-0 text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100 uppercase tracking-tighter">
+                        {order.serviceTitle}
+                    </span>
                 </div>
-                <div className="text-xs text-slate-400 font-medium mt-1">{order.customerName}</div>
+                <div className="text-[11px] font-bold text-slate-400 mt-1">{order.customerName}</div>
+                {order.archivedBy && (
+                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-1">
+                        Archived by {order.archivedBy}
+                    </div>
+                )}
             </div>
-            <div className="flex items-center justify-between mt-1">
-                <span className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                    <CheckCircle2 size={12} className="text-emerald-400" /> Completed {fmtDate(order.completedAt)}
+            <div className="flex items-center justify-between gap-2 mt-1 pt-3 border-t border-slate-50">
+                <span className="flex items-center gap-1.5 text-[11px] text-emerald-600 font-black">
+                    <CheckCircle2 size={11} strokeWidth={3} /> {fmtDate(order.completedAt)}
                 </span>
-                <span className="flex items-center gap-1 text-xs font-bold text-indigo-600">
-                    View <ChevronRight size={12} />
-                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => onClick(order.id)}
+                        className="flex items-center gap-1 text-[11px] font-black text-blue-600 uppercase tracking-widest bg-transparent border-none cursor-pointer"
+                    >
+                        View <ChevronRight size={12} />
+                    </button>
+                    <button
+                        onClick={() => onRestore(order)}
+                        disabled={isRestoring}
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 disabled:opacity-60 cursor-pointer"
+                    >
+                        <RotateCcw size={11} />
+                        Restore
+                    </button>
+                </div>
             </div>
-        </button>
+        </div>
     );
 };
 const ActivityTimeline = () => null;
@@ -616,41 +775,69 @@ const ArchivesPage = () => {
     const [activeTab, setActiveTab] = useState('list');
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [sortOrder, setSortOrder] = useState('newest');
     const [archivedOrders, setArchivedOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [restoreTarget, setRestoreTarget] = useState(null);
+    const [isRestoring, setIsRestoring] = useState(false);
+
+    const fetchArchivedOrders = async () => {
+        try {
+            setLoading(true);
+            const [bookingRes, orderRes] = await Promise.all([
+                bookingApi.getAllBookings().catch(() => ({ bookings: [] })),
+                orderApi.getAllOrders().catch(() => ({ orders: [] }))
+            ]);
+
+            const bookings = bookingRes.bookings || bookingRes.data || [];
+            const orders = orderRes.orders || orderRes.data || [];
+
+            const allItems = [...bookings, ...orders];
+
+            // Include archived, released, and cancelled items
+            const filtered = allItems.filter(b => 
+                b.isArchived === true || 
+                b.status === 'Released' || 
+                b.status === 'Cancelled'
+            );
+            
+            const mapped = filtered.map(mapBookingToArchiveOrder);
+            const uniqueArchived = Array.from(new Map(mapped.map(item => [item.id, item])).values());
+
+            setArchivedOrders(uniqueArchived);
+        } catch (error) {
+            console.error('Error fetching archived orders:', error);
+            setArchivedOrders([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchArchivedOrders = async () => {
-            try {
-                setLoading(true);
-                const response = await bookingApi.getAllBookings();
-                const bookings = response.bookings || response.data || [];
-                
-                // Filter for explicitly archived bookings
-                const archived = bookings.filter(b => b.isArchived === true);
-                const mapped = archived.map(mapBookingToArchiveOrder);
-                setArchivedOrders(mapped);
-            } catch (error) {
-                console.error('Error fetching archived orders:', error);
-                setArchivedOrders([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchArchivedOrders();
     }, []);
 
     const filtered = useMemo(() => {
         let list = [...archivedOrders];
         if (typeFilter !== 'All') list = list.filter(o => o.type === typeFilter);
+        
+        // Apply status filter
+        if (statusFilter !== 'All') {
+            if (statusFilter === 'Archived') {
+                list = list.filter(o => o.isArchived === true);
+            } else {
+                list = list.filter(o => o.sourceStatus === statusFilter);
+            }
+        }
+        
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(o =>
                 (o.teamName || '').toLowerCase().includes(q) ||
                 (o.customerName || '').toLowerCase().includes(q) ||
                 (o.serviceTitle || '').toLowerCase().includes(q) ||
+                (o.archivedBy || '').toLowerCase().includes(q) ||
                 String(o.displayId || o.id || '').toLowerCase().includes(q)
             );
         }
@@ -659,7 +846,7 @@ const ArchivesPage = () => {
             return sortOrder === 'newest' ? db - da : da - db;
         });
         return list;
-    }, [search, typeFilter, sortOrder, archivedOrders]);
+    }, [search, typeFilter, statusFilter, sortOrder, archivedOrders]);
 
     const stats = useMemo(() => {
         const total = archivedOrders.length;
@@ -670,6 +857,30 @@ const ArchivesPage = () => {
     }, [archivedOrders]);
 
     const selectedOrder = archivedOrders.find(o => o.id === selectedId);
+
+    const handleRestoreConfirm = async () => {
+        if (!restoreTarget) return;
+
+        try {
+            setIsRestoring(true);
+            if (restoreTarget.isBooking) {
+                await bookingApi.updateBooking(restoreTarget.id, { isArchived: false, archivedAt: null, archivedBy: null });
+            } else {
+                await orderApi.updateOrder(restoreTarget.id, { isArchived: false, archivedAt: null, archivedBy: null });
+            }
+
+            setRestoreTarget(null);
+            if (selectedId === restoreTarget.id) {
+                setSelectedId(null);
+            }
+            await fetchArchivedOrders();
+        } catch (error) {
+            console.error('Failed to restore archived order:', error);
+            alert('Failed to restore archived order. Please try again.');
+        } finally {
+            setIsRestoring(false);
+        }
+    };
 
     if (selectedOrder) return (
         <div className="min-h-[calc(100vh-80px)]">
@@ -750,7 +961,7 @@ const ArchivesPage = () => {
 
             {activeTab === 'list' && (
                 <>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center gap-2.5 shadow-sm">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2.5 shadow-sm">
                         <div className="flex-1 min-w-[200px] relative w-full md:w-auto">
                             <Search size={14} className="text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                             <input
@@ -773,6 +984,17 @@ const ArchivesPage = () => {
                                 <button key={val} onClick={() => setTypeFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all tracking-wide whitespace-nowrap ${typeFilter === val ? 'bg-slate-900 border-transparent text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'} border`}>{label}</button>
                             ))}
                         </div>
+                        <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0 mx-1" />
+                        <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto" style={{ scrollbarWidth: 'none' }}>
+                            {[
+                                ['All', 'All Status'],
+                                ['Archived', 'Archived'],
+                                ['Released', 'Released'],
+                                ['Cancelled', 'Cancelled']
+                            ].map(([val, label]) => (
+                                <button key={val} onClick={() => setStatusFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all tracking-wide whitespace-nowrap ${statusFilter === val ? 'bg-blue-600 border-transparent text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'} border`}>{label}</button>
+                            ))}
+                        </div>
                         <div className="relative ml-auto w-full sm:w-auto">
                             <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full sm:w-auto appearance-none pl-3 pr-8 py-1.5 text-xs font-semibold tracking-wide bg-slate-50 text-slate-600 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50">
                                 <option value="newest">Newest First</option>
@@ -789,38 +1011,108 @@ const ArchivesPage = () => {
                             <span className="text-[11px] font-bold text-slate-600 bg-indigo-50 border border-indigo-200 px-2.5 py-px rounded-full">{filtered.length}</span>
                         </div>
                         {filtered.length === 0 ? (
-                            <div className="py-20 px-8 text-center"><Archive size={24} className="text-slate-300 mx-auto mb-4" /><p className="text-sm font-bold text-slate-400">No archived orders found</p></div>
+                            <div className="py-24 px-8 text-center bg-white">
+                                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                                    <Archive size={28} className="text-slate-300" />
+                                </div>
+                                <p className="text-sm font-bold text-slate-400">No archived orders found</p>
+                            </div>
                         ) : (
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b-2 border-slate-100">
-                                        {[{ label: 'Order ID', w: '130px', cls: 'pl-6' }, { label: 'Type', w: '120px' }, { label: 'Client / Team', w: 'auto' }, { label: 'Service', w: '170px' }, { label: 'Completed', w: '150px' }, { label: 'Items', w: '80px' }, { label: '', w: '90px' }].map(({ label, w, cls = '' }, ci) => (
-                                            <th key={ci} className={`py-3 px-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap ${cls}`} style={{ width: w }}>{label}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((order, idx) => {
-                                        const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
-                                        const TypeIcon = tc.icon;
-                                        const orderDisplayId = order.displayId || order.id;
-                                        return (
-                                            <tr key={order.id} onClick={() => setSelectedId(order.id)} className={`h-[62px] cursor-pointer border-b border-slate-100 transition-colors duration-150 hover:bg-blue-50 group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                                                <td className="px-3.5 pl-6"><MonoTag>{orderDisplayId}</MonoTag></td>
-                                                <td className="px-3.5"><Pill bg={tc.bg} text={tc.text} border={tc.border}><TypeIcon size={9} /> {tc.label}</Pill></td>
-                                                <td className="px-3.5"><div className="text-[13px] font-bold text-slate-900 leading-snug">{order.teamName || order.customerName}</div>{order.teamName && <div className="text-[11px] font-medium text-slate-400 mt-0.5">{order.customerName}</div>}</td>
-                                                <td className="px-3.5 text-xs font-semibold text-slate-500">{order.serviceTitle}</td>
-                                                <td className="px-3.5"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600"><CheckCircle2 size={13} className="text-emerald-400" strokeWidth={2.5} />{fmtDate(order.completedAt)}</span></td>
-                                                <td className="px-3.5"><span className="font-mono text-[13px] font-bold text-slate-700">{order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0)}<span className="text-[10px] font-semibold text-slate-400 ml-1">pcs</span></span></td>
-                                                <td className="px-3.5 pr-6 text-right"><button onClick={e => { e.stopPropagation(); setSelectedId(order.id); }} className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-500 bg-blue-50 border border-blue-200 px-3.5 py-1.5 rounded-lg transition-colors duration-150 group-hover:bg-blue-100"><Eye size={13} /> View</button></td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                            <div className="p-5 flex flex-col gap-3 bg-slate-50/30">
+                                {filtered.map((order, idx) => {
+                                    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
+                                    const fullId = order.displayId || order.id || '';
+                                    const shortId = fullId.length > 6 ? fullId.slice(-6) : fullId;
+                                    const totalQty = order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0) || 0;
+
+                                    return (
+                                        <div
+                                            key={order.id}
+                                            onClick={() => setSelectedId(order.id)}
+                                            className="group relative bg-white border border-slate-200 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex items-center gap-6"
+                                        >
+                                            <div className="flex flex-col gap-2 shrink-0 w-24">
+                                                <div className="font-mono text-[10px] font-black text-slate-400 bg-slate-100/50 px-2 py-1 rounded-lg border border-slate-200/50 text-center tracking-tighter">
+                                                    #{shortId}
+                                                </div>
+                                                <div className={`text-[9px] font-black uppercase tracking-widest ${tc.text} text-center`}>
+                                                    {tc.label}
+                                                </div>
+                                            </div>
+                                            <div className="w-px h-10 bg-slate-100" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="text-[15px] font-black text-slate-800 truncate leading-none">
+                                                        {order.teamName || order.customerName}
+                                                    </h3>
+                                                    <span className="shrink-0 text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 uppercase tracking-tighter">
+                                                        {order.serviceTitle}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-slate-400">
+                                                    <div className="flex items-center gap-1 text-[11px] font-bold">
+                                                        <User size={12} className="opacity-50" />
+                                                        {order.customerName}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <StatusBadge status={order.sourceStatus} />
+                                                    {order.archivedBy && (
+                                                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+                                                            Archived by {order.archivedBy}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Stats & Actions Section */}
+                                            <div className="flex items-center gap-8 shrink-0">
+                                                <div className="text-right">
+                                                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Items</div>
+                                                    <div className="text-[16px] font-black text-slate-700 leading-none tabular-nums">
+                                                        {totalQty}
+                                                        <span className="text-[10px] font-bold text-slate-400 ml-1 uppercase">pcs</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-right border-l border-slate-100 pl-8">
+                                                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Completed</div>
+                                                    <div className="flex items-center gap-1.5 text-emerald-600">
+                                                        <span className="text-[13px] font-bold tracking-tight whitespace-nowrap">{fmtDate(order.completedAt)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="ml-4 flex items-center gap-2">
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            setRestoreTarget(order);
+                                                        }}
+                                                        disabled={isRestoring}
+                                                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 disabled:opacity-60 cursor-pointer"
+                                                    >
+                                                        <RotateCcw size={12} />
+                                                        Restore
+                                                    </button>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); setSelectedId(order.id); }}
+                                                        className="w-11 h-11 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-200 transition-all duration-300 group-hover:bg-blue-600 group-hover:shadow-blue-200 flex items-center justify-center "
+                                                    >
+                                                        <ArrowRight size={18} className="transition-transform" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                         {filtered.length > 0 && (
-                            <div className="flex items-center justify-between py-3 px-6 border-t border-slate-100 bg-slate-50/80"><span className="text-xs font-medium text-slate-400">Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{archivedOrders.length}</strong> archived orders</span></div>
+                            <div className="flex items-center justify-between py-4 px-8 border-t border-slate-100 bg-white rounded-b-2xl">
+                                <span className="text-xs font-medium text-slate-400">
+                                    Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{archivedOrders.length}</strong> archived orders
+                                </span>
+                            </div>
                         )}
                     </div>
 
@@ -828,7 +1120,7 @@ const ArchivesPage = () => {
                         {filtered.length === 0 ? (
                             <div className="bg-white border border-slate-200 rounded-2xl py-16 px-8 text-center shadow-sm"><Archive size={28} className="text-slate-200 mx-auto mb-3" /><p className="text-[13px] font-bold text-slate-400">No archived orders found</p></div>
                         ) : (
-                            filtered.map(order => <ArchiveCard key={order._id} order={order} onClick={setSelectedId} />)
+                            filtered.map(order => <ArchiveCard key={order._id} order={order} onClick={setSelectedId} onRestore={setRestoreTarget} isRestoring={isRestoring} />)
                         )}
                     </div>
                 </>
@@ -849,6 +1141,13 @@ const ArchivesPage = () => {
                     </div>
                 </div>
             )}
+
+            <RestoreConfirmModal
+                order={restoreTarget}
+                onConfirm={handleRestoreConfirm}
+                onCancel={() => !isRestoring && setRestoreTarget(null)}
+                isRestoring={isRestoring}
+            />
         </div>
     );
 };

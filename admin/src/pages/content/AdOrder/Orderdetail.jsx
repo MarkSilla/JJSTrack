@@ -24,6 +24,7 @@ export default function OrderDetail({
     handleStepClick,
     handleAssign,
     handleApprovePickupDate,
+    onArchiveSuccess,
 }) {
     const [pickupApprovalDate, setPickupApprovalDate] = useState('');
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -42,6 +43,10 @@ export default function OrderDetail({
         [derivedStatus]
     );
     const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
+    const canArchive = useMemo(
+        () => !activeOrder?.isArchived && (derivedStatus === 'Released' || derivedStatus === 'Cancelled'),
+        [activeOrder?.isArchived, derivedStatus]
+    );
 
     useEffect(() => {
         let isMounted = true;
@@ -174,18 +179,23 @@ export default function OrderDetail({
     };
 
     const confirmArchiveOrder = async () => {
-        const bookingId = activeOrder.id || activeOrder._id || activeOrder.bookingId || activeOrder.booking?._id;
-        
-        console.log('Archiving order - activeOrder:', activeOrder);
-        console.log('Extracted bookingId:', bookingId);
+        const entityId = activeOrder._id || activeOrder.id;
 
         try {
             setArchiveLoading(true);
-            await bookingApi.archiveBooking(bookingId);
+            if (activeOrder.isBooking) {
+                await bookingApi.archiveBooking(entityId);
+            } else {
+                await orderApi.archiveOrder(entityId);
+            }
             setShowArchiveConfirm(false);
             setIsMenuOpen(false);
-            setActiveOrderId(null);
             toast.success('Order archived successfully.');
+            if (typeof onArchiveSuccess === 'function') {
+                onArchiveSuccess();
+            } else {
+                setActiveOrderId(null);
+            }
         } catch (error) {
             console.error('Failed to archive order:', error);
             toast.error('Failed to archive order. Please try again.');
@@ -266,15 +276,17 @@ export default function OrderDetail({
                                 >
                                     <XCircle size={16} className="text-red-500" /> Cancel Order
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        setShowArchiveConfirm(true);
-                                        setIsMenuOpen(false);
-                                    }}
-                                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer"
-                                >
-                                    <Archive size={16} className="text-amber-500" /> Archive Order
-                                </button>
+                                {canArchive && (
+                                    <button
+                                        onClick={() => {
+                                            setShowArchiveConfirm(true);
+                                            setIsMenuOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm font-semibold text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors mt-1 bg-transparent border-none cursor-pointer"
+                                    >
+                                        <Archive size={16} className="text-amber-500" /> Archive Order
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -358,6 +370,14 @@ export default function OrderDetail({
                                     className="w-full bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
                                 >
                                     <XCircle size={18} /> Cancel Order
+                                </button>
+                            )}
+                            {canArchive && (
+                                <button
+                                    onClick={() => setShowArchiveConfirm(true)}
+                                    className="w-full bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Archive size={18} /> Archive Record
                                 </button>
                             )}
                         </div>
@@ -490,7 +510,7 @@ export default function OrderDetail({
                         <div className="p-6 border-b border-gray-100 flex items-start justify-between">
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900">Archive Order</h2>
-                                <p className="text-sm text-gray-500 mt-1">Move this completed order to archives? You can unarchive it anytime.</p>
+                                <p className="text-sm text-gray-500 mt-1">Move this released or cancelled record to archives? It will be removed from active admin lists.</p>
                             </div>
                             <button
                                 onClick={() => setShowArchiveConfirm(false)}
@@ -504,7 +524,7 @@ export default function OrderDetail({
                         <div className="p-6 bg-gray-50 space-y-3">
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <p className="text-xs font-semibold text-amber-700">Order ID: <span className="font-bold">{visibleOrderId}</span></p>
-                                <p className="text-xs font-semibold text-amber-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
+                                <p className="text-xs font-semibold text-amber-700 mt-1">Customer: <span className="font-bold">{activeOrder.invoice?.billTo?.name || activeOrder.customer || activeOrder.customerName || 'N/A'}</span></p>
                             </div>
                         </div>
 

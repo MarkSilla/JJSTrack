@@ -12,7 +12,8 @@ const KPI_CARDS = [
     { label: 'Pending', key: 'Pending', icon: Clock, sub: 'Awaiting start', color: '#F59E0B' },
     { label: 'Overdue', key: 'Overdue', icon: AlertTriangle, sub: 'Past due date', color: '#DC2626' },
     { label: 'In Progress', key: 'In Progress', icon: AlertCircle, sub: 'Currently active', color: '#8B5CF6' },
-    { label: 'Completed', key: 'Completed', icon: CheckCircle2, sub: 'Finished orders', color: '#10B981' },
+    { label: 'Completed', key: 'Completed', icon: CheckCircle2, sub: 'Ready for release', color: '#10B981' },
+    { label: 'Released', key: 'Released', icon: ShoppingBag, sub: 'Picked up by client', color: '#06B6D4' },
 ];
 
 const OrderPage = () => {
@@ -104,7 +105,7 @@ return (
             </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
             {KPI_CARDS.map((card, idx) => {
                 const Icon = card.icon;
                 const isActive = filterStatus === card.key;
@@ -144,7 +145,7 @@ return (
             setSortOption={setSortOption}
         />
 
-        <div className="flex-1">
+        <div className="flex-1 hidden md:block">
             <OrderTable
                 orders={filteredOrders}
                 selectedOrderId={selectedOrderId}

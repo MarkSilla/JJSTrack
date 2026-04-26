@@ -10,6 +10,7 @@ import AdOrder from './pages/content/AdOrder'
 import OrderDetailPage from './pages/content/Orderdetailage'
 import QRScanner from './pages/content/qrscanner'
 import ReleasedItems from './pages/content/released'
+import ArchivedItems from './pages/content/archives'
 import AdStaff from './pages/content/AdStaff'
 import AdInventory from './pages/content/AdInventory'
 import AdInventoryHistory from './pages/content/AdInventoryHistory'
@@ -55,6 +56,7 @@ function AppRoutes() {
                 <Route path='orders/:orderId' element={<OrderDetailPage />} />
                 <Route path='qr-scanner' element={<QRScanner />} />
                 <Route path='released' element={<ReleasedItems />} />
+                <Route path='archives' element={<ArchivedItems />} />
                 <Route path='staff' element={<AdStaff />} />
                 <Route path='inventory' element={<AdInventory />} />
                 <Route path='inventory/history' element={<AdInventoryHistory />} />

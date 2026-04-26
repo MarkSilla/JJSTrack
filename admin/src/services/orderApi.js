@@ -9,6 +9,18 @@ const api = axios.create({
   },
 });
 
+const getAdminArchiveActor = () => {
+  try {
+    const rawUser = localStorage.getItem('adminUser');
+    if (!rawUser) return 'Admin';
+
+    const parsedUser = JSON.parse(rawUser);
+    return parsedUser?.fullName || parsedUser?.name || parsedUser?.email || 'Admin';
+  } catch {
+    return 'Admin';
+  }
+};
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('adminToken');
@@ -142,6 +154,38 @@ export const orderApi = {
       return response.data;
     } catch (error) {
       console.error('Error generating QR codes:', error);
+      throw error;
+    }
+  },
+
+  // Archive order
+  archiveOrder: async (id) => {
+    try {
+      const archivedAt = new Date().toISOString();
+      const response = await api.put(`/orders/${id}`, {
+        isArchived: true,
+        completedAt: archivedAt,
+        archivedAt,
+        archivedBy: getAdminArchiveActor(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error archiving order:', error);
+      throw error;
+    }
+  },
+
+  // Unarchive order
+  unarchiveOrder: async (id) => {
+    try {
+      const response = await api.put(`/orders/${id}`, {
+        isArchived: false,
+        archivedAt: null,
+        archivedBy: null,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error unarchiving order:', error);
       throw error;
     }
   },

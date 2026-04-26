@@ -18,6 +18,7 @@ const navItems = [
         subItems: [
             { label: 'All Orders', path: '/admin/orders', matchNested: true },
             { label: 'Released', path: '/admin/released' },
+            { label: 'Archives', path: '/admin/archives' },
         ]
     },
     {

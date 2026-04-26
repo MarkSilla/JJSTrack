@@ -19,7 +19,8 @@ const getActiveStepIndex = (order) => {
         const notDoneIdx = order.steps.findIndex(s => !s.done);
         return notDoneIdx !== -1 ? notDoneIdx : order.steps.length - 1;
     }
-    if (order.status === 'Complete' || order.status === 'Completed') return 4;
+    const derivedStatus = getStaffDerivedStatus(order);
+    if (derivedStatus === 'Completed' || derivedStatus === 'Released') return 4;
     if (order.status === 'In Progress' || order.status === 'In-Progress') return 1;
     return 0;
 };
@@ -70,11 +71,11 @@ const useOrders = () => {
 
             const bookingItems =
                 bookingResponse.status === 'fulfilled'
-                    ? bookingResponse.value?.bookings || bookingResponse.value?.data || []
+                    ? (bookingResponse.value?.bookings || bookingResponse.value?.data || []).filter((item) => !item?.isArchived)
                     : [];
             const orderItems =
                 orderResponse.status === 'fulfilled'
-                    ? orderResponse.value?.orders || orderResponse.value?.data || []
+                    ? (orderResponse.value?.orders || orderResponse.value?.data || []).filter((item) => !item?.isArchived)
                     : [];
 
             const mappedBookings = Array.isArray(bookingItems)
@@ -139,7 +140,7 @@ const useOrders = () => {
     }, [searchQuery, filterStatus, staffOrders, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, Pending: 0, Overdue: 0, 'In Progress': 0, Completed: 0 };
+        const c = { All: 0, Pending: 0, Overdue: 0, 'In Progress': 0, Completed: 0, Released: 0 };
         staffOrders.forEach(o => {
             const s = getStaffDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;

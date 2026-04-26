@@ -71,6 +71,10 @@ const orderSchema = new mongoose.Schema({
   qrCode: String,
   isReleased: { type: Boolean, default: false },
   releasedAt: Date,
+  isArchived: { type: Boolean, default: false },
+  archivedAt: Date,
+  archivedBy: String,
+  completedAt: Date,
 }, { timestamps: true });
 
 orderSchema.pre('save', async function preSave() {

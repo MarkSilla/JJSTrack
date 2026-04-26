@@ -46,7 +46,8 @@ const splitTimeLabel = (pickupSlot) => {
 };
 
 const getScheduleColorClass = (status) => {
-    if (status === 'Completed' || status === 'Released') return 'border-emerald-400';
+    if (status === 'Released') return 'border-cyan-400';
+    if (status === 'Completed') return 'border-emerald-400';
     if (status === 'Pending' || status === 'Approved') return 'border-amber-400';
     return 'border-blue-400';
 };
@@ -55,7 +56,7 @@ const buildScheduleEntries = (bookings = []) =>
     bookings
         .filter((booking) => {
             const derivedStatus = getStaffDerivedStatus(booking);
-            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed';
+            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed' && derivedStatus !== 'Released';
         })
         .map((booking) => {
             const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion || booking.createdAt);
@@ -93,7 +94,7 @@ const buildAlerts = (bookings = []) => {
     return bookings
         .filter((booking) => {
             const derivedStatus = getStaffDerivedStatus(booking);
-            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed';
+            return derivedStatus !== 'Cancelled' && derivedStatus !== 'Completed' && derivedStatus !== 'Released';
         })
         .map((booking) => {
             const scheduleDate = parseScheduleDate(booking.pickupDate || booking.estimatedCompletion);
@@ -101,7 +102,7 @@ const buildAlerts = (bookings = []) => {
             const taskName = booking.service || booking.item || booking.serviceType || booking.bookingType || 'Task';
             const derivedStatus = getStaffDerivedStatus(booking);
 
-            if (scheduleDate && scheduleDate < today && derivedStatus !== 'Completed') {
+            if (scheduleDate && scheduleDate < today && derivedStatus !== 'Completed' && derivedStatus !== 'Released') {
                 return {
                     type: 'overdue',
                     title: `${customerName} is overdue`,
@@ -217,6 +218,7 @@ const Dashboard = () => {
         overdue: tasks.filter(task => getStaffDerivedStatus(task) === 'Overdue').length,
         inProgress: tasks.filter(task => getStaffDerivedStatus(task) === 'In Progress').length,
         completed: tasks.filter(task => getStaffDerivedStatus(task) === 'Completed').length,
+        released: tasks.filter(task => getStaffDerivedStatus(task) === 'Released').length,
     };
 
     const summaryCards = [
@@ -224,7 +226,8 @@ const Dashboard = () => {
         { label: 'Pending', value: summaryStats.pending, icon: Clock, accent: "#F59E0B", bgAccent: "#FFFBEB", sub: 'Documents pending approval', filterStatus: 'Pending' },
         { label: 'Overdue', value: summaryStats.overdue, icon: AlertTriangle, accent: "#DC2626", bgAccent: "#FEF2F2", sub: 'Tasks past due date', filterStatus: 'Overdue' },
         { label: 'In Progress', value: summaryStats.inProgress, icon: Loader, accent: "#7C3AED", bgAccent: "#F5F3FF", sub: 'Deployment tasks ongoing', filterStatus: 'In Progress' },
-        { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Interviews wrapped up', filterStatus: 'Completed' },
+        { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Ready for release', filterStatus: 'Completed' },
+        { label: 'Released', value: summaryStats.released, icon: CheckCircle2, accent: "#06B6D4", bgAccent: "#ECFEFF", sub: 'Claimed by client', filterStatus: 'Released' },
     ];
 
     const upcomingSchedules = useMemo(() => schedules.slice(0, 5), [schedules]);
@@ -268,6 +271,7 @@ const Dashboard = () => {
             case 'Pending': return 'bg-amber-50 text-amber-700 border border-amber-200';
             case 'In Progress': return 'bg-blue-50 text-blue-700 border border-blue-200';
             case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+            case 'Released': return 'bg-cyan-50 text-cyan-700 border border-cyan-200';
             default: return 'bg-slate-50 text-slate-600 border border-slate-200';
         }
     };
@@ -278,6 +282,7 @@ const Dashboard = () => {
             case 'Pending': return 'bg-amber-500';
             case 'In Progress': return 'bg-blue-500';
             case 'Completed': return 'bg-emerald-500';
+            case 'Released': return 'bg-cyan-500';
             default: return 'bg-slate-400';
         }
     };
@@ -312,7 +317,7 @@ const Dashboard = () => {
                     </button>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                 {summaryCards.map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
                     <button
                         key={idx}

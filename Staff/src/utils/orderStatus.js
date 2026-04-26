@@ -74,7 +74,13 @@ export const getStaffDerivedStatus = (order = {}) => {
   const normalizedStatus = normalizeStatus(order?.status);
 
   if (normalizedStatus === 'cancelled') return 'Cancelled';
-  if ((CLOSED_STATUSES.has(normalizedStatus) && normalizedStatus !== 'cancelled') || hasReachedPickupStep(order?.steps)) {
+  if (normalizedStatus === 'released') return 'Released';
+  if (
+    (CLOSED_STATUSES.has(normalizedStatus) &&
+      normalizedStatus !== 'cancelled' &&
+      normalizedStatus !== 'released') ||
+    hasReachedPickupStep(order?.steps)
+  ) {
     return 'Completed';
   }
   if (isOverdueTask(order)) return 'Overdue';

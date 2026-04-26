@@ -57,8 +57,9 @@ export default function OrderDetailPage() {
                     allItems.push(...(Array.isArray(data) ? data : []).map(convertBooking));
                 }
 
-                allItems.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-                setOrders(allItems);
+                const activeItems = allItems.filter((item) => !item?.isArchived);
+                activeItems.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+                setOrders(activeItems);
             } catch (err) {
                 console.error('Failed to fetch orders:', err);
                 if (!silent) {
@@ -278,10 +279,11 @@ export default function OrderDetailPage() {
                     assignments={assignments}
                     isMenuOpen={isMenuOpen}
                     setIsMenuOpen={setIsMenuOpen}
-                    setActiveOrderId={() => navigate('/orders')}
+                    setActiveOrderId={() => navigate('/admin/orders')}
                     handleStepClick={handleStepClick}
                     handleAssign={handleAssign}
                     handleApprovePickupDate={handleApprovePickupDate}
+                    onArchiveSuccess={() => navigate('/admin/archives')}
                 />
             </div>
 

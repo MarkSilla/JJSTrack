@@ -198,8 +198,9 @@ export default function AdOrder() {
                     allItems.push(...bookingsArray.map(convertBooking));
                 }
 
-                allItems.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-                setOrders(allItems);
+                const activeItems = allItems.filter((item) => !item?.isArchived);
+                activeItems.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+                setOrders(activeItems);
             } catch (err) {
                 console.error('Failed to fetch orders and bookings:', err);
                 if (!silent) {
