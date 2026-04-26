@@ -45,13 +45,9 @@ export const isReadyForPickupWorkflow = (steps = []) => {
     return false;
   }
 
-  if (steps.length === 1) {
-    return Boolean(steps[0]?.done || steps[0]?.active);
-  }
-
-  // In this workflow the last step is the pickup stage, so once every
-  // earlier step is done the booking/order is effectively ready for pickup.
-  return steps.slice(0, -1).every((step) => Boolean(step?.done));
+  // Check if the last step (Pick-up) is reached (done or active)
+  const lastStep = steps[steps.length - 1];
+  return Boolean(lastStep?.done || lastStep?.active);
 };
 
 export const resolveWorkflowStatus = ({ currentStatus, requestedStatus, steps }) => {

@@ -20,15 +20,25 @@ const normalizeStepLabel = (label = '') =>
         .toLowerCase()
         .replace(/[-_]+/g, ' ')
         .replace(/\s+/g, ' ');
+const getStepLabel = (step = {}) => step?.label || step?.step || '';
 const hasReachedDropOffStep = (steps = []) =>
     Array.isArray(steps) &&
     steps.some((step) => {
-        const label = normalizeStepLabel(step?.label);
+        const label = normalizeStepLabel(getStepLabel(step));
         return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
     });
+const hasReachedPickupStep = (steps = []) => {
+    if (!Array.isArray(steps) || steps.length === 0) return false;
+
+    const lastStep = steps[steps.length - 1];
+    const label = normalizeStepLabel(getStepLabel(lastStep));
+
+    return ['pick up', 'pickup'].includes(label) && Boolean(lastStep?.done || lastStep?.active);
+};
 const isCompletedStatus = (order) => {
     const statusKey = normalizeOrderStatus(order.status);
     if (["completed", "complete", "released", "pick-up", "pick up", "pickup", "ready", "ready for pickup", "readyforpickup"].includes(statusKey)) return true;
+    if (hasReachedPickupStep(order?.steps)) return true;
     return Array.isArray(order.steps) && order.steps.length > 0 && order.steps.every(step => Boolean(step?.done));
 };
 
@@ -39,9 +49,9 @@ export const getDerivedStatus = (order) => {
     const needsApproval = order?.serviceType === 'Team Jersey' || order?.serviceType === 'Organization';
     const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
     if (needsApproval && !hasPickupDate && !hasReachedDropOffStep(order?.steps)) return "For Approval";
-    if (order.status !== 'Completed' && order.status !== 'Complete' && isOverdue(order.invoice?.dueDate)) return "Overdue";
-    if (order.status === "In Progress" || order.status === "In-Progress" || hasReachedDropOffStep(order?.steps)) return "In Progress";
     if (isCompletedStatus(order)) return "Completed";
+    if (order.status !== 'Completed' && order.status !== 'Complete' && isOverdue(order.invoice?.dueDate)) return "Overdue";
+    if (normalizedStatus === "in progress" || normalizedStatus === "in-progress" || hasReachedDropOffStep(order?.steps)) return "In Progress";
     return "Pending";
 };
 

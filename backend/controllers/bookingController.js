@@ -1041,7 +1041,7 @@ export const updateBooking = async (req, res) => {
     res.json({
       success: true,
       message: 'Booking updated successfully',
-      booking,
+      booking: serializeBookingWithWorkflowStatus(booking),
     });
   } catch (error) {
     console.error('Update Booking Error:', error);
@@ -1102,7 +1102,7 @@ export const updateBookingStatus = async (req, res) => {
     res.json({
       success: true,
       message: 'Booking status updated successfully',
-      booking,
+      booking: serializeBookingWithWorkflowStatus(booking),
     });
   } catch (error) {
     console.error('Update Booking Status Error:', error);

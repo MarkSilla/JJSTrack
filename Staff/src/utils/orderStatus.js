@@ -19,12 +19,21 @@ const normalizeStepLabel = (label = '') =>
     .toLowerCase()
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ');
+const getStepLabel = (step = {}) => step?.label || step?.step || '';
 const hasReachedDropOffStep = (steps = []) =>
   Array.isArray(steps) &&
   steps.some((step) => {
-    const label = normalizeStepLabel(step?.label);
+    const label = normalizeStepLabel(getStepLabel(step));
     return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active);
   });
+const hasReachedPickupStep = (steps = []) => {
+  if (!Array.isArray(steps) || steps.length === 0) return false;
+
+  const lastStep = steps[steps.length - 1];
+  const label = normalizeStepLabel(getStepLabel(lastStep));
+
+  return ['pick up', 'pickup'].includes(label) && Boolean(lastStep?.done || lastStep?.active);
+};
 
 const parseScheduleDate = (value) => {
   if (!value) return null;
@@ -65,15 +74,15 @@ export const getStaffDerivedStatus = (order = {}) => {
   const normalizedStatus = normalizeStatus(order?.status);
 
   if (normalizedStatus === 'cancelled') return 'Cancelled';
+  if ((CLOSED_STATUSES.has(normalizedStatus) && normalizedStatus !== 'cancelled') || hasReachedPickupStep(order?.steps)) {
+    return 'Completed';
+  }
   if (isOverdueTask(order)) return 'Overdue';
   if (normalizedStatus === 'in progress' || normalizedStatus === 'in-progress') {
     return 'In Progress';
   }
   if (hasReachedDropOffStep(order?.steps)) {
     return 'In Progress';
-  }
-  if (CLOSED_STATUSES.has(normalizedStatus) && normalizedStatus !== 'cancelled') {
-    return 'Completed';
   }
 
   return 'Pending';
