@@ -5,6 +5,8 @@ import {
   ArrowDownCircle,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Filter,
   History,
@@ -164,6 +166,25 @@ function UseItemModal({ item, onConfirm, onClose, submitting }) {
 }
 
 function UsageHistory({ history }) {
+  const ITEMS_PER_PAGE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(history.length / ITEMS_PER_PAGE));
+  const paginatedHistory = history.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [history.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   if (history.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
@@ -188,7 +209,7 @@ function UsageHistory({ history }) {
         </span>
       </div>
       <div className="divide-y divide-slate-50">
-        {history.map((entry) => (
+        {paginatedHistory.map((entry) => (
           <div
             key={entry.id}
             className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition-colors"
@@ -220,6 +241,35 @@ function UsageHistory({ history }) {
           </div>
         ))}
       </div>
+      {history.length > ITEMS_PER_PAGE && (
+        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold text-slate-400">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={14} />
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((page) => Math.min(totalPages, page + 1))
+              }
+              disabled={currentPage === totalPages}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

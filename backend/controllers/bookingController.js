@@ -1177,13 +1177,23 @@ export const convertBookingToOrder = async (req, res) => {
     });
 
     await order.save();
-    emitOrderTrackingUpdate(order, 'created');
-    await maybeCreateStaffAssignmentNotification({
-      req,
-      entityType: 'order',
-      entity: order,
-      previousAssignedTailor: '',
-    });
+    // Only broadcast tracking update if no staff notification being created
+    // (to avoid duplicate notifications from both notification socket and feed refresh)
+    const shouldBroadcastTracking = !assignedTailor || assignedTailor === booking.assignedTailor;
+    if (shouldBroadcastTracking) {
+      emitOrderTrackingUpdate(order, 'created');
+    }
+    // Only create staff notification if assignment actually changed from booking to order
+    if (assignedTailor && assignedTailor !== booking.assignedTailor) {
+      await maybeCreateStaffAssignmentNotification({
+        req,
+        entityType: 'order',
+        entity: order,
+        previousAssignedTailor: booking.assignedTailor,
+      });
+      // Broadcast tracking after notification has been sent
+      emitOrderTrackingUpdate(order, 'created');
+    }
 
     // Update booking with order reference
     booking.orderId = order._id;

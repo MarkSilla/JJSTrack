@@ -5,6 +5,7 @@ const STATUS_CONFIG = {
     "Completed": { color: "bg-emerald-100 text-emerald-700", label: "Completed", dot: "bg-emerald-500" },
     "In Progress": { color: "bg-blue-100 text-blue-700", label: "In Progress", dot: "bg-blue-500" },
     "Pending": { color: "bg-amber-100 text-amber-700", label: "Pending", dot: "bg-amber-500" },
+    "Overdue": { color: "bg-red-100 text-red-700", label: "Overdue", dot: "bg-red-500" },
 };
 
 const TYPE_CONFIG = {

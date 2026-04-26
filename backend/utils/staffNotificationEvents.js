@@ -137,6 +137,32 @@ const buildAssignmentNotificationSignature = ({
     normalizeText(previousAssignedTailor),
   ].join(':');
 
+const resolveAssignmentOriginId = (entityType = 'booking', entity = {}) => {
+  if (entityType === 'order') {
+    const bookingOriginId = normalizeEntityId(entity?.bookingId);
+    if (bookingOriginId) {
+      return bookingOriginId;
+    }
+  }
+
+  return normalizeEntityId(entity?._id);
+};
+
+const buildAssignmentOriginSignature = ({
+  assignmentOriginId,
+  recipientId,
+  event,
+  assignedTailor,
+  previousAssignedTailor,
+}) =>
+  [
+    normalizeEntityId(assignmentOriginId),
+    normalizeEntityId(recipientId),
+    event,
+    normalizeText(assignedTailor),
+    normalizeText(previousAssignedTailor),
+  ].join(':');
+
 const findRecentStaffAssignmentNotification = async ({
   recipientId,
   entityType,
@@ -145,8 +171,9 @@ const findRecentStaffAssignmentNotification = async ({
   assignedTailor,
   previousAssignedTailor = '',
   assignmentSignature = '',
+  assignmentOriginSignature = '',
 }) => {
-  if (!mongoose.isValidObjectId(recipientId) || !mongoose.isValidObjectId(entityId)) {
+  if (!mongoose.isValidObjectId(recipientId)) {
     return null;
   }
 
@@ -166,19 +193,42 @@ const findRecentStaffAssignmentNotification = async ({
     ];
   }
 
+  const recentNotificationFilters = [];
+  const normalizedAssignmentSignature = String(assignmentSignature || '').trim();
+  const normalizedAssignmentOriginSignature = String(assignmentOriginSignature || '').trim();
+
+  if (normalizedAssignmentSignature) {
+    recentNotificationFilters.push({
+      'metadata.assignmentSignature': normalizedAssignmentSignature,
+    });
+  }
+
+  if (normalizedAssignmentOriginSignature) {
+    recentNotificationFilters.push({
+      'metadata.assignmentOriginSignature': normalizedAssignmentOriginSignature,
+    });
+  }
+
+  if (mongoose.isValidObjectId(entityId)) {
+    recentNotificationFilters.push({
+      type: entityType,
+      entityId,
+      ...duplicatePayloadQuery,
+    });
+  }
+
+  if (recentNotificationFilters.length === 0) {
+    return null;
+  }
+
   return notificationModel
     .findOne({
       audience: 'staff',
       recipientId,
-      type: entityType,
-      entityId,
       createdAt: {
         $gte: new Date(Date.now() - ASSIGNMENT_NOTIFICATION_DEDUPE_WINDOW_MS),
       },
-      $or: [
-        { 'metadata.assignmentSignature': String(assignmentSignature || '').trim() },
-        duplicatePayloadQuery,
-      ],
+      $or: recentNotificationFilters,
     })
     .sort({ createdAt: -1 });
 };
@@ -306,9 +356,17 @@ export const maybeCreateStaffAssignmentNotification = async ({
   const scheduleSuffix = scheduleLabel ? ` Schedule: ${scheduleLabel}.` : '';
   const normalizedPreviousAssignedTailor = String(previousAssignedTailor || '').trim();
   const assignmentEvent = isReassigned ? 'reassigned_to_staff' : 'assigned_to_staff';
+  const assignmentOriginId = resolveAssignmentOriginId(normalizedEntityType, entity);
   const assignmentSignature = buildAssignmentNotificationSignature({
     entityType: normalizedEntityType,
     entityId: entity._id,
+    recipientId: nextStaffUser._id,
+    event: assignmentEvent,
+    assignedTailor: nextAssignedTailor,
+    previousAssignedTailor: normalizedPreviousAssignedTailor,
+  });
+  const assignmentOriginSignature = buildAssignmentOriginSignature({
+    assignmentOriginId,
     recipientId: nextStaffUser._id,
     event: assignmentEvent,
     assignedTailor: nextAssignedTailor,
@@ -323,6 +381,7 @@ export const maybeCreateStaffAssignmentNotification = async ({
     assignedTailor: nextAssignedTailor,
     previousAssignedTailor: normalizedPreviousAssignedTailor,
     assignmentSignature,
+    assignmentOriginSignature,
   });
 
   if (existingNotification) {
@@ -348,6 +407,8 @@ export const maybeCreateStaffAssignmentNotification = async ({
       previousAssignedTailor: normalizedPreviousAssignedTailor,
       scheduleLabel,
       assignmentSignature,
+      assignmentOriginId: assignmentOriginId || null,
+      assignmentOriginSignature,
     },
     req,
   });

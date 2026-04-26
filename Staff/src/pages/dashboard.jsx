@@ -12,6 +12,7 @@ import {
 } from '../utils/taskMappers.js';
 import useOrderFeedSocket from '../hooks/useOrderFeedSocket.js';
 import { getPickupSlotDisplay } from '../utils/pickupSlot.js';
+import { getStaffDerivedStatus } from '../utils/orderStatus.js';
 
 const FALLBACK_REFRESH_MS = 60000;
 
@@ -204,14 +205,16 @@ const Dashboard = () => {
 
     const summaryStats = {
         totalTasks: tasks.length,
-        pending: tasks.filter(task => task.status === 'Pending').length,
-        inProgress: tasks.filter(task => task.status === 'In Progress').length,
-        completed: tasks.filter(task => task.status === 'Completed').length,
+        pending: tasks.filter(task => getStaffDerivedStatus(task) === 'Pending').length,
+        overdue: tasks.filter(task => getStaffDerivedStatus(task) === 'Overdue').length,
+        inProgress: tasks.filter(task => getStaffDerivedStatus(task) === 'In Progress').length,
+        completed: tasks.filter(task => getStaffDerivedStatus(task) === 'Completed').length,
     };
 
     const summaryCards = [
         { label: 'Total Tasks', value: summaryStats.totalTasks, icon: ClipboardList, accent: "#3B82F6", bgAccent: "#EFF6FF", sub: '12 Applicants to process', filterStatus: 'All' },
         { label: 'Pending', value: summaryStats.pending, icon: Clock, accent: "#F59E0B", bgAccent: "#FFFBEB", sub: 'Documents pending approval', filterStatus: 'Pending' },
+        { label: 'Overdue', value: summaryStats.overdue, icon: AlertTriangle, accent: "#DC2626", bgAccent: "#FEF2F2", sub: 'Tasks past due date', filterStatus: 'Overdue' },
         { label: 'In Progress', value: summaryStats.inProgress, icon: Loader, accent: "#7C3AED", bgAccent: "#F5F3FF", sub: 'Deployment tasks ongoing', filterStatus: 'In Progress' },
         { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Interviews wrapped up', filterStatus: 'Completed' },
     ];
@@ -253,6 +256,7 @@ const Dashboard = () => {
 
     const getStatusBadge = (status) => {
         switch (status) {
+            case 'Overdue': return 'bg-red-50 text-red-700 border border-red-200';
             case 'Pending': return 'bg-amber-50 text-amber-700 border border-amber-200';
             case 'In Progress': return 'bg-blue-50 text-blue-700 border border-blue-200';
             case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
@@ -262,6 +266,7 @@ const Dashboard = () => {
 
     const getStatusDot = (status) => {
         switch (status) {
+            case 'Overdue': return 'bg-red-500';
             case 'Pending': return 'bg-amber-500';
             case 'In Progress': return 'bg-blue-500';
             case 'Completed': return 'bg-emerald-500';
@@ -299,7 +304,7 @@ const Dashboard = () => {
                     </button>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                 {summaryCards.map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
                     <button
                         key={idx}
@@ -382,43 +387,49 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {tasks.map((task) => (
-                                        <tr
-                                            key={task._id}
-                                            onClick={() => openTaskDetails(task._id || task.id)}
-                                            className="hover:bg-slate-50/70 transition-colors cursor-pointer"
-                                        >
-                                            <td className="px-6 py-3.5">
-                                                <span className="text-sm font-medium text-slate-800 block min-w-[150px]">
-                                                    {task.service || task.item || task.serviceType || 'Assigned task'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-3.5 hidden sm:table-cell text-xs text-slate-400 whitespace-nowrap font-medium">
-                                                {task.pickupDate || task.estimatedCompletion || task.dueDate || 'TBA'} {getPickupSlotDisplay(task.pickupSlot)}
-                                            </td>
-                                            <td className="px-6 py-3.5">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor('Normal')}`}>
-                                                    Normal
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-3.5">
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadge(task.status)}`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${getStatusDot(task.status)}`} />
-                                                    {task.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-3.5 text-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        openTaskDetails(task._id || task.id);
-                                                    }}
-                                                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mx-auto block border border-slate-200 cursor-pointer"
+                                        (() => {
+                                            const derivedStatus = getStaffDerivedStatus(task);
+
+                                            return (
+                                                <tr
+                                                    key={task._id}
+                                                    onClick={() => openTaskDetails(task._id || task.id)}
+                                                    className="hover:bg-slate-50/70 transition-colors cursor-pointer"
                                                 >
-                                                    <MoreVertical className="w-3.5 h-3.5" />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                    <td className="px-6 py-3.5">
+                                                        <span className="text-sm font-medium text-slate-800 block min-w-[150px]">
+                                                            {task.service || task.item || task.serviceType || 'Assigned task'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3.5 hidden sm:table-cell text-xs text-slate-400 whitespace-nowrap font-medium">
+                                                        {task.pickupDate || task.estimatedCompletion || task.dueDate || 'TBA'} {getPickupSlotDisplay(task.pickupSlot)}
+                                                    </td>
+                                                    <td className="px-6 py-3.5">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getPriorityColor('Normal')}`}>
+                                                            Normal
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3.5">
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadge(derivedStatus)}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${getStatusDot(derivedStatus)}`} />
+                                                            {derivedStatus}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-3.5 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                openTaskDetails(task._id || task.id);
+                                                            }}
+                                                            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors mx-auto block border border-slate-200 cursor-pointer"
+                                                        >
+                                                            <MoreVertical className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })()
                                     ))}
                                 </tbody>
                             </table>

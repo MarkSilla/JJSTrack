@@ -84,7 +84,7 @@ const ForgotPasswordPage = () => {
         </Link>
 
         <div className="relative z-10 flex flex-col items-center text-center px-8">
-          <img src={img.jjsLogo} alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
+          <img src={img.jjslogo1} alt="JJS Logo" className="w-44 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
           <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
           <p className="text-sm font-thin opacity-70 tracking-wide">Where Every Stitch Reflects Quality and Craftsmanship.</p>

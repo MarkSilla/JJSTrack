@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Inbox, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Inbox, RefreshCw, AlertTriangle } from 'lucide-react';
 import useOrders from './order/hooks/useOrders';
 import OrderFilters from './order/components/OrderFilters';
 import OrderTable from './order/components/OrderTable';
@@ -10,6 +10,7 @@ import OrderDetails from './order/components/OrderDetails';
 const KPI_CARDS = [
     { label: 'All', key: 'All', icon: Inbox, sub: 'Total assigned', color: '#3B82F6' },
     { label: 'Pending', key: 'Pending', icon: Clock, sub: 'Awaiting start', color: '#F59E0B' },
+    { label: 'Overdue', key: 'Overdue', icon: AlertTriangle, sub: 'Past due date', color: '#DC2626' },
     { label: 'In Progress', key: 'In Progress', icon: AlertCircle, sub: 'Currently active', color: '#8B5CF6' },
     { label: 'Completed', key: 'Completed', icon: CheckCircle2, sub: 'Finished orders', color: '#10B981' },
 ];
@@ -103,7 +104,7 @@ return (
             </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             {KPI_CARDS.map((card, idx) => {
                 const Icon = card.icon;
                 const isActive = filterStatus === card.key;

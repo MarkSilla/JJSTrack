@@ -7,19 +7,9 @@ import {
     mapBookingToTask,
     mapOrderToTask,
 } from '../../../utils/taskMappers.js';
+import { getStaffDerivedStatus } from '../../../utils/orderStatus.js';
 
-const STATUS_FLOW = ['Pending', 'In Progress', 'Completed'];
 const FALLBACK_REFRESH_MS = 60000;
-
-const getDerivedStatus = (order) => {
-    if (!order) return 'Pending';
-    if (order.status === 'Cancelled') return 'Cancelled';
-    if (order.status === 'In Progress' || order.status === 'In-Progress') return 'In Progress';
-    // Treat "Ready for Pickup" as "Completed"
-    if (order.status === 'Ready' || order.status === 'Ready for Pickup' || order.status === 'ReadyForPickup' || order.status === 'ready-for-pickup') return 'Completed';
-    if (order.status === 'Completed' || order.status === 'Complete') return 'Completed';
-    return 'Pending';
-};
 
 const getActiveStepIndex = (order) => {
     if (!order) return 0;
@@ -138,7 +128,7 @@ const useOrders = () => {
         );
 
         if (filterStatus !== 'All') {
-            result = result.filter(o => getDerivedStatus(o) === filterStatus);
+            result = result.filter(o => getStaffDerivedStatus(o) === filterStatus);
         }
 
         return [...result].sort((a, b) => {
@@ -149,9 +139,9 @@ const useOrders = () => {
     }, [searchQuery, filterStatus, staffOrders, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, Pending: 0, 'In Progress': 0, Completed: 0 };
+        const c = { All: 0, Pending: 0, Overdue: 0, 'In Progress': 0, Completed: 0 };
         staffOrders.forEach(o => {
-            const s = getDerivedStatus(o);
+            const s = getStaffDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
             c.All++;
         });
@@ -170,7 +160,7 @@ const useOrders = () => {
         setIsFilterOpen,
         sortOption,
         setSortOption,
-        getDerivedStatus,
+        getDerivedStatus: getStaffDerivedStatus,
         getActiveStepIndex,
         loading,
         error,

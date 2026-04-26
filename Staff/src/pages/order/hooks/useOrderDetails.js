@@ -6,6 +6,7 @@ import {
     mapBookingToTaskDetail,
     mapOrderToTaskDetail,
 } from '../../../utils/taskMappers.js';
+import { getStaffDerivedStatus } from '../../../utils/orderStatus.js';
 
 const SERVICE_STEPS = {
     "Team Jersey": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
@@ -80,10 +81,7 @@ const useOrderDetails = (orderId) => {
     }, [order, steps]);
 
     const statusLabel = useMemo(() => {
-        if (!order) return 'Pending';
-        if (order.status === 'In Progress' || order.status === 'In-Progress') return 'In Progress';
-        if (order.status === 'Completed' || order.status === 'Complete') return 'Completed';
-        return 'Pending';
+        return getStaffDerivedStatus(order);
     }, [order]);
 
     return { order, steps, currentStepIdx, statusLabel };
