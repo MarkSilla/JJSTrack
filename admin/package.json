@@ -13,6 +13,7 @@
     "@yudiel/react-qr-scanner": "^2.5.1",
     "axios": "^1.13.6",
     "docx": "^9.6.1",
+    "html-to-image": "^1.11.13",
     "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",

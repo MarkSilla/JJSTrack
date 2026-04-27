@@ -1,4 +1,6 @@
 
+import logo from "../assets/jjs.png";
+
 const calcOrderTotal = (o) =>
     o.invoice.items.reduce((sum, item) => sum + item.unitPrice * item.qty + (item.addOnPrice || 0), 0);
 
@@ -7,11 +9,8 @@ const fmt = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDi
 const todayLabel = () =>
     new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-export function exportToPDF({ orders, appointments, expenseBreakdown, totalExpenses }) {
+export function exportToPDF({ orders, expenseBreakdown, totalExpenses }) {
     const totalAllOrders = orders.reduce((sum, o) => sum + calcOrderTotal(o), 0);
-    const totalPaidOrders = orders
-        .filter(o => o.invoice.status === "Paid")
-        .reduce((sum, o) => sum + calcOrderTotal(o), 0);
 
     const badge = (label) => label ?? "—";
 
@@ -26,18 +25,6 @@ export function exportToPDF({ orders, appointments, expenseBreakdown, totalExpen
             <td style="font-weight:700">${fmt(calcOrderTotal(o))}</td>
             <td>${badge(o.invoice.status)}</td>
             <td>${badge(o.status)}</td>
-        </tr>
-    `).join("");
-
-    const apptRows = appointments.map(a => `
-        <tr>
-            <td>${a.id}</td>
-            <td>${a.service}</td>
-            <td>${a.customer}</td>
-            <td>${a.tailor}</td>
-            <td>${a.date}</td>
-            <td>${a.time}</td>
-            <td>${badge(a.status)}</td>
         </tr>
     `).join("");
 
@@ -58,58 +45,92 @@ export function exportToPDF({ orders, appointments, expenseBreakdown, totalExpen
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>JJS-Track Report — ${todayLabel()}</title>
+    <title>JJS-Track Financial Report — ${todayLabel()}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 25mm 15mm;
+            @bottom-left {
+                content: "Printed by: JJS admin";
+                font-family: 'Roboto', sans-serif;
+                font-size: 10px;
+                color: #64748b;
+                font-weight: 600;
+            }
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'Roboto', sans-serif;
+                font-size: 10px;
+                color: #64748b;
+                font-weight: 600;
+            }
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body        { font-family: 'Segoe UI', sans-serif; color: #111; background: #fff; padding: 32px; font-size: 12px; }
-        h1          { font-size: 20px; font-weight: 800; color: #0f172a; }
+        body        { 
+            font-family: 'Roboto', sans-serif; 
+            color: #111; 
+            background: #fff; 
+            padding: 0;
+            font-size: 12px; 
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-container img {
+            height: 35px;
+            width: auto;
+        }
+        .brand-name {
+            font-size: 16px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+        .header-date {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        h1          { font-family: 'Roboto', sans-serif; font-size: 24px; font-weight: 900; color: #0f172a; text-align: center; margin-bottom: 30px; }
         h2          { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
-        .subtitle   { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-        .header     { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; }
-        .stats      { display: flex; gap: 16px; margin-bottom: 28px; }
-        .stat       { flex: 1; background: #f8fafc; border-radius: 10px; padding: 14px 18px; border-top: 3px solid #e2e8f0; }
-        .stat-val   { font-size: 22px; font-weight: 800; }
-        .stat-lbl   { font-size: 11px; color: #6b7280; margin-top: 2px; }
-        section     { margin-bottom: 28px; }
+        section     { margin-bottom: 35px; }
         table       { width: 100%; border-collapse: collapse; font-size: 11px; }
         thead tr    { background: #f1f5f9; }
-        th          { padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }
-        td          { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
-        tfoot td    { border-top: 2px solid #e2e8f0; background: #f8fafc; font-weight: 800; color: #1d4ed8; font-size: 13px; padding: 10px; }
-        .footer     { margin-top: 32px; text-align: center; font-size: 10px; color: #cbd5e1; border-top: 1px solid #f1f5f9; padding-top: 16px; }
-        @media print { body { padding: 16px; } }
+        th          { padding: 10px; text-align: left; font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }
+        td          { padding: 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+        tfoot td    { border-top: 2px solid #e2e8f0; background: #f8fafc; font-weight: 800; color: #1d4ed8; font-size: 13px; padding: 12px 10px; }
+        @media print {
+            body { padding: 0; }
+        }
     </style>
 </head>
 <body>
 
     <!-- Header -->
-    <div class="header">
-        <div>
-            <h1>JJS-Track · Dashboard Report</h1>
-            <p class="subtitle">${todayLabel()}</p>
+    <div class="page-header">
+        <div class="logo-container">
+            <img src="${logo}" alt="Logo" />
+            <span class="brand-name">JJSportswear</span>
         </div>
-        <div style="text-align:right;font-size:11px;color:#6b7280">Generated by JJS-Track</div>
+        <div class="header-date">
+            ${todayLabel()}
+        </div>
     </div>
 
-    <!-- Summary Stats -->
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-val">${orders.length}</div>
-            <div class="stat-lbl">Total Order No.</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val">${fmt(totalPaidOrders)}</div>
-            <div class="stat-lbl">Total Revenue (Paid)</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val">${fmt(totalExpenses)}</div>
-            <div class="stat-lbl">Total Expenses</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val">${fmt(totalAllOrders)}</div>
-            <div class="stat-lbl">Total Orders</div>
-        </div>
-    </div>
+    <h1>JJS-Track Financial Report</h1>
 
     <!-- Orders -->
     <section>
@@ -133,20 +154,6 @@ export function exportToPDF({ orders, appointments, expenseBreakdown, totalExpen
         </table>
     </section>
 
-    <!-- Appointments -->
-    <section>
-        <h2>Appointments (${appointments.length} total)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th><th>Service</th><th>Customer</th><th>Tailor</th>
-                    <th>Date</th><th>Time</th><th>Status</th>
-                </tr>
-            </thead>
-            <tbody>${apptRows}</tbody>
-        </table>
-    </section>
-
     <!-- Expense Breakdown -->
     <section>
         <h2>Expense Breakdown — ${fmt(totalExpenses)} total</h2>
@@ -165,7 +172,7 @@ export function exportToPDF({ orders, appointments, expenseBreakdown, totalExpen
         </table>
     </section>
 
-    <div class="footer">JJS-Track · ${todayLabel()}</div>
+
 
     <script>window.onload = () => { window.print(); }</script>
 </body>

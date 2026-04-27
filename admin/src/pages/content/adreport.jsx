@@ -381,11 +381,11 @@ export default function AdAnalytics() {
           ? booking.items
           : Array.isArray(booking?.selectedOptions)
             ? booking.selectedOptions.map((option) => ({
-                description: option?.name || "Service",
-                qty: Number(option?.quantity || 1),
-                unitPrice: Number(option?.price || 0),
-                addOnPrice: 0,
-              }))
+              description: option?.name || "Service",
+              qty: Number(option?.quantity || 1),
+              unitPrice: Number(option?.price || 0),
+              addOnPrice: 0,
+            }))
             : [],
       },
     }));
@@ -408,7 +408,6 @@ export default function AdAnalytics() {
 
     exportToPDF({
       orders: exportOrders,
-      appointments: exportAppointments,
       expenseBreakdown: exportBreakdown,
       totalExpenses: totals.billedAmount,
     });
@@ -471,79 +470,79 @@ export default function AdAnalytics() {
 
       <div className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div
-            className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#3B82F6" }} />
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EFF6FF" }}>
-                        <Banknote size={16} color="#3B82F6" strokeWidth={2.2} />
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-500">Total Revenue</span>
-                </div>
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#3B82F6" }} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EFF6FF" }}>
+                <Banknote size={16} color="#3B82F6" strokeWidth={2.2} />
+              </div>
+              <span className="text-[12px] font-semibold text-gray-500">Total Revenue</span>
             </div>
-            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
-                {fmtCurrency(totals.paidAmount)}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Paid bookings only</div>
+          </div>
+          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+            {fmtCurrency(totals.paidAmount)}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Paid bookings only</div>
         </div>
 
         <div
-            className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#F59E0B" }} />
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#FFFBEB" }}>
-                        <Clock3 size={16} color="#F59E0B" strokeWidth={2.2} />
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-500">Outstanding</span>
-                </div>
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#F59E0B" }} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#FFFBEB" }}>
+                <Clock3 size={16} color="#F59E0B" strokeWidth={2.2} />
+              </div>
+              <span className="text-[12px] font-semibold text-gray-500">Outstanding</span>
             </div>
-            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
-                {fmtCurrency(totals.pendingAmount + totals.overdueAmount)}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Pending + overdue bookings</div>
+          </div>
+          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+            {fmtCurrency(totals.pendingAmount + totals.overdueAmount)}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Pending + overdue bookings</div>
         </div>
 
         <div
-            className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#10B981" }} />
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#ECFDF5" }}>
-                        <Receipt size={16} color="#10B981" strokeWidth={2.2} />
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-500">Paid Bookings</span>
-                </div>
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#10B981" }} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#ECFDF5" }}>
+                <Receipt size={16} color="#10B981" strokeWidth={2.2} />
+              </div>
+              <span className="text-[12px] font-semibold text-gray-500">Paid Bookings</span>
             </div>
-            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
-                {totals.paidInvoiceCount}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Successfully collected</div>
+          </div>
+          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+            {totals.paidInvoiceCount}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Successfully collected</div>
         </div>
 
         <div
-            className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#6366F1" }} />
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EEF2FF" }}>
-                        <PackageCheck size={16} color="#6366F1" strokeWidth={2.2} />
-                    </div>
-                    <span className="text-[12px] font-semibold text-gray-500">Total Bookings</span>
-                </div>
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#6366F1" }} />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EEF2FF" }}>
+                <PackageCheck size={16} color="#6366F1" strokeWidth={2.2} />
+              </div>
+              <span className="text-[12px] font-semibold text-gray-500">Total Bookings</span>
             </div>
-            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
-                {totals.totalOrderCount}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Across booking services</div>
+          </div>
+          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+            {totals.totalOrderCount}
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Across booking services</div>
         </div>
       </div>
 
