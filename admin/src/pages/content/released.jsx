@@ -6,6 +6,7 @@ import {
     ChevronDown,
     CreditCard,
     DollarSign,
+    Download,
     Package,
     RefreshCw,
     Search,
@@ -20,6 +21,7 @@ import { bookingApi } from '../../services/bookingApi.js';
 import { orderApi } from '../../services/orderApi.js';
 import OrderRecordDetail from './OrderRecordDetail.jsx';
 import { buildReleasedRecords } from './orderRecordUtils.js';
+import { exportReleasedToPDF } from '../../components/Export.js';
 
 const SORT_OPTIONS = [
     { value: 'newest', label: 'Newest to Oldest' },
@@ -217,6 +219,14 @@ export default function ReleasedItems() {
         setIsRefreshing(false);
     };
 
+    const handleExportPDF = () => {
+        exportReleasedToPDF({
+            records: filteredItems,
+            totalRevenue,
+            paidCount,
+        });
+    };
+
     const totalRevenue = useMemo(
         () => releasedItems.reduce((sum, item) => sum + (Number(item.totalPrice) || 0), 0),
         [releasedItems]
@@ -376,6 +386,13 @@ export default function ReleasedItems() {
                                     >
                                         <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
                                         <span className="hidden sm:inline">Refresh</span>
+                                    </button>
+                                    <button
+                                        onClick={handleExportPDF}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm"
+                                    >
+                                        <Download size={12} />
+                                        <span className="hidden sm:inline">Export PDF</span>
                                     </button>
                                 </div>
                             </div>

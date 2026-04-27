@@ -368,3 +368,118 @@ export function exportChartToPDF({
     win.document.write(html);
     win.document.close();
 }
+
+export function exportReleasedToPDF({ records, totalRevenue, paidCount }) {
+    const fmtAmt = (n) => n != null ? "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A";
+
+    const typeLabel = (typeKey) => {
+        if (typeKey === "jersey") return "Jersey";
+        if (typeKey === "organizational") return "Org";
+        if (typeKey === "repair") return "Repair";
+        return "Service";
+    };
+
+    const rows = records.map((r, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td style="font-family:monospace;font-size:10px;font-weight:700;color:#374151">${r.displayId}</td>
+            <td>
+                <div style="font-weight:700;color:#111;font-size:11px">${r.headline}</div>
+                <div style="color:#94a3b8;font-size:10px;margin-top:1px">${r.secondaryLabel || ""}</div>
+            </td>
+            <td>${r.customerName}</td>
+            <td>${r.serviceLabel || "—"}</td>
+            <td>${r.dropDate || "—"}</td>
+            <td style="color:#000000;font-weight:600">${r.releaseDate || "—"}</td>
+            <td>
+                <span style="display:inline-block;padding:2px 8px;font-size:10px;font-weight:800;
+                    background:${r.payStatus === "Paid" ? "#ECFDF5" : "#FFF1F2"};
+                    color:${r.payStatus === "Paid" ? "#059669" : "#E11D48"};
+                    border:none ${r.payStatus === "Paid" ? "#6EE7B7" : "#FECDD3"}">
+                    ${r.payStatus || "Unpaid"}
+                </span>
+            </td>
+            <td style="font-weight:700;color:#111;text-align:right">${fmtAmt(r.totalPrice)}</td>
+            <td>
+                <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;
+                    background:${r.typeKey === "jersey" ? "#EFF6FF" : r.typeKey === "repair" ? "#FFF7ED" : r.typeKey === "organizational" ? "#F5F3FF" : "#F8FAFC"};
+                    color:${r.typeKey === "jersey" ? "#1D4ED8" : r.typeKey === "repair" ? "#C2410C" : r.typeKey === "organizational" ? "#6D28D9" : "#475569"};
+                    border:none ${r.typeKey === "jersey" ? "#BFDBFE" : r.typeKey === "repair" ? "#FED7AA" : r.typeKey === "organizational" ? "#DDD6FE" : "#E2E8F0"}">
+                    ${typeLabel(r.typeKey)}
+                </span>
+            </td>
+        </tr>`).join("");
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>JJS-Track Released Records — ${todayLabel()}</title>
+    <style>
+        @page{size:A4 landscape;margin:14mm 14mm 22mm 14mm;
+            @bottom-left{content:"Printed by: JJS admin";font-family:Arial,sans-serif;font-size:9px;color:#64748b}
+            @bottom-right{content:"Page " counter(page) " of " counter(pages);font-family:Arial,sans-serif;font-size:9px;color:#64748b}}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:Arial,sans-serif;color:#111;background:#fff;font-size:11px}
+        .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
+        .lc{display:flex;align-items:center;gap:8px}
+        .lc img{height:30px;width:auto}
+        .bn{font-size:15px;font-weight:900;color:#0f172a}
+        .hd{font-size:10px;color:#64748b;font-weight:500}
+        .stat-row{display:flex;gap:10px;margin-bottom:14px}
+        .stat{flex:1;border-radius:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0}
+        .stat-lbl{font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+        .stat-val{font-size:17px;font-weight:900;color:#0f172a;line-height:1}
+        .stat-sub{font-size:9px;color:#94a3b8;margin-top:2px}
+        table{width:100%;border-collapse:collapse;font-size:10.5px}
+        thead tr{background:#f1f5f9}
+        th{padding:9px 8px;text-align:left;font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid #e2e8f0}
+        td{padding:9px 8px;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:middle}
+        tfoot td{border-top:2px solid #e2e8f0;background:#f8fafc;font-weight:800;font-size:11px;padding:10px 8px}
+        tr:hover td{background:#f8fafc}
+    </style>
+</head>
+<body>
+    <div class="ph">
+        <div class="lc"><img src="${logo}" alt="Logo"/><span class="bn">JJSportswear</span></div>
+        <div style="text-align:center">
+            <div style="font-size:16px;font-weight:900;color:#0f172a">Released Records Report</div>
+            <div class="hd">Generated on ${todayLabel()}</div>
+        </div>
+        <div class="hd" style="text-align:right">Total Records: <b>${records.length}</b></div>
+    </div>
+
+
+    <table>
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>ID</th>
+                <th>Record</th>
+                <th>Customer</th>
+                <th>Service</th>
+                <th>Drop Date</th>
+                <th>Released Date</th>
+                <th>Pay Status</th>
+                <th style="text-align:right">Amount</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8">No released records found.</td></tr>'}</tbody>
+        <tfoot>
+            <tr>
+                <td colspan="8">Grand Total (${records.length} records, ${paidCount} paid)</td>
+                <td style="text-align:right;color:#1D4ED8">${fmtAmt(totalRevenue)}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script>window.onload=()=>{window.print()}</script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+}
