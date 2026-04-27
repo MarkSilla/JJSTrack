@@ -6,6 +6,7 @@ import img from '../../assets/img.js'
 import { useParams } from 'react-router-dom'
 import { getTrackingReferenceId } from '../../utils/trackingReference.js'
 import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
+import { exportInvoiceToPDF } from '../../utils/exportUtils.js'
 
 const useUser = () => ({ name: 'Juan' })
 
@@ -272,7 +273,10 @@ const Invoices = () => {
 
                     {/* Download Button */}
                     <div className="flex justify-end mb-6">
-                        <button className="flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-[#1E293B] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+                        <button 
+                            onClick={() => exportInvoiceToPDF(invoice)}
+                            className="flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-[#1E293B] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                        >
                             <MdPictureAsPdf size={18} /> Download PDF
                         </button>
                     </div>
