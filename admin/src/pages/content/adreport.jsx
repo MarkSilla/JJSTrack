@@ -16,13 +16,15 @@ import {
   Banknote,
   Clock3,
   Download,
+  FileText,
+  BarChart4Icon,
   Loader2,
   PackageCheck,
   Receipt,
   RefreshCw,
 } from "lucide-react";
 import api, { bookingApi } from "../../services/bookingApi.js";
-import { exportToPDF } from "../../components/Export.js";
+import { exportToPDF, exportChartToPDF } from "../../components/Export.js";
 
 const TIME_RANGES = ["Daily", "Weekly", "Monthly", "Quarterly"];
 const RANGE_LIMITS = {
@@ -171,6 +173,7 @@ export default function AdAnalytics() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [activeStatusIdx, setActiveStatusIdx] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const fetchReportData = async (showLoader = true) => {
     try {
@@ -411,6 +414,19 @@ export default function AdAnalytics() {
       expenseBreakdown: exportBreakdown,
       totalExpenses: totals.billedAmount,
     });
+    setShowExportMenu(false);
+  };
+
+  const handleExportChart = () => {
+    exportChartToPDF({
+      chartData,
+      totals,
+      invoiceStatusBreakdown,
+      recentPaidInvoices,
+      serviceStats,
+      timeRange,
+    });
+    setShowExportMenu(false);
   };
 
   if (loading) {
@@ -451,13 +467,37 @@ export default function AdAnalytics() {
             {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             Refresh
           </button>
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <Download size={13} />
-            Export PDF
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              <Download size={13} />
+              Export PDF
+            </button>
+            {showExportMenu && (
+              <div
+                className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                style={{ top: "100%" }}
+              >
+                <button
+                  onClick={handleExport}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <FileText size={14} className="text-slate-500" />
+                  Export Table
+                </button>
+                <div className="mx-3 border-t border-slate-100" />
+                <button
+                  onClick={handleExportChart}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <BarChart4Icon size={14} className="text-slate-500" />
+                  Export Chart
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
