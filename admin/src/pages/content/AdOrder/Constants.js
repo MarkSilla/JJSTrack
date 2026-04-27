@@ -1,5 +1,5 @@
 import { AlertCircle } from 'lucide-react';
-import { MdDesktopWindows, MdLocalShipping, MdLocalPrintshop, MdMoveToInbox } from 'react-icons/md';
+import { MdDesktopWindows, MdLocalShipping, MdLocalPrintshop, MdMoveToInbox, MdOutlineIron } from 'react-icons/md';
 import { GiSewingMachine, GiScissors } from 'react-icons/gi';
 
 export const EMPLOYEE_POOL = [
@@ -34,8 +34,8 @@ export const TYPE_CONFIG = {
 };
 
 export const SERVICE_STEPS = {
-    "Team Jersey":  ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
-    "Organization": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
+    "Team Jersey":  ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
+    "Organization": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
     "Repair":       ["Drop Off", "Cutting", "Sewing", "Pick-up"],
 };
 
@@ -55,6 +55,7 @@ export const STEP_ICON = {
     'drop off':    MdMoveToInbox,
     'layout':      MdDesktopWindows,
     'printing':    MdLocalPrintshop,
+    'pressing':    MdOutlineIron,
     'cutting':     GiScissors,
     'sewing':      GiSewingMachine,
     'pick-up':     MdLocalShipping,

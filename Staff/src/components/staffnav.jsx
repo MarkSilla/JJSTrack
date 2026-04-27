@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
     Bell,
     Menu,
@@ -14,6 +15,8 @@ import {
     notificationApi,
 } from '../services/notificationApi.js'
 import { StaffAuthContext } from '../context/StaffAuthContext.jsx'
+import { playAlertSound } from '../utils/soundAlert.js'
+import { getStoredStaffUser } from '../utils/staffSession.js'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -70,6 +73,9 @@ const resolveNotificationRoute = (notification = {}) => {
     return baseRoute
 }
 
+const isWorkflowTurnNotification = (notification = {}) =>
+    notification?.metadata?.event === 'workflow_step_ready'
+
 const StaffNav = ({ onToggleSidebar }) => {
     const [showDropdown, setShowDropdown] = useState(false)
     const [showNotifications, setShowNotifications] = useState(false)
@@ -92,23 +98,14 @@ const StaffNav = ({ onToggleSidebar }) => {
     const { logout } = useContext(StaffAuthContext)
 
     const user = useMemo(() => {
-        try {
-            const storedUser = localStorage.getItem('staffUser')
-            const parsedUser = storedUser ? JSON.parse(storedUser) : null
-            return {
-                fullName: parsedUser?.fullName || 'Staff User',
-                email:
-                    parsedUser?.email ||
-                    localStorage.getItem('rememberStaffEmail') ||
-                    'staff@jjstrack.com',
-                photoURL: parsedUser?.photoURL || null,
-            }
-        } catch {
-            return {
-                fullName: 'Staff User',
-                email: localStorage.getItem('rememberStaffEmail') || 'staff@jjstrack.com',
-                photoURL: null,
-            }
+        const storedUser = getStoredStaffUser()
+        return {
+            fullName: storedUser?.fullName || 'Staff User',
+            email:
+                storedUser?.email ||
+                localStorage.getItem('rememberStaffEmail') ||
+                'staff@jjstrack.com',
+            photoURL: storedUser?.photoURL || null,
         }
     }, [])
 
@@ -199,6 +196,30 @@ const StaffNav = ({ onToggleSidebar }) => {
         }
     }, [])
 
+    const showRealtimeNotificationToast = useCallback((notification) => {
+        if (!notification || !isWorkflowTurnNotification(notification)) {
+            return
+        }
+
+        const targetRoute = resolveNotificationRoute(notification)
+        playAlertSound('workflow')
+
+        toast.info(notification.title || 'Workflow update needed', {
+            description: notification.message || 'One of your workflow stages is ready for progress update.',
+            duration: 9000,
+            action: targetRoute
+                ? {
+                    label: 'Open task',
+                    onClick: () => {
+                        if (targetRoute !== location.pathname) {
+                            navigate(targetRoute)
+                        }
+                    },
+                }
+                : undefined,
+        })
+    }, [location.pathname, navigate])
+
     useEffect(() => {
         isMountedRef.current = true
         loadNotifications({ showLoader: true })
@@ -279,6 +300,8 @@ const StaffNav = ({ onToggleSidebar }) => {
                             setUnreadCount((current) => current + 1)
                         }
 
+                        showRealtimeNotificationToast(incomingNotification)
+
                         return
                     }
 
@@ -330,7 +353,7 @@ const StaffNav = ({ onToggleSidebar }) => {
                 }
             }
         }
-    }, [loadNotifications])
+    }, [loadNotifications, showRealtimeNotificationToast])
 
     const handleLogout = () => {
         logout()
@@ -451,20 +474,27 @@ const StaffNav = ({ onToggleSidebar }) => {
                 ) : notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-gray-700">No notifications yet</p>
-                        <p className="mt-1 text-xs text-gray-400">Assigned tasks and due-soon reminders will appear here.</p>
+                        <p className="mt-1 text-xs text-gray-400">Assigned tasks, workflow turn alerts, and due-soon reminders will appear here.</p>
                     </div>
                 ) : (
                     notifications.map((notification) => (
                         <button
                             key={notification._id}
                             onClick={() => handleNotificationClick(notification)}
-                            className={`w-full border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${notification.isRead ? 'bg-white' : 'bg-blue-50/60'}`}
+                            className={`w-full border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${notification.isRead ? 'bg-white' : isWorkflowTurnNotification(notification) ? 'bg-amber-50/70' : 'bg-blue-50/60'}`}
                         >
                             <div className="flex items-start gap-3">
-                                <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${notification.isRead ? 'bg-gray-200' : 'bg-blue-500'}`} />
+                                <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${notification.isRead ? 'bg-gray-200' : isWorkflowTurnNotification(notification) ? 'bg-amber-500' : 'bg-blue-500'}`} />
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-3">
-                                        <p className="break-words text-sm font-semibold text-gray-900">{notification.title}</p>
+                                        <div className="min-w-0">
+                                            <p className="break-words text-sm font-semibold text-gray-900">{notification.title}</p>
+                                            {isWorkflowTurnNotification(notification) && (
+                                                <span className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                                                    Action needed
+                                                </span>
+                                            )}
+                                        </div>
                                         <span className="whitespace-nowrap text-[11px] text-gray-400">{formatNotificationTime(notification.createdAt)}</span>
                                     </div>
                                     <p className="mt-1 text-xs leading-5 text-gray-500 break-words">{notification.message}</p>

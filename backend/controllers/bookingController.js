@@ -4,11 +4,14 @@ import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
-import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
+import { buildStaffAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import {
   resolveEntityWorkflowStatus,
   resolveWorkflowStatus,
 } from '../utils/workflowStatus.js';
+import {
+  validateWorkflowStepMutation,
+} from '../utils/workflowStepAccess.js';
 import { createNotification } from '../utils/notificationHelpers.js';
 import {
   maybeCreateBookingReadyForPickupNotification,
@@ -21,7 +24,10 @@ import {
   emitBookingTrackingUpdate,
   emitOrderTrackingUpdate,
 } from '../utils/trackingUpdateEvents.js';
-import { maybeCreateStaffAssignmentNotification } from '../utils/staffNotificationEvents.js';
+import {
+  maybeCreateStaffAssignmentNotification,
+  maybeCreateWorkflowStepReadyNotification,
+} from '../utils/staffNotificationEvents.js';
 
 const isEnvAdminRequest = (req) => req.userId === 'admin';
 
@@ -50,6 +56,12 @@ const normalizeStepLabel = (label = '') =>
     .toLowerCase()
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ');
+
+const normalizeStaffAssignments = (staffAssignments = {}, fallbackTailor = '') => ({
+  tailor: String(staffAssignments?.tailor ?? fallbackTailor ?? '').trim(),
+  presser: String(staffAssignments?.presser ?? '').trim(),
+  layoutArtist: String(staffAssignments?.layoutArtist ?? '').trim(),
+});
 
 const hasReachedDropOffStep = (steps = []) =>
   Array.isArray(steps) &&
@@ -835,7 +847,7 @@ export const getBookings = async (req, res) => {
         const user = await userModel.findById(userId);
         if (user) {
           if (user.role === 'staff') {
-            const assignmentQuery = buildAssignmentQuery(user);
+            const assignmentQuery = buildStaffAssignmentQuery(user);
             console.log('🔍 Staff Booking Query:', {
               userId: userId,
               fullName: user.fullName,
@@ -878,12 +890,13 @@ export const getBookings = async (req, res) => {
     await ensureBookingIds(bookings);
 
     // Debug: Check all bookings if none found for staff member
-    if (bookings.length === 0 && query.assignedTailor) {
-      const allBookings = await bookingModel.find({}).select('_id service assignedTailor status').limit(10);
+    if (bookings.length === 0 && query.$or) {
+      const allBookings = await bookingModel.find({}).select('_id service assignedTailor staffAssignments status').limit(10);
       console.log('⚠️  No bookings found with query. All bookings in DB:', allBookings.map(b => ({
         id: b._id,
         service: b.service,
         assignedTailor: b.assignedTailor || '[EMPTY]',
+        staffAssignments: b.staffAssignments || {},
         status: b.status
       })));
     }
@@ -925,7 +938,7 @@ export const getBookingById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (user.role === 'staff' && !isAssignedToUser(booking.assignedTailor, user)) {
+    if (user.role === 'staff' && !isAssignedToUser(booking, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -949,9 +962,21 @@ export const getBookingById = async (req, res) => {
 export const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, adminNotes, contact, pickupDate, pickupSlot, steps, assignedTailor, isArchived, archivedAt, archivedBy } = req.body;
+    const {
+      status,
+      adminNotes,
+      contact,
+      pickupDate,
+      pickupSlot,
+      steps,
+      assignedTailor,
+      staffAssignments,
+      isArchived,
+      archivedAt,
+      archivedBy,
+    } = req.body;
 
-    console.log('UpdateBooking request:', { id, assignedTailor, status, hasAssignedTailor: !!assignedTailor });
+    console.log('UpdateBooking request:', { id, assignedTailor, staffAssignments, status, hasAssignedTailor: assignedTailor !== undefined });
 
     const booking = await bookingModel.findById(id);
 
@@ -968,7 +993,14 @@ export const updateBooking = async (req, res) => {
     const isStaff = user.role === 'staff';
     const isOwner = getBookingOwnerId(booking) === req.userId;
 
-    if (isStaff && !isAssignedToUser(booking.assignedTailor, user)) {
+    if ((steps !== undefined || assignedTailor !== undefined || staffAssignments !== undefined) && !isAdmin && !isStaff) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin or authorized staff can update booking workflow tracking.',
+      });
+    }
+
+    if (isStaff && !isAssignedToUser(booking, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -980,6 +1012,7 @@ export const updateBooking = async (req, res) => {
     const previousAssignedTailor = booking.assignedTailor;
     const previousPickupDate = booking.pickupDate;
     const previousPickupSlot = booking.pickupSlot;
+    const previousBookingSnapshot = booking.toObject();
     const nextSteps = steps || booking.steps;
     const nextStatus = resolveWorkflowStatus({
       currentStatus: booking.status,
@@ -987,15 +1020,39 @@ export const updateBooking = async (req, res) => {
       steps: nextSteps,
     });
 
+    if (steps !== undefined) {
+      const workflowAccess = validateWorkflowStepMutation({
+        user,
+        previousSteps: booking.steps,
+        nextSteps: steps,
+      });
+
+      if (!workflowAccess.allowed) {
+        return res.status(403).json({
+          success: false,
+          message: workflowAccess.message,
+        });
+      }
+    }
+
     if (nextStatus) booking.status = nextStatus;
     if (adminNotes !== undefined) booking.adminNotes = adminNotes;
     if (contact !== undefined) booking.contact = contact;
     if (pickupDate !== undefined) booking.pickupDate = pickupDate;
     if (pickupSlot !== undefined) booking.pickupSlot = pickupSlot;
     if (steps !== undefined) booking.steps = steps;
-    if (assignedTailor !== undefined) {
+    if (assignedTailor !== undefined || staffAssignments !== undefined) {
       console.log('🎯 Setting assignedTailor:', assignedTailor);
-      booking.assignedTailor = assignedTailor;
+      const nextStaffAssignments = normalizeStaffAssignments(
+        staffAssignments ?? booking.staffAssignments,
+        assignedTailor !== undefined ? assignedTailor : booking.assignedTailor
+      );
+
+      console.log('Setting staff assignments:', nextStaffAssignments);
+      booking.staffAssignments = nextStaffAssignments;
+      booking.assignedTailor = assignedTailor !== undefined
+        ? String(assignedTailor || '').trim()
+        : nextStaffAssignments.tailor;
     }
     if (isArchived !== undefined) booking.isArchived = isArchived;
     if (archivedAt !== undefined) booking.archivedAt = archivedAt;
@@ -1027,6 +1084,12 @@ export const updateBooking = async (req, res) => {
       entityType: 'booking',
       entity: booking,
       previousAssignedTailor,
+    });
+    await maybeCreateWorkflowStepReadyNotification({
+      req,
+      entityType: 'booking',
+      previousEntity: previousBookingSnapshot,
+      entity: booking,
     });
     await maybeCreateBookingPickupNotification({
       req,
@@ -1073,7 +1136,7 @@ export const updateBookingStatus = async (req, res) => {
     const isStaff = user.role === 'staff';
     const isOwner = getBookingOwnerId(booking) === req.userId;
 
-    if (isStaff && !isAssignedToUser(booking.assignedTailor, user)) {
+    if (isStaff && !isAssignedToUser(booking, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -1139,7 +1202,7 @@ export const deleteBooking = async (req, res) => {
 export const convertBookingToOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estimatedCompletion, assignedTailor } = req.body;
+    const { estimatedCompletion, assignedTailor, staffAssignments } = req.body;
 
     const booking = await bookingModel.findById(id);
 
@@ -1181,7 +1244,11 @@ export const convertBookingToOrder = async (req, res) => {
       date: new Date().toLocaleDateString(),
       estimatedCompletion,
       serviceType: booking.bookingType === 'repair' ? 'Repair' : booking.bookingType === 'jersey' ? 'Team Jersey' : 'Custom',
-      assignedTailor,
+      assignedTailor: String(assignedTailor ?? booking.assignedTailor ?? '').trim(),
+      staffAssignments: normalizeStaffAssignments(
+        staffAssignments ?? booking.staffAssignments,
+        assignedTailor ?? booking.assignedTailor
+      ),
       status: 'In Progress',
       steps,
       players,
@@ -1205,6 +1272,12 @@ export const convertBookingToOrder = async (req, res) => {
       // Broadcast tracking after notification has been sent
       emitOrderTrackingUpdate(order, 'created');
     }
+    await maybeCreateWorkflowStepReadyNotification({
+      req,
+      entityType: 'order',
+      previousEntity: {},
+      entity: order,
+    });
 
     // Update booking with order reference
     booking.orderId = order._id;

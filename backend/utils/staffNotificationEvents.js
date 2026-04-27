@@ -6,11 +6,23 @@ import userModel from '../models/userModel.js';
 import { buildAssignmentQuery, getAssignmentCandidates } from './assignmentAccess.js';
 import { createNotification } from './notificationHelpers.js';
 import { getPrimaryRepairOptionName } from './repairDisplay.js';
+import {
+  formatWorkflowRoleLabel,
+  getCurrentWorkflowStepIndex,
+  getWorkflowStepRequiredRole,
+} from './workflowStepAccess.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REMINDER_WINDOWS = new Set([0, 1, 2]);
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 const ASSIGNMENT_NOTIFICATION_DEDUPE_WINDOW_MS = 10 * 1000;
+const WORKFLOW_TURN_NOTIFICATION_DEDUPE_WINDOW_MS = 15 * 1000;
+
+const WORKFLOW_ROLE_ASSIGNMENT_KEYS = {
+  'layout artist': 'layoutArtist',
+  presser: 'presser',
+  tailor: 'tailor',
+};
 
 const lastReminderSyncAtByStaff = new Map();
 const reminderSyncPromiseByStaff = new Map();
@@ -118,6 +130,108 @@ const getOrderScheduleLabel = (order = {}) => String(order?.estimatedCompletion 
 const resolveStaffTaskRoute = (entityId = '') => {
   const targetId = normalizeEntityId(entityId);
   return targetId ? `/staff/orders/${targetId}` : '/staff/orders';
+};
+
+const getWorkflowStepLabel = (step = {}) =>
+  String(step?.label || step?.step || '').trim();
+
+const getWorkflowStepByIndex = (steps = [], index = -1) => {
+  if (!Array.isArray(steps) || index < 0 || index >= steps.length) {
+    return null;
+  }
+
+  return steps[index] || null;
+};
+
+const getWorkflowAssignmentKey = (requiredRole = '') =>
+  WORKFLOW_ROLE_ASSIGNMENT_KEYS[normalizeText(requiredRole)] || '';
+
+const resolveWorkflowAssignedStaff = (entity = {}, stepLabel = '', requiredRole = '') => {
+  const role = requiredRole || getWorkflowStepRequiredRole(stepLabel);
+  const assignmentKey = getWorkflowAssignmentKey(role);
+
+  if (!assignmentKey) {
+    return '';
+  }
+
+  if (assignmentKey === 'tailor') {
+    return String(
+      entity?.staffAssignments?.tailor ?? entity?.assignedTailor ?? ''
+    ).trim();
+  }
+
+  return String(entity?.staffAssignments?.[assignmentKey] ?? '').trim();
+};
+
+const buildWorkflowTurnSignature = ({
+  entityType,
+  entityId,
+  recipientId,
+  stepIndex,
+  stepLabel,
+  assignedStaff,
+}) =>
+  [
+    entityType,
+    normalizeEntityId(entityId),
+    normalizeEntityId(recipientId),
+    stepIndex,
+    normalizeText(stepLabel),
+    normalizeText(assignedStaff),
+  ].join(':');
+
+const findRecentWorkflowTurnNotification = async ({
+  recipientId,
+  workflowTurnSignature = '',
+}) => {
+  if (!mongoose.isValidObjectId(recipientId) || !workflowTurnSignature) {
+    return null;
+  }
+
+  return notificationModel
+    .findOne({
+      audience: 'staff',
+      recipientId,
+      createdAt: {
+        $gte: new Date(Date.now() - WORKFLOW_TURN_NOTIFICATION_DEDUPE_WINDOW_MS),
+      },
+      'metadata.event': 'workflow_step_ready',
+      'metadata.workflowTurnSignature': workflowTurnSignature,
+    })
+    .sort({ createdAt: -1 });
+};
+
+const buildWorkflowTurnTitle = (stepLabel = '') =>
+  stepLabel ? `${stepLabel} ready for update` : 'Workflow update needed';
+
+const buildWorkflowTurnMessage = ({
+  entityType,
+  entity,
+  stepLabel,
+  previousStepLabel = '',
+  previousCompletedBy = '',
+}) => {
+  const subjectLabel =
+    entityType === 'order'
+      ? getOrderSubjectLabel(entity)
+      : getBookingSubjectLabel(entity);
+  const reference =
+    entityType === 'order'
+      ? getOrderReferenceLabel(entity)
+      : getBookingReferenceLabel(entity);
+  const scheduleLabel =
+    entityType === 'order'
+      ? getOrderScheduleLabel(entity)
+      : getBookingScheduleLabel(entity);
+  const schedulePrefix = entityType === 'order' ? 'Due' : 'Pickup';
+  const scheduleSuffix = scheduleLabel ? ` ${schedulePrefix}: ${scheduleLabel}.` : '';
+  const previousStepSuffix = previousStepLabel
+    ? ` Prev: ${previousStepLabel}${
+        previousCompletedBy ? ` by ${previousCompletedBy}` : ''
+      }.`
+    : '';
+
+  return `${reference} • ${subjectLabel}. ${stepLabel} is now active for you.${previousStepSuffix}${scheduleSuffix}`;
 };
 
 const buildAssignmentNotificationSignature = ({
@@ -409,6 +523,139 @@ export const maybeCreateStaffAssignmentNotification = async ({
       assignmentSignature,
       assignmentOriginId: assignmentOriginId || null,
       assignmentOriginSignature,
+    },
+    req,
+  });
+};
+
+export const maybeCreateWorkflowStepReadyNotification = async ({
+  req,
+  entityType = 'booking',
+  previousEntity = {},
+  entity = {},
+}) => {
+  const normalizedEntityType = entityType === 'order' ? 'order' : 'booking';
+  if (!entity?._id) {
+    return null;
+  }
+
+  const nextSteps = Array.isArray(entity?.steps) ? entity.steps : [];
+  if (nextSteps.length === 0) {
+    return null;
+  }
+
+  const nextStepIndex = getCurrentWorkflowStepIndex(nextSteps);
+  const nextStep = getWorkflowStepByIndex(nextSteps, nextStepIndex);
+  const nextStepLabel = getWorkflowStepLabel(nextStep);
+
+  if (!nextStepLabel || nextStep?.done) {
+    return null;
+  }
+
+  const requiredRole = getWorkflowStepRequiredRole(nextStepLabel);
+  if (!requiredRole || requiredRole === 'admin') {
+    return null;
+  }
+
+  const assignedStaff = resolveWorkflowAssignedStaff(entity, nextStepLabel, requiredRole);
+  if (!assignedStaff) {
+    return null;
+  }
+
+  const previousSteps = Array.isArray(previousEntity?.steps) ? previousEntity.steps : [];
+  const previousStepIndex = previousSteps.length > 0
+    ? getCurrentWorkflowStepIndex(previousSteps)
+    : -1;
+  const previousStep = getWorkflowStepByIndex(previousSteps, previousStepIndex);
+  const previousActiveStepLabel = getWorkflowStepLabel(previousStep);
+  const previousAssignedStaff = resolveWorkflowAssignedStaff(
+    previousEntity,
+    nextStepLabel,
+    requiredRole
+  );
+
+  const stepChanged =
+    previousStepIndex !== nextStepIndex ||
+    normalizeText(previousActiveStepLabel) !== normalizeText(nextStepLabel);
+  const assigneeChanged =
+    normalizeText(previousAssignedStaff) !== normalizeText(assignedStaff);
+
+  if (!stepChanged && !assigneeChanged) {
+    return null;
+  }
+
+  const recipient = await resolveAssignedStaffUser(assignedStaff);
+  if (!recipient?._id) {
+    return null;
+  }
+
+  if (
+    req?.userRole === 'staff' &&
+    normalizeEntityId(req?.userId) === normalizeEntityId(recipient._id)
+  ) {
+    return null;
+  }
+
+  const previousCompletedStep = getWorkflowStepByIndex(nextSteps, nextStepIndex - 1);
+  const previousCompletedStepLabel = getWorkflowStepLabel(previousCompletedStep);
+  const previousCompletedBy = String(previousCompletedStep?.worker || '').trim();
+  const workflowTurnSignature = buildWorkflowTurnSignature({
+    entityType: normalizedEntityType,
+    entityId: entity._id,
+    recipientId: recipient._id,
+    stepIndex: nextStepIndex,
+    stepLabel: nextStepLabel,
+    assignedStaff,
+  });
+
+  const existingNotification = await findRecentWorkflowTurnNotification({
+    recipientId: recipient._id,
+    workflowTurnSignature,
+  });
+
+  if (existingNotification) {
+    return existingNotification;
+  }
+
+  return createNotification({
+    audience: 'staff',
+    recipientId: recipient._id,
+    type: normalizedEntityType,
+    title: buildWorkflowTurnTitle(nextStepLabel),
+    message: buildWorkflowTurnMessage({
+      entityType: normalizedEntityType,
+      entity,
+      stepLabel: nextStepLabel,
+      requiredRole,
+      previousStepLabel: previousCompletedStepLabel,
+      previousCompletedBy,
+    }),
+    route: resolveStaffTaskRoute(entity?._id),
+    entityId: entity._id,
+    entityModel: normalizedEntityType === 'order' ? 'Order' : 'Booking',
+    metadata: {
+      event: 'workflow_step_ready',
+      entityType: normalizedEntityType,
+      orderId:
+        normalizedEntityType === 'order'
+          ? getOrderReferenceLabel(entity)
+          : normalizeEntityId(entity?.orderId) || null,
+      bookingId:
+        normalizedEntityType === 'booking'
+          ? getBookingReferenceLabel(entity)
+          : normalizeEntityId(entity?.bookingId) || null,
+      subjectLabel:
+        normalizedEntityType === 'order'
+          ? getOrderSubjectLabel(entity)
+          : getBookingSubjectLabel(entity),
+      stepLabel: nextStepLabel,
+      stepIndex: nextStepIndex,
+      requiredRole,
+      requiredRoleLabel: formatWorkflowRoleLabel(requiredRole),
+      assignedStaff,
+      previousStepLabel: previousCompletedStepLabel,
+      previousCompletedBy,
+      workflowTurnSignature,
     },
     req,
   });

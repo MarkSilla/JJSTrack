@@ -4,6 +4,7 @@ import {
     MdMoveToInbox, MdDesktopWindows, MdLocalPrintshop, MdLocalShipping,
     MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
     MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag, MdSort,
+    MdOutlineIron,
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { 
@@ -27,6 +28,7 @@ const STEP_ICON = {
     'dropped off': MdMoveToInbox,
     'layout':      MdDesktopWindows,
     'printing':    MdLocalPrintshop,
+    'pressing':    MdOutlineIron,
     'sewing':      GiSewingMachine,
     'pick-up':     MdLocalShipping,
 }

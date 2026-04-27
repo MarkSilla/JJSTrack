@@ -1,11 +1,20 @@
 import React from 'react';
 import { Check, Package, Brush, Printer, Scissors, Truck, AlertCircle } from 'lucide-react';
+import { MdOutlineIron } from 'react-icons/md';
+import {
+    canStaffAccessStep,
+    formatWorkflowRoleLabel,
+    getCurrentStaffRole,
+    getWorkflowStepAccessLabel,
+    getWorkflowStepRequiredRole,
+} from '../../../utils/workflowAccess.js';
 
 const STEP_ICONS = {
     "Dropped Off": Package,
     "Drop Off": Package,
     "Layout": Brush,
     "Printing": Printer,
+    "Pressing": MdOutlineIron,
     "Sewing": Scissors,
     "Pick-up": Truck,
     "default": Package
@@ -42,7 +51,7 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                 {currentStepIdx < steps.length && (
                     <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
                         <AlertCircle size={12} />
-                        Staff: Click active step to complete
+                        Role-based workflow access
                     </div>
                 )}
             </div>
@@ -62,15 +71,19 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                             const label = typeof step === 'string' ? step : (step.step || step.label);
                             const isCompleted = idx < currentStepIdx || step.done;
                             const isCurrent = idx === currentStepIdx && !step.done;
+                            const staffRole = getCurrentStaffRole();
+                            const canAccess = isCurrent && canStaffAccessStep(label, staffRole);
+                            const requiredRole = getWorkflowStepRequiredRole(label);
                             const config = isCompleted ? STEP_STATUS.completed : isCurrent ? STEP_STATUS.active : STEP_STATUS.upcoming;
                             const Icon = STEP_ICONS[label] || STEP_ICONS.default;
 
                             return (
                                 <div key={idx} className="relative z-10 flex flex-col items-center w-28 text-center">
                                     <button
-                                        onClick={() => isCurrent && onStepClick && onStepClick(idx)}
-                                        disabled={!isCurrent}
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot}`}
+                                        onClick={() => canAccess && onStepClick && onStepClick(idx)}
+                                        disabled={!canAccess}
+                                        title={canAccess ? '' : `Only ${formatWorkflowRoleLabel(requiredRole)} can access this step`}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot} ${!canAccess && isCurrent ? 'opacity-60 cursor-not-allowed' : ''}`}
                                     >
                                         {isCompleted ? (
                                             <Check size={18} strokeWidth={3} />
@@ -86,8 +99,8 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                                             <span className="text-xs font-bold text-gray-400 mt-1">{step.time}</span>
                                         )}
                                         {isCurrent && (
-                                            <span className="text-xs font-black text-blue-500 uppercase mt-0.5 tracking-tight">
-                                                In Progress
+                                            <span className={`text-xs font-black uppercase mt-0.5 tracking-tight ${canAccess ? 'text-blue-500' : 'text-gray-400'}`}>
+                                                {canAccess ? 'In Progress' : getWorkflowStepAccessLabel(label, staffRole)}
                                             </span>
                                         )}
                                     </div>
@@ -104,6 +117,9 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                     const label = typeof step === 'string' ? step : (step.step || step.label);
                     const isCompleted = idx < currentStepIdx || step.done;
                     const isCurrent = idx === currentStepIdx && !step.done;
+                    const staffRole = getCurrentStaffRole();
+                    const canAccess = isCurrent && canStaffAccessStep(label, staffRole);
+                    const requiredRole = getWorkflowStepRequiredRole(label);
                     const config = isCompleted ? STEP_STATUS.completed : isCurrent ? STEP_STATUS.active : STEP_STATUS.upcoming;
                     const isLast = idx === steps.length - 1;
                     const Icon = STEP_ICONS[label] || STEP_ICONS.default;
@@ -112,9 +128,10 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                         <div key={idx} className="flex items-start gap-4">
                             <div className="flex flex-col items-center">
                                 <button
-                                    onClick={() => isCurrent && onStepClick && onStepClick(idx)}
-                                    disabled={!isCurrent}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot}`}
+                                    onClick={() => canAccess && onStepClick && onStepClick(idx)}
+                                    disabled={!canAccess}
+                                    title={canAccess ? '' : `Only ${formatWorkflowRoleLabel(requiredRole)} can access this step`}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot} ${!canAccess && isCurrent ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 >
                                     {isCompleted ? (
                                         <Check size={16} strokeWidth={3} />
@@ -136,8 +153,8 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                                     </div>
                                 )}
                                 {isCurrent && (
-                                    <div className="text-xs font-black text-blue-500 uppercase mt-0.5">
-                                        Tap to complete
+                                    <div className={`text-xs font-black uppercase mt-0.5 ${canAccess ? 'text-blue-500' : 'text-gray-400'}`}>
+                                        {canAccess ? 'Tap to complete' : getWorkflowStepAccessLabel(label, staffRole)}
                                     </div>
                                 )}
                             </div>

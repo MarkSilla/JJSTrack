@@ -4,7 +4,7 @@ import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
     MdDesktopWindows, MdPrint, MdMoveToInbox, MdLocalShipping, MdLocalPrintshop,
-    MdRefresh,
+    MdRefresh, MdLocalLaundryService
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { bookingApi } from '../../../services/bookingApi'

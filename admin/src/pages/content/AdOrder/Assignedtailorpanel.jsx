@@ -1,71 +1,135 @@
-import React from 'react';
-import { UserCheck, CheckCircle2, User } from 'lucide-react';
-import AssignEmployeeDropdown from './Assignedemployeedropdown';
+import React, { useMemo } from 'react';
+import { ClipboardList, CheckCircle2, Shirt, Sparkles, Scissors } from 'lucide-react';
 
-const fmt = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+const ROLE_META = {
+    layoutArtist: {
+        label: 'Layout Artist',
+        hint: 'Layout and printing preparation',
+        icon: Sparkles,
+        tone: 'bg-violet-50 text-violet-700 border-violet-100',
+    },
+    presser: {
+        label: 'Presser',
+        hint: 'Heat press and finishing',
+        icon: Shirt,
+        tone: 'bg-amber-50 text-amber-700 border-amber-100',
+    },
+    tailor: {
+        label: 'Tailor',
+        hint: 'Sewing and final assembly',
+        icon: Scissors,
+        tone: 'bg-blue-50 text-blue-700 border-blue-100',
+    },
+};
+
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ');
+
+const fmt = (n) => '\u20B1' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
 
 export default function AssignedTailorPanel({
     activeOrder,
-    assignments,
-    assignedEmployee,
+    staffAssignments,
     earningsPreview,
-    onAssign,
+    onManageAssignments,
     isCancelled,
 }) {
+    const visibleRoles = useMemo(() => {
+        const labels = (Array.isArray(activeOrder?.steps) ? activeOrder.steps : [])
+            .map((step) => normalizeStepLabel(step?.label || step));
+
+        const roles = [];
+        if (labels.includes('layout') || labels.includes('printing')) roles.push('layoutArtist');
+        if (labels.includes('pressing')) roles.push('presser');
+        if (labels.includes('sewing') || roles.length === 0) roles.push('tailor');
+        return roles;
+    }, [activeOrder]);
+
+    const assignedCount = visibleRoles.filter((roleKey) => staffAssignments?.[roleKey]).length;
+    const canManageAssignments = !isCancelled && assignedCount > 0;
+
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-blue-50/60 px-4 py-3 border-b border-blue-100/60">
-                <h4 className="text-[11px] font-black text-blue-900 tracking-wider uppercase flex items-center gap-2">
-                    <UserCheck size={13} className="text-blue-600" />Assigned Tailor / Staff
-                </h4>
+            <div className="bg-blue-50/60 px-4 py-3 border-b border-blue-100/60 flex items-center justify-between gap-3">
+                <div>
+                    <h4 className="text-[11px] font-black text-blue-900 tracking-wider uppercase flex items-center gap-2">
+                        <ClipboardList size={13} className="text-blue-600" />Production Team Assignment
+                    </h4>
+                    <p className="mt-1 text-xs font-medium text-blue-700/80">
+                        {assignedCount > 0
+                            ? `${assignedCount} of ${visibleRoles.length} required roles assigned`
+                            : 'Assign the production team for the next workflow stages.'}
+                    </p>
+                </div>
+                {!isCancelled && (
+                    <button
+                        onClick={() => {
+                            if (!canManageAssignments) return;
+                            onManageAssignments(activeOrder.id || activeOrder._id);
+                        }}
+                        disabled={!canManageAssignments}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-black uppercase tracking-wider transition-colors ${
+                            canManageAssignments
+                                ? 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50 cursor-pointer'
+                                : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                        }`}
+                    >
+                        Manage Team
+                    </button>
+                )}
             </div>
+
             <div className="p-5 flex flex-col gap-4">
                 {isCancelled ? (
-                    <div className="flex items-center gap-2 text-[12px] text-gray-500 bg-red-50 rounded-xl px-3.5 py-3 border border-red-200">
-                        <span className="text-red-600 font-semibold">Cannot assign staff to cancelled orders</span>
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[12px] font-semibold text-red-600">
+                        Cannot assign production staff to cancelled orders.
                     </div>
                 ) : (
-                    <AssignEmployeeDropdown
-                        currentId={assignments[activeOrder.id]}
-                        onAssign={(empId) => onAssign(activeOrder.id, empId)}
-                    />
-                )}
-                {assignedEmployee ? (
-                    <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3.5 py-3 border border-gray-100">
-                        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-[12px] font-black text-blue-700 shrink-0">
-                            {assignedEmployee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-gray-900 truncate">{assignedEmployee.name}</div>
-                            <div className="text-[11px] text-gray-400">{assignedEmployee.role} · {assignedEmployee.dept}</div>
-                        </div>
-                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2 text-[12px] text-gray-400 bg-gray-50 rounded-xl px-3.5 py-3 border border-dashed border-gray-200">
-                        <User size={14} className="text-gray-300" />No one assigned yet
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-medium leading-relaxed text-slate-600">
+                        {assignedCount > 0
+                            ? 'These assignments define who will handle each production responsibility after drop-off. Update them anytime if the workload changes.'
+                            : 'Initial production assignment is only available from the drop-off workflow step. This panel becomes manageable after the team has been assigned.'}
                     </div>
                 )}
-                {assignedEmployee && activeOrder.invoice?.items?.length > 0 && (
-                    <div className="mt-1">
-                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Work Items</div>
-                        <div className="flex flex-col gap-1.5">
-                            {activeOrder.invoice.items.map((item, i) => (
-                                <div key={i} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-                                    <span className="font-semibold text-gray-700">{item.description}</span>
-                                    <span className="font-black text-gray-900">{item.qty} pcs</span>
+
+                <div className="grid gap-3">
+                    {visibleRoles.map((roleKey) => {
+                        const meta = ROLE_META[roleKey];
+                        const Icon = meta.icon;
+                        const assignedName = staffAssignments?.[roleKey] || 'Unassigned';
+
+                        return (
+                            <div key={roleKey} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${meta.tone}`}>
+                                    <Icon size={17} />
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-black text-slate-900">{meta.label}</div>
+                                    <div className="text-[11px] font-medium text-slate-400">{meta.hint}</div>
+                                </div>
+                                <div className="min-w-0 text-right">
+                                    <div className="truncate text-sm font-bold text-slate-900">{assignedName}</div>
+                                    <div className={`mt-1 text-[10px] font-black uppercase tracking-wider ${assignedName === 'Unassigned' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                        {assignedName === 'Unassigned' ? 'Pending' : 'Assigned'}
+                                    </div>
+                                </div>
+                                {assignedName !== 'Unassigned' && <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />}
+                            </div>
+                        );
+                    })}
+                </div>
+
                 {earningsPreview && (
                     <div className="mt-1 bg-blue-50 border border-blue-100 rounded-xl p-3.5">
-                        <div className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Earnings Preview</div>
+                        <div className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-2">Tailor Earnings Preview</div>
                         <div className="flex flex-col gap-1.5 mb-2.5">
                             {earningsPreview.lines.map((line, i) => (
                                 <div key={i} className="flex justify-between text-[11px]">
-                                    <span className="text-blue-600 font-medium">{line.qty} {line.label}s × {fmt(line.rate)}</span>
+                                    <span className="text-blue-600 font-medium">{line.qty} {line.label}s x {fmt(line.rate)}</span>
                                     <span className="font-bold text-blue-900">{fmt(line.earned)}</span>
                                 </div>
                             ))}

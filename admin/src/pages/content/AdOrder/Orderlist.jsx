@@ -237,8 +237,12 @@ export default function OrderList({
                         const priorityConf = order.priority ? PRIORITY_CONFIG[order.priority] : null;
                         const PriorityIcon = priorityConf?.icon;
                         const typeConf = TYPE_CONFIG[order.serviceType] || TYPE_CONFIG['Team Jersey'];
-                        const listAssignee = assignments[orderId]
-                            ? EMPLOYEE_POOL.find(e => e.id === assignments[orderId])
+                        const listAssigneeValue = assignments[orderId]
+                            || order.staffAssignments?.tailor
+                            || order.assignedTailor;
+                        const listAssignee = listAssigneeValue
+                            ? EMPLOYEE_POOL.find(e => [e.id, e.name, e.fullName].includes(listAssigneeValue))
+                                || { name: listAssigneeValue }
                             : null;
                         const isNamedGroupBooking =
                             Boolean(order.isBooking) &&

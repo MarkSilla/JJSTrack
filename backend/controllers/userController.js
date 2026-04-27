@@ -55,6 +55,22 @@ const buildClientUser = (user, extra = {}) => ({
   ...extra,
 });
 
+const buildStaffClientUser = (user, extra = {}) => ({
+  id: user._id,
+  email: user.email,
+  role: user.role,
+  fullName: user.fullName,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  employeeId: user.employeeId,
+  position: user.position,
+  systemRole: user.systemRole,
+  accountStatus: user.accountStatus,
+  phoneNumber: user.phoneNumber,
+  photoURL: user.photoURL,
+  ...extra,
+});
+
 const buildFullAddressFromParts = ({
   street = '',
   brgyName = '',
@@ -1030,12 +1046,7 @@ export const staffLogin = async (req, res) => {
       success: true,
       message: 'Staff login successful',
       token,
-      staff: {
-        id: staffAccount._id,
-        email: staffAccount.email,
-        role: staffAccount.role,
-        fullName: staffAccount.fullName,
-      },
+      staff: buildStaffClientUser(staffAccount),
     });
   } catch (error) {
     console.error('Staff Login Error:', error);
@@ -1114,6 +1125,46 @@ export const verifyAdminToken = async (req, res) => {
     res.status(401).json({
       success: false,
       message: 'Invalid or expired token'
+    });
+  }
+};
+
+export const getStaffSession = async (req, res) => {
+  try {
+    if (!req.userId || req.userRole !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized as staff'
+      });
+    }
+
+    const staffAccount = await userModel.findById(req.userId).select(
+      'email role fullName firstName lastName employeeId position systemRole accountStatus phoneNumber photoURL'
+    );
+
+    if (!staffAccount || staffAccount.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Account no longer has staff access'
+      });
+    }
+
+    if (staffAccount.accountStatus && staffAccount.accountStatus !== 'Active') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your staff account is not active. Please contact admin.'
+      });
+    }
+
+    return res.json({
+      success: true,
+      staff: buildStaffClientUser(staffAccount),
+    });
+  } catch (error) {
+    console.error('Get Staff Session Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch staff session'
     });
   }
 };

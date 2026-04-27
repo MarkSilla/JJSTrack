@@ -11,17 +11,18 @@ import { bookingApi } from '../../../services/bookingApi';
 import { orderApi } from '../../../services/orderApi.js';
 import img from '../../../assets/img';
 import { getPickupSlotDisplay } from '../../../utils/pickupSlot.js';
+import { getStoredStaffUser } from '../../../utils/staffSession.js';
+import {
+    canStaffAccessStep,
+    formatWorkflowRoleLabel,
+    getCurrentStaffDisplayName,
+    getCurrentStaffRole,
+    getWorkflowStepRequiredRole,
+} from '../../../utils/workflowAccess.js';
 
 const getStaffArchiveActor = () => {
-    try {
-        const rawUser = localStorage.getItem('staffUser') || sessionStorage.getItem('staffUser');
-        if (!rawUser) return 'Staff';
-
-        const parsedUser = JSON.parse(rawUser);
-        return parsedUser?.fullName || parsedUser?.name || parsedUser?.email || 'Staff';
-    } catch {
-        return 'Staff';
-    }
+    const staffUser = getStoredStaffUser();
+    return staffUser?.fullName || staffUser?.name || staffUser?.email || 'Staff';
 };
 
 const STATUS_CONFIG = {
@@ -144,6 +145,12 @@ const OrderDetails = ({ orderId, onBack }) => {
     const [zoomType, setZoomType] = useState(null);
     const [isArchiving, setIsArchiving] = useState(false);
     const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+    const [assignments, setAssignments] = useState({
+        tailor: '',
+        presser: '',
+        layoutArtist: '',
+    });
 
     const ROWS_PER_PAGE = 7;
     const orgImages = order?.designImages || (order?.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
@@ -194,6 +201,17 @@ const OrderDetails = ({ orderId, onBack }) => {
 
     const handleStepClick = (index) => {
         if (index !== currentIdx) return;
+        
+        // Role-based access control
+        const currentStepLabel = productionSteps[index]?.label || productionSteps[index]?.step || productionSteps[index];
+        const staffRole = getCurrentStaffRole();
+        const requiredRole = getWorkflowStepRequiredRole(currentStepLabel);
+        
+        if (!canStaffAccessStep(currentStepLabel, staffRole)) {
+            toast.error(`Only ${formatWorkflowRoleLabel(requiredRole)} can complete the "${currentStepLabel}" step.`);
+            return;
+        }
+        
         setPendingIdx(index);
         setShowConfirmModal(true);
     };
@@ -204,10 +222,11 @@ const OrderDetails = ({ orderId, onBack }) => {
         const now = new Date();
         const finishDate = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const finishTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const staffName = getCurrentStaffDisplayName();
 
         const updatedSteps = productionSteps.map((step, idx) => {
             const s = typeof step === 'string' ? { step } : { ...step };
-            if (idx === index) return { ...s, done: true, active: false, date: finishDate, time: finishTime, worker: 'Marco Reyes' };
+            if (idx === index) return { ...s, done: true, active: false, date: finishDate, time: finishTime, worker: staffName };
             if (idx === index + 1) return { ...(typeof productionSteps[idx] === 'string' ? { step: productionSteps[idx] } : { ...productionSteps[idx] }), active: true };
             return step;
         });

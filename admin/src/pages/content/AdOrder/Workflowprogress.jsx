@@ -19,7 +19,7 @@ export default function WorkflowProgress({
         : !hasSchedule
         ? {
             title: 'No Schedule Set',
-            desc: 'A pickup date and time must be scheduled before proceeding with this order.',
+            desc: 'After the production team is assigned, set the pickup date and time to unlock this workflow.',
           }
         : null;
 

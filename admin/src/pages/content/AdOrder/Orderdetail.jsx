@@ -15,18 +15,18 @@ export default function OrderDetail({
     activeOrder,
     activeOrderSteps,
     currentStepIdx,
-    assignedEmployee,
+    staffAssignments,
     earningsPreview,
-    assignments,
     isMenuOpen,
     setIsMenuOpen,
     setActiveOrderId,
     handleStepClick,
-    handleAssign,
+    handleManageAssignments,
     handleApprovePickupDate,
+    pickupScheduleRequest,
+    onPickupScheduleRequestHandled,
     onArchiveSuccess,
 }) {
-    const [pickupApprovalDate, setPickupApprovalDate] = useState('');
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [approvalMode, setApprovalMode] = useState(false);
     const [cancelLoading, setCancelLoading] = useState(false);
@@ -42,7 +42,6 @@ export default function OrderDetail({
         () => derivedStatus === 'Completed' || derivedStatus === 'Released',
         [derivedStatus]
     );
-    const canApprovePickup = isForApproval && (activeOrder?.serviceType === 'Team Jersey' || activeOrder?.serviceType === 'Organization');
     const canArchive = useMemo(
         () => !activeOrder?.isArchived && (derivedStatus === 'Released' || derivedStatus === 'Cancelled'),
         [activeOrder?.isArchived, derivedStatus]
@@ -79,8 +78,28 @@ export default function OrderDetail({
     }, [activeOrder]);
 
     const hasSchedule = useMemo(() =>
-        Boolean(activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion),
-        [activeOrder]
+        Boolean(
+            bookingExtras?.pickupDate ||
+            activeOrder?.pickupDate ||
+            activeOrder?.invoice?.dueDate ||
+            activeOrder?.estimatedCompletion
+        ),
+        [activeOrder, bookingExtras]
+    );
+
+    const scheduleCurrentDate = useMemo(
+        () =>
+            bookingExtras?.pickupDate ||
+            activeOrder?.pickupDate ||
+            activeOrder?.estimatedCompletion ||
+            activeOrder?.invoice?.dueDate ||
+            new Date().toISOString().split('T')[0],
+        [activeOrder, bookingExtras]
+    );
+
+    const isRescheduleDisabled = useMemo(
+        () => isRescheduleLocked || !hasSchedule,
+        [hasSchedule, isRescheduleLocked]
     );
 
     const visibleOrderId = useMemo(() => {
@@ -150,6 +169,35 @@ export default function OrderDetail({
     const handleRescheduleConfirm = (newDate, newTime) => {
         handleApprovePickupDate(activeOrder.id || activeOrder._id, newDate, newTime);
     };
+
+    useEffect(() => {
+        const requestOrderId = pickupScheduleRequest?.orderId;
+        const activeEntityId = activeOrder?.id || activeOrder?._id;
+
+        if (!pickupScheduleRequest?.requestedAt || !requestOrderId || !activeEntityId) {
+            return;
+        }
+
+        if (String(requestOrderId) !== String(activeEntityId)) {
+            return;
+        }
+
+        if (hasSchedule || isCancelled || isRescheduleLocked) {
+            onPickupScheduleRequestHandled?.();
+            return;
+        }
+
+        setApprovalMode(pickupScheduleRequest?.mode === 'approve');
+        setShowRescheduleModal(true);
+        onPickupScheduleRequestHandled?.();
+    }, [
+        activeOrder,
+        hasSchedule,
+        isCancelled,
+        isRescheduleLocked,
+        onPickupScheduleRequestHandled,
+        pickupScheduleRequest,
+    ]);
 
     const handleCancelOrder = () => {
         setShowCancelConfirm(true);
@@ -257,11 +305,12 @@ export default function OrderDetail({
                             <div className="absolute right-0 top-12 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl py-2 z-20">
                                 <button
                                     onClick={() => {
-                                        if (isRescheduleLocked) return;
+                                        if (isRescheduleDisabled) return;
+                                        setApprovalMode(false);
                                         setShowRescheduleModal(true);
                                         setIsMenuOpen(false);
                                     }}
-                                    disabled={isRescheduleLocked}
+                                    disabled={isRescheduleDisabled}
                                     className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:bg-transparent disabled:cursor-not-allowed flex items-center gap-3 transition-colors border-b border-gray-50 bg-transparent border-none cursor-pointer"
                                 >
                                     <CalendarClock size={16} className="text-gray-400" /> Reschedule
@@ -346,20 +395,13 @@ export default function OrderDetail({
                     <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
                         <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
                             <h4 className="text-[11px] font-black tracking-wider uppercase mb-2 text-gray-400">Quick Actions</h4>
-                            {canApprovePickup && (
-                                <button
-                                    onClick={() => { setApprovalMode(true); setShowRescheduleModal(true); }}
-                                    className="w-full rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 p-3 font-bold text-xs text-violet-700 uppercase tracking-wider transition-colors border-none cursor-pointer"
-                                >
-                                    Set Pickup Date & Time
-                                </button>
-                            )}
                             <button
                                 onClick={() => {
-                                    if (isRescheduleLocked) return;
+                                    if (isRescheduleDisabled) return;
+                                    setApprovalMode(false);
                                     setShowRescheduleModal(true);
                                 }}
-                                disabled={isRescheduleLocked}
+                                disabled={isRescheduleDisabled}
                                 className="w-full bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
                             >
                                 <CalendarClock size={18} /> Reschedule Delivery
@@ -383,10 +425,9 @@ export default function OrderDetail({
                         </div>
                         <AssignedTailorPanel
                             activeOrder={activeOrder}
-                            assignments={assignments}
-                            assignedEmployee={assignedEmployee}
+                            staffAssignments={staffAssignments}
                             earningsPreview={earningsPreview}
-                            onAssign={handleAssign}
+                            onManageAssignments={handleManageAssignments}
                             isCancelled={isCancelled}
                         />
 {imageUrls.length > 0 && (
@@ -436,7 +477,6 @@ export default function OrderDetail({
                         )}
                         <OrderSummary
                             activeOrder={activeOrder}
-                            assignedEmployee={assignedEmployee}
                             earningsPreview={earningsPreview}
                             participants={rosterPlayers}
                             bookingExtras={bookingExtras}
@@ -450,7 +490,7 @@ export default function OrderDetail({
                 onClose={() => { setShowRescheduleModal(false); setApprovalMode(false); }}
                 onConfirm={(date, time) => { handleRescheduleConfirm(date, time); setApprovalMode(false); }}
                 mode={approvalMode ? 'approve' : 'reschedule'}
-                currentDate={activeOrder?.pickupDate || new Date().toISOString().split('T')[0]}
+                currentDate={scheduleCurrentDate}
                 isRepairSchedule={
                     String(bookingExtras?.bookingType || activeOrder?.bookingType || activeOrder?.serviceType || '')
                         .trim()

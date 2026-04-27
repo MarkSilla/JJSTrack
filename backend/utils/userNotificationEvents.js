@@ -11,6 +11,9 @@ const normalizeEntityId = (value) =>
 const buildReadyNotificationKey = (entityType, entityId) =>
   `${entityType}-ready-for-pickup-${String(entityId || '')}`;
 
+const buildAdminReadyNotificationKey = (entityType, entityId) =>
+  `${entityType}-admin-ready-for-pickup-${String(entityId || '')}`;
+
 const getOrderReferenceLabel = (order = {}) =>
   String(order?.orderId || `Order ${String(order?._id || '').slice(-6).toUpperCase()}`).trim();
 
@@ -45,6 +48,11 @@ const getBookingTypeLabel = (bookingType = '') => {
 const resolveUserTrackingRoute = (entityId = '') => {
   const targetId = normalizeEntityId(entityId);
   return targetId ? `/order/${targetId}` : '/order';
+};
+
+const resolveAdminTrackingRoute = (entityId = '') => {
+  const targetId = normalizeEntityId(entityId);
+  return targetId ? `/admin/orders/${targetId}` : '/admin/orders';
 };
 
 export const maybeCreateOrderReadyForPickupNotification = async ({
@@ -82,6 +90,45 @@ export const maybeCreateOrderReadyForPickupNotification = async ({
       bookingId: normalizeEntityId(order?.bookingId) || null,
       serviceType: order?.serviceType || '',
       estimatedCompletion: order?.estimatedCompletion || '',
+    },
+    req,
+  });
+};
+
+export const maybeCreateAdminOrderReadyForPickupNotification = async ({
+  req,
+  order,
+  previousStatus = '',
+}) => {
+  const nextStatus = normalizeWorkflowStatus(order?.status);
+  const normalizedPreviousStatus = normalizeWorkflowStatus(previousStatus);
+
+  if (!order?._id || nextStatus !== 'Completed' || normalizedPreviousStatus === 'Completed') {
+    return null;
+  }
+
+  const orderReference = getOrderReferenceLabel(order);
+  const subjectLabel = String(order?.item || order?.serviceType || 'Order').trim() || 'Order';
+  const pickupDateLabel = String(order?.estimatedCompletion || '').trim();
+  const pickupSuffix = pickupDateLabel ? ` Pickup: ${pickupDateLabel}.` : '';
+  const readyKey = buildAdminReadyNotificationKey('order', order?._id);
+
+  return createNotification({
+    audience: 'admin',
+    type: 'order',
+    title: 'Order ready for pickup',
+    message: `${subjectLabel} (${orderReference}) is completed and ready for pickup.${pickupSuffix}`,
+    route: resolveAdminTrackingRoute(order?._id),
+    entityId: order?._id,
+    entityModel: 'Order',
+    metadata: {
+      event: 'admin_ready_for_pickup',
+      readyKey,
+      orderId: orderReference,
+      bookingId: normalizeEntityId(order?.bookingId) || null,
+      serviceType: order?.serviceType || '',
+      estimatedCompletion: order?.estimatedCompletion || '',
+      status: order?.status || '',
     },
     req,
   });

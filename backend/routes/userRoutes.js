@@ -15,6 +15,7 @@ import {
   staffLogin,
   adminLogout,
   verifyAdminToken,
+  getStaffSession,
   deleteUserByEmail,
 } from '../controllers/userController.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -41,6 +42,7 @@ router.post('/admin/login', adminLogin);
 router.post('/staff/login', staffLogin);
 router.post('/admin/logout', adminLogout);
 router.post('/admin/verify-token', verifyAdminToken);
+router.get('/staff/session', authMiddleware, getStaffSession);
 
 // Protected routes 
 router.get('/profile', authMiddleware, getUserProfile);

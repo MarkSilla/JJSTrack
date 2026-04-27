@@ -25,7 +25,20 @@ const getParticipantName = (participant, index) => {
 const getItemTotal = (item) =>
     ((Number(item?.qty) || 1) * (Number(item?.unitPrice) || 0)) + (Number(item?.addOnPrice) || 0);
 
-export default function OrderSummary({ activeOrder, assignedEmployee, participants = [], bookingExtras = null }) {
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ');
+
+const ROLE_META = {
+    layoutArtist: 'Layout Artist',
+    presser: 'Presser',
+    tailor: 'Tailor',
+};
+
+export default function OrderSummary({ activeOrder, participants = [], bookingExtras = null }) {
     const displayItems = useMemo(() => {
         const invoiceItems = Array.isArray(activeOrder?.invoice?.items) ? activeOrder.invoice.items : [];
         const participantList = Array.isArray(participants) ? participants : [];
@@ -61,6 +74,21 @@ export default function OrderSummary({ activeOrder, assignedEmployee, participan
 
     const displayDueDate = bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion || 'N/A';
     const displayTimeRange = getPickupSlotDisplay(bookingExtras?.pickupSlot || activeOrder?.pickupSlot || '', 'N/A');
+    const visibleRoles = useMemo(() => {
+        const labels = (Array.isArray(activeOrder?.steps) ? activeOrder.steps : [])
+            .map((step) => normalizeStepLabel(step?.label || step));
+
+        const roles = [];
+        if (labels.includes('layout') || labels.includes('printing')) roles.push('layoutArtist');
+        if (labels.includes('pressing')) roles.push('presser');
+        if (labels.includes('sewing') || roles.length === 0) roles.push('tailor');
+        return roles;
+    }, [activeOrder]);
+    const productionAssignments = {
+        tailor: activeOrder?.staffAssignments?.tailor || activeOrder?.assignedTailor || '',
+        presser: activeOrder?.staffAssignments?.presser || '',
+        layoutArtist: activeOrder?.staffAssignments?.layoutArtist || '',
+    };
 
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -83,12 +111,14 @@ export default function OrderSummary({ activeOrder, assignedEmployee, participan
                         <span className="font-semibold text-gray-500">Pickup Time</span>
                         <span className="font-bold text-gray-900">{displayTimeRange}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-500">Assigned To</span>
-                        <span className="font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded">
-                            {assignedEmployee?.name || activeOrder?.assignedTailor || activeOrder?.tailor || 'Unassigned'}
-                        </span>
-                    </div>
+                    {visibleRoles.map((roleKey) => (
+                        <div key={roleKey} className="flex justify-between items-center text-sm gap-3">
+                            <span className="font-semibold text-gray-500">{ROLE_META[roleKey]}</span>
+                            <span className="font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded text-right">
+                                {productionAssignments[roleKey] || 'Unassigned'}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
             <div className="p-4 bg-white">

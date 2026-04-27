@@ -16,7 +16,14 @@ const orderStepSchema = new mongoose.Schema({
   active: { type: Boolean, default: false },
   date:   String,
   time:   String,
+  worker: String,
 });
+
+const staffAssignmentsSchema = new mongoose.Schema({
+  tailor: { type: String, default: '' },
+  presser: { type: String, default: '' },
+  layoutArtist: { type: String, default: '' },
+}, { _id: false });
 
 const orderSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -26,12 +33,22 @@ const orderSchema = new mongoose.Schema({
   customer: String,
   date:     { type: String, required: true },
   estimatedCompletion: String,
+  pickupDate: String,
+  pickupSlot: String,
   serviceType: {
     type: String,
     enum: ['Custom', 'Repair', 'Team Jersey', 'Service'],
     default: 'Service',
   },
   assignedTailor: String,
+  staffAssignments: {
+    type: staffAssignmentsSchema,
+    default: () => ({
+      tailor: '',
+      presser: '',
+      layoutArtist: '',
+    }),
+  },
   status: {
     type: String,
     enum: ['Pending', 'In Progress', 'Completed', 'Released', 'Cancelled'],
@@ -55,6 +72,7 @@ const orderSchema = new mongoose.Schema({
       { label: 'Dropped Off', done: false, active: false },
       { label: 'Layout',      done: false, active: false },
       { label: 'Printing',    done: false, active: false },
+      { label: 'Pressing',    done: false, active: false},
       { label: 'Sewing',      done: false, active: false },
       { label: 'Pick-up',     done: false, active: false },
     ],

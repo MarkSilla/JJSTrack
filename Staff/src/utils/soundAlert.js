@@ -48,6 +48,13 @@ const playBeep = (audioContext, frequency, duration, delay = 0) => {
 
 const runAlertPattern = (audioContext, type = 'warning') => {
   try {
+    if (type === 'workflow') {
+      playBeep(audioContext, 680, 0.2, 0);
+      playBeep(audioContext, 860, 0.22, 0.2);
+      playBeep(audioContext, 1040, 0.26, 0.42);
+      return true;
+    }
+
     if (type === 'dueSoon') {
       playBeep(audioContext, 760, 0.24, 0);
       playBeep(audioContext, 920, 0.24, 0.24);

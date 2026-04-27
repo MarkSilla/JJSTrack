@@ -41,7 +41,14 @@ const bookingStepSchema = new mongoose.Schema({
   active: { type: Boolean, default: false },
   date:   String,
   time:   String,
+  worker: String,
 });
+
+const staffAssignmentsSchema = new mongoose.Schema({
+  tailor: { type: String, default: '' },
+  presser: { type: String, default: '' },
+  layoutArtist: { type: String, default: '' },
+}, { _id: false });
 
 const formatBookingDateSegment = (date = new Date()) => {
   const year = date.getFullYear();
@@ -169,6 +176,14 @@ const bookingSchema = new mongoose.Schema({
   notes: String,
   adminNotes: String,
   assignedTailor: String,
+  staffAssignments: {
+    type: staffAssignmentsSchema,
+    default: () => ({
+      tailor: '',
+      presser: '',
+      layoutArtist: '',
+    }),
+  },
 
   // QR Code and pickup tracking
   qrCode: String,
@@ -205,6 +220,7 @@ bookingSchema.pre('save', async function preSave() {
         { label: 'Dropped Off', done: false, active: false },
         { label: 'Layout',      done: false, active: false },
         { label: 'Printing',    done: false, active: false },
+        { label: 'Pressing',    done: false, active: false },
         { label: 'Sewing',      done: false, active: false },
         { label: 'Pick-up',     done: false, active: false },
       ];

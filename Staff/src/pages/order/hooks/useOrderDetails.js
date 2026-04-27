@@ -9,8 +9,8 @@ import {
 import { getStaffDerivedStatus } from '../../../utils/orderStatus.js';
 
 const SERVICE_STEPS = {
-    "Team Jersey": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
-    "Organization": ["Dropped Off", "Layout", "Printing", "Sewing", "Pick-up"],
+    "Team Jersey": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
+    "Organization": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
     "Repair": ["Drop Off", "Cutting", "Sewing", "Pick-up"],
 };
 

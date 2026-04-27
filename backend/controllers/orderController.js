@@ -3,13 +3,17 @@ import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
-import { buildAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
+import { buildStaffAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { getRequestActor } from '../utils/requestActor.js';
 import {
   resolveEntityWorkflowStatus,
   resolveWorkflowStatus,
 } from '../utils/workflowStatus.js';
 import {
+  validateWorkflowStepMutation,
+} from '../utils/workflowStepAccess.js';
+import {
+  maybeCreateAdminOrderReadyForPickupNotification,
   maybeCreateOrderReadyForPickupNotification,
   maybeCreateOrderReleasedNotification,
 } from '../utils/userNotificationEvents.js';
@@ -17,7 +21,10 @@ import {
   emitBackofficeOrdersFeedRefresh,
   emitOrderTrackingUpdate,
 } from '../utils/trackingUpdateEvents.js';
-import { maybeCreateStaffAssignmentNotification } from '../utils/staffNotificationEvents.js';
+import {
+  maybeCreateStaffAssignmentNotification,
+  maybeCreateWorkflowStepReadyNotification,
+} from '../utils/staffNotificationEvents.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
@@ -28,6 +35,12 @@ const normalizeStepLabel = (label = '') =>
     .toLowerCase()
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ');
+
+const normalizeStaffAssignments = (staffAssignments = {}, fallbackTailor = '') => ({
+  tailor: String(staffAssignments?.tailor ?? fallbackTailor ?? '').trim(),
+  presser: String(staffAssignments?.presser ?? '').trim(),
+  layoutArtist: String(staffAssignments?.layoutArtist ?? '').trim(),
+});
 
 const hasReachedDropOffStep = (steps = []) =>
   Array.isArray(steps) &&
@@ -74,7 +87,7 @@ export const getOrders = async (req, res) => {
         const user = await userModel.findById(userId);
         if (user) {
           if (user.role === 'staff') {
-            const assignmentQuery = buildAssignmentQuery(user);
+            const assignmentQuery = buildStaffAssignmentQuery(user);
             if (assignmentQuery) {
               Object.assign(query, assignmentQuery);
             } else {
@@ -96,11 +109,18 @@ export const getOrders = async (req, res) => {
     }
 
     if (search) {
-      query.$or = [
-        { item: { $regex: search, $options: 'i' } },
-        { orderId: { $regex: search, $options: 'i' } },
-        { customer: { $regex: search, $options: 'i' } },
-      ];
+      query = {
+        $and: [
+          query,
+          {
+            $or: [
+              { item: { $regex: search, $options: 'i' } },
+              { orderId: { $regex: search, $options: 'i' } },
+              { customer: { $regex: search, $options: 'i' } },
+            ],
+          },
+        ],
+      };
     }
 
     const orders = await orderModel.find(query).sort({ createdAt: -1 });
@@ -145,7 +165,7 @@ export const getOrderById = async (req, res) => {
     const user = await getRequestActor(req);
     const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
 
-    if (user?.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+    if (user?.role === 'staff' && !isAssignedToUser(order, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -172,7 +192,21 @@ export const getOrderById = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, stepIndex, assignedTailor, estimatedCompletion, notes, isArchived, completedAt, archivedAt, archivedBy } = req.body;
+    const {
+      status,
+      stepIndex,
+      steps,
+      assignedTailor,
+      staffAssignments,
+      estimatedCompletion,
+      pickupDate,
+      pickupSlot,
+      notes,
+      isArchived,
+      completedAt,
+      archivedAt,
+      archivedBy,
+    } = req.body;
 
     const order = await orderModel.findById(id);
     if (!order) {
@@ -183,30 +217,67 @@ export const updateOrderStatus = async (req, res) => {
     const isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
 
     // Restrict tracking updates
-    if ((assignedTailor || stepIndex !== undefined) && !isAdminStaff) {
+    if ((assignedTailor !== undefined || staffAssignments !== undefined || stepIndex !== undefined || steps !== undefined) && !isAdminStaff) {
       return res.status(403).json({
         success: false,
         message: 'Only admin/staff can update order tracking'
       });
     }
 
-    if (user?.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+    if (user?.role === 'staff' && !isAssignedToUser(order, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     const previousStatus = order.status;
     const previousAssignedTailor = order.assignedTailor;
+    const previousOrderSnapshot = order.toObject();
 
-    if (assignedTailor) order.assignedTailor = assignedTailor;
-    if (estimatedCompletion) order.estimatedCompletion = estimatedCompletion;
+    if (assignedTailor !== undefined || staffAssignments !== undefined) {
+      const nextStaffAssignments = normalizeStaffAssignments(
+        staffAssignments ?? order.staffAssignments,
+        assignedTailor !== undefined ? assignedTailor : order.assignedTailor
+      );
+
+      order.staffAssignments = nextStaffAssignments;
+      order.assignedTailor = assignedTailor !== undefined
+        ? String(assignedTailor || '').trim()
+        : nextStaffAssignments.tailor;
+    }
+    if (estimatedCompletion !== undefined) order.estimatedCompletion = estimatedCompletion;
+    if (pickupDate !== undefined) order.pickupDate = pickupDate;
+    if (pickupSlot !== undefined) order.pickupSlot = pickupSlot;
     if (notes) order.notes = notes;
     if (isArchived !== undefined) order.isArchived = isArchived;
     if (completedAt !== undefined) order.completedAt = completedAt;
     if (archivedAt !== undefined) order.archivedAt = archivedAt;
     if (archivedBy !== undefined) order.archivedBy = archivedBy;
 
+    if (user?.role === 'staff' && stepIndex !== undefined) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin can directly reposition workflow steps.',
+      });
+    }
+
+    if (steps !== undefined) {
+      const workflowAccess = validateWorkflowStepMutation({
+        user,
+        previousSteps: order.steps,
+        nextSteps: steps,
+      });
+
+      if (!workflowAccess.allowed) {
+        return res.status(403).json({
+          success: false,
+          message: workflowAccess.message,
+        });
+      }
+    }
+
     // Step update
-    if (isAdminStaff && stepIndex !== undefined && order.steps[stepIndex]) {
+    if (steps !== undefined) {
+      order.steps = steps;
+    } else if (isAdminStaff && stepIndex !== undefined && order.steps[stepIndex]) {
       order.steps.forEach((step, i) => {
         step.done = i < stepIndex;
         step.active = i === stepIndex;
@@ -223,7 +294,24 @@ export const updateOrderStatus = async (req, res) => {
 
     await order.save();
     emitOrderTrackingUpdate(order);
+    await maybeCreateStaffAssignmentNotification({
+      req,
+      entityType: 'order',
+      entity: order,
+      previousAssignedTailor,
+    });
+    await maybeCreateWorkflowStepReadyNotification({
+      req,
+      entityType: 'order',
+      previousEntity: previousOrderSnapshot,
+      entity: order,
+    });
     await maybeCreateOrderReadyForPickupNotification({
+      req,
+      order,
+      previousStatus,
+    });
+    await maybeCreateAdminOrderReadyForPickupNotification({
       req,
       order,
       previousStatus,
@@ -259,12 +347,28 @@ export const updateOrderSteps = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    if (user.role === 'staff' && !isAssignedToUser(order.assignedTailor, user)) {
+    if (user.role === 'staff' && !isAssignedToUser(order, user)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (steps) {
+      const workflowAccess = validateWorkflowStepMutation({
+        user,
+        previousSteps: order.steps,
+        nextSteps: steps,
+      });
+
+      if (!workflowAccess.allowed) {
+        return res.status(403).json({
+          success: false,
+          message: workflowAccess.message,
+        });
+      }
     }
 
     const previousStatus = order.status;
     const nextSteps = steps || order.steps;
+    const previousOrderSnapshot = order.toObject();
 
     const nextStatus = resolveWorkflowStatus({
       currentStatus: order.status,
@@ -277,7 +381,18 @@ export const updateOrderSteps = async (req, res) => {
 
     await order.save();
     emitOrderTrackingUpdate(order);
+    await maybeCreateWorkflowStepReadyNotification({
+      req,
+      entityType: 'order',
+      previousEntity: previousOrderSnapshot,
+      entity: order,
+    });
     await maybeCreateOrderReadyForPickupNotification({
+      req,
+      order,
+      previousStatus,
+    });
+    await maybeCreateAdminOrderReadyForPickupNotification({
       req,
       order,
       previousStatus,
@@ -394,8 +509,10 @@ export const assignEmployee = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    const previousOrderSnapshot = order.toObject();
     const previousAssignedTailor = order.assignedTailor;
     order.assignedTailor = employeeId;
+    order.staffAssignments = normalizeStaffAssignments(order.staffAssignments, employeeId);
     await order.save();
     emitOrderTrackingUpdate(order);
     await maybeCreateStaffAssignmentNotification({
@@ -403,6 +520,12 @@ export const assignEmployee = async (req, res) => {
       entityType: 'order',
       entity: order,
       previousAssignedTailor,
+    });
+    await maybeCreateWorkflowStepReadyNotification({
+      req,
+      entityType: 'order',
+      previousEntity: previousOrderSnapshot,
+      entity: order,
     });
 
     res.json({

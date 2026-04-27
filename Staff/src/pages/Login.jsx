@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
+import { persistStoredStaffUser } from '../utils/staffSession'
 
 function Login() {
     const [email, setEmail] = useState('')
@@ -56,7 +57,7 @@ function Login() {
 
             localStorage.setItem('staffToken', data.token)
             localStorage.setItem('rememberStaffEmail', normalizedEmail)
-            localStorage.setItem('staffUser', JSON.stringify(data.staff))
+            persistStoredStaffUser(data.staff)
             
             // Notify auth context of the change
             window.dispatchEvent(new Event('staff-auth-changed'))

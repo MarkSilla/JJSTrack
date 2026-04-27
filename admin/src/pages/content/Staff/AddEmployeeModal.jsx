@@ -23,7 +23,7 @@ const formatPasswordBase = (lastName = "") => {
 const buildPassword = (lastName, sequenceLabel) => `${formatPasswordBase(lastName)}${sequenceLabel}`;
 
 const EMP_TYPES = ["Full Time", "Part Time", "Contractual"];
-const ROLES = ["Tailor", "Layout Artist", "Bookkeeper", "Presser", "Repair Technician"];
+const ROLES = ["Tailor", "Layout Artist", "Presser"];
 
 const Field = ({ label, error, children, cls = "" }) => (
     <div className={cls}>

@@ -90,7 +90,7 @@ export const orderApi = {
   updateOrder: async (id, data) => {
     try {
       // If updating steps, use the dedicated steps endpoint
-      if (data.steps) {
+      if (data.steps && Object.keys(data).length === 1) {
         const response = await api.put(`/orders/${id}/steps`, { steps: data.steps });
         return response.data;
       }

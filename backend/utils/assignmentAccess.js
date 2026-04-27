@@ -12,6 +12,13 @@ const toCandidateString = (value = '') =>
     .trim()
     .replace(/\s+/g, ' ');
 
+const STAFF_ASSIGNMENT_FIELDS = [
+  'assignedTailor',
+  'staffAssignments.tailor',
+  'staffAssignments.presser',
+  'staffAssignments.layoutArtist',
+];
+
 export const getAssignmentCandidates = (user = {}) => {
   const firstName = toCandidateString(user?.firstName);
   const lastName = toCandidateString(user?.lastName || user?.surname);
@@ -56,11 +63,49 @@ export const buildAssignmentQuery = (user = {}, field = 'assignedTailor') => {
   return { [field]: { $in: matchers } };
 };
 
-export const isAssignedToUser = (assignedTailor, user = {}) => {
-  const normalizedAssignedTailor = normalizeAssignmentValue(assignedTailor);
-  if (!normalizedAssignedTailor) return false;
+export const buildStaffAssignmentQuery = (user = {}) => {
+  const matchers = getAssignmentCandidates(user)
+    .map(buildExactMatcher)
+    .filter(Boolean);
+
+  if (!matchers.length) return null;
+
+  return {
+    $or: STAFF_ASSIGNMENT_FIELDS.map((field) => ({
+      [field]: { $in: matchers },
+    })),
+  };
+};
+
+const getAssignmentValues = (assignmentInput = '') => {
+  if (typeof assignmentInput === 'string') {
+    return [assignmentInput];
+  }
+
+  if (!assignmentInput || typeof assignmentInput !== 'object') {
+    return [];
+  }
+
+  return [
+    assignmentInput.assignedTailor,
+    assignmentInput.staffAssignments?.tailor,
+    assignmentInput.staffAssignments?.presser,
+    assignmentInput.staffAssignments?.layoutArtist,
+  ].filter(Boolean);
+};
+
+export const isAssignedToUser = (assignmentInput, user = {}) => {
+  const normalizedAssignments = getAssignmentValues(assignmentInput)
+    .map(normalizeAssignmentValue)
+    .filter(Boolean);
+
+  if (!normalizedAssignments.length) return false;
 
   const candidates = getAssignmentCandidates(user).map(normalizeAssignmentValue);
 
-  return candidates.some(candidate => candidate.includes(normalizedAssignedTailor));
+  return normalizedAssignments.some((assignedValue) =>
+    candidates.some((candidate) =>
+      candidate.includes(assignedValue) || assignedValue.includes(candidate)
+    )
+  );
 };

@@ -10,6 +10,11 @@ import {
 import { getStaffDerivedStatus } from '../../../utils/orderStatus.js';
 
 const FALLBACK_REFRESH_MS = 60000;
+const FALLBACK_SERVICE_STEPS = {
+    "Team Jersey": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
+    "Organization": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
+    "Repair": ["Drop Off", "Cutting", "Sewing", "Pick-up"],
+};
 
 const getActiveStepIndex = (order) => {
     if (!order) return 0;
@@ -19,8 +24,9 @@ const getActiveStepIndex = (order) => {
         const notDoneIdx = order.steps.findIndex(s => !s.done);
         return notDoneIdx !== -1 ? notDoneIdx : order.steps.length - 1;
     }
+    const fallbackSteps = FALLBACK_SERVICE_STEPS[order.serviceType] || FALLBACK_SERVICE_STEPS["Team Jersey"];
     const derivedStatus = getStaffDerivedStatus(order);
-    if (derivedStatus === 'Completed' || derivedStatus === 'Released') return 4;
+    if (derivedStatus === 'Completed' || derivedStatus === 'Released') return fallbackSteps.length - 1;
     if (order.status === 'In Progress' || order.status === 'In-Progress') return 1;
     return 0;
 };
