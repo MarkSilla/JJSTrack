@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { StaffAuthProvider } from './context/StaffAuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
@@ -30,12 +30,15 @@ function App() {
 
                     {/* Protected routes */}
                     <Route path="/staff" element={<ProtectedRoute><StaffAppShell /></ProtectedRoute>}>
+                        <Route index element={<Navigate to="dashboard" replace />} />
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<OrderPage />} />
                         <Route path="orders/:orderId" element={<OrderPage />} />
                         <Route path="archives" element={<ArchivesPage />} />
                         <Route path="inventory" element={<StaffInventoryPage />} />
                     </Route>
+                    
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Router>
         </StaffAuthProvider>

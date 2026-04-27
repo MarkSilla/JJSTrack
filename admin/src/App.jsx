@@ -1,4 +1,4 @@
-﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useContext } from 'react'
 import { AdminAuthProvider, AdminAuthContext } from './context/AdminAuthContext'
 import Login from './pages/login'
@@ -49,6 +49,7 @@ function AppRoutes() {
                     <AdminAppShell />
                 </ProtectedRoute>
             }>
+                <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path='dashboard' element={<Dash />} />
                 <Route path='report' element={<AdAnalytics />} />
                 <Route path='appointment' element={<AdAppointment />} />
@@ -61,6 +62,7 @@ function AppRoutes() {
                 <Route path='inventory' element={<AdInventory />} />
                 <Route path='inventory/history' element={<AdInventoryHistory />} />
             </Route>
+            <Route path='*' element={<Navigate to="/" replace />} />
         </Routes>
     )
 }
