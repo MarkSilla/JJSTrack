@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeScanType, Html5Qrcode } from 'html5-qrcode';
 import {
     QrCode, CheckCircle2, AlertCircle, AlertTriangle, X,
     PackageCheck, Loader,
@@ -160,6 +160,7 @@ export default function QRScanner() {
     const html5QrcodeScanner = useRef(null);
     const scanResultRef = useRef(null);
     const videoCheckRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (html5QrcodeScanner.current) return;
@@ -339,7 +340,49 @@ export default function QRScanner() {
 
     const handleCancel = () => { setScannedOrder(null); setScanError(null); setScanState('idle'); scanResultRef.current = null; };
 
-    const triggerFileUpload = () => document.querySelector('#qr-reader input[type="file"]')?.click();
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        let decodedText = null;
+
+        if ('BarcodeDetector' in window) {
+            try {
+                const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+                const barcodes = await detector.detect(img);
+                URL.revokeObjectURL(url);
+                if (barcodes.length > 0) decodedText = barcodes[0].rawValue;
+            } catch (_) { }
+        }
+        if (!decodedText) {
+            const tempId = 'qr-file-scan-temp-' + Date.now();
+            const div = document.createElement('div');
+            div.id = tempId;
+            div.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:300px;height:300px;overflow:hidden;';
+            document.body.appendChild(div);
+            const scanner = new Html5Qrcode(tempId);
+            try {
+                decodedText = await scanner.scanFile(file, true);
+            } catch (_) { /* decoding failed */ }
+            finally {
+                try { await scanner.clear(); } catch (_) {}
+                if (document.body.contains(div)) document.body.removeChild(div);
+            }
+        }
+
+        if (decodedText) {
+            await onScanSuccess(decodedText);
+        } else {
+            setScanError('Could not read QR code from image. Make sure the image contains a clear, complete QR code.');
+            setResultKey(k => k + 1);
+            setScanState('error');
+        }
+    };
+
     const triggerStartCamera = () => {
         document.getElementById('html5-qrcode-button-camera-start')?.click() ||
             document.getElementById('html5-qrcode-button-camera-permission')?.click() ||
@@ -449,11 +492,20 @@ export default function QRScanner() {
                                             Stop Camera
                                         </button>
                                     )}
-                                    <button onClick={triggerFileUpload}
-                                        className="hidden sm:flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-600 text-xs font-semibold transition-all cursor-pointer shrink-0">
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="hidden sm:flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-600 text-xs font-semibold transition-all cursor-pointer shrink-0"
+                                    >
                                         <ImageUp size={13} />
                                         Upload Image
                                     </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleFileUpload}
+                                    />
                                 </div>
                             </div>
                         </div>
