@@ -5,10 +5,10 @@ import nodemailer from 'nodemailer';
 
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
-  service: 'gmail', 
+  service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_PASS, 
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
   pool: {
     maxConnections: 1,
@@ -151,7 +151,7 @@ export const googleAuth = async (req, res) => {
     if (!user) {
       // Check if user with this email already exists
       user = await userModel.findOne({ email: normalizedEmail });
-      
+
       if (!user) {
         // Create new user
         user = new userModel({
@@ -365,13 +365,13 @@ export const updateUserProfile = async (req, res) => {
 // Register with Email & Password (backend only)
 export const register = async (req, res) => {
   try {
-    const { 
-      email, 
-      password, 
-      fullName, 
-      firstName, 
-      lastName, 
-      phone, 
+    const {
+      email,
+      password,
+      fullName,
+      firstName,
+      lastName,
+      phone,
       address,
       street,
       regionCode,
@@ -384,7 +384,7 @@ export const register = async (req, res) => {
       brgyName,
       zipCode
     } = req.body;
-    
+
     if (!email || !password || !fullName) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
@@ -553,9 +553,9 @@ export const resendVerificationCode = async (req, res) => {
     const emailSent = await sendVerificationEmail(email, verificationCode, user.fullName);
 
     if (!emailSent) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to send verification code' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification code'
       });
     }
 
@@ -583,17 +583,17 @@ export const login = async (req, res) => {
 
     // Check if email is verified
     if (!user.isVerified) {
-      return res.status(403).json({ 
-        success: false, 
+      return res.status(403).json({
+        success: false,
         message: 'Please verify your email before logging in',
-        requiresVerification: true 
+        requiresVerification: true
       });
     }
 
     // Accounts without a local password should continue through Google sign-in.
     if (!user.password) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: 'This account uses Google sign-in. Please continue with Google.',
         isGoogleUser: true
       });
@@ -705,9 +705,9 @@ export const forgotPassword = async (req, res) => {
       await transporter.sendMail(mailOptions);
     } catch (emailError) {
       console.error('Email sending error:', emailError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to send reset code email' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send reset code email'
       });
     }
 
@@ -799,9 +799,9 @@ export const completeGoogleProfile = async (req, res) => {
     }
 
     if (!firstName || !lastName || !phoneNumber || !address || !street || !provinceName || !cityName || !brgyName) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'First name, last name, phone number, and full address details are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'First name, last name, phone number, and full address details are required'
       });
     }
 
@@ -846,26 +846,26 @@ export const adminLogin = async (req, res) => {
 
     // Validation: Check if email and password are provided
     if (!email || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide email and password' 
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password'
       });
     }
 
     // Validation: Check email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide a valid email address' 
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
       });
     }
 
     // Validation: Check password length
     if (password.length < 6) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Password must be at least 6 characters long' 
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
       });
     }
 
@@ -882,7 +882,7 @@ export const adminLogin = async (req, res) => {
 
       if (isAdminEmailMatch && isAdminPasswordMatch) {
         const token = jwt.sign(
-          { 
+          {
             id: 'admin',
             email: ADMIN_EMAIL,
             role: 'admin'
@@ -911,17 +911,17 @@ export const adminLogin = async (req, res) => {
     });
 
     if (!adminAccount || !adminAccount.password) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid email or password' 
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
       });
     }
 
     const isPasswordValid = await bcrypt.compare(password, adminAccount.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid email or password' 
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
       });
     }
 
@@ -929,7 +929,7 @@ export const adminLogin = async (req, res) => {
     await adminAccount.save();
 
     const token = jwt.sign(
-      { 
+      {
         id: adminAccount._id,
         email: adminAccount.email,
         role: adminAccount.role
@@ -951,9 +951,9 @@ export const adminLogin = async (req, res) => {
     });
   } catch (error) {
     console.error('Admin Login Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Admin login failed. Please try again.' 
+    res.status(500).json({
+      success: false,
+      message: 'Admin login failed. Please try again.'
     });
   }
 };
@@ -1055,9 +1055,9 @@ export const adminLogout = async (req, res) => {
     });
   } catch (error) {
     console.error('Admin Logout Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Logout failed' 
+    res.status(500).json({
+      success: false,
+      message: 'Logout failed'
     });
   }
 };
@@ -1066,29 +1066,29 @@ export const adminLogout = async (req, res) => {
 export const verifyAdminToken = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    
+
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No token provided' 
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
       });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
-    
+
     if (decoded.role !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized as admin' 
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized as admin'
       });
     }
 
     if (decoded.id !== 'admin') {
       const account = await userModel.findById(decoded.id).select('email role fullName accountStatus');
       if (!account || account.role !== 'admin') {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'Account no longer has admin access' 
+        return res.status(403).json({
+          success: false,
+          message: 'Account no longer has admin access'
         });
       }
 
@@ -1111,9 +1111,9 @@ export const verifyAdminToken = async (req, res) => {
     });
   } catch (error) {
     console.error('Token Verification Error:', error);
-    res.status(401).json({ 
-      success: false, 
-      message: 'Invalid or expired token' 
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired token'
     });
   }
 };

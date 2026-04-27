@@ -190,7 +190,7 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
             firstName: form.firstName.trim(),
             lastName: form.lastName.trim(),
             address: addrParts.join(", "),
-            avatar: fullName.split(/\s+/).map(n=>n[0]).join('').toUpperCase().slice(0,2),
+            avatar: fullName.split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2),
             color: initialData?.color || "#2563EB",
             orders: initialData?.orders ?? 0,
             productivity: initialData?.productivity ?? 0,

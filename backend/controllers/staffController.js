@@ -83,8 +83,8 @@ export const getMyStaff = async (req, res) => {
     if (!(await ensureAdminAccess(req, res))) return;
 
     const staff = await userModel
-      .find({ 
-        role: "staff", 
+      .find({
+        role: "staff",
         $or: [
           { createdBy: req.userId === "admin" ? { $exists: false } : req.userId },
           { createdBy: null }
@@ -145,7 +145,7 @@ export const createStaff = async (req, res) => {
     const hashedPassword = await bcrypt.hash(String(password), 10);
     const payload = compactObject(buildStaffPayload(req.body, { isCreate: true }));
 
-const staff = await userModel.create({
+    const staff = await userModel.create({
       ...payload,
       createdBy: req.userId === "admin" ? null : req.userId,
       password: hashedPassword,
@@ -217,6 +217,7 @@ export const deactivateStaff = async (req, res) => {
     }
 
     staff.accountStatus = "Inactive";
+    staff.suspensionEndDate = undefined;
     staff.updatedAt = new Date();
     await staff.save();
 
@@ -229,5 +230,99 @@ export const deactivateStaff = async (req, res) => {
   } catch (error) {
     console.error("Deactivate Staff Error:", error);
     res.status(500).json({ success: false, message: "Failed to deactivate staff account" });
+  }
+};
+
+export const suspendStaff = async (req, res) => {
+  try {
+    if (!(await ensureAdminAccess(req, res))) return;
+
+    const { id } = req.params;
+    const { days } = req.body;
+
+    const staff = await userModel.findOne({ _id: id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ success: false, message: "Staff not found" });
+    }
+
+    staff.accountStatus = "Suspended";
+    if (days) {
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + Number(days));
+      staff.suspensionEndDate = endDate;
+    } else {
+      staff.suspensionEndDate = undefined;
+    }
+
+    staff.updatedAt = new Date();
+    await staff.save();
+
+    const updated = await userModel.findById(id).select(STAFF_FIELDS_TO_EXCLUDE);
+    res.status(200).json({
+      success: true,
+      message: `Staff suspended successfully${days ? ` for ${days} day(s)` : ''}`,
+      staff: updated,
+    });
+  } catch (error) {
+    console.error("Suspend Staff Error:", error);
+    res.status(500).json({ success: false, message: "Failed to suspend staff account" });
+  }
+};
+
+export const reactivateStaff = async (req, res) => {
+  try {
+    if (!(await ensureAdminAccess(req, res))) return;
+
+    const { id } = req.params;
+    const staff = await userModel.findOne({ _id: id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ success: false, message: "Staff not found" });
+    }
+
+    staff.accountStatus = "Active";
+    staff.suspensionEndDate = undefined;
+    staff.updatedAt = new Date();
+    await staff.save();
+
+    const updated = await userModel.findById(id).select(STAFF_FIELDS_TO_EXCLUDE);
+    res.status(200).json({
+      success: true,
+      message: "Staff reactivated successfully",
+      staff: updated,
+    });
+  } catch (error) {
+    console.error("Reactivate Staff Error:", error);
+    res.status(500).json({ success: false, message: "Failed to reactivate staff account" });
+  }
+};
+
+export const resetStaffPassword = async (req, res) => {
+  try {
+    if (!(await ensureAdminAccess(req, res))) return;
+
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters long" });
+    }
+
+    const staff = await userModel.findOne({ _id: id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ success: false, message: "Staff not found" });
+    }
+
+    const hashedPassword = await bcrypt.hash(String(newPassword), 10);
+    staff.password = hashedPassword;
+    staff.updatedAt = new Date();
+    await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Staff password reset successfully",
+    });
+  } catch (error) {
+    console.error("Reset Staff Password Error:", error);
+    res.status(500).json({ success: false, message: "Failed to reset staff password" });
   }
 };

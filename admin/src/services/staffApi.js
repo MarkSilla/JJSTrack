@@ -42,6 +42,21 @@ export const staffApi = {
     const response = await api.get("/staff/my-staff");
     return response.data;
   },
+
+  reactivateStaff: async (id) => {
+    const response = await api.patch(`/staff/${id}/reactivate`);
+    return response.data;
+  },
+
+  suspendStaff: async (id, days) => {
+    const response = await api.patch(`/staff/${id}/suspend`, { days });
+    return response.data;
+  },
+
+  resetStaffPassword: async (id, newPassword) => {
+    const response = await api.patch(`/staff/${id}/reset-password`, { newPassword });
+    return response.data;
+  },
 };
 
 export default staffApi;

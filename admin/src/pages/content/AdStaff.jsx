@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, } from "lucide-react";
+import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, Key, Clock, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import StatCard from "./Staff/StatCard";
 import AddEmployeeModal from "./Staff/AddEmployeeModal";
 import ProfilePanel from "./Staff/ProfilePanel";
@@ -235,7 +236,7 @@ const Dropdown = ({ label, options, value, onChange }) => {
     );
 };
 
-const RowMenu = ({ emp, onView, onDeactivate }) => {
+const RowMenu = ({ emp, onView, onDeactivate, onReactivate, onResetPassword }) => {
     const [open, setOpen] = useState(false);
     return (
         <div className="relative">
@@ -248,8 +249,12 @@ const RowMenu = ({ emp, onView, onDeactivate }) => {
                     {[
                         { icon: Eye, label: "View Profile", action: () => { onView(emp); setOpen(false); }, cls: "text-slate-700" },
                         { icon: Pencil, label: "Edit Employee", action: () => { window.dispatchEvent(new CustomEvent('edit-staff', { detail: emp })); setOpen(false); }, cls: "text-slate-700" },
-                        { icon: UserX, label: "Deactivate", action: () => { onDeactivate(emp.id); setOpen(false); }, cls: "text-red-600" },
-                    ].map(item => (
+                        { icon: Key, label: "Reset Password", action: () => { onResetPassword(emp); setOpen(false); }, cls: "text-blue-600" },
+                        emp.status === 'Inactive' || emp.status === 'Suspended'
+                            ? { icon: CheckCircle2, label: "Reactivate", action: () => { onReactivate(emp.id); setOpen(false); }, cls: "text-emerald-600" }
+                            : { icon: Clock, label: "Suspend", action: () => { window.dispatchEvent(new CustomEvent('suspend-staff', { detail: emp })); setOpen(false); }, cls: "text-orange-600" },
+                        emp.status === 'Inactive' ? null : { icon: UserX, label: "Deactivate", action: () => { onDeactivate(emp.id); setOpen(false); }, cls: "text-red-600" },
+                    ].filter(Boolean).map(item => (
                         <button key={item.label} onClick={item.action}
                             className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium hover:bg-slate-50 bg-transparent border-none cursor-pointer text-left ${item.cls}`}>
                             <item.icon size={13} /> {item.label}
@@ -288,7 +293,7 @@ const EmployeeCard = ({ emp, onView, onDeactivate }) => {
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
                             <StatusBadge status={emp.status} />
-                            <RowMenu emp={emp} onView={() => onView(emp)} onDeactivate={() => onDeactivate(emp.id)} />
+                            <RowMenu emp={emp} onView={() => onView(emp)} onDeactivate={() => emp.onDeactivate(emp.id)} onReactivate={() => emp.onReactivate(emp.id)} onResetPassword={() => emp.onResetPassword(emp)} />
                         </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -401,10 +406,47 @@ const AdStaff = () => {
         { label: "Suspended", value: employees.filter(e => e.status === "Suspended").length, icon: XCircle, color: "#DC2626" },
     ]), [employees]);
 
-    const deactivate = async (id) => {
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [deactivateConfirmText, setDeactivateConfirmText] = useState("");
+    const [suspendDuration, setSuspendDuration] = useState("1"); // days
+
+    // suspend event listener
+    useEffect(() => {
+        const handleSuspend = (e) => {
+            const target = e.detail;
+            setConfirmAction({
+                type: 'suspend',
+                payload: target,
+                title: 'Suspend Account',
+                message: `Select the suspension duration for ${target.name}. They will not be able to log in during this period.`,
+                confirmText: 'Yes, Suspend',
+                confirmClass: 'bg-orange-600 hover:bg-orange-700'
+            });
+            setSuspendDuration("1");
+        };
+        window.addEventListener('suspend-staff', handleSuspend);
+        return () => window.removeEventListener('suspend-staff', handleSuspend);
+    }, []);
+
+    const deactivate = (id) => {
         const target = employees.find(emp => emp.id === id);
         if (!target?._id) return;
+        setDeactivateConfirmText("");
+        setConfirmAction({
+            type: 'deactivate',
+            payload: target,
+            title: 'Deactivate Account',
+            message: `Are you sure you want to deactivate ${target.name}'s account? They will no longer be able to log in. Please type DEACTIVATE to confirm.`,
+            confirmText: 'Yes, Deactivate',
+            confirmClass: 'bg-red-600 hover:bg-red-700'
+        });
+    };
 
+    const executeDeactivate = async (target) => {
+        if (deactivateConfirmText.toUpperCase() !== "DEACTIVATE") {
+            toast.error("Please type DEACTIVATE to confirm.");
+            return;
+        }
         try {
             const response = await staffApi.deactivateStaff(target._id);
             const updatedRaw = response?.staff || response;
@@ -412,9 +454,119 @@ const AdStaff = () => {
                 emp._id === target._id ? mapStaffToEmployee(updatedRaw, index) : emp
             )));
             setSelected(prev => (prev && prev._id === target._id ? mapStaffToEmployee(updatedRaw) : prev));
+            toast.warning(`Account for ${target.name} has been deactivated.`);
+            setConfirmAction(null);
         } catch (error) {
             console.error("Failed to deactivate staff:", error);
             setApiError(readErrorMessage(error, "Failed to deactivate staff account"));
+            toast.error("Failed to deactivate staff account.");
+        }
+    };
+
+    const executeSuspend = async (target) => {
+        try {
+            const response = await staffApi.suspendStaff(target._id, suspendDuration);
+            const updatedRaw = response?.staff || response;
+            setEmployees(prev => prev.map((emp, index) => (
+                emp._id === target._id ? mapStaffToEmployee(updatedRaw, index) : emp
+            )));
+            setSelected(prev => (prev && prev._id === target._id ? mapStaffToEmployee(updatedRaw) : prev));
+            toast.success(`Account for ${target.name} has been suspended.`);
+            setConfirmAction(null);
+        } catch (error) {
+            console.error("Failed to suspend staff:", error);
+            setApiError(readErrorMessage(error, "Failed to suspend staff account"));
+            toast.error("Failed to suspend staff account.");
+        }
+    };
+
+    const reactivate = (id) => {
+        const target = employees.find(emp => emp.id === id);
+        if (!target?._id) return;
+        setConfirmAction({
+            type: 'reactivate',
+            payload: target,
+            title: 'Reactivate Account',
+            message: `Are you sure you want to reactivate ${target.name}'s account? They will regain login access.`,
+            confirmText: 'Yes, Reactivate',
+            confirmClass: 'bg-emerald-600 hover:bg-emerald-700'
+        });
+    };
+
+    const executeReactivate = async (target) => {
+        try {
+            const response = await staffApi.reactivateStaff(target._id);
+            const updatedRaw = response?.staff || response;
+            setEmployees(prev => prev.map((emp, index) => (
+                emp._id === target._id ? mapStaffToEmployee(updatedRaw, index) : emp
+            )));
+            setSelected(prev => (prev && prev._id === target._id ? mapStaffToEmployee(updatedRaw) : prev));
+            toast.success(`Account for ${target.name} has been reactivated.`);
+        } catch (error) {
+            console.error("Failed to reactivate staff:", error);
+            setApiError(readErrorMessage(error, "Failed to reactivate staff account"));
+            toast.error("Failed to reactivate staff account.");
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const [passwordResetEmp, setPasswordResetEmp] = useState(null);
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [resettingPwd, setResettingPwd] = useState(false);
+
+    const promptResetPassword = (emp) => {
+        setConfirmAction({
+            type: 'reset-init',
+            payload: emp,
+            title: 'Reset Password',
+            message: `Are you sure you want to change the password for ${emp.name}?`,
+            confirmText: 'Yes, Continue',
+            confirmClass: 'bg-blue-600 hover:bg-blue-700'
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (!confirmAction) return;
+        if (confirmAction.type === 'deactivate') {
+            executeDeactivate(confirmAction.payload);
+        } else if (confirmAction.type === 'suspend') {
+            executeSuspend(confirmAction.payload);
+        } else if (confirmAction.type === 'reactivate') {
+            executeReactivate(confirmAction.payload);
+        } else if (confirmAction.type === 'reset-init') {
+            setPasswordResetEmp(confirmAction.payload);
+            setNewPassword("");
+            setConfirmPassword("");
+            setConfirmAction(null);
+        }
+    };
+
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        if (!newPassword || newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters long");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("Passwords do not match!");
+            return;
+        }
+        setResettingPwd(true);
+        try {
+            await staffApi.resetStaffPassword(passwordResetEmp._id, newPassword);
+            toast.success(`Password for ${passwordResetEmp.name} has been reset successfully.`);
+            setPasswordResetEmp(null);
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error) {
+            console.error("Failed to reset password:", error);
+            toast.error(readErrorMessage(error, "Failed to reset password"));
+        } finally {
+            setResettingPwd(false);
         }
     };
 
@@ -512,9 +664,8 @@ const AdStaff = () => {
                         filtered.map(emp => (
                             <EmployeeCard
                                 key={emp.id}
-                                emp={emp}
+                                emp={{ ...emp, onDeactivate: deactivate, onReactivate: reactivate, onResetPassword: promptResetPassword }}
                                 onView={setSelected}
-                                onDeactivate={deactivate}
                             />
                         ))
                     )}
@@ -587,7 +738,7 @@ const AdStaff = () => {
                                                 <button onClick={() => setSelected(emp)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors">
                                                     <Eye size={13} />
                                                 </button>
-                                                <RowMenu emp={emp} onView={() => setSelected(emp)} onDeactivate={() => deactivate(emp.id)} />
+                                                <RowMenu emp={emp} onView={() => setSelected(emp)} onDeactivate={() => deactivate(emp.id)} onReactivate={() => reactivate(emp.id)} onResetPassword={() => promptResetPassword(emp)} />
                                             </div>
                                         </td>
                                     </tr>
@@ -615,7 +766,129 @@ const AdStaff = () => {
                     onAdd={saveEmployee}
                 />
             )}
-            {selectedEmployee && <ProfilePanel emp={selectedEmployee} onClose={() => setSelected(null)} />}
+            {selectedEmployee && <ProfilePanel emp={selectedEmployee} onClose={() => setSelected(null)} onDeactivate={deactivate} onReactivate={reactivate} onResetPassword={promptResetPassword} />}
+
+            {confirmAction && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-[15px] font-bold text-slate-800">{confirmAction.title}</h3>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-[13px] text-slate-600 mb-4 leading-relaxed">
+                                {confirmAction.message}
+                            </p>
+
+                            {confirmAction.type === 'deactivate' && (
+                                <input
+                                    type="text"
+                                    value={deactivateConfirmText}
+                                    onChange={(e) => setDeactivateConfirmText(e.target.value)}
+                                    placeholder="Type DEACTIVATE"
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-mono outline-none focus:border-red-400 focus:bg-white transition-colors mb-6 uppercase"
+                                    autoFocus
+                                />
+                            )}
+                            {confirmAction.type === 'suspend' && (
+                                <div className="mb-6">
+                                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Suspension Duration</label>
+                                    <select
+                                        value={suspendDuration}
+                                        onChange={(e) => setSuspendDuration(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] outline-none focus:border-orange-400 focus:bg-white transition-colors"
+                                    >
+                                        <option value="1">1 Day</option>
+                                        <option value="3">3 Days</option>
+                                        <option value="7">1 Week</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmAction(null)}
+                                    className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmAction}
+                                    className={`px-4 py-2 text-white text-[13px] font-bold rounded-xl transition-colors ${(confirmAction.type === 'deactivate' && deactivateConfirmText.toUpperCase() !== 'DEACTIVATE') ? 'opacity-50 cursor-not-allowed' : confirmAction.confirmClass}`}
+                                    disabled={confirmAction.type === 'deactivate' && deactivateConfirmText.toUpperCase() !== 'DEACTIVATE'}
+                                >
+                                    {confirmAction.confirmText}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {passwordResetEmp && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-[15px] font-bold text-slate-800">Reset Password</h3>
+                        </div>
+                        <form onSubmit={handleResetPassword} className="p-6">
+                            <p className="text-[13px] text-slate-500 mb-4">
+                                Enter a new password for <strong>{passwordResetEmp.name}</strong>.
+                            </p>
+                            <div className="relative mb-3">
+                                <input
+                                    type={showNewPassword ? "text" : "password"}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="New Password (min 6 chars)"
+                                    className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] outline-none focus:border-blue-400 focus:bg-white transition-colors"
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                            <div className="relative mb-6">
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Confirm Password"
+                                    className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] outline-none focus:border-blue-400 focus:bg-white transition-colors"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordResetEmp(null)}
+                                    className="px-4 py-2 text-[13px] font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                    disabled={resettingPwd}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={resettingPwd}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl transition-colors disabled:opacity-50"
+                                >
+                                    {resettingPwd ? "Resetting..." : "Reset Password"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

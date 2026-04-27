@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Pencil, X, Mail, Phone, MapPin, Calendar, User, Activity, Briefcase, Building2, Star, CheckCircle2, Shield, Clock, KeyRound, UserX, Package, TrendingUp, BadgeCheck } from "lucide-react";
+import { ArrowLeft, Pencil, X, Mail, Phone, MapPin, Calendar, User, Activity, Briefcase, Building2, Star, CheckCircle2, Shield, Clock, KeyRound, UserX, Package, TrendingUp, BadgeCheck, } from "lucide-react";
 
 const Avatar = ({ initials, color, size = 36 }) => (
     <div style={{ width: size, height: size, background: color + "18", border: `1.5px solid ${color}30`, borderRadius: size * 0.3, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -54,7 +54,7 @@ const Section = ({ title, icon: Icon, children }) => (
     </div>
 );
 
-const ProfilePanel = ({ emp, onClose }) => {
+const ProfilePanel = ({ emp, onClose, onDeactivate, onReactivate, onResetPassword }) => {
     const tabs = ["Overview", "Employment", "System"];
     const [tab, setTab] = useState("Overview");
 
@@ -177,12 +177,21 @@ const ProfilePanel = ({ emp, onClose }) => {
                                 <InfoRow icon={Calendar} label="Account Created" value={emp.created} />
                             </Section>
                             <div className="flex flex-col gap-2">
-                                <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[12px] font-medium text-slate-700 cursor-pointer transition-colors text-left border-solid">
-                                    <KeyRound size={14} className="text-slate-500" /> Reset Employee Password
+                                <button onClick={() => { onResetPassword(emp); onClose(); }} className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-[12px] font-medium text-blue-700 cursor-pointer transition-colors text-left border-solid">
+                                    <KeyRound size={14} className="text-blue-500" /> Reset Employee Password
                                 </button>
-                                <button className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[12px] font-medium text-red-700 cursor-pointer transition-colors text-left border-solid">
-                                    <UserX size={14} className="text-red-500" /> Deactivate Account
+                                <button onClick={() => { onSuspend(emp); onClose(); }} className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-[12px] font-medium text-amber-700 cursor-pointer transition-colors text-left border-solid">
+                                    <Clock size={14} className="text-amber-500" /> Suspend Employee Account
                                 </button>
+                                {emp.status === 'Inactive' || emp.status === 'Suspended' ? (
+                                    <button onClick={() => { onReactivate(emp.id); onClose(); }} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-[12px] font-medium text-emerald-700 cursor-pointer transition-colors text-left border-solid">
+                                        <CheckCircle2 size={14} className="text-emerald-500" /> Reactivate Account
+                                    </button>
+                                ) : (
+                                    <button onClick={() => { onDeactivate(emp.id); onClose(); }} className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-[12px] font-medium text-red-700 cursor-pointer transition-colors text-left border-solid">
+                                        <UserX size={14} className="text-red-500" /> Deactivate Account
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
