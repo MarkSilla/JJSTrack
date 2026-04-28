@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/mongodb.js';
+import connectCloudinary from './config/cloudinary.js';
 import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
@@ -46,7 +47,8 @@ const syncChatConversationIndexes = async () => {
 
 
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cors());
 
 // API Endpoints
@@ -89,6 +91,7 @@ app.use('/api/notifications', notificationRoutes);
 
 const startServer = async () => {
   await connectDB();
+  await connectCloudinary();
   await syncChatConversationIndexes();
   attachInventorySocketServer(server);
   attachNotificationSocketServer(server);

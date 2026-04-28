@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { orderApi } from '../../services/orderApi';
 import { bookingApi } from '../../services/bookingApi';
+import { toast } from 'sonner';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -157,10 +158,17 @@ export default function QRScanner() {
     const [lowLight, setLowLight] = useState(false);
     const [resultKey, setResultKey] = useState(0);
     const [isPaid, setIsPaid] = useState(false);
+    const [proofImage, setProofImage] = useState(null);
+    const [proofNotes, setProofNotes] = useState('');
     const html5QrcodeScanner = useRef(null);
     const scanResultRef = useRef(null);
     const videoCheckRef = useRef(null);
     const fileInputRef = useRef(null);
+    
+    const [isProofCameraOpen, setIsProofCameraOpen] = useState(false);
+    const proofVideoRef = useRef(null);
+    const proofCanvasRef = useRef(null);
+    const proofStreamRef = useRef(null);
 
     useEffect(() => {
         if (html5QrcodeScanner.current) return;
@@ -227,17 +235,19 @@ export default function QRScanner() {
             setScanState('idle');
             setIsPaid(false);
             scanResultRef.current = null;
+            setProofImage(null);
+            setProofNotes('');
         }, 3000);
     };
 
-    const releaseScannedRecord = async (record) => {
+    const releaseScannedRecord = async (record, proofImg = null, pNotes = '') => {
         if (!record) return;
 
         setIsReleasing(true);
 
         try {
             const releaseId = record.isBooking ? record._id : (record.orderId || record._id);
-            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId) : await orderApi.markAsReleased(releaseId);
+            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId, proofImg, pNotes) : await orderApi.markAsReleased(releaseId, proofImg, pNotes);
 
             if (res.success) {
                 finalizeSuccessfulScan(record);
@@ -323,8 +333,9 @@ export default function QRScanner() {
                 else {
                     setScannedOrder(scannedRecord);
                     setResultKey(k => k + 1);
-                    setScanState('processing');
-                    await releaseScannedRecord(scannedRecord);
+                    setScanState('proof');
+                    setProofImage(null);
+                    setProofNotes('');
                 }
             } else {
                 setScanError(`Order "${scannedId}" not found. QR may be invalid or expired.`);
@@ -338,7 +349,53 @@ export default function QRScanner() {
         }
     };
 
-    const handleCancel = () => { setScannedOrder(null); setScanError(null); setScanState('idle'); scanResultRef.current = null; };
+    const handleCancel = () => { 
+        setScannedOrder(null); 
+        setScanError(null); 
+        setScanState('idle'); 
+        scanResultRef.current = null; 
+        setProofImage(null); 
+        setProofNotes(''); 
+        stopProofCamera();
+    };
+
+    const startProofCamera = async () => {
+        setIsProofCameraOpen(true);
+        triggerStopCamera(); // Stop QR scanner
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            proofStreamRef.current = stream;
+            if (proofVideoRef.current) {
+                proofVideoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            toast.error('Could not access camera for proof.');
+            setIsProofCameraOpen(false);
+        }
+    };
+
+    const stopProofCamera = () => {
+        if (proofStreamRef.current) {
+            proofStreamRef.current.getTracks().forEach(track => track.stop());
+            proofStreamRef.current = null;
+        }
+        setIsProofCameraOpen(false);
+    };
+
+    const captureProofPhoto = () => {
+        if (proofVideoRef.current && proofCanvasRef.current) {
+            const video = proofVideoRef.current;
+            const canvas = proofCanvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setProofImage(dataUrl);
+            stopProofCamera();
+        }
+    };
 
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -390,7 +447,7 @@ export default function QRScanner() {
     };
     const triggerStopCamera = () => document.getElementById('html5-qrcode-button-camera-stop')?.click();
 
-    const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error';
+    const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error' || scanState === 'proof';
 
     const orderDetails = scannedOrder ? [
         { icon: User, label: 'Customer', value: scannedOrder.contact?.fullName || scannedOrder.customer || 'N/A' },
@@ -559,6 +616,81 @@ export default function QRScanner() {
                                             className={`mt-4 w-full py-2.5 rounded-xl border bg-white text-xs font-semibold transition-all cursor-pointer ${scanError.toLowerCase().includes('already') ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-red-200 text-red-500 hover:bg-red-50'}`}>
                                             Try Again
                                         </button>
+                                    </div>
+                                )}
+                                {scanState === 'proof' && scannedOrder && (
+                                    <div className="rounded-2xl border border-blue-200 bg-white overflow-hidden shadow-sm fade-up">
+                                        <div className="flex items-center gap-3 px-4 py-3.5 bg-blue-50 border-b border-blue-100">
+                                            <div className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                                                <Info size={13} className="text-blue-500" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-gray-800">Additional Proof Recommended</p>
+                                                <p className="text-[10px] text-blue-600 mt-1 leading-relaxed">
+                                                    For additional proof, mas mainam na mag-take ng picture or hingin ang pirma ng kukuha.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 flex flex-col gap-4">
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Proof Photo</label>
+                                                {proofImage ? (
+                                                    <div className="relative rounded-xl overflow-hidden border border-gray-200 h-32 w-full bg-gray-50 flex items-center justify-center group">
+                                                        <img src={proofImage} alt="Proof" className="max-h-full object-contain" />
+                                                        <button 
+                                                            onClick={() => setProofImage(null)}
+                                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-80 hover:opacity-100 transition-opacity cursor-pointer border-none"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ) : isProofCameraOpen ? (
+                                                    <div className="relative rounded-xl overflow-hidden border border-gray-200 w-full bg-black flex flex-col items-center">
+                                                        <video ref={proofVideoRef} autoPlay playsInline className="w-full h-48 object-cover" />
+                                                        <canvas ref={proofCanvasRef} className="hidden" />
+                                                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
+                                                            <button onClick={stopProofCamera} className="px-4 py-1.5 bg-white text-gray-800 rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-gray-100">Cancel</button>
+                                                            <button onClick={captureProofPhoto} className="px-4 py-1.5 bg-blue-500 text-white rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-blue-600">Take Photo</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all" onClick={startProofCamera}>
+                                                        <Camera size={20} className="text-gray-400" />
+                                                        <span className="text-[10px] text-gray-500 font-medium">Open Camera</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Notes / Signature</label>
+                                                <textarea
+                                                    value={proofNotes}
+                                                    onChange={e => setProofNotes(e.target.value)}
+                                                    placeholder="e.g. Received by John Doe..."
+                                                    className="w-full text-xs p-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none h-20"
+                                                />
+                                            </div>
+                                            
+                                            <div className="flex gap-2 mt-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setScanState('processing');
+                                                        releaseScannedRecord(scannedOrder, null, '');
+                                                    }}
+                                                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100 text-xs font-semibold transition-all cursor-pointer"
+                                                >
+                                                    Skip Proof
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setScanState('processing');
+                                                        releaseScannedRecord(scannedOrder, proofImage, proofNotes);
+                                                    }}
+                                                    className="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white border-none text-xs font-semibold transition-all cursor-pointer"
+                                                >
+                                                    Save & Release
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 {scanState === 'processing' && scannedOrder && (

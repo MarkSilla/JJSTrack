@@ -396,6 +396,42 @@ export default function OrderRecordDetail({
                             </div>
                         </div>
                     )}
+
+                    {(record?.releaseProofImage || record?.releaseNotes) && (
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                <CheckCircle2 size={15} className="text-emerald-500" />
+                                <span className="text-[13px] font-bold text-slate-800">Release Proof</span>
+                            </div>
+                            <div className="p-5 space-y-4">
+                                {record?.releaseProofImage && (
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-semibold mb-2">Captured Photo</p>
+                                        <a
+                                            href={record.releaseProofImage}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="block rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm transition-transform hover:scale-[1.02]"
+                                        >
+                                            <img
+                                                src={record.releaseProofImage}
+                                                alt="Release proof"
+                                                className="w-full max-h-64 object-contain"
+                                            />
+                                        </a>
+                                    </div>
+                                )}
+                                {record?.releaseNotes && (
+                                    <div>
+                                        <p className="text-xs text-slate-500 font-semibold mb-1">Notes / Signature Name</p>
+                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                            <p className="text-sm font-medium text-slate-700">{record.releaseNotes}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-4">

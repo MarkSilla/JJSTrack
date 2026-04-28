@@ -2,6 +2,7 @@ import bookingModel, { generateUniqueBookingId } from '../models/bookingModel.js
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
+import { v2 as cloudinary } from 'cloudinary';
 import pricingModel from '../models/pricingModel.js';
 import userModel from '../models/userModel.js';
 import { buildStaffAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
@@ -1575,7 +1576,7 @@ export const getBookingQR = async (req, res) => {
 // Mark booking as picked up by scanning QR code
 export const markAsPickedUp = async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { bookingId, releaseProofImage, releaseNotes } = req.body;
 
     const booking = await bookingModel.findById(bookingId);
     if (!booking) {
@@ -1598,6 +1599,19 @@ export const markAsPickedUp = async (req, res) => {
     booking.status = 'Released';  // Set status to Released when QR is scanned
     booking.paid = true;  // Mark as paid when scanned
     booking.paidAt = new Date();
+
+    if (releaseProofImage) {
+      if (releaseProofImage.startsWith('data:image')) {
+        const uploadResponse = await cloudinary.uploader.upload(releaseProofImage, {
+          folder: 'release_proofs',
+          resource_type: 'auto'
+        });
+        booking.releaseProofImage = uploadResponse.secure_url;
+      } else {
+        booking.releaseProofImage = releaseProofImage;
+      }
+    }
+    if (releaseNotes) booking.releaseNotes = releaseNotes;
     await booking.save();
     emitBookingTrackingUpdate(booking, 'released');
     await maybeCreateBookingStatusNotification({

@@ -3,6 +3,7 @@ import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
+import { v2 as cloudinary } from 'cloudinary';
 import { buildStaffAssignmentQuery, isAssignedToUser } from '../utils/assignmentAccess.js';
 import { getRequestActor } from '../utils/requestActor.js';
 import {
@@ -599,7 +600,7 @@ const generateOrderQR = async (orderId) => {
 // Mark order as released by scanning QR code
 export const markAsReleased = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, releaseProofImage, releaseNotes } = req.body;
 
     const order = await orderModel.findOne({ orderId });
     if (!order) {
@@ -621,6 +622,19 @@ export const markAsReleased = async (req, res) => {
     order.status = 'Released';  // Set status to Released when QR is scanned
     order.paid = true;  // Mark as paid when scanned
     order.paidAt = new Date();
+
+    if (releaseProofImage) {
+      if (releaseProofImage.startsWith('data:image')) {
+        const uploadResponse = await cloudinary.uploader.upload(releaseProofImage, {
+          folder: 'release_proofs',
+          resource_type: 'auto'
+        });
+        order.releaseProofImage = uploadResponse.secure_url;
+      } else {
+        order.releaseProofImage = releaseProofImage;
+      }
+    }
+    if (releaseNotes) order.releaseNotes = releaseNotes;
     await order.save();
     emitOrderTrackingUpdate(order, 'released');
 

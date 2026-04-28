@@ -192,6 +192,8 @@ const bookingSchema = new mongoose.Schema({
     default: false,
   },
   pickedUpAt: Date,
+  releaseProofImage: String,
+  releaseNotes: String,
   paid: {
     type: Boolean,
     default: false,
