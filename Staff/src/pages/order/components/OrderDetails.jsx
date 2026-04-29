@@ -25,6 +25,63 @@ const getStaffArchiveActor = () => {
     return staffUser?.fullName || staffUser?.name || staffUser?.email || 'Staff';
 };
 
+const summarizeItemsAndAddons = (items, teamRoster = []) => {
+    const summary = {};
+
+    items.forEach(item => {
+        let name = (item.name || item.description || 'Unknown Item').trim();
+        let baseName = name;
+
+        const lastParenMatch = name.match(/\s*\([^)]+\)\s*$/);
+        if (lastParenMatch) {
+            const innerText = lastParenMatch[0].toLowerCase();
+            if (innerText.includes('#') || (!innerText.includes('jersey') && !innerText.includes('short') && !innerText.includes('size'))) {
+                baseName = name.replace(/\s*\([^)]+\)\s*$/, '').trim();
+            }
+        }
+
+        if (!summary[baseName]) {
+            summary[baseName] = { name: baseName, qty: 0, total: 0, isBase: true };
+        }
+        summary[baseName].qty += (item.qty || 1);
+        summary[baseName].total += ((item.qty || 1) * (item.unitPrice || 0) + ((item.addOnPrice || 0) * (item.qty || 1)));
+    });
+
+    const addonCounts = {};
+    let pocketsCount = 0;
+
+    teamRoster.forEach(player => {
+        if (player.addOns && Array.isArray(player.addOns)) {
+            player.addOns.forEach(addon => {
+                const aName = addon.trim();
+                if (aName.toLowerCase().includes('pocket')) {
+                    pocketsCount++;
+                } else if (aName) {
+                    addonCounts[aName] = (addonCounts[aName] || 0) + 1;
+                }
+            });
+        }
+    });
+
+    Object.entries(addonCounts).forEach(([addon, count]) => {
+        const displayName = addon.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const existingKey = Object.keys(summary).find(k => k.toLowerCase().includes(addon.toLowerCase()));
+        if (!existingKey) {
+            summary[displayName] = { name: displayName, qty: count, total: null, isAddon: true };
+        }
+    });
+
+    if (pocketsCount > 0) {
+        const pocketName = 'Shorts w/ Pockets';
+        const existingKey = Object.keys(summary).find(k => k.toLowerCase().includes('pocket'));
+        if (!existingKey) {
+            summary[pocketName] = { name: pocketName, qty: pocketsCount, total: null, isAddon: true };
+        }
+    }
+
+    return Object.values(summary);
+};
+
 const STATUS_CONFIG = {
     Completed: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Completed' },
     Released: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-200', dot: 'bg-cyan-500', label: 'Released' },
@@ -201,17 +258,17 @@ const OrderDetails = ({ orderId, onBack }) => {
 
     const handleStepClick = (index) => {
         if (index !== currentIdx) return;
-        
+
         // Role-based access control
         const currentStepLabel = productionSteps[index]?.label || productionSteps[index]?.step || productionSteps[index];
         const staffRole = getCurrentStaffRole();
         const requiredRole = getWorkflowStepRequiredRole(currentStepLabel);
-        
+
         if (!canStaffAccessStep(currentStepLabel, staffRole)) {
             toast.error(`Only ${formatWorkflowRoleLabel(requiredRole)} can complete the "${currentStepLabel}" step.`);
             return;
         }
-        
+
         setPendingIdx(index);
         setShowConfirmModal(true);
     };
@@ -754,30 +811,43 @@ const OrderDetails = ({ orderId, onBack }) => {
                             <div className="flex items-center px-4 py-2 bg-gray-50/40">
                                 <span className="w-8 shrink-0" />
                                 <span className="flex-1 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</span>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-10">Qty</span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center w-12">Qty</span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-20">Total Price</span>
                             </div>
 
-                            {items.map((item, idx) => (
+                            {summarizeItemsAndAddons(items, teamRoster).map((summaryItem, idx) => (
                                 <div key={idx} className="flex items-center gap-3 px-4 transition-colors hover:bg-gray-50/60" style={{ height: '52px' }}>
-                                    <ItemIcon name={item.name || item.description} />
-                                    <span className="flex-1 text-sm font-semibold text-gray-800 leading-tight min-w-0">
-                                        {item.name || item.description}
+                                    <ItemIcon name={summaryItem.name} />
+                                    <span className="flex-1 text-sm font-semibold text-gray-800 leading-tight min-w-0 flex items-center gap-2">
+                                        {summaryItem.name}
+                                        {summaryItem.isAddon && (
+                                            <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                                                Add-on
+                                            </span>
+                                        )}
                                     </span>
-                                    <span
-                                        className="text-[11px] font-black tabular-nums text-right"
-                                        style={{ color: '#000', minWidth: '2rem' }}
-                                    >
-                                        {item.qty}
+                                    <span className="text-[11px] font-black tabular-nums text-center w-12 text-gray-700">
+                                        {summaryItem.qty}
                                     </span>
+                                    {summaryItem.total !== null ? (
+                                        <span className="text-[11px] font-black tabular-nums text-right w-20 text-gray-900">
+                                            ₱{summaryItem.total.toLocaleString()}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-gray-400 text-right w-20">
+                                            Included
+                                        </span>
+                                    )}
                                 </div>
                             ))}
 
                             <div className="flex items-center gap-3 px-4 bg-gray-50/30" style={{ height: '52px' }}>
                                 <span className="w-8 shrink-0" />
-                                <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Total</span>
-                                <span className="text-xs font-black text-black tabular-nums text-right min-w-[2rem]">
+                                <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Total Items</span>
+                                <span className="text-xs font-black text-black tabular-nums text-center w-12">
                                     {totalQty}
                                 </span>
+                                <span className="w-20" />
                             </div>
 
                             {/* Total Price Section */}
@@ -790,8 +860,8 @@ const OrderDetails = ({ orderId, onBack }) => {
                                 return (
                                     <div className="flex items-center gap-3 px-4 bg-blue-50/50 border-t border-gray-200" style={{ height: '52px' }}>
                                         <span className="w-8 shrink-0" />
-                                        <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Total Price</span>
-                                        <span className="text-sm font-black text-blue-600 tabular-nums text-right min-w-[2rem]">
+                                        <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Grand Total</span>
+                                        <span className="text-sm font-black text-blue-600 tabular-nums text-right min-w-[2rem] flex-1">
                                             ₱{calculatedTotal.toLocaleString()}
                                         </span>
                                     </div>

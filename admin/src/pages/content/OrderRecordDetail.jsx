@@ -4,6 +4,7 @@ import {
     Archive,
     Calendar,
     CheckCircle2,
+    CheckCheck,
     CreditCard,
     ExternalLink,
     FileText,
@@ -87,6 +88,24 @@ const MonoTag = ({ children, className = '' }) => (
     </span>
 );
 
+const Section = ({ icon, title, badge, children }) => (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
+            <span className="text-slate-500">{icon}</span>
+            <span className="text-[13px] font-bold text-slate-800">{title}</span>
+            {badge && <span className="ml-auto">{badge}</span>}
+        </div>
+        <div className="p-5">{children}</div>
+    </div>
+);
+
+const Field = ({ label, children }) => (
+    <div className="flex items-start py-2.5 border-b border-slate-50 last:border-0">
+        <span className="w-28 shrink-0 text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-0.5">{label}</span>
+        <span className="flex-1 text-[13px] font-medium text-slate-800 leading-snug">{children}</span>
+    </div>
+);
+
 const getOriginStatusStyles = (status = '') => {
     if (status === 'Cancelled') {
         return 'bg-rose-50 text-rose-700 border-rose-200';
@@ -134,10 +153,10 @@ export default function OrderRecordDetail({
         }
         : {
             backLabel: 'Back to Released',
-            statusPillClass: 'bg-cyan-50 text-cyan-800 border-cyan-200',
+            statusPillClass: 'bg-green-50 text-green-800 border-green-200',
             statusLabel: 'Released',
-            accentBar: 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-300',
-            accentText: 'text-cyan-600',
+            accentBar: 'bg-gradient-to-r from-green-500 via-green-400 to-green-300',
+            accentText: 'text-green-600',
         };
 
     const headerDates = isArchivedView
@@ -150,7 +169,7 @@ export default function OrderRecordDetail({
         ]
         : [
             { label: 'Drop off', value: record?.dropDate, color: 'text-slate-600' },
-            { label: 'Released', value: record?.releaseDate, color: 'text-cyan-600' },
+            { label: 'Released', value: record?.releaseDate, color: 'text-green-600' },
         ];
 
     const quickAction = typeof onArchive === 'function'
@@ -230,6 +249,16 @@ export default function OrderRecordDetail({
                                 </span>
                             </span>
                         )}
+                        {typeof onArchive === 'function' && (
+                            <button
+                                onClick={onArchive}
+                                disabled={isArchiving}
+                                className="inline-flex ml-auto items-center gap-1.5 px-4 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 hover:bg-amber-600 hover:border-amber-600 hover:text-white disabled:opacity-60 text-xs font-bold transition-colors cursor-pointer shadow-sm"
+                            >
+                                <Archive size={13} />
+                                {isArchiving ? 'Archiving...' : 'Archive Record'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -243,71 +272,52 @@ export default function OrderRecordDetail({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_0.9fr] gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
                 <div className="space-y-4">
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
-                            <CheckCircle2 size={15} className={headerConfig.accentText} />
-                            <span className="text-[13px] font-bold text-slate-800">Production Timeline</span>
-                            <Pill className={`ml-auto ${headerConfig.statusPillClass} text-[10px]`}>
-                                {steps.length > 0 ? 'Step by step' : 'No steps available'}
-                            </Pill>
-                        </div>
-                        <div className="p-5">
-                            {steps.length === 0 ? (
-                                <div className="text-sm text-slate-500">
-                                    No production steps are available for this {isArchivedView ? 'archived' : 'released'} record.
-                                </div>
-                            ) : (
-                                steps.map((step, idx) => (
-                                    <div key={`${step?.label || step?.step || idx}-${idx}`} className="flex gap-4 relative">
-                                        {idx < steps.length - 1 && (
-                                            <div className="absolute left-[15px] top-[34px] bottom-0 w-px bg-slate-200" />
-                                        )}
-                                        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white shadow-[0_0_0_4px_#F8FAFC,0_2px_8px_rgba(148,163,184,0.16)] z-10 ${isArchivedView ? 'bg-amber-500' : 'bg-cyan-500'}`}>
-                                            <CheckCircle2 size={15} />
-                                        </div>
-                                        <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-6' : ''}`}>
-                                            <div className="text-[13px] font-bold text-slate-900 leading-snug">
-                                                {step?.step || step?.label || `Step ${idx + 1}`}
-                                            </div>
-                                            <div className="flex gap-3.5 mt-1 flex-wrap text-[11px] text-slate-400 font-semibold">
-                                                {step?.date && (
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar size={10} /> {fmtDate(step.date)}
-                                                    </span>
-                                                )}
-                                                {step?.worker && (
-                                                    <span className="flex items-center gap-2">
-                                                        <User size={10} /> {step.worker}
-                                                    </span>
-                                                )}
-                                            </div>
+                    <Section
+                        icon={<CheckCheck size={15} color="#00b400ff" />}
+                        title="Production Timeline"
+                    >
+                        {steps.length === 0 ? (
+                            <p className="text-sm text-slate-400 italic">No production steps recorded.</p>
+                        ) : (
+                            steps.map((step, idx) => (
+                                <div key={`${step?.label || step?.step || idx}-${idx}`} className="flex gap-4 relative">
+                                    {idx < steps.length - 1 && (
+                                        <div className="absolute left-[15px] top-[34px] bottom-0 w-px bg-slate-200" />
+                                    )}
+                                    <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white shadow-[0_0_0_4px_#F8FAFC] z-10 ${isArchivedView ? 'bg-amber-500' : 'bg-green-400'}`}>
+                                        <CheckCircle2 size={14} />
+                                    </div>
+                                    <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-5' : ''}`}>
+                                        <p className="text-[13px] font-bold text-slate-900 leading-snug">
+                                            {step?.step || step?.label || `Step ${idx + 1}`}
+                                        </p>
+                                        <div className="flex gap-4 mt-1 flex-wrap text-[11px] text-slate-400 font-semibold">
+                                            {step?.date && <span className="flex items-center gap-1"><Calendar size={10} />{fmtDate(step.date)}</span>}
+                                            {step?.worker && <span className="flex items-center gap-1"><User size={10} />{step.worker}</span>}
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
+                                </div>
+                            ))
+                        )}
+                    </Section>
                     {isJersey && teamRoster.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <Users size={15} className="text-indigo-500" />
-                                <span className="text-[13px] font-bold text-slate-800">Team Roster</span>
-                                <span className="ml-auto text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full tracking-wide">
+                        <Section
+                            icon={<Users size={15} />}
+                            title="Team Roster"
+                            badge={
+                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
                                     {teamRoster.length} players
                                 </span>
-                            </div>
-                            <div className="max-w-full overflow-x-auto">
-                                <table className="w-full min-w-[560px] border-collapse relative">
+                            }
+                        >
+                            <div className="overflow-x-auto -mx-5">
+                                <table className="w-full min-w-[520px] border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100">
+                                        <tr className="border-b border-slate-100 bg-slate-50/60">
                                             {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                                <th
-                                                    key={col}
-                                                    className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
-                                                >
+                                                <th key={col} className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? 'text-left pl-5' : 'text-center px-3'}`}>
                                                     {col}
                                                 </th>
                                             ))}
@@ -315,269 +325,173 @@ export default function OrderRecordDetail({
                                     </thead>
                                     <tbody>
                                         {teamRoster.map((player, idx) => (
-                                            <tr key={`${player?.surname || player?.name || 'player'}-${idx}`} className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                                                <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">
-                                                    {player?.surname || player?.name || 'N/A'}
-                                                </td>
-                                                <td className="px-3 text-center">
-                                                    <span className="inline-block min-w-[2rem] text-slate-600 px-1.5 text-[11px] font-black tracking-wide">
-                                                        #{player?.number ?? 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 text-center text-[13px] font-semibold text-slate-700">
-                                                    {player?.jerseySize || player?.size || 'N/A'}
-                                                </td>
-                                                <td className="px-3 text-center text-[12px] font-semibold text-slate-700">
-                                                    {player?.shortSize || player?.size || 'N/A'}
-                                                </td>
-                                                <td className="px-3 pr-5 text-center text-[10px] text-slate-500">
-                                                    {getLineupAddOns(player).join(', ') || 'N/A'}
-                                                </td>
+                                            <tr key={`${player?.surname || player?.name || 'p'}-${idx}`}
+                                                className={`h-12 border-b border-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                                <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player?.surname || player?.name || '—'}</td>
+                                                <td className="px-3 text-center text-[11px] font-black text-slate-600">#{player?.number ?? '—'}</td>
+                                                <td className="px-3 text-center text-[13px] font-semibold text-slate-700">{player?.jerseySize || player?.size || '—'}</td>
+                                                <td className="px-3 text-center text-[12px] font-semibold text-slate-700">{player?.shortSize || player?.size || '—'}</td>
+                                                <td className="px-3 pr-5 text-center text-[10px] text-slate-400">{getLineupAddOns(player).join(', ') || '—'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </Section>
                     )}
-
                     {isRepair && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <Wrench size={15} className="text-blue-500" />
-                                <span className="text-[13px] font-bold text-slate-800">Repair Specification</span>
-                                <span className="ml-auto text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full tracking-wide">
-                                    {record?.items?.length ?? 0} Tasks
-                                </span>
-                            </div>
-                            <div className="p-6 flex flex-col gap-6">
+                        <Section
+                            icon={<Wrench size={15} />}
+                            title="Repair Specification"
+                        >
+                            <div className="space-y-3">
                                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <FileText size={13} className="text-slate-500" />
-                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Repair Service</span>
-                                    </div>
-                                    <div className="text-[12px] font-medium text-slate-700 leading-relaxed">{repairDisplayLabel}</div>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Repair Service</p>
+                                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{repairDisplayLabel}</p>
                                 </div>
                                 {record?.notes && (
                                     <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <FileText size={13} className="text-amber-500" />
-                                            <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Repair Notes</span>
-                                        </div>
-                                        <div className="text-[12px] font-medium text-slate-700 leading-relaxed">{record.notes}</div>
+                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Repair Notes</p>
+                                        <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{record.notes}</p>
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </Section>
                     )}
 
+                    {/* Uploaded Images */}
                     {hasImages && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <ImageIcon size={15} className="text-slate-500" />
-                                <span className="text-[13px] font-bold text-slate-800">Uploaded Images</span>
-                            </div>
-                            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {record.imageUrls.map((src, index) => (
-                                    <a
-                                        key={`${src}-${index}`}
-                                        href={src}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="block rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 shadow-sm"
-                                    >
-                                        <img
-                                            src={src}
-                                            alt={`Uploaded asset ${index + 1}`}
-                                            className="w-full h-36 object-cover"
-                                        />
+                        <Section icon={<ImageIcon size={15} />} title="Uploaded Images">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {record.imageUrls.map((src, i) => (
+                                    <a key={`${src}-${i}`} href={src} target="_blank" rel="noreferrer"
+                                        className="block rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity">
+                                        <img src={src} alt={`Image ${i + 1}`} className="w-full h-36 object-cover" />
                                     </a>
                                 ))}
                             </div>
-                        </div>
+                        </Section>
+                    )}
+                    {(record?.releaseProofImage || record?.releaseNotes) && (
+                        <Section icon={<CheckCircle2 size={15} color="#00b400ff" />} title="Release Proof">
+                            <div className="space-y-4">
+                                {record?.releaseProofImage && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Captured Photo</p>
+                                        <a href={record.releaseProofImage} target="_blank" rel="noreferrer"
+                                            className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:opacity-90 transition-opacity">
+                                            <img src={record.releaseProofImage} alt="Release proof" className="w-full max-h-64 object-contain" />
+                                        </a>
+                                    </div>
+                                )}
+                                {record?.releaseNotes && (
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Notes / Signature Name</p>
+                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                            <p className="text-sm font-medium text-slate-700">{record.releaseNotes}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Section>
                     )}
                 </div>
 
-                <div className="space-y-4">
-                    {quickAction && (
-                        <div className={quickAction.wrapperClass}>
-                            <div className={quickAction.headerClass}>
-                                {quickAction.headerIcon}
-                                <span className="text-[12px] font-bold text-slate-800">Quick Action</span>
-                            </div>
-                            <div className={quickAction.bodyClass}>
-                                <p className="text-xs text-slate-500 leading-relaxed">
-                                    {quickAction.text}
-                                </p>
-                                <button
-                                    onClick={quickAction.onClick}
-                                    disabled={quickAction.busy}
-                                    className={quickAction.buttonClass}
-                                >
-                                    {quickAction.buttonIcon}
-                                    {quickAction.busy ? quickAction.busyLabel : quickAction.idleLabel}
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                <div className="space-y-4 ">
+                    <Section icon={<User size={15} />} title="Contact">
+                        <Field label="Name" clanss>{record?.customerName}</Field>
+                        {record?.contact?.phone && (
+                            <Field label="Phone">
+                                <a href={`tel:${record.contact.phone}`} className="text-blue-600 hover:underline">{record.contact.phone}</a>
+                            </Field>
+                        )}
+                        {record?.contact?.email && (
+                            <Field label="Email">
+                                <a href={`mailto:${record.contact.email}`} className="text-blue-600 hover:underline">{record.contact.email}</a>
+                            </Field>
+                        )}
+                        {record?.contact?.address && (
+                            <Field label="Address">{record.contact.address}</Field>
+                        )}
+                    </Section>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                            <User size={15} className="text-blue-500" />
-                            <span className="text-[13px] font-bold text-slate-800">Contact Information</span>
-                        </div>
-                        <div className="p-5 space-y-3">
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Name</p>
-                                <p className="text-sm font-medium text-slate-800">{record?.customerName}</p>
+                    <Section icon={<Package size={15} />} title="Record Info">
+                        <Field label="Type"><TypeBadge typeKey={record?.typeKey} /></Field>
+                        <Field label="Service">{record?.serviceLabel}</Field>
+                        <Field label="Status">
+                            <div className="flex flex-wrap gap-1.5">
+                                <Pill className={headerConfig.statusPillClass}>
+                                    {isArchivedView ? <Archive size={10} /> : <CheckCircle2 size={10} />}
+                                    {headerConfig.statusLabel}
+                                </Pill>
+                                {isArchivedView && (
+                                    <Pill className={getOriginStatusStyles(record?.sourceStatus)}>{record?.sourceStatus}</Pill>
+                                )}
                             </div>
-                            {record?.contact?.phone && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Phone</p>
-                                    <a href={`tel:${record.contact.phone}`} className="text-sm font-medium text-blue-600 hover:underline">{record.contact.phone}</a>
-                                </div>
-                            )}
-                            {record?.contact?.email && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Email</p>
-                                    <a href={`mailto:${record.contact.email}`} className="text-sm font-medium text-blue-600 hover:underline">{record.contact.email}</a>
-                                </div>
-                            )}
-                            {record?.contact?.address && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Address</p>
-                                    <p className="text-sm font-medium text-slate-800">{record.contact.address}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        </Field>
+                        <Field label="Drop Date">{record?.dropDate}</Field>
+                        {!isArchivedView && (
+                            <Field label="Released">
+                                <span className="font-bold text-green-600">{record?.releaseDate}</span>
+                            </Field>
+                        )}
+                        {isArchivedView && (
+                            <Field label="Archived">
+                                <span className="font-bold text-amber-600">{record?.archiveDate}</span>
+                            </Field>
+                        )}
+                        {isArchivedView && record?.archivedBy && (
+                            <Field label="Archived By">
+                                <span className="font-semibold text-amber-700">{record.archivedBy}</span>
+                            </Field>
+                        )}
+                    </Section>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                            <Package size={15} className="text-violet-500" />
-                            <span className="text-[13px] font-bold text-slate-800">Record Information</span>
-                        </div>
-                        <div className="p-5 space-y-3">
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Kind</p>
-                                <p className="text-sm font-medium text-slate-800">{record?.entityLabel}</p>
-                            </div>
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Type</p>
-                                <TypeBadge typeKey={record?.typeKey} />
-                            </div>
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Status</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <Pill className={headerConfig.statusPillClass}>
-                                        {isArchivedView ? <Archive size={10} /> : <CheckCircle2 size={10} />}
-                                        {headerConfig.statusLabel}
-                                    </Pill>
-                                    {isArchivedView && (
-                                        <Pill className={getOriginStatusStyles(record?.sourceStatus)}>
-                                            {record?.sourceStatus}
-                                        </Pill>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Service</p>
-                                <p className="text-sm font-medium text-slate-800">{record?.serviceLabel}</p>
-                            </div>
-                            <div>
-                                <p className="text-[11px] text-slate-500 font-semibold mb-1">Drop Date</p>
-                                <p className="text-sm font-medium text-slate-800">{record?.dropDate}</p>
-                            </div>
-                            {!isArchivedView && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Released Date</p>
-                                    <p className="text-sm font-bold text-cyan-600">{record?.releaseDate}</p>
-                                </div>
-                            )}
-                            {isArchivedView && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Archived Date</p>
-                                    <p className="text-sm font-bold text-amber-600">{record?.archiveDate}</p>
-                                </div>
-                            )}
-                            {isArchivedView && record?.archivedBy && (
-                                <div>
-                                    <p className="text-[11px] text-slate-500 font-semibold mb-1">Archived By</p>
-                                    <p className="text-sm font-bold text-amber-700">{record.archivedBy}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <Section icon={<CreditCard size={15} />} title="Payment">
+                        <Field label="Status"><PayBadge status={record?.payStatus} /></Field>
+                        <Field label="Amount">
+                            <span className="text-base font-extrabold text-slate-900">
+                                {record?.totalPrice != null
+                                    ? `P${record.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : 'N/A'}
+                            </span>
+                        </Field>
+                        {record?.paidAt && (
+                            <Field label="Paid At">
+                                {new Date(record.paidAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </Field>
+                        )}
+                    </Section>
 
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                            <CreditCard size={15} className="text-emerald-500" />
-                            <span className="text-[13px] font-bold text-slate-800">Payment Information</span>
-                        </div>
-                        <div className="p-5 space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-semibold text-slate-600">Payment Status:</span>
-                                <PayBadge status={record?.payStatus} />
-                            </div>
-                            <div className="flex justify-between items-center gap-3">
-                                <span className="text-sm font-semibold text-slate-600">Amount:</span>
-                                <span className="text-lg font-bold text-slate-900 text-right">
-                                    {record?.totalPrice != null
-                                        ? `P${record.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                        : 'N/A'}
-                                </span>
-                            </div>
-                            {record?.paidAt && (
-                                <div className="flex justify-between items-center gap-3">
-                                    <span className="text-sm font-semibold text-slate-600">Paid At:</span>
-                                    <span className="text-sm font-medium text-slate-800 text-right">
-                                        {new Date(record.paidAt).toLocaleString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                        })}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
+                    {/* Notes */}
                     {(record?.notes || record?.adminNotes || record?.driveLink || record?.orgDriveLink) && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <FileText size={15} className="text-amber-500" />
-                                <span className="text-[13px] font-bold text-slate-800">Notes</span>
-                            </div>
-                            <div className="p-5 space-y-3">
+                        <Section icon={<FileText size={15} />} title="Notes">
+                            <div className="space-y-3">
                                 {record?.notes && (
                                     <div>
-                                        <p className="text-xs text-slate-500 font-semibold mb-1">Customer Notes:</p>
-                                        <p className="text-sm text-slate-700">{record.notes}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Customer</p>
+                                        <p className="text-sm text-slate-700 leading-relaxed">{record.notes}</p>
                                     </div>
                                 )}
                                 {record?.adminNotes && (
                                     <div>
-                                        <p className="text-xs text-slate-500 font-semibold mb-1">Admin Notes:</p>
-                                        <p className="text-sm text-slate-700">{record.adminNotes}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admin</p>
+                                        <p className="text-sm text-slate-700 leading-relaxed">{record.adminNotes}</p>
                                     </div>
                                 )}
                                 {(record?.driveLink || record?.orgDriveLink) && (
-                                    <div className="pt-1">
-                                        <a
-                                            href={record?.driveLink || record?.orgDriveLink}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                                        >
-                                            <ExternalLink size={14} />
-                                            Open Google Drive Reference
-                                        </a>
-                                    </div>
+                                    <a
+                                        href={record?.driveLink || record?.orgDriveLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                                    >
+                                        <ExternalLink size={13} />
+                                        Open Google Drive Reference
+                                    </a>
                                 )}
                             </div>
-                        </div>
+                        </Section>
                     )}
                 </div>
             </div>

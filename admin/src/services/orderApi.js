@@ -137,9 +137,9 @@ export const orderApi = {
   },
 
   // Mark order as released by scanning QR
-  markAsReleased: async (orderId) => {
+  markAsReleased: async (orderId, releaseProofImage, releaseNotes) => {
     try {
-      const response = await api.post('/orders/qr/release', { orderId });
+      const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes });
       return response.data;
     } catch (error) {
       console.error('Error marking order as released:', error);

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { orderApi } from '../../services/orderApi';
 import { bookingApi } from '../../services/bookingApi';
+import { toast } from 'sonner';
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -53,9 +54,34 @@ const STYLES = `
     80%   { transform: translateX(4px); }
   }
 
+  @media (max-width: 768px) {
+    .mobile-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 1000 !important;
+      background: #000 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .mobile-fullscreen-content {
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+    }
+  }
+
   .result-enter  { animation: result-enter 0.4s cubic-bezier(0.22,1,0.36,1) both; }
   .fade-up       { animation: fade-up 0.35s ease both; }
   .error-shake   { animation: error-shake 0.4s ease; }
+  
+  /* Hide chat widget when scanner page is open */
+  #admin-chat-bubble { display: none !important; }
   .success-ring::before {
     content:''; position:absolute; inset:-6px; border-radius:9999px;
     border:2px solid #4ade80;
@@ -63,11 +89,27 @@ const STYLES = `
     pointer-events:none;
   }
 
-  #qr-reader { width:100%!important; border:none!important; background:transparent!important; }
-  #qr-reader video { width:100%!important; height:100%!important; object-fit:cover!important; border-radius:0!important; display:block!important; }
-  #qr-reader__scan_region { background:transparent!important; border:none!important; min-height:0!important; }
-  #qr-reader__dashboard { display:none!important; }
-  #qr-reader__filescan_input { display:none!important; }
+  #qr-reader { 
+    width: 100% !important; 
+    height: 100% !important; 
+    border: none !important; 
+    background: #000 !important; 
+    position: relative !important; 
+    overflow: hidden !important; 
+  }
+  #qr-reader video { 
+    width: 100% !important; 
+    height: 100% !important; 
+    object-fit: cover !important; 
+    border-radius: 0 !important; 
+    display: block !important; 
+  }
+  #qr-reader canvas { display: none !important; }
+  #qr-reader video:nth-of-type(n+2) { display: none !important; }
+  #qr-reader__scan_region { background: transparent !important; border: none !important; min-height: 0 !important; }
+  #qr-reader__dashboard { display: none !important; }
+  #qr-reader__filescan_input { display: none !important; }
+  #qr-reader__scan_region > div { border: none !important; }
 
   ::-webkit-scrollbar { width:3px; }
   ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:99px; }
@@ -157,18 +199,34 @@ export default function QRScanner() {
     const [lowLight, setLowLight] = useState(false);
     const [resultKey, setResultKey] = useState(0);
     const [isPaid, setIsPaid] = useState(false);
+    const [proofImage, setProofImage] = useState(null);
+    const [proofNotes, setProofNotes] = useState('');
     const html5QrcodeScanner = useRef(null);
     const scanResultRef = useRef(null);
     const videoCheckRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    const [isProofCameraOpen, setIsProofCameraOpen] = useState(false);
+    const proofVideoRef = useRef(null);
+    const proofCanvasRef = useRef(null);
+    const proofStreamRef = useRef(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
     useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        let isCleaningUp = false;
         if (html5QrcodeScanner.current) return;
-        html5QrcodeScanner.current = new Html5QrcodeScanner(
+
+        const scanner = new Html5QrcodeScanner(
             'qr-reader',
             {
                 fps: 10,
-                qrbox: { width: 220, height: 220 },
+                qrbox: { width: 200, height: 200 },
                 aspectRatio: 1.0,
                 showTorchButtonIfSupported: true,
                 showZoomSliderIfSupported: true,
@@ -176,7 +234,9 @@ export default function QRScanner() {
             },
             false
         );
-        html5QrcodeScanner.current.render(onScanSuccess, () => { });
+
+        scanner.render(onScanSuccess, () => { });
+        html5QrcodeScanner.current = scanner;
 
         const obs = new MutationObserver(() => {
             const hasVideo = !!document.querySelector('#qr-reader video');
@@ -191,7 +251,12 @@ export default function QRScanner() {
         return () => {
             obs.disconnect();
             clearInterval(videoCheckRef.current);
-            if (html5QrcodeScanner.current) { html5QrcodeScanner.current.clear().catch(() => { }); html5QrcodeScanner.current = null; }
+            if (html5QrcodeScanner.current) {
+                html5QrcodeScanner.current.clear().catch(err => {
+                    console.error("Failed to clear scanner:", err);
+                });
+                html5QrcodeScanner.current = null;
+            }
         };
     }, []);
 
@@ -227,17 +292,19 @@ export default function QRScanner() {
             setScanState('idle');
             setIsPaid(false);
             scanResultRef.current = null;
+            setProofImage(null);
+            setProofNotes('');
         }, 3000);
     };
 
-    const releaseScannedRecord = async (record) => {
+    const releaseScannedRecord = async (record, proofImg = null, pNotes = '') => {
         if (!record) return;
 
         setIsReleasing(true);
 
         try {
             const releaseId = record.isBooking ? record._id : (record.orderId || record._id);
-            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId) : await orderApi.markAsReleased(releaseId);
+            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId, proofImg, pNotes) : await orderApi.markAsReleased(releaseId, proofImg, pNotes);
 
             if (res.success) {
                 finalizeSuccessfulScan(record);
@@ -323,8 +390,9 @@ export default function QRScanner() {
                 else {
                     setScannedOrder(scannedRecord);
                     setResultKey(k => k + 1);
-                    setScanState('processing');
-                    await releaseScannedRecord(scannedRecord);
+                    setScanState('proof');
+                    setProofImage(null);
+                    setProofNotes('');
                 }
             } else {
                 setScanError(`Order "${scannedId}" not found. QR may be invalid or expired.`);
@@ -338,7 +406,53 @@ export default function QRScanner() {
         }
     };
 
-    const handleCancel = () => { setScannedOrder(null); setScanError(null); setScanState('idle'); scanResultRef.current = null; };
+    const handleCancel = () => {
+        setScannedOrder(null);
+        setScanError(null);
+        setScanState('idle');
+        scanResultRef.current = null;
+        setProofImage(null);
+        setProofNotes('');
+        stopProofCamera();
+    };
+
+    const startProofCamera = async () => {
+        setIsProofCameraOpen(true);
+        triggerStopCamera(); // Stop QR scanner
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            proofStreamRef.current = stream;
+            if (proofVideoRef.current) {
+                proofVideoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error('Error accessing camera:', err);
+            toast.error('Could not access camera for proof.');
+            setIsProofCameraOpen(false);
+        }
+    };
+
+    const stopProofCamera = () => {
+        if (proofStreamRef.current) {
+            proofStreamRef.current.getTracks().forEach(track => track.stop());
+            proofStreamRef.current = null;
+        }
+        setIsProofCameraOpen(false);
+    };
+
+    const captureProofPhoto = () => {
+        if (proofVideoRef.current && proofCanvasRef.current) {
+            const video = proofVideoRef.current;
+            const canvas = proofCanvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            setProofImage(dataUrl);
+            stopProofCamera();
+        }
+    };
 
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -369,7 +483,7 @@ export default function QRScanner() {
                 decodedText = await scanner.scanFile(file, true);
             } catch (_) { /* decoding failed */ }
             finally {
-                try { await scanner.clear(); } catch (_) {}
+                try { await scanner.clear(); } catch (_) { }
                 if (document.body.contains(div)) document.body.removeChild(div);
             }
         }
@@ -390,7 +504,7 @@ export default function QRScanner() {
     };
     const triggerStopCamera = () => document.getElementById('html5-qrcode-button-camera-stop')?.click();
 
-    const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error';
+    const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error' || scanState === 'proof';
 
     const orderDetails = scannedOrder ? [
         { icon: User, label: 'Customer', value: scannedOrder.contact?.fullName || scannedOrder.customer || 'N/A' },
@@ -431,9 +545,10 @@ export default function QRScanner() {
                     <div className="flex flex-col lg:flex-row gap-4 items-start transition-all duration-500 ease-in-out">
 
                         {/* QR Code */}
-                        <div className={`transition-all duration-500 ease-in-out w-full ${hasResult ? 'lg:w-1/2' : 'lg:max-w-md lg:mx-auto'}`}>
+                        <div className={`transition-all duration-500 ease-in-out w-full 
+                            ${hasResult ? 'lg:w-1/2' : 'max-w-md mx-auto'}`}>
                             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">QR Code</p>
-                            <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm w-full">
+                            <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm w-full bg-white">
                                 <div className="relative bg-gray-950 w-full" style={{ paddingBottom: '100%' }}>
                                     <div className="absolute inset-0">
                                         {!cameraActive && (
@@ -497,7 +612,7 @@ export default function QRScanner() {
                                         className="hidden sm:flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-600 text-xs font-semibold transition-all cursor-pointer shrink-0"
                                     >
                                         <ImageUp size={13} />
-                                        Upload Image
+                                        <span className="inline">Upload Image</span>
                                     </button>
                                     <input
                                         ref={fileInputRef}
@@ -509,7 +624,6 @@ export default function QRScanner() {
                                 </div>
                             </div>
                         </div>
-
                         {/* Result */}
                         {hasResult && (
                             <div key={resultKey} className="w-full lg:w-1/2 result-enter">
@@ -559,6 +673,82 @@ export default function QRScanner() {
                                             className={`mt-4 w-full py-2.5 rounded-xl border bg-white text-xs font-semibold transition-all cursor-pointer ${scanError.toLowerCase().includes('already') ? 'border-amber-200 text-amber-600 hover:bg-amber-50' : 'border-red-200 text-red-500 hover:bg-red-50'}`}>
                                             Try Again
                                         </button>
+                                    </div>
+                                )}
+                                {scanState === 'proof' && scannedOrder && (
+                                    <div className={`rounded-2xl border border-blue-200 bg-white overflow-hidden shadow-sm fade-up ${isMobile ? 'mobile-fullscreen-content border-none rounded-none' : ''}`}>
+                                        <div className="flex items-center gap-3 px-4 py-3.5 bg-blue-50 border-b border-blue-100">
+                                            <div className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
+                                                <div className="flex items-center justify-center w-full h-full">
+                                                    <Info size={13} className="text-blue-500" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-semibold text-gray-800">Additional Proof Recommended</p>
+                                                <p className="text-[10px] text-blue-600 mt-1 leading-relaxed">
+                                                    For additional proof, Take a photo or get a signature from the receiver.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className={`p-3  flex flex-col gap-2 ${isMobile ? 'flex-1 justify-center' : ''}`}>
+                                            <div>
+
+                                                {proofImage ? (
+                                                    <div className={`relative rounded-xl overflow-hidden border border-gray-200 w-full bg-gray-50 flex items-center justify-center group ${isMobile ? 'h-80' : 'h-64'}`}>
+                                                        <img src={proofImage} alt="Proof" className="max-h-full object-contain" />
+                                                        <button
+                                                            onClick={() => setProofImage(null)}
+                                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-80 hover:opacity-100 transition-opacity cursor-pointer border-none"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ) : isProofCameraOpen ? (
+                                                    <div className="relative rounded-xl overflow-hidden border border-gray-200 w-full bg-black flex flex-col items-center">
+                                                        <video ref={proofVideoRef} autoPlay playsInline className={`w-full object-cover ${isMobile ? 'h-96' : 'h-80'}`} />
+                                                        <canvas ref={proofCanvasRef} className="hidden" />
+                                                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
+                                                            <button onClick={stopProofCamera} className="px-4 py-1.5 bg-white text-gray-800 rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-gray-100">Cancel</button>
+                                                            <button onClick={captureProofPhoto} className="px-4 py-1.5 bg-blue-500 text-white rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-blue-600">Take Photo</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all ${isMobile ? 'h-96' : 'h-80'}`} onClick={startProofCamera}>
+                                                        <Camera size={20} className="text-gray-400" />
+                                                        <span className="text-[10px] text-gray-500 font-medium">Open Camera</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Signature / Notes</label>
+                                                <textarea
+                                                    value={proofNotes}
+                                                    onChange={e => setProofNotes(e.target.value)}
+                                                    placeholder="e.g. Received by Someone"
+                                                    className="w-full text-xs p-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none h-28"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setScanState('processing');
+                                                        releaseScannedRecord(scannedOrder, null, '');
+                                                    }}
+                                                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100 text-xs font-semibold transition-all cursor-pointer"
+                                                >
+                                                    Skip Proof
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setScanState('processing');
+                                                        releaseScannedRecord(scannedOrder, proofImage, proofNotes);
+                                                    }}
+                                                    className="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white border-none text-xs font-semibold transition-all cursor-pointer"
+                                                >
+                                                    Save & Release
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 {scanState === 'processing' && scannedOrder && (
@@ -646,7 +836,7 @@ export default function QRScanner() {
                     </div>
 
                 </div>
-            </div>
+            </div >
         </>
     );
 }

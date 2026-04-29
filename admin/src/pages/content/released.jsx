@@ -4,6 +4,8 @@ import {
     ArrowUpDown,
     CheckCircle2,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     CreditCard,
     DollarSign,
     Download,
@@ -174,6 +176,8 @@ export default function ReleasedItems() {
     const [selectedRecord, setSelectedRecord] = useState(null);
     const [archiveTarget, setArchiveTarget] = useState(null);
     const [archiveLoading, setArchiveLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 7;
 
     const fetchReleasedItems = async () => {
         try {
@@ -256,6 +260,14 @@ export default function ReleasedItems() {
         return items;
     }, [releasedItems, searchQuery, sortBy]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, sortBy]);
+
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
+
     const currentSortLabel = SORT_OPTIONS.find((option) => option.value === sortBy)?.label;
 
     const confirmArchive = async () => {
@@ -285,7 +297,7 @@ export default function ReleasedItems() {
     if (selectedRecord) {
         return (
             <>
-                <div className="font-[inter] h-screen flex flex-col overflow-auto px-4 lg:px-6 pt-5">
+                <div className="font-[inter] px-4 lg:px-6 pt-5">
                     <OrderRecordDetail
                         record={selectedRecord}
                         mode="released"
@@ -330,7 +342,7 @@ export default function ReleasedItems() {
                     )}
 
                     {releasedItems.length > 0 && (
-                        <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
+                        <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
                             <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3 border-b border-slate-100 bg-blue-50/60">
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold text-gray-700">Released Records</span>
@@ -402,7 +414,7 @@ export default function ReleasedItems() {
                                     <p className="text-xs text-gray-400 font-medium">No released records match your search.</p>
                                 </div>
                             ) : (
-                                <div className="flex-1 overflow-auto table-scroll min-h-0">
+                                <div className="overflow-auto table-scroll min-h-0">
                                     <table className="w-full text-left border-collapse" style={{ minWidth: 980 }}>
                                         <thead className="sticky top-0 z-10">
                                             <tr className="bg-slate-50 border-b border-slate-200">
@@ -414,61 +426,108 @@ export default function ReleasedItems() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredItems.map((item, index) => (
-                                                <tr
-                                                    key={`${item.entityType}-${item.id}`}
-                                                    onClick={() => setSelectedRecord(item)}
-                                                    className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
-                                                >
-                                                    <td className="py-3 px-4">
-                                                        <span className="text-[11px] font-bold text-gray-400 tabular-nums">{index + 1}</span>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
-                                                            {item.displayId}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
-                                                        <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{item.dropDate}</span>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{item.releaseDate}</span>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <PayBadge status={item.payStatus} />
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        {item.totalPrice != null ? (
-                                                            <span className="text-sm font-bold text-gray-800 tabular-nums">
-                                                                P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            {paginatedItems.map((item, index) => {
+                                                const displayIndex = startIndex + index + 1;
+                                                return (
+                                                    <tr
+                                                        key={`${item.entityType}-${item.id}`}
+                                                        onClick={() => setSelectedRecord(item)}
+                                                        className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                                                    >
+                                                        <td className="py-3 px-4">
+                                                            <span className="text-[11px] font-bold text-gray-400 tabular-nums">{displayIndex}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
+                                                                {item.displayId}
                                                             </span>
-                                                        ) : (
-                                                            <span className="text-xs text-gray-400">N/A</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <TypeBadge typeKey={item.typeKey} />
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
+                                                            <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{item.dropDate}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{item.releaseDate}</span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <PayBadge status={item.payStatus} />
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {item.totalPrice != null ? (
+                                                                <span className="text-sm font-bold text-gray-800 tabular-nums">
+                                                                    P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400">N/A</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <TypeBadge typeKey={item.typeKey} />
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+
+                            {filteredItems.length > 0 && (
+                                <div className="shrink-0 flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                            disabled={currentPage === 1}
+                                            className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all cursor-pointer bg-white"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+
+                                        <div className="flex items-center gap-1.5">
+                                            {[...Array(totalPages)].map((_, i) => {
+                                                const pageNum = i + 1;
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => setCurrentPage(pageNum)}
+                                                        className={`w-8 h-8 rounded-lg text-[13px] font-bold transition-all cursor-pointer border ${currentPage === pageNum
+                                                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-200'
+                                                            : 'bg-white border-slate-200 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600'
+                                                            }`}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <button
+                                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:border-slate-200 disabled:hover:text-slate-400 transition-all cursor-pointer bg-white"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </button>
+                                    </div>
+
+                                    <div className="text-[11px] font-medium text-slate-400">
+                                        Showing <span className="text-slate-700 font-bold">{startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredItems.length)}</span> of <span className="text-slate-700 font-bold">{filteredItems.length}</span>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     )}
 
                     <div className="shrink-0 flex items-start gap-2 px-1">
-                        <Archive size={12} className="text-gray-400 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-gray-400 leading-relaxed">
-                            Only released records stay here. Use archive when a released item no longer needs to remain in the active release queue.
+                        <Archive size={14} className="text-gray-500 mt-0.5 shrink-0" />
+                        <p className="text-[12px] text-gray-500 leading-relaxed">
+                            Released records are locked and cannot be edited. Use Archive if the item no longer needs to stay in the active release queue.
                         </p>
                     </div>
                 </div>
