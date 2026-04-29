@@ -4,7 +4,7 @@ import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
     MdDesktopWindows, MdPrint, MdMoveToInbox, MdLocalShipping, MdLocalPrintshop,
-    MdRefresh, MdLocalLaundryService
+    MdRefresh, MdOutlineIron
 } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
 import { bookingApi } from '../../../services/bookingApi'
@@ -44,18 +44,27 @@ const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 
 const normalizeTrackingStatus = (status = '') => String(status || '').trim().toLowerCase()
 const isActiveTrackingStatus = (status = '') => ACTIVE_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
 const isPickupReadyTrackingStatus = (status = '') => normalizeTrackingStatus(status) === 'completed'
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
 
 // ─── Step icons — lowercase keys to match .toLowerCase() ───
 const STEP_ICON = {
     'dropped off': MdMoveToInbox,
+    'drop off':    MdMoveToInbox,
     'layout':      MdDesktopWindows,
     'printing':    MdLocalPrintshop,
+    'pressing':    MdOutlineIron,
     'sewing':      GiSewingMachine,
     'pick-up':     MdLocalShipping,
+    'pick up':     MdLocalShipping,
 }
 
 const StepIcon = ({ step }) => {
-    const label    = step.label?.toLowerCase().trim() ?? ''
+    const label    = normalizeStepLabel(step.label)
     const isDone   = step.done
     const isActive = !step.done && step.active
     const Icon     = STEP_ICON[label]
