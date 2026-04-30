@@ -564,8 +564,8 @@ export const createBooking = async (req, res) => {
     // Validate required fields
     if (!bookingType || !service) {
       console.log('Validation failed: missing bookingType or service');
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: 'bookingType and service are required',
         received: { bookingType, service }
       });
@@ -575,8 +575,8 @@ export const createBooking = async (req, res) => {
     const validBookingTypes = ['repair', 'jersey', 'organizational'];
     if (!validBookingTypes.includes(bookingType)) {
       console.log('Validation failed: invalid bookingType', bookingType);
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: `Invalid bookingType. Must be one of: ${validBookingTypes.join(', ')}`,
         received: bookingType
       });
@@ -629,7 +629,7 @@ export const createBooking = async (req, res) => {
         bookingType: 'repair',
         status: { $ne: 'Cancelled' }
       });
-      
+
       if (repairSlotsOnDate >= 7) {
         console.log(`Repair slot limit reached for ${pickupDate}. Current repair bookings: ${repairSlotsOnDate}`);
         return res.status(400).json({
@@ -649,7 +649,7 @@ export const createBooking = async (req, res) => {
         bookingType: { $in: ['jersey', 'organizational'] },
         status: { $ne: 'Cancelled' }
       });
-      
+
       if (jerseyOrgSlotsOnDate >= 3) {
         console.log(`Jersey/Organizational slot limit reached for ${pickupDate}. Current bookings: ${jerseyOrgSlotsOnDate}`);
         return res.status(400).json({
@@ -667,7 +667,7 @@ export const createBooking = async (req, res) => {
     // Fetch pricing from database with fallbacks
     let pricingJersey = await pricingModel.findOne({ serviceType: 'jersey' });
     let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
-    
+
     // Use database pricing or fallback to hardcoded defaults
     const jerseyPrice = pricingJersey?.basePerPlayer || 650;
     const pocketPrice = pricingJersey?.pocketPrice || 100;
@@ -678,13 +678,13 @@ export const createBooking = async (req, res) => {
     const resolvedService =
       bookingType === 'repair'
         ? getPrimaryRepairOptionName(
-            {
-              service,
-              selectedOptions: normalizedSelectedOptions,
-              repairDescription,
-            },
-            'Repair'
-          )
+          {
+            service,
+            selectedOptions: normalizedSelectedOptions,
+            repairDescription,
+          },
+          'Repair'
+        )
         : service;
     let normalizedItems = normalizeBookingItems(items);
 
@@ -812,7 +812,7 @@ export const createBooking = async (req, res) => {
     console.error('Error name:', error.name);
     console.error('Error stack:', error.stack);
     console.error('Full error:', error);
-    
+
     // Handle MongoDB validation errors
     if (error.name === 'ValidationError') {
       console.error('MongoDB ValidationError detected');
@@ -827,8 +827,8 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Failed to create booking',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -1287,25 +1287,25 @@ export const convertBookingToOrder = async (req, res) => {
     // Create invoice for the order
     const items = Array.isArray(booking.items) && booking.items.length > 0
       ? booking.items.map((item) => ({
-          description: item.description || 'Service Item',
-          type: item.type || 'Service',
-          qty: item.qty || 1,
-          unitPrice: item.unitPrice || 0,
-          size: item.size || '',
-          addOn: item.addOn || 'None',
-          addOnPrice: item.addOnPrice || 0,
-        }))
+        description: item.description || 'Service Item',
+        type: item.type || 'Service',
+        qty: item.qty || 1,
+        unitPrice: item.unitPrice || 0,
+        size: item.size || '',
+        addOn: item.addOn || 'None',
+        addOnPrice: item.addOnPrice || 0,
+      }))
       : [];
-    
+
     // Fetch pricing from database with fallbacks
     let pricingJersey = await pricingModel.findOne({ serviceType: 'jersey' });
     let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
-    
+
     const jerseyPrice = pricingJersey?.basePerPlayer || 650;
     const pocketPrice = pricingJersey?.pocketPrice || 100;
     const orgPrice = pricingOrg?.basePerItem || 650;
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
-    
+
     if (booking.bookingType === 'jersey' && booking.players) {
       const derivedItems = buildParticipantInvoiceItems({
         participants: booking.players,
@@ -1684,14 +1684,14 @@ export const archiveBooking = async (req, res) => {
   try {
     console.log('Archive booking request - params:', req.params, 'userId:', req.userId);
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ success: false, message: 'Booking ID is required' });
     }
 
     const user = await getRequestUser(req);
     console.log('User found:', user?.name, 'role:', user?.role);
-    
+
     if (!user || user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -1735,10 +1735,10 @@ export const unarchiveBooking = async (req, res) => {
     if (!id) {
       return res.status(400).json({ success: false, message: 'Booking ID is required' });
     }
-    
+
     const user = await getRequestUser(req);
     console.log('User found:', user?.name, 'role:', user?.role);
-    
+
     if (!user || user.role !== 'admin') {
       return res.status(403).json({
         success: false,

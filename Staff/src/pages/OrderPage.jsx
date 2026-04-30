@@ -88,93 +88,93 @@ const OrderPage = () => {
         );
     }
 
-return (
-    <div className="flex flex-col flex-1 min-h-screen space-y-4 p-6 w-full">
-        <div className="flex items-center justify-between">
-            <div>
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Job Orders</h1>
-                <p className="text-xs text-gray-500 font-medium">Orders assigned to you</p>
-            </div>
-            <button
-                onClick={handleManualRefresh}
-                disabled={isRefreshing || loading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-                {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
-            {KPI_CARDS.map((card, idx) => {
-                const Icon = card.icon;
-                const isActive = filterStatus === card.key;
-                const accent = card.color;
-                return (
-                    <button
-                        key={idx}
-                        onClick={() => setFilterStatus(card.key)}
-                        className={`bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-gray-200/50'}`}
-                        style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                    >
-                        <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}>
-                                <Icon size={20} color={accent} strokeWidth={2.2} />
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-0.5">{card.label}</div>
-                                <div className="text-[22px] font-black text-gray-900 leading-none mb-1">{counts[card.key] ?? 0}</div>
-                                <div className="text-[10px] font-bold text-gray-400">{card.sub}</div>
-                            </div>
-                        </div>
-                    </button>
-                );
-            })}
-        </div>
-
-        <OrderFilters
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            isFilterOpen={isFilterOpen}
-            setIsFilterOpen={setIsFilterOpen}
-            counts={counts}
-            sortOption={sortOption}
-            setSortOption={setSortOption}
-        />
-
-        <div className="flex-1 hidden md:block">
-            <OrderTable
-                orders={filteredOrders}
-                selectedOrderId={selectedOrderId}
-                onOrderClick={handleOrderClick}
-                getDerivedStatus={getDerivedStatus}
-                getActiveStepIndex={getActiveStepIndex}
-            />
-        </div>
-
-        <div className="md:hidden space-y-3">
-            {filteredOrders.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-                    <p className="text-sm font-semibold text-gray-500">No orders found</p>
-                    <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filter</p>
+    return (
+        <div className="flex flex-col flex-1 min-h-screen space-y-4 p-6 w-full">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Job Orders</h1>
+                    <p className="text-xs text-gray-500 font-medium">Orders assigned to you</p>
                 </div>
-            ) : (
-                filteredOrders.map(order => (
-                    <OrderCard
-                        key={order.id}
-                        order={order}
-                        onClick={handleOrderClick}
-                        getDerivedStatus={getDerivedStatus}
-                        getActiveStepIndex={getActiveStepIndex}
-                    />
-                ))
-            )}
+                <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing || loading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+                {KPI_CARDS.map((card, idx) => {
+                    const Icon = card.icon;
+                    const isActive = filterStatus === card.key;
+                    const accent = card.color;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setFilterStatus(card.key)}
+                            className={`bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-gray-200/50'}`}
+                            style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+                        >
+                            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}>
+                                    <Icon size={20} color={accent} strokeWidth={2.2} />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-black tracking-widest uppercase text-gray-400 mb-0.5">{card.label}</div>
+                                    <div className="text-[22px] font-black text-gray-900 leading-none mb-1">{counts[card.key] ?? 0}</div>
+                                    <div className="text-[10px] font-bold text-gray-400">{card.sub}</div>
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <OrderFilters
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                isFilterOpen={isFilterOpen}
+                setIsFilterOpen={setIsFilterOpen}
+                counts={counts}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+            />
+
+            <div className="flex-1 hidden md:block">
+                <OrderTable
+                    orders={filteredOrders}
+                    selectedOrderId={selectedOrderId}
+                    onOrderClick={handleOrderClick}
+                    getDerivedStatus={getDerivedStatus}
+                    getActiveStepIndex={getActiveStepIndex}
+                />
+            </div>
+
+            <div className="md:hidden space-y-3">
+                {filteredOrders.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+                        <p className="text-sm font-semibold text-gray-500">No orders found</p>
+                        <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filter</p>
+                    </div>
+                ) : (
+                    filteredOrders.map(order => (
+                        <OrderCard
+                            key={order.id}
+                            order={order}
+                            onClick={handleOrderClick}
+                            getDerivedStatus={getDerivedStatus}
+                            getActiveStepIndex={getActiveStepIndex}
+                        />
+                    ))
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
 };
 
 export default OrderPage;

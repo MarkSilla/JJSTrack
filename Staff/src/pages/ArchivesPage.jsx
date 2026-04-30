@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
-    ArrowLeft, ArrowRight, User, Phone, CheckCheck, Activity, Scissors,
+    ArrowLeft, ArrowRight, User, Phone, CheckCheck, Scissors,
     FileText, Image as ImageIcon, RotateCcw, XCircle
 } from 'lucide-react';
 import { bookingApi } from '../services/bookingApi';
@@ -95,26 +95,7 @@ const MonoTag = ({ children, className = '' }) => (
     </span>
 );
 
-const ItemIcon = ({ name = '' }) => {
-    const n = name.toLowerCase();
-    const base = "inline-flex items-center justify-center w-[34px] h-[34px] rounded-xl shrink-0 border";
 
-    if (n.includes('hoodie'))
-        return <span className={`${base} bg-indigo-50 border-indigo-200`}>
-            <Shirt size={15} className="text-indigo-600" />
-        </span>;
-    if (n.includes('short') || n.includes('pant'))
-        return <span className={`${base} bg-sky-50 border-sky-200`}>
-            <Scissors size={15} className="text-sky-700" />
-        </span>;
-    if (n.includes('sleeve') || n.includes('jersey') || n.includes('polo'))
-        return <span className={`${base} bg-fuchsia-50 border-fuchsia-200`}>
-            <Shirt size={15} className="text-violet-600" />
-        </span>;
-    return <span className={`${base} bg-slate-50 border-slate-200`}>
-        <Shirt size={15} className="text-slate-500" />
-    </span>;
-};
 
 const StatusBadge = ({ status }) => {
     if (status === 'Cancelled') {
@@ -178,7 +159,7 @@ const ArchiveDetail = ({ order, onBack }) => {
     const emptyRowsCount = ROWS_PER_PAGE - paginatedRoster.length;
 
     return (
-        <div className="font-inter flex flex-col gap-4">
+        <div className="font-inter flex flex-col gap-4 w-full max-w-full overflow-x-hidden">
             <button
                 onClick={onBack}
                 className="self-start inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 bg-slate-50 px-3.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150 hover:text-slate-800"
@@ -245,8 +226,6 @@ const ArchiveDetail = ({ order, onBack }) => {
                             </span>
                         </span>
                     </div>
-
-                    {/* Dates — inline on mobile, absolute on desktop */}
                     <div className="grid grid-cols-3 gap-3 mt-4 sm:hidden">
                         {[
                             { label: 'Drop off', value: fmtDate(order.dropDate), color: 'text-slate-600' },
@@ -276,7 +255,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-start">
+            <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-start w-full overflow-hidden">
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
                     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
                         <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
@@ -327,105 +306,80 @@ const ArchiveDetail = ({ order, onBack }) => {
                                 </span>
                             </div>
 
-                            <div className="max-w-full overflow-x-auto max-h-[420px] overflow-y-auto">
-                                <table className="w-full min-w-[560px] border-collapse relative">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100">
-                                            {['Surname', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                                <th
-                                                    key={col}
-                                                    className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap
-                                                        ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
-                                                >
-                                                    {col}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {paginatedRoster.map((player, idx) => {
-                                            const hasPockets = player.addOns?.some(a => a?.toLowerCase().includes('pocket'));
-                                            const otherAddons = player.addOns?.filter(a => !a?.toLowerCase().includes('pocket')) || [];
-                                            return (
-                                                <tr
-                                                    key={idx}
-                                                    className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                                                >
-                                                    <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player.surname || '—'}</td>
-                                                    <td className="px-3 text-center">
-                                                        {player.number !== undefined ? (
-                                                            <span className="inline-block min-w-[2rem] text-slate-600 px-1.5 text-[11px] font-black tracking-wide">
-                                                                #{player.number}
-                                                            </span>
-                                                        ) : <span className="text-slate-300">—</span>}
-                                                    </td>
-                                                    <td className="px-3 text-center text-[13px] font-semibold text-slate-700">
-                                                        {player.jerseySize || <span className="text-slate-300">—</span>}
-                                                    </td>
-                                                    <td className="px-3 text-center text-[12px] font-semibold text-slate-700">
-                                                        {player.shortSize && player.shortSize !== '-' ? (
-                                                            <div className="flex flex-row items-center justify-center gap-1">
-                                                                <span>{player.shortSize}</span>
-                                                                {hasPockets && <span className="text-[9px] font-black text-slate-900 uppercase tracking-tight">/ pockets</span>}
-                                                            </div>
-                                                        ) : <span className="text-slate-300">—</span>}
-                                                    </td>
-                                                    <td className="px-3 pr-5 text-center">
-                                                        {otherAddons.length > 0 ? (
-                                                            <div className="flex flex-wrap gap-1 justify-center">
-                                                                {otherAddons.map((addon, aIdx) => (
-                                                                    <span key={aIdx} className="text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-100 rounded px-1.5 py-0.5">
-                                                                        {addon}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        ) : <span className="text-slate-300">—</span>}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-
-                                        {[...Array(emptyRowsCount)].map((_, i) => {
-                                            const isLastPage = rosterPage === totalPages - 1;
-                                            if (isLastPage && i === 0) {
+                            <div className="max-h-[420px] flex flex-col">
+                                <div className="max-w-full overflow-x-auto overflow-y-auto flex-1">
+                                    <table className="w-full min-w-[560px] border-collapse relative">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
+                                                    <th
+                                                        key={col}
+                                                        className={`sticky top-0 z-10 bg-slate-50 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-b border-slate-100
+                                                            ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
+                                                    >
+                                                        {col}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedRoster.map((player, idx) => {
+                                                const addOnsText = player.addOns?.join(', ') || '—';
                                                 return (
-                                                    <tr key="end-divider" className="h-[52px] border-b border-slate-100">
-                                                        <td colSpan="5" className="px-5">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="h-px flex-1 bg-slate-100" />
-                                                                <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">
-                                                                    All items are listed above
-                                                                </span>
-                                                                <div className="h-px flex-1 bg-slate-100" />
-                                                            </div>
+                                                    <tr
+                                                        key={idx}
+                                                        className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                                                    >
+                                                        <td className="pl-5 pr-3 text-[13px] font-black text-slate-900 leading-none">
+                                                            {player.surname || player.name || '—'}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.number !== undefined ? `#${player.number}` : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.jerseySize || <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.shortSize && player.shortSize !== '-' ? player.shortSize : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 pr-5 text-center text-[11px] font-medium text-slate-400 capitalize">
+                                                            {addOnsText}
                                                         </td>
                                                     </tr>
                                                 );
-                                            }
-                                            return (
-                                                <tr key={`empty-${i}`} className="h-[52px] border-b border-slate-100">
-                                                    <td colSpan="5" className="px-3">&nbsp;</td>
+                                            })}
+                                            {rosterPage === totalPages - 1 && (
+                                                <tr key="end-divider" className="h-[52px] border-b border-slate-100">
+                                                    <td colSpan="5" className="px-5">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                            <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">
+                                                                All items are listed above
+                                                            </span>
+                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
 
-                                <div className="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-1">
+                                <div className="px-4 sm:px-5 py-3 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-[999] shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
+                                    <div className="flex items-center gap-1.5">
                                         <button
                                             onClick={() => setRosterPage(p => Math.max(0, p - 1))}
                                             disabled={rosterPage === 0}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30"
+                                            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all"
                                         >
-                                            <ChevronRight size={14} className="rotate-180" />
+                                            <ChevronRight size={16} className="rotate-180" />
                                         </button>
                                         {[...Array(totalPages)].map((_, pi) => (
                                             <button
                                                 key={pi}
                                                 onClick={() => setRosterPage(pi)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all border ${rosterPage === pi
-                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                className={`w-10 h-10 rounded-xl text-sm font-bold transition-all border ${rosterPage === pi
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100'
                                                     : 'bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600'
                                                     }`}
                                             >
@@ -435,13 +389,13 @@ const ArchiveDetail = ({ order, onBack }) => {
                                         <button
                                             onClick={() => setRosterPage(p => Math.min(totalPages - 1, p + 1))}
                                             disabled={rosterPage === totalPages - 1}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30"
+                                            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all"
                                         >
-                                            <ChevronRight size={14} />
+                                            <ChevronRight size={16} />
                                         </button>
                                     </div>
-                                    <div className="text-[11px] font-bold text-slate-400">
-                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span> players
                                     </div>
                                 </div>
                             </div>
@@ -588,7 +542,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                     </div>
                 )}
 
-                <div className="flex flex-col gap-4 w-full lg:w-[35%] xl:w-[15%] lg:min-w-[340px]">
+                <div className="flex flex-col gap-4 w-full lg:w-[35%] xl:w-[15%] lg:min-w-[340px] min-w-0 lg:sticky lg:top-4">
                     {order.type === 'REPAIR' && (
                         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full">
                             <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
@@ -631,13 +585,8 @@ const ArchiveDetail = ({ order, onBack }) => {
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Qty</span>
                         </div>
                         {items.map((item, idx) => (
-                            <div key={idx} className={`flex items-center px-5 h-[54px] border-b border-slate-100/60 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
+                            <div key={idx} className={`flex items-center px-5 h-[44px] border-b border-slate-100/60 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/20'}`}>
                                 <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                                    {item.image ? (
-                                        <img src={img.sample} alt={item.name} className="w-[34px] h-[34px] rounded-xl object-cover border border-slate-200 shrink-0" />
-                                    ) : (
-                                        <ItemIcon name={item.name || item.description} />
-                                    )}
                                     <span className="text-[13px] font-semibold text-slate-800 overflow-hidden text-ellipsis whitespace-nowrap">
                                         {item.name || item.description}
                                     </span>
@@ -766,13 +715,12 @@ const ArchiveCard = ({ order, onClick, onRestore, isRestoring }) => {
         </div>
     );
 };
-const ActivityTimeline = () => null;
+
 
 
 
 const ArchivesPage = () => {
     const [selectedId, setSelectedId] = useState(null);
-    const [activeTab, setActiveTab] = useState('list');
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
@@ -796,12 +744,12 @@ const ArchivesPage = () => {
             const allItems = [...bookings, ...orders];
 
             // Include archived, released, and cancelled items
-            const filtered = allItems.filter(b => 
-                b.isArchived === true || 
-                b.status === 'Released' || 
+            const filtered = allItems.filter(b =>
+                b.isArchived === true ||
+                b.status === 'Released' ||
                 b.status === 'Cancelled'
             );
-            
+
             const mapped = filtered.map(mapBookingToArchiveOrder);
             const uniqueArchived = Array.from(new Map(mapped.map(item => [item.id, item])).values());
 
@@ -821,7 +769,7 @@ const ArchivesPage = () => {
     const filtered = useMemo(() => {
         let list = [...archivedOrders];
         if (typeFilter !== 'All') list = list.filter(o => o.type === typeFilter);
-        
+
         // Apply status filter
         if (statusFilter !== 'All') {
             if (statusFilter === 'Archived') {
@@ -830,7 +778,7 @@ const ArchivesPage = () => {
                 list = list.filter(o => o.sourceStatus === statusFilter);
             }
         }
-        
+
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(o =>
@@ -907,7 +855,7 @@ const ArchivesPage = () => {
     ];
 
     return (
-        <div className="font-sans flex flex-col gap-4 md:gap-5">
+        <div className="font-sans flex flex-col gap-4 md:gap-5 w-full max-w-full overflow-x-hidden">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
                     <div>
@@ -917,7 +865,7 @@ const ArchivesPage = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 {kpiCards.map((k, idx) => {
                     const isActive = typeFilter === k.filter;
                     const accent = k.color;
@@ -944,203 +892,186 @@ const ArchivesPage = () => {
                 })}
             </div>
 
-            <div className="flex items-center bg-slate-100/50 p-1 rounded-xl self-start">
-                {[
-                    { id: 'list', label: 'Order List', icon: Archive },
-                    { id: 'activity', label: 'Activity Log', icon: Activity },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        <tab.icon size={14} /> {tab.label}
-                    </button>
-                ))}
-            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3 shadow-sm">
+                <div className="relative flex-1">
+                    <Search size={14} className="text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Search by name, team, or order ID…"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-8 pr-8 py-2.5 text-[13px] font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-lg outline-none transition-all focus:border-blue-300 focus:ring-[3px] focus:ring-blue-50 box-border"
+                    />
+                    {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer bg-transparent border-none"><X size={13} /></button>}
+                </div>
 
-            {activeTab === 'list' && (
-                <>
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2.5 shadow-sm">
-                        <div className="flex-1 min-w-[200px] relative w-full md:w-auto">
-                            <Search size={14} className="text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder="Search by name, team, or order ID…"
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="w-full pl-8 pr-8 py-2 text-[13px] font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-lg outline-none transition-all focus:border-blue-300 focus:ring-[3px] focus:ring-blue-50 box-border"
-                            />
-                            {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer bg-transparent border-none"><X size={13} /></button>}
-                        </div>
-                        <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0 mx-1" />
-                        <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto" style={{ scrollbarWidth: 'none' }}>
-                            {[
-                                ['All', 'All'],
-                                ['TEAM_JERSEY', 'Team Jersey'],
-                                ['ORGANIZATIONAL', 'Organizational'],
-                                ['REPAIR', 'Repair']
-                            ].map(([val, label]) => (
-                                <button key={val} onClick={() => setTypeFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all tracking-wide whitespace-nowrap ${typeFilter === val ? 'bg-slate-900 border-transparent text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'} border`}>{label}</button>
-                            ))}
-                        </div>
-                        <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0 mx-1" />
-                        <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto" style={{ scrollbarWidth: 'none' }}>
-                            {[
-                                ['All', 'All Status'],
-                                ['Archived', 'Archived'],
-                                ['Released', 'Released'],
-                                ['Cancelled', 'Cancelled']
-                            ].map(([val, label]) => (
-                                <button key={val} onClick={() => setStatusFilter(val)} className={`px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all tracking-wide whitespace-nowrap ${statusFilter === val ? 'bg-blue-600 border-transparent text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800'} border`}>{label}</button>
-                            ))}
-                        </div>
-                        <div className="relative ml-auto w-full sm:w-auto">
-                            <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="w-full sm:w-auto appearance-none pl-3 pr-8 py-1.5 text-xs font-semibold tracking-wide bg-slate-50 text-slate-600 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50">
-                                <option value="newest">Newest First</option>
-                                <option value="oldest">Oldest First</option>
-                            </select>
-                            <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                    <div className="relative">
+                        <select
+                            value={typeFilter}
+                            onChange={e => setTypeFilter(e.target.value)}
+                            className="w-full sm:w-[140px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
+                        >
+                            <option value="All">All Types</option>
+                            <option value="TEAM_JERSEY">Team Jersey</option>
+                            <option value="ORGANIZATIONAL">Organizational</option>
+                            <option value="REPAIR">Repair</option>
+                        </select>
+                        <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
 
-                    <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-2.5 px-5 py-3 border-b border-slate-100 bg-slate-50">
-                            <Filter size={12} className="text-slate-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Results</span>
-                            <span className="text-[11px] font-bold text-slate-600 bg-indigo-50 border border-indigo-200 px-2.5 py-px rounded-full">{filtered.length}</span>
-                        </div>
-                        {filtered.length === 0 ? (
-                            <div className="py-24 px-8 text-center bg-white">
-                                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                                    <Archive size={28} className="text-slate-300" />
-                                </div>
-                                <p className="text-sm font-bold text-slate-400">No archived orders found</p>
-                            </div>
-                        ) : (
-                            <div className="p-5 flex flex-col gap-3 bg-slate-50/30">
-                                {filtered.map((order, idx) => {
-                                    const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
-                                    const fullId = order.displayId || order.id || '';
-                                    const shortId = fullId.length > 6 ? fullId.slice(-6) : fullId;
-                                    const totalQty = order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0) || 0;
-
-                                    return (
-                                        <div
-                                            key={order.id}
-                                            onClick={() => setSelectedId(order.id)}
-                                            className="group relative bg-white border border-slate-200 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex items-center gap-6"
-                                        >
-                                            <div className="flex flex-col gap-2 shrink-0 w-24">
-                                                <div className="font-mono text-[10px] font-black text-slate-400 bg-slate-100/50 px-2 py-1 rounded-lg border border-slate-200/50 text-center tracking-tighter">
-                                                    #{shortId}
-                                                </div>
-                                                <div className={`text-[9px] font-black uppercase tracking-widest ${tc.text} text-center`}>
-                                                    {tc.label}
-                                                </div>
-                                            </div>
-                                            <div className="w-px h-10 bg-slate-100" />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="text-[15px] font-black text-slate-800 truncate leading-none">
-                                                        {order.teamName || order.customerName}
-                                                    </h3>
-                                                    <span className="shrink-0 text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 uppercase tracking-tighter">
-                                                        {order.serviceTitle}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-3 text-slate-400">
-                                                    <div className="flex items-center gap-1 text-[11px] font-bold">
-                                                        <User size={12} className="opacity-50" />
-                                                        {order.customerName}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <StatusBadge status={order.sourceStatus} />
-                                                    {order.archivedBy && (
-                                                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
-                                                            Archived by {order.archivedBy}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Stats & Actions Section */}
-                                            <div className="flex items-center gap-8 shrink-0">
-                                                <div className="text-right">
-                                                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Items</div>
-                                                    <div className="text-[16px] font-black text-slate-700 leading-none tabular-nums">
-                                                        {totalQty}
-                                                        <span className="text-[10px] font-bold text-slate-400 ml-1 uppercase">pcs</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="text-right border-l border-slate-100 pl-8">
-                                                    <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Completed</div>
-                                                    <div className="flex items-center gap-1.5 text-emerald-600">
-                                                        <span className="text-[13px] font-bold tracking-tight whitespace-nowrap">{fmtDate(order.completedAt)}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="ml-4 flex items-center gap-2">
-                                                    <button
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            setRestoreTarget(order);
-                                                        }}
-                                                        disabled={isRestoring}
-                                                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 disabled:opacity-60 cursor-pointer"
-                                                    >
-                                                        <RotateCcw size={12} />
-                                                        Restore
-                                                    </button>
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); setSelectedId(order.id); }}
-                                                        className="w-11 h-11 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-200 transition-all duration-300 group-hover:bg-blue-600 group-hover:shadow-blue-200 flex items-center justify-center "
-                                                    >
-                                                        <ArrowRight size={18} className="transition-transform" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        {filtered.length > 0 && (
-                            <div className="flex items-center justify-between py-4 px-8 border-t border-slate-100 bg-white rounded-b-2xl">
-                                <span className="text-xs font-medium text-slate-400">
-                                    Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{archivedOrders.length}</strong> archived orders
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="md:hidden flex flex-col gap-2.5">
-                        {filtered.length === 0 ? (
-                            <div className="bg-white border border-slate-200 rounded-2xl py-16 px-8 text-center shadow-sm"><Archive size={28} className="text-slate-200 mx-auto mb-3" /><p className="text-[13px] font-bold text-slate-400">No archived orders found</p></div>
-                        ) : (
-                            filtered.map(order => <ArchiveCard key={order._id} order={order} onClick={setSelectedId} onRestore={setRestoreTarget} isRestoring={isRestoring} />)
-                        )}
-                    </div>
-                </>
-            )}
-
-
-
-            {activeTab === 'activity' && (
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[400px]">
-                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Activity size={16} className="text-blue-500" />
-                            <h3 className="text-[13px] font-bold text-slate-800">Archive Activity Log</h3>
-                        </div>
-                    </div>
-                    <div className="p-6 text-center text-slate-500 font-medium">
-                        Activity logging coming soon
+                    <div className="relative">
+                        <select
+                            value={statusFilter}
+                            onChange={e => setStatusFilter(e.target.value)}
+                            className="w-full sm:w-[140px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
+                        >
+                            <option value="All">All Status</option>
+                            <option value="Archived">Archived</option>
+                            <option value="Released">Released</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                        <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                 </div>
-            )}
+
+                <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0" />
+
+                <div className="relative">
+                    <select
+                        value={sortOrder}
+                        onChange={e => setSortOrder(e.target.value)}
+                        className="w-full sm:w-[130px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
+                    >
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                    <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+            </div>
+
+            <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5 px-5 py-3 border-b border-slate-100 bg-slate-50">
+                    <Filter size={12} className="text-slate-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Results</span>
+                    <span className="text-[11px] font-bold text-slate-600 bg-indigo-50 border border-indigo-200 px-2.5 py-px rounded-full">{filtered.length}</span>
+                </div>
+                {filtered.length === 0 ? (
+                    <div className="py-24 px-8 text-center bg-white">
+                        <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                            <Archive size={28} className="text-slate-300" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-400">No archived orders found</p>
+                    </div>
+                ) : (
+                    <div className="p-5 flex flex-col gap-3 bg-slate-50/30">
+                        {filtered.map((order, idx) => {
+                            const tc = TYPE_CONFIG[order.type] || TYPE_CONFIG.TEAM_JERSEY;
+                            const fullId = order.displayId || order.id || '';
+                            const shortId = fullId.length > 6 ? fullId.slice(-6) : fullId;
+                            const totalQty = order.totalQty || order.items?.reduce((s, i) => s + (i.qty || 0), 0) || 0;
+
+                            return (
+                                <div
+                                    key={order.id}
+                                    onClick={() => setSelectedId(order.id)}
+                                    className="group relative bg-white border border-slate-200 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex items-center gap-6"
+                                >
+                                    <div className="flex flex-col gap-2 shrink-0 w-24">
+                                        <div className="font-mono text-[10px] font-black text-slate-400 bg-slate-100/50 px-2 py-1 rounded-lg border border-slate-200/50 text-center tracking-tighter">
+                                            #{shortId}
+                                        </div>
+                                        <div className={`text-[9px] font-black uppercase tracking-widest ${tc.text} text-center`}>
+                                            {tc.label}
+                                        </div>
+                                    </div>
+                                    <div className="w-px h-10 bg-slate-100" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="text-[15px] font-black text-slate-800 truncate leading-none">
+                                                {order.teamName || order.customerName}
+                                            </h3>
+                                            <span className="shrink-0 text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 uppercase tracking-tighter">
+                                                {order.serviceTitle}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-slate-400">
+                                            <div className="flex items-center gap-1 text-[11px] font-bold">
+                                                <User size={12} className="opacity-50" />
+                                                {order.customerName}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <StatusBadge status={order.sourceStatus} />
+                                            {order.archivedBy && (
+                                                <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+                                                    Archived by {order.archivedBy}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Stats & Actions Section */}
+                                    <div className="flex items-center gap-8 shrink-0">
+                                        <div className="text-right">
+                                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Items</div>
+                                            <div className="text-[16px] font-black text-slate-700 leading-none tabular-nums">
+                                                {totalQty}
+                                                <span className="text-[10px] font-bold text-slate-400 ml-1 uppercase">pcs</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right border-l border-slate-100 pl-8">
+                                            <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Completed</div>
+                                            <div className="flex items-center gap-1.5 text-emerald-600">
+                                                <span className="text-[13px] font-bold tracking-tight whitespace-nowrap">{fmtDate(order.completedAt)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="ml-4 flex items-center gap-2">
+                                            <button
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setRestoreTarget(order);
+                                                }}
+                                                disabled={isRestoring}
+                                                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-700 disabled:opacity-60 cursor-pointer"
+                                            >
+                                                <RotateCcw size={12} />
+                                                Restore
+                                            </button>
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setSelectedId(order.id); }}
+                                                className="w-11 h-11 rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-200 transition-all duration-300 group-hover:bg-blue-600 group-hover:shadow-blue-200 flex items-center justify-center "
+                                            >
+                                                <ArrowRight size={18} className="transition-transform" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+                {filtered.length > 0 && (
+                    <div className="flex items-center justify-between py-4 px-8 border-t border-slate-100 bg-white rounded-b-2xl">
+                        <span className="text-xs font-medium text-slate-400">
+                            Showing <strong className="font-bold text-slate-800">{filtered.length}</strong> of <strong className="font-bold text-slate-800">{archivedOrders.length}</strong> archived orders
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            <div className="md:hidden flex flex-col gap-2.5">
+                {filtered.length === 0 ? (
+                    <div className="bg-white border border-slate-200 rounded-2xl py-16 px-8 text-center shadow-sm">
+                        <Archive size={28} className="text-slate-200 mx-auto mb-3" />
+                        <p className="text-[13px] font-bold text-slate-400">No archived orders found</p>
+                    </div>
+                ) : (
+                    filtered.map(order => <ArchiveCard key={order._id} order={order} onClick={setSelectedId} onRestore={setRestoreTarget} isRestoring={isRestoring} />)
+                )}
+            </div>
 
             <RestoreConfirmModal
                 order={restoreTarget}
