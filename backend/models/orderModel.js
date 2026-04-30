@@ -11,11 +11,11 @@ const orderItemSchema = new mongoose.Schema({
 });
 
 const orderStepSchema = new mongoose.Schema({
-  label:  { type: String, required: true },
-  done:   { type: Boolean, default: false },
+  label: { type: String, required: true },
+  done: { type: Boolean, default: false },
   active: { type: Boolean, default: false },
-  date:   String,
-  time:   String,
+  date: String,
+  time: String,
   worker: String,
 });
 
@@ -26,12 +26,12 @@ const staffAssignmentsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({
-  userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
-  orderId:  { type: String, required: true, unique: true },
-  item:     { type: String, required: true },
+  orderId: { type: String, required: true, unique: true },
+  item: { type: String, required: true },
   customer: String,
-  date:     { type: String, required: true },
+  date: { type: String, required: true },
   estimatedCompletion: String,
   pickupDate: String,
   pickupSlot: String,
@@ -72,11 +72,11 @@ const orderSchema = new mongoose.Schema({
     type: [orderStepSchema],
     default: () => [
       { label: 'Dropped Off', done: false, active: false },
-      { label: 'Layout',      done: false, active: false },
-      { label: 'Printing',    done: false, active: false },
-      { label: 'Pressing',    done: false, active: false},
-      { label: 'Sewing',      done: false, active: false },
-      { label: 'Pick-up',     done: false, active: false },
+      { label: 'Layout', done: false, active: false },
+      { label: 'Printing', done: false, active: false },
+      { label: 'Pressing', done: false, active: false },
+      { label: 'Sewing', done: false, active: false },
+      { label: 'Pick-up', done: false, active: false },
     ],
   },
 
@@ -100,7 +100,7 @@ const orderSchema = new mongoose.Schema({
 orderSchema.pre('save', async function preSave() {
   if (!this.orderId) {
     const count = await mongoose.model('Order').countDocuments();
-    const year  = new Date().getFullYear();
+    const year = new Date().getFullYear();
     this.orderId = `ORD-${year}-${String(count + 1).padStart(3, '0')}`;
   }
 });

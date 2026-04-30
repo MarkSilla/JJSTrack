@@ -36,11 +36,11 @@ const bookingItemSchema = new mongoose.Schema({
 
 // ✅ Same step schema as orderModel
 const bookingStepSchema = new mongoose.Schema({
-  label:  { type: String, required: true },
-  done:   { type: Boolean, default: false },
+  label: { type: String, required: true },
+  done: { type: Boolean, default: false },
   active: { type: Boolean, default: false },
-  date:   String,
-  time:   String,
+  date: String,
+  time: String,
   worker: String,
 });
 
@@ -200,9 +200,9 @@ const bookingSchema = new mongoose.Schema({
   },
   paidAt: Date,
 },
-{
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  });
 
 bookingSchema.pre('save', async function preSave() {
   if (!this.bookingId) {
@@ -214,17 +214,17 @@ bookingSchema.pre('save', async function preSave() {
     if (this.bookingType === 'repair') {
       this.steps = [
         { label: 'Dropped Off', done: false, active: false },
-        { label: 'Sewing',      done: false, active: false },
-        { label: 'Pick-up',     done: false, active: false },
+        { label: 'Sewing', done: false, active: false },
+        { label: 'Pick-up', done: false, active: false },
       ];
     } else if (this.bookingType === 'jersey' || this.bookingType === 'organizational') {
       this.steps = [
         { label: 'Dropped Off', done: false, active: false },
-        { label: 'Layout',      done: false, active: false },
-        { label: 'Printing',    done: false, active: false },
-        { label: 'Pressing',    done: false, active: false },
-        { label: 'Sewing',      done: false, active: false },
-        { label: 'Pick-up',     done: false, active: false },
+        { label: 'Layout', done: false, active: false },
+        { label: 'Printing', done: false, active: false },
+        { label: 'Pressing', done: false, active: false },
+        { label: 'Sewing', done: false, active: false },
+        { label: 'Pick-up', done: false, active: false },
       ];
     }
   }

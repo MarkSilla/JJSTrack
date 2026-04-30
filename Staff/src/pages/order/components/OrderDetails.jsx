@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     ArrowLeft, User, Phone, Check, Users, AlertTriangle, Archive,
     Package, Shirt, ChevronRight, Wrench, Scissors, FileText, CheckCircle2, Inbox, Image as ImageIcon, Eye, X,
-    ExternalLink, Link as LinkIcon
+    ExternalLink, Link as LinkIcon, Download
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import OrderStatusTracker from './OrderStatusTracker';
 import useOrderDetails from '../hooks/useOrderDetails';
@@ -209,7 +211,7 @@ const OrderDetails = ({ orderId, onBack }) => {
         layoutArtist: '',
     });
 
-    const ROWS_PER_PAGE = 7;
+    const ROWS_PER_PAGE = 10;
     const orgImages = order?.designImages || (order?.lineupImage ? [order.lineupImage] : [img.sample, img.sample, img.sample]);
 
     useEffect(() => {
@@ -371,8 +373,104 @@ const OrderDetails = ({ orderId, onBack }) => {
 
     const customerName = order.customerName || order.customer;
     const items = order.items || order.invoice?.items || [];
-    const teamRoster = order.teamRoster || order.players || [];
+    const teamRoster = order.teamRoster || order.players || order.members || [];
     const totalQty = items.reduce((sum, item) => sum + (item.qty || 0), 0);
+
+    const handleDownloadPDF = () => {
+        try {
+            const doc = new jsPDF();
+            const teamName = order.teamName || order.team || order.category || order.item || 'N/A';
+            const customerContact = order.contact?.phone || order.phone || 'N/A';
+
+            // --- HEADER SECTION ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(40, 40, 40);
+            doc.text("JJS SPORTSWEAR", 105, 20, { align: "center" });
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("CONTACT: 0908 997 2332", 105, 26, { align: "center" });
+            doc.text(" Purok 3B National Highway,Calapacuan, Subic, Zambales", 105, 31, { align: "center" });
+
+            doc.setDrawColor(200, 200, 200);
+            doc.line(14, 38, 196, 38);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text("TEAM NAME: ", 14, 48);
+            doc.setFont("helvetica", "normal");
+            doc.text(String(teamName).toUpperCase(), 45, 48);
+            doc.line(45, 49, 120, 49);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("CONTACT: ", 130, 48);
+            doc.setFont("helvetica", "normal");
+            doc.text(String(customerContact), 155, 48);
+            doc.line(155, 49, 196, 49);
+
+            // --- TABLE SECTION ---
+            const tableColumn = [
+                { header: "NO.", dataKey: "no" },
+                { header: "FULL NAME", dataKey: "name" },
+                { header: "NUMBER", dataKey: "number" },
+                { header: "JERSEY SIZE", dataKey: "jSize" },
+                { header: "SHORT SIZE", dataKey: "sSize" },
+                { header: "ADD-ONS", dataKey: "addons" }
+            ];
+
+            const tableRows = teamRoster.map((player, idx) => {
+                const addOnText = player.addOns && player.addOns.length > 0 ? player.addOns.join(", ") : "None";
+                const jerseySize = player.jerseySize || player.size || 'N/A';
+                const shortSize = player.shortSize || 'N/A';
+                const fullName = [player.firstName, player.surname].filter(Boolean).join(' ').trim() || player.name || 'N/A';
+
+                return {
+                    no: `${idx + 1}.`,
+                    name: fullName.toUpperCase(),
+                    number: player.number !== undefined ? `#${player.number}` : 'N/A',
+                    jSize: jerseySize,
+                    sSize: shortSize,
+                    addons: addOnText
+                };
+            });
+
+            autoTable(doc, {
+                columns: tableColumn,
+                body: tableRows,
+                startY: 55,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0],
+                    fontStyle: 'bold',
+                    lineWidth: 0.5,
+                    lineColor: [0, 0, 0],
+                    halign: 'center'
+                },
+                bodyStyles: {
+                    textColor: [0, 0, 0],
+                    lineColor: [0, 0, 0],
+                    lineWidth: 0.2,
+                    fontSize: 9
+                },
+                columnStyles: {
+                    no: { halign: 'center', cellWidth: 12 },
+                    number: { halign: 'center', cellWidth: 20 },
+                    jSize: { halign: 'center', cellWidth: 25 },
+                    sSize: { halign: 'center', cellWidth: 25 }
+                },
+                margin: { left: 14, right: 14 }
+            });
+
+            doc.save(`ROSTER_${String(teamName).replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            toast.error('Failed to generate PDF.');
+        }
+    };
 
     const paginatedRoster = teamRoster.slice(rosterPage * ROWS_PER_PAGE, (rosterPage + 1) * ROWS_PER_PAGE);
     const totalPages = Math.ceil(teamRoster.length / ROWS_PER_PAGE);
@@ -388,7 +486,7 @@ const OrderDetails = ({ orderId, onBack }) => {
         : '';
 
     return (
-        <div className="flex flex-col gap-4" style={{ fontFamily: "'Inter', 'system-ui', sans-serif" }}>
+        <div className="flex flex-col gap-4 w-full max-w-full overflow-x-hidden" style={{ fontFamily: "'Inter', 'system-ui', sans-serif" }}>
             <button
                 onClick={onBack}
                 className="self-start flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 bg-transparent border-none cursor-pointer transition-colors group"
@@ -456,7 +554,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                         </div>
                     </div>
 
-                    {(derivedLabel === 'Released' || order?.status === 'Cancelled' || order?.status === 'CANCELLED') && (
+                    {(derivedLabel === 'Completed' || derivedLabel === 'Released' || order?.status === 'Cancelled' || order?.status === 'CANCELLED') && (
                         <button
                             onClick={handleArchiveClick}
                             disabled={isArchiving}
@@ -476,171 +574,116 @@ const OrderDetails = ({ orderId, onBack }) => {
                 onStepClick={handleStepClick}
             />
 
-            <div className="flex flex-col lg:flex-row gap-5 items-start">
-                <div className="flex-1 min-w-0 flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row gap-6 items-start w-full overflow-hidden">
+                <div className="w-full lg:w-[60%] flex flex-col gap-4 min-w-0">
                     {teamRoster.length > 0 && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden w-full min-w-0"
-                            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
                                 <Users size={15} className="text-indigo-500 shrink-0" />
-                                <h2 className="text-sm font-bold text-gray-800">Team Roster</h2>
-                                <span className="ml-auto text-[10px] font-black text-black bg-gray-50 border border-gray-300 px-2.5 py-0.5 rounded-full tracking-wide">
+                                <span className="text-[13px] font-bold text-slate-800">Team Roster</span>
+                                <span className="text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full tracking-wide">
                                     {teamRoster.length} players
                                 </span>
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                                >
+                                    <Download size={13} />
+                                    PDF
+                                </button>
                             </div>
 
-                            <div className="max-w-full overflow-x-auto">
-                                <table style={{ width: '100%', minWidth: '560px', borderCollapse: 'collapse' }}>
-                                    <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                                            {['Surname', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                                <th
-                                                    key={col}
-                                                    style={{
-                                                        padding: ci === 0 ? '10px 12px 10px 20px' : '10px 12px',
-                                                        fontSize: '10px',
-                                                        fontWeight: 900,
-                                                        color: '#94a3b8',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.08em',
-                                                        whiteSpace: 'nowrap',
-                                                        textAlign: ci === 0 ? 'start' : 'center',
-                                                    }}
-                                                >
-                                                    {col}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {paginatedRoster.map((player, idx) => {
-                                            const hasPockets = player.addOns?.some(a => a?.toLowerCase().includes('pocket'));
-                                            const otherAddons = player.addOns?.filter(a => !a?.toLowerCase().includes('pocket')) || [];
-
-                                            return (
-                                                <tr
-                                                    key={idx}
-                                                    style={{
-                                                        height: '52px',
-                                                        background: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-                                                        borderBottom: '1px solid #f1f5f9',
-                                                        transition: 'background 0.15s',
-                                                    }}
-                                                >
-                                                    <td style={{ padding: '0 12px 0 20px', fontSize: '13px', fontWeight: 700, color: '#111827', textAlign: 'start' }}>
-                                                        {player.surname || '—'}
-                                                    </td>
-                                                    <td style={{ padding: '0 12px', textAlign: 'center' }}>
-                                                        {player.number !== undefined ? (
-                                                            <span style={{
-                                                                display: 'inline-block',
-                                                                minWidth: '2rem',
-                                                                color: '#475569',
-                                                                padding: '2px 7px',
-                                                                fontSize: '11px',
-                                                                fontWeight: 900,
-                                                                letterSpacing: '0.04em',
-                                                            }}>
-                                                                #{player.number}
-                                                            </span>
-                                                        ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                    </td>
-                                                    <td style={{ padding: '0 12px', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#374151' }}>
-                                                        {player.jerseySize || <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                    </td>
-                                                    <td style={{ padding: '0 12px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#374151' }}>
-                                                        {player.shortSize && player.shortSize !== '-' ? (
-                                                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                                <span>{player.shortSize}</span>
-                                                                {hasPockets && <span style={{ fontSize: '9px', fontWeight: 900, color: '#000000ff', textTransform: 'uppercase', letterSpacing: '-0.05em' }}>/ pockets</span>}
-                                                            </div>
-                                                        ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                    </td>
-                                                    <td style={{ padding: '0 20px 0 12px', fontSize: '12px', color: '#6b7280', textAlign: 'center' }}>
-                                                        {otherAddons.length > 0 ? (
-                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
-                                                                {otherAddons.map((addon, aIdx) => (
-                                                                    <span
-                                                                        key={aIdx}
-                                                                        style={{
-                                                                            fontSize: '10px',
-                                                                            fontWeight: 700,
-                                                                            background: '#f5f3ff',
-                                                                            color: '#6d28d9',
-                                                                            border: '1px solid #ede9fe',
-                                                                            borderRadius: '5px',
-                                                                            padding: '1px 7px',
-                                                                        }}
-                                                                    >
-                                                                        {addon}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        ) : <span style={{ color: '#cbd5e1' }}>—</span>}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-
-                                        {[...Array(emptyRowsCount)].map((_, i) => {
-                                            const isLastPage = rosterPage === totalPages - 1;
-                                            if (isLastPage && i === 0) {
+                            <div className="max-h-[500px] flex flex-col">
+                                <div className="max-w-full overflow-x-auto overflow-y-auto flex-1">
+                                    <table className="w-full min-w-[560px] border-collapse relative">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
+                                                    <th
+                                                        key={col}
+                                                        className={`sticky top-0 z-10 bg-slate-50 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-b border-slate-100
+                                                            ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
+                                                    >
+                                                        {col}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedRoster.map((player, idx) => {
+                                                const addOnsText = player.addOns?.join(', ') || '—';
                                                 return (
-                                                    <tr key="end-divider" style={{ height: '52px', borderBottom: '1px solid #f1f5f9' }}>
-                                                        <td colSpan="5" style={{ padding: '0 20px' }}>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="h-[1px] flex-1 bg-gray-100"></div>
-                                                                <span className="text-[10px] font-bold text-gray-400  tracking-[0.5em] whitespace-nowrap">
-                                                                    All items are listed above
-                                                                </span>
-                                                                <div className="h-[1px] flex-1 bg-gray-100"></div>
-                                                            </div>
+                                                    <tr
+                                                        key={idx}
+                                                        className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                                                    >
+                                                        <td className="pl-5 pr-3 text-[13px] font-black text-slate-900 leading-none">
+                                                            {player.surname || player.name || '—'}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.number !== undefined ? `#${player.number}` : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.jerseySize || <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
+                                                            {player.shortSize && player.shortSize !== '-' ? player.shortSize : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="px-3 pr-5 text-center text-[11px] font-medium text-slate-400 capitalize">
+                                                            {addOnsText}
                                                         </td>
                                                     </tr>
                                                 );
-                                            }
-                                            return (
-                                                <tr key={`empty-${i}`} style={{ height: '52px', borderBottom: '1px solid #f1f5f9' }}>
-                                                    <td colSpan="5" style={{ padding: '0 12px' }}>&nbsp;</td>
+                                            })}
+
+                                            {rosterPage === totalPages - 1 && (
+                                                <tr key="end-divider" className="h-[52px] border-b border-slate-100">
+                                                    <td colSpan="5" className="px-5">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                            <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">
+                                                                All items are listed above
+                                                            </span>
+                                                            <div className="h-px flex-1 bg-slate-100" />
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                                <div className="px-5 py-3 bg-white border-t border-gray-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-1">
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="px-4 sm:px-5 py-3 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-[999] shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
+                                    <div className="flex items-center gap-1.5">
                                         <button
                                             onClick={() => setRosterPage(p => Math.max(0, p - 1))}
                                             disabled={rosterPage === 0}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white"
+                                            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all"
                                         >
-                                            <ChevronRight size={14} className="rotate-180" />
+                                            <ChevronRight size={16} className="rotate-180" />
                                         </button>
-
                                         {[...Array(totalPages)].map((_, pi) => (
                                             <button
                                                 key={pi}
                                                 onClick={() => setRosterPage(pi)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all border ${rosterPage === pi
-                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                    : 'bg-white border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-600'
+                                                className={`w-10 h-10 rounded-xl text-sm font-bold transition-all border ${rosterPage === pi
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100'
+                                                    : 'bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-600'
                                                     }`}
                                             >
                                                 {pi + 1}
                                             </button>
                                         ))}
-
                                         <button
                                             onClick={() => setRosterPage(p => Math.min(totalPages - 1, p + 1))}
                                             disabled={rosterPage === totalPages - 1}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white"
+                                            className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all"
                                         >
-                                            <ChevronRight size={14} />
+                                            <ChevronRight size={16} />
                                         </button>
                                     </div>
-
-                                    <div className="text-[11px] font-bold text-gray-400">
-                                        Showing <span className="text-gray-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-gray-900">{teamRoster.length}</span>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span> players
                                     </div>
                                 </div>
                             </div>
@@ -706,28 +749,34 @@ const OrderDetails = ({ orderId, onBack }) => {
                     )}
 
                     {(order.type === 'ORGANIZATION' || order.type === 'ORGANIZATIONAL' || order.serviceType === 'Organization') && (
-                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col"
-                            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
                                 <Shirt size={15} className="text-teal-500 shrink-0" />
-                                <h2 className="text-sm font-bold text-gray-800">Organization Lineup</h2>
-                                <div className="ml-auto flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-teal-600 bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full tracking-wide">
-                                        {orgImageIdx + 1} / {orgImages.length}
-                                    </span>
-                                </div>
+                                <span className="text-[13px] font-bold text-slate-800">Organizational Shirt</span>
+                                <span className="text-[10px] font-black text-teal-600 bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full tracking-wide">
+                                    {orgImageIdx + 1} / {orgImages.length}
+                                </span>
+                                {teamRoster.length > 0 && (
+                                    <button
+                                        onClick={handleDownloadPDF}
+                                        className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                                    >
+                                        <Download size={13} />
+                                        Download PDF
+                                    </button>
+                                )}
                             </div>
 
-                            <div className="p-4 bg-gray-50/50">
-                                <div className="relative group rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center aspect-square flex-shrink-0">
+                            <div className="p-4 bg-slate-50/50">
+                                <div className="relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center aspect-square md:aspect-[16/10]">
                                     <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('ORG')}>
                                         <img
                                             src={orgImages[orgImageIdx] || img.sample}
                                             alt={`Lineup ${orgImageIdx + 1}`}
-                                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02] relative z-10"
+                                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
                                             onError={e => { e.currentTarget.src = img.sample; }}
                                         />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-[15]">
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
                                             <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
                                                 <Eye size={13} /> Click to expand
                                             </div>
@@ -738,18 +787,18 @@ const OrderDetails = ({ orderId, onBack }) => {
                                         <>
                                             <button
                                                 onClick={() => setOrgImageIdx((prev) => (prev - 1 + orgImages.length) % orgImages.length)}
-                                                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600 z-20"
+                                                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
                                             >
                                                 <ChevronRight size={18} className="rotate-180" />
                                             </button>
                                             <button
                                                 onClick={() => setOrgImageIdx((prev) => (prev + 1) % orgImages.length)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-gray-200 text-gray-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600 z-20"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
                                             >
                                                 <ChevronRight size={18} />
                                             </button>
 
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900/30 backdrop-blur-md z-20">
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/30 backdrop-blur-md">
                                                 {orgImages.map((_, i) => (
                                                     <button
                                                         key={i}
@@ -767,7 +816,116 @@ const OrderDetails = ({ orderId, onBack }) => {
 
                 </div>
 
-                <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4 lg:sticky lg:top-4 ">
+                {/* Right Column (40%) - Sticky Summary & References */}
+                <div className="w-full lg:w-[40%] flex flex-col gap-4 lg:sticky lg:top-4">
+                    {/* Design & References Section (Top - New Split Layout) */}
+                    {(imageUrls.length > 0 || order?.driveLink) && (
+                        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
+                            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-50">
+                                {/* Left Side: Uploaded Images */}
+                                <div className="p-5 flex flex-col gap-4">
+                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Uploaded Images</h3>
+                                    <div className="relative group rounded-xl border border-gray-100 bg-gray-50 overflow-hidden aspect-square shadow-inner">
+                                        {imageUrls.length > 0 ? (
+                                            <img
+                                                src={imageUrls[0]}
+                                                alt="Design"
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                onError={(e) => { e.currentTarget.src = img.sample; }}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-200 gap-2">
+                                                <ImageIcon size={32} strokeWidth={1} />
+                                                <span className="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {imageUrls.length > 1 && (
+                                        <div className="flex gap-2 overflow-x-auto pb-1">
+                                            {imageUrls.slice(1, 4).map((src, i) => (
+                                                <div key={i} className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 shadow-sm">
+                                                    <img src={src} className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right Side: Design References (GDrive) */}
+                                <div className="p-5 flex flex-col items-center justify-center gap-6 bg-gray-50/20">
+                                    <div className="self-start flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 shadow-sm">
+                                        <ExternalLink size={13} strokeWidth={2.5} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Design References</span>
+                                    </div>
+
+                                    <div className="flex-1 flex flex-col items-center justify-center w-full py-4">
+                                        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl shadow-blue-900/5 border border-gray-50 flex items-center justify-center mb-6 p-5">
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="GDrive" className="w-full h-full object-contain" />
+                                        </div>
+
+                                        {order?.driveLink ? (
+                                            <a
+                                                href={order.driveLink}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="px-8 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-full text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm border border-blue-100"
+                                            >
+                                                Open Link <ChevronRight size={15} strokeWidth={3} className="mt-0.5" />
+                                            </a>
+                                        ) : (
+                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">No Link</span>
+                                        )}
+                                    </div>
+                                    <div className="h-2 w-full" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Order Items Summary (Bottom) */}
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
+                        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                            <Package size={15} className="text-gray-400 shrink-0" />
+                            <h2 className="text-xs font-black text-gray-500 uppercase tracking-widest">Order Items Summary</h2>
+                        </div>
+
+                        <div className="divide-y divide-slate-50">
+                            <div className="grid grid-cols-[1fr_auto] items-center px-5 py-2 bg-slate-50/40">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right w-12">Qty</span>
+                            </div>
+
+                            {summarizeItemsAndAddons(items, teamRoster).map((summaryItem, idx) => (
+                                <div key={idx} className="grid grid-cols-[1fr_auto] items-center gap-3 px-5 py-3 transition-colors hover:bg-slate-50/60">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <ItemIcon name={summaryItem.name} />
+                                        <span className="text-[13px] font-bold text-slate-800 leading-tight truncate">
+                                            {summaryItem.name}
+                                            {summaryItem.isAddon && (
+                                                <span className="ml-2 text-[8px] font-black uppercase text-indigo-500 bg-indigo-50 px-1 rounded border border-indigo-100">
+                                                    Add
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+                                    <span className="text-[11px] font-black tabular-nums text-right w-12 text-slate-700">
+                                        {summaryItem.qty}
+                                    </span>
+                                </div>
+                            ))}
+
+                            <div className="flex items-center justify-between px-5 py-4 bg-slate-50/80 border-t border-slate-200">
+                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Grand Total</span>
+                                <span className="text-[16px] font-black text-blue-600 tabular-nums">
+                                    {totalQty}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Repair Reference */}
                     {order.type === 'REPAIR' && (
                         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
@@ -800,130 +958,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
                         </div>
                     )}
-                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                        <div className="px-4 py-4.25 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
-                            <Package size={13} className="text-gray-400 shrink-0" />
-                            <h3 className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Order Items</h3>
-                        </div>
-
-                        <div className="divide-y divide-gray-50">
-                            <div className="flex items-center px-4 py-2 bg-gray-50/40">
-                                <span className="w-8 shrink-0" />
-                                <span className="flex-1 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</span>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center w-12">Qty</span>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-20">Total Price</span>
-                            </div>
-
-                            {summarizeItemsAndAddons(items, teamRoster).map((summaryItem, idx) => (
-                                <div key={idx} className="flex items-center gap-3 px-4 transition-colors hover:bg-gray-50/60" style={{ height: '52px' }}>
-                                    <ItemIcon name={summaryItem.name} />
-                                    <span className="flex-1 text-sm font-semibold text-gray-800 leading-tight min-w-0 flex items-center gap-2">
-                                        {summaryItem.name}
-                                        {summaryItem.isAddon && (
-                                            <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
-                                                Add-on
-                                            </span>
-                                        )}
-                                    </span>
-                                    <span className="text-[11px] font-black tabular-nums text-center w-12 text-gray-700">
-                                        {summaryItem.qty}
-                                    </span>
-                                    {summaryItem.total !== null ? (
-                                        <span className="text-[11px] font-black tabular-nums text-right w-20 text-gray-900">
-                                            ₱{summaryItem.total.toLocaleString()}
-                                        </span>
-                                    ) : (
-                                        <span className="text-[10px] font-bold text-gray-400 text-right w-20">
-                                            Included
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-
-                            <div className="flex items-center gap-3 px-4 bg-gray-50/30" style={{ height: '52px' }}>
-                                <span className="w-8 shrink-0" />
-                                <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Total Items</span>
-                                <span className="text-xs font-black text-black tabular-nums text-center w-12">
-                                    {totalQty}
-                                </span>
-                                <span className="w-20" />
-                            </div>
-
-                            {/* Total Price Section */}
-                            {(() => {
-                                // Use backend totalPrice first, fallback to items sum, then 0
-                                const calculatedTotal = order.totalPrice ??
-                                    items.reduce((sum, item) => sum + (item.qty * (item.unitPrice || 0) + ((item.addOnPrice || 0) * item.qty)), 0) ??
-                                    0;
-
-                                return (
-                                    <div className="flex items-center gap-3 px-4 bg-blue-50/50 border-t border-gray-200" style={{ height: '52px' }}>
-                                        <span className="w-8 shrink-0" />
-                                        <span className="flex-1 text-xs font-bold text-gray-900 uppercase tracking-wider">Grand Total</span>
-                                        <span className="text-sm font-black text-blue-600 tabular-nums text-right min-w-[2rem] flex-1">
-                                            ₱{calculatedTotal.toLocaleString()}
-                                        </span>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    </div>
                 </div>
-
-                {imageUrls.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-                        style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                        <div className="px-4 py-4.25 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
-                            <ImageIcon size={13} className="text-gray-400 shrink-0" />
-                            <h3 className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Uploaded Images</h3>
-                        </div>
-                        <div className="p-4 space-y-3">
-                            <div className="grid grid-cols-1 gap-3">
-                                {imageUrls.map((src, index) => (
-                                    <a
-                                        key={`${src}-${index}`}
-                                        href={src}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="block rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm"
-                                    >
-                                        <img
-                                            src={src}
-                                            alt={`Uploaded image ${index + 1}`}
-                                            className="w-full h-32 object-cover"
-                                            onError={(e) => { e.currentTarget.src = img.sample; }}
-                                        />
-                                    </a>
-                                ))}
-                            </div>
-                            {order?.driveLink && (
-                                <>
-                                    <div className="pt-3 border-t border-gray-100">
-                                        <a
-                                            href={order.driveLink}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="group flex items-center gap-3 p-4 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 rounded-2xl transition-all hover:shadow-sm"
-                                        >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:shadow-xl transition-all">
-                                                <ExternalLink size={20} className="text-white" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-bold text-gray-900 mb-1 truncate" title={order.driveLink}>
-                                                    Design Reference (Google Drive)
-                                                </p>
-                                                <span className="text-xs text-indigo-700 font-semibold bg-indigo-100 px-3 py-1 rounded-full inline-flex items-center gap-1.5">
-                                                    Open Drive <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                                                </span>
-                                            </div>
-                                        </a>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
 
                 {zoomType && (
                     <div
