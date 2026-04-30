@@ -5,6 +5,7 @@ import {
     ArrowLeft, ArrowRight, User, Phone, CheckCheck, Scissors,
     FileText, Image as ImageIcon, RotateCcw, XCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { bookingApi } from '../services/bookingApi';
 import { orderApi } from '../services/orderApi.js';
 import img from '../assets/img';
@@ -743,12 +744,8 @@ const ArchivesPage = () => {
 
             const allItems = [...bookings, ...orders];
 
-            // Include archived, released, and cancelled items
-            const filtered = allItems.filter(b =>
-                b.isArchived === true ||
-                b.status === 'Released' ||
-                b.status === 'Cancelled'
-            );
+            // Staff archives should only contain records explicitly archived.
+            const filtered = allItems.filter((item) => item?.isArchived === true);
 
             const mapped = filtered.map(mapBookingToArchiveOrder);
             const uniqueArchived = Array.from(new Map(mapped.map(item => [item.id, item])).values());
@@ -811,20 +808,24 @@ const ArchivesPage = () => {
 
         try {
             setIsRestoring(true);
+            const restoredId = restoreTarget.id;
+
             if (restoreTarget.isBooking) {
                 await bookingApi.updateBooking(restoreTarget.id, { isArchived: false, archivedAt: null, archivedBy: null });
             } else {
                 await orderApi.updateOrder(restoreTarget.id, { isArchived: false, archivedAt: null, archivedBy: null });
             }
 
+            setArchivedOrders((current) => current.filter((item) => item.id !== restoredId));
             setRestoreTarget(null);
-            if (selectedId === restoreTarget.id) {
+            if (selectedId === restoredId) {
                 setSelectedId(null);
             }
+            toast.success('Archived order restored successfully.');
             await fetchArchivedOrders();
         } catch (error) {
             console.error('Failed to restore archived order:', error);
-            alert('Failed to restore archived order. Please try again.');
+            toast.error('Failed to restore archived order. Please try again.');
         } finally {
             setIsRestoring(false);
         }

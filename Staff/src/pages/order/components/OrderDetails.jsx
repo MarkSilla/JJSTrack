@@ -169,7 +169,7 @@ const ArchiveConfirmModal = ({ isOpen, onConfirm, onCancel, isArchiving }) => {
 
                 <h3 className="text-xl font-black text-gray-900 tracking-tight mb-2">Save to Archive?</h3>
                 <p className="text-[13px] font-medium text-gray-500 leading-relaxed mb-8 px-2">
-                    Are you sure you want to move this order to the archives? This will finalize the record and mark it as completely processed.
+                    Only released orders can be moved to the archives. This will finalize the released record and remove it from your active staff orders.
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -313,10 +313,20 @@ const OrderDetails = ({ orderId, onBack }) => {
     };
 
     const handleArchiveClick = () => {
+        if (derivedLabel !== 'Released') {
+            toast.error('Only released orders can be archived.')
+            return
+        }
         setShowArchiveModal(true);
     };
 
     const confirmArchive = async () => {
+        if (derivedLabel !== 'Released') {
+            toast.error('Only released orders can be archived.')
+            setShowArchiveModal(false)
+            return
+        }
+
         setIsArchiving(true);
         try {
             const archivedAt = new Date().toISOString();
@@ -336,12 +346,12 @@ const OrderDetails = ({ orderId, onBack }) => {
                     archivedBy,
                 });
             }
-            alert('Order successfully saved to archives!');
+            toast.success('Order successfully saved to archives.');
             setShowArchiveModal(false);
             onBack(); // Return to order list
         } catch (error) {
             console.error('Error archiving order:', error);
-            alert('Failed to archive order. Please try again.');
+            toast.error('Failed to archive order. Please try again.');
         } finally {
             setIsArchiving(false);
         }
@@ -370,6 +380,7 @@ const OrderDetails = ({ orderId, onBack }) => {
             ? 'Completed'
             : statusConf.label;
     const displayConf = STATUS_CONFIG[derivedLabel] || statusConf;
+    const canArchive = derivedLabel === 'Released';
 
     const customerName = order.customerName || order.customer;
     const items = order.items || order.invoice?.items || [];
@@ -554,7 +565,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                         </div>
                     </div>
 
-                    {(derivedLabel === 'Completed' || derivedLabel === 'Released' || order?.status === 'Cancelled' || order?.status === 'CANCELLED') && (
+                    {canArchive && (
                         <button
                             onClick={handleArchiveClick}
                             disabled={isArchiving}

@@ -9,6 +9,7 @@ import {
   convertBookingToOrder,
   cancelBooking,
   getAvailableSlots,
+  getSlotSummary,
   getBookingQR,
   markAsPickedUp,
   generateMissingBookingQRCodes,
@@ -21,6 +22,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/slots/available/:date', getAvailableSlots);
+router.get('/slots/summary', getSlotSummary);
 
 // Protected routes - requires authentication
 router.post('/', authMiddleware, createBooking);

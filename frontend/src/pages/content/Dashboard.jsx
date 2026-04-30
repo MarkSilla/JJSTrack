@@ -39,6 +39,45 @@ const normalizeDateKey = (value) => {
     return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
 }
 
+const EMPTY_SLOT_INFO = {
+    used: 0,
+    remaining: MAX_SLOTS,
+    max: MAX_SLOTS,
+    isFull: false,
+    repairBooked: 0,
+    repairAvailable: 7,
+    repairMax: 7,
+    repairIsFull: false,
+    jerseyOrgBooked: 0,
+    jerseyOrgAvailable: 3,
+    jerseyOrgMax: 3,
+    jerseyOrgIsFull: false,
+}
+
+const getDefaultCalendarRange = () => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    return { from: toKey(start), to: toKey(end) }
+}
+
+const buildCalendarRangeFromView = (viewInfo) => {
+    if (!viewInfo?.start || !viewInfo?.end) {
+        return getDefaultCalendarRange()
+    }
+
+    const inclusiveEnd = new Date(viewInfo.end)
+    inclusiveEnd.setDate(inclusiveEnd.getDate() - 1)
+
+    return {
+        from: toKey(viewInfo.start),
+        to: toKey(inclusiveEnd),
+    }
+}
+
+const isSameCalendarRange = (left, right) =>
+    left?.from === right?.from && left?.to === right?.to
+
 const TRACKING_REFRESH_DEBOUNCE_MS = 250
 const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 'in-progress'])
 
@@ -155,6 +194,8 @@ const Dashboard = () => {
     const [showBooking, setShowBooking] = useState(false)
     const [selectedDate, setSelectedDate] = useState(null)
     const [orders, setOrders] = useState([])
+    const [slotSummaryByDate, setSlotSummaryByDate] = useState({})
+    const [calendarRange, setCalendarRange] = useState(() => getDefaultCalendarRange())
     const [stats, setStats] = useState({ active: 0, pickupReady: 0, total: 0 })
     const [loading, setLoading] = useState(true)
     const refreshTimeoutRef = useRef(null)
@@ -166,12 +207,14 @@ const Dashboard = () => {
                 setLoading(true)
             }
 
-            const [bookingsRes, statsRes] = await Promise.all([
+            const [bookingsRes, statsRes, slotSummaryRes] = await Promise.allSettled([
                 bookingApi.getBookings(),
                 bookingApi.getBookingStats ? bookingApi.getBookingStats() : Promise.resolve({ success: false }),
+                bookingApi.getSlotSummary(calendarRange.from, calendarRange.to),
             ])
-            if (bookingsRes.success) {
-                const data = bookingsRes.bookings || bookingsRes.data || []
+
+            if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.success) {
+                const data = bookingsRes.value.bookings || bookingsRes.value.data || []
                 setOrders(data)
                 // Compute stats from bookings if no stats API
                 setStats({
@@ -180,7 +223,16 @@ const Dashboard = () => {
                     total:        data.length,
                 })
             }
-            if (statsRes.success) setStats(statsRes.stats || {})
+
+            if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
+                setStats(statsRes.value.stats || {})
+            }
+
+            if (slotSummaryRes.status === 'fulfilled' && slotSummaryRes.value?.success) {
+                setSlotSummaryByDate(slotSummaryRes.value.slots || {})
+            } else if (slotSummaryRes.status === 'rejected') {
+                console.error('Error fetching slot summary:', slotSummaryRes.reason)
+            }
         } catch (error) {
             console.error('Error fetching dashboard data:', error)
         } finally {
@@ -188,7 +240,7 @@ const Dashboard = () => {
                 setLoading(false)
             }
         }
-    }, [])
+    }, [calendarRange])
 
     useEffect(() => {
         fetchData()
@@ -242,19 +294,18 @@ const Dashboard = () => {
         setSelectedDate(dateKey)
     }, [])
 
-    const orderSlotsByDate = useMemo(() => {
-        return orders.reduce((acc, order) => {
-            // Calendar is based on when order was placed (createdAt), not pickup date.
-            const dateKey = normalizeDateKey(order.createdAt || order.orderDate || order.date)
-            if (!dateKey) return acc
-            const prev = acc[dateKey] || { used: 0, max: MAX_SLOTS, isFull: false }
-            const used = prev.used + 1
-            acc[dateKey] = { used, max: prev.max, isFull: used >= prev.max }
-            return acc
-        }, {})
-    }, [orders])
+    const handleDatesSet = useCallback((viewInfo) => {
+        const nextRange = buildCalendarRangeFromView(viewInfo)
+        setCalendarRange((prev) => (isSameCalendarRange(prev, nextRange) ? prev : nextRange))
+    }, [])
 
-    const userBookingDateSet = useMemo(() => new Set(Object.keys(orderSlotsByDate)), [orderSlotsByDate])
+    const userBookingDateSet = useMemo(() => {
+        return new Set(
+            orders
+                .map((order) => normalizeDateKey(order.createdAt || order.orderDate || order.date))
+                .filter(Boolean)
+        )
+    }, [orders])
 
     const name = user?.fullName || 'Guest'
 
@@ -265,7 +316,7 @@ const Dashboard = () => {
         now.setHours(0, 0, 0, 0)
         if (arg.date < now) classes.push('day-past-clickable')
 
-        const slotInfo = orderSlotsByDate[key]
+        const slotInfo = slotSummaryByDate[key]
         const ratio = slotInfo?.max > 0 ? slotInfo.used / slotInfo.max : 0
         if (slotInfo?.isFull) classes.push('day-full')
         else if (slotInfo && ratio >= 0.7) classes.push('day-near-full')
@@ -274,12 +325,12 @@ const Dashboard = () => {
         if (userBookingDateSet.has(key)) classes.push('day-user-booking')
         if (selectedDate === key) classes.push('day-selected')
         return classes
-    }, [orderSlotsByDate, selectedDate, userBookingDateSet])
+    }, [slotSummaryByDate, selectedDate, userBookingDateSet])
 
     const dayCellContent = useCallback((arg) => {
         const key = toKey(arg.date)
 
-        const slotInfo = orderSlotsByDate[key]
+        const slotInfo = slotSummaryByDate[key] || EMPTY_SLOT_INFO
         const hasSlotInfo = Boolean(slotInfo)
         const used = slotInfo?.used ?? 0
         const max = slotInfo?.max ?? MAX_SLOTS
@@ -299,16 +350,16 @@ const Dashboard = () => {
                 {hasUserBooking && !isSelected && <span className="pickup-badge">Order</span>}
                 {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
                 {hasSlotInfo && !isFull && used > 0 && !isSelected && (
-                    <div className="slot-badge">
-                        <div className="slot-bar">
-                            <div className={`slot-bar-fill ${fillColor}`} style={{ width: `${ratio * 100}%` }} />
+                        <div className="slot-badge">
+                            <div className="slot-bar">
+                                <div className={`slot-bar-fill ${fillColor}`} style={{ width: `${ratio * 100}%` }} />
+                            </div>
+                            <span className="slot-text">{used}/{max}</span>
                         </div>
-                        <span className="slot-text">{used}/{max}</span>
-                    </div>
-                )}
-            </div>
-        )
-    }, [orderSlotsByDate, selectedDate, userBookingDateSet])
+                    )}
+                </div>
+            )
+    }, [slotSummaryByDate, selectedDate, userBookingDateSet])
 
     return (
         <>
@@ -439,6 +490,7 @@ className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:
                                     dayCellClassNames={dayCellClassNames}
                                     dayCellContent={dayCellContent}
                                     dateClick={handleDateClick}
+                                    datesSet={handleDatesSet}
                                 />
                             </div>
                             <div className="flex flex-wrap items-center gap-4 mt-4 px-1">

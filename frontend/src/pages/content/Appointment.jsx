@@ -25,6 +25,30 @@ const normalizeDateKey = (value) => {
     return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
 }
 
+const getDefaultCalendarRange = () => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    return { from: toKey(start), to: toKey(end) }
+}
+
+const buildCalendarRangeFromView = (viewInfo) => {
+    if (!viewInfo?.start || !viewInfo?.end) {
+        return getDefaultCalendarRange()
+    }
+
+    const inclusiveEnd = new Date(viewInfo.end)
+    inclusiveEnd.setDate(inclusiveEnd.getDate() - 1)
+
+    return {
+        from: toKey(viewInfo.start),
+        to: toKey(inclusiveEnd),
+    }
+}
+
+const isSameCalendarRange = (left, right) =>
+    left?.from === right?.from && left?.to === right?.to
+
 const EMPTY_SLOT_INFO = {
     used: 0,
     remaining: MAX_SLOTS,
@@ -87,6 +111,8 @@ const Appointment = () => {
     const [modalBooking, setModalBooking] = useState(null)
     const [appointments, setAppointments] = useState([])
     const [bookings, setBookings] = useState([])
+    const [slotSummaryByDate, setSlotSummaryByDate] = useState({})
+    const [calendarRange, setCalendarRange] = useState(() => getDefaultCalendarRange())
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
@@ -161,6 +187,19 @@ const Appointment = () => {
             }
     }, [])
 
+    const fetchSlotSummary = useCallback(async (range = calendarRange, silent = true) => {
+        try {
+            const response = await bookingApi.getSlotSummary(range.from, range.to)
+            setSlotSummaryByDate(response?.slots || {})
+        } catch (err) {
+            console.error('Failed to fetch slot summary:', err)
+            setSlotSummaryByDate({})
+            if (!silent) {
+                setError((prev) => prev || 'Some data failed to load (availability).')
+            }
+        }
+    }, [calendarRange])
+
     useEffect(() => {
         fetchAppointmentsAndBookings(false)
 
@@ -171,6 +210,10 @@ const Appointment = () => {
 
         return () => window.clearInterval(intervalId)
     }, [fetchAppointmentsAndBookings])
+
+    useEffect(() => {
+        fetchSlotSummary(calendarRange, false)
+    }, [calendarRange, fetchSlotSummary])
 
     const appointmentsByDate = useMemo(() => {
         const map = {}
@@ -187,33 +230,7 @@ const Appointment = () => {
         return map
     }, [appointments])
 
-    const slotInfoByDate = useMemo(() => {
-        const map = {}
-        bookings.forEach((booking) => {
-            if (!booking.dateKey) return
-            if (!map[booking.dateKey]) {
-                map[booking.dateKey] = { ...EMPTY_SLOT_INFO }
-            }
-
-            const current = map[booking.dateKey]
-            const bookingType = String(booking.bookingType || '').toLowerCase()
-
-            current.used += 1
-            if (bookingType === 'repair') {
-                current.repairBooked += 1
-            } else if (bookingType === 'jersey' || bookingType === 'organizational') {
-                current.jerseyOrgBooked += 1
-            }
-
-            current.repairAvailable = Math.max(0, current.repairMax - current.repairBooked)
-            current.jerseyOrgAvailable = Math.max(0, current.jerseyOrgMax - current.jerseyOrgBooked)
-            current.remaining = Math.max(0, current.max - current.used)
-            current.repairIsFull = current.repairBooked >= current.repairMax
-            current.jerseyOrgIsFull = current.jerseyOrgBooked >= current.jerseyOrgMax
-            current.isFull = current.used >= current.max || (current.repairIsFull && current.jerseyOrgIsFull)
-        })
-        return map
-    }, [bookings])
+    const slotInfoByDate = useMemo(() => slotSummaryByDate || {}, [slotSummaryByDate])
 
     const bookingsByDate = useMemo(() => {
         const map = {}
@@ -271,6 +288,11 @@ const Appointment = () => {
         },
         [appointmentsByDate, bookingsByDate]
     )
+
+    const handleDatesSet = useCallback((viewInfo) => {
+        const nextRange = buildCalendarRangeFromView(viewInfo)
+        setCalendarRange((prev) => (isSameCalendarRange(prev, nextRange) ? prev : nextRange))
+    }, [])
 
     const dayCellClassNames = useCallback(
         (arg) => {
@@ -446,6 +468,7 @@ const Appointment = () => {
                             dateClick={handleDateClick}
                             dayCellClassNames={dayCellClassNames}
                             dayCellContent={dayCellContent}
+                            datesSet={handleDatesSet}
                         />
                         <div className="flex flex-wrap items-center gap-5 mt-5 px-2">
                             {[
@@ -602,7 +625,7 @@ const Appointment = () => {
                             <div>
                                 <p className="text-xs font-bold text-blue-700 mb-1">Booking Info</p>
                                 <p className="text-[11px] text-blue-600/60 leading-relaxed font-medium">
-                                    Calendar slots now follow the date when you placed your order.
+                                    Calendar slots now reflect all users who booked on that date.
                                     Highlighted cells show dates where you already have a booking/order.
                                 </p>
                             </div>

@@ -37,6 +37,7 @@ export default function AssignedTailorPanel({
     earningsPreview,
     onManageAssignments,
     isCancelled,
+    isAssignmentLocked = false,
 }) {
     const visibleRoles = useMemo(() => {
         const labels = (Array.isArray(activeOrder?.steps) ? activeOrder.steps : [])
@@ -50,7 +51,7 @@ export default function AssignedTailorPanel({
     }, [activeOrder]);
 
     const assignedCount = visibleRoles.filter((roleKey) => staffAssignments?.[roleKey]).length;
-    const canManageAssignments = !isCancelled && assignedCount > 0;
+    const canManageAssignments = !isCancelled && !isAssignmentLocked && assignedCount > 0;
 
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -86,6 +87,10 @@ export default function AssignedTailorPanel({
                 {isCancelled ? (
                     <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[12px] font-semibold text-red-600">
                         Cannot assign production staff to cancelled orders.
+                    </div>
+                ) : isAssignmentLocked ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium leading-relaxed text-slate-600">
+                        Production team assignments are locked once an order is completed or released.
                     </div>
                 ) : (
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-medium leading-relaxed text-slate-600">

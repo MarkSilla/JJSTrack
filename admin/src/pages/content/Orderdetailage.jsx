@@ -10,7 +10,7 @@ import { EMPLOYEE_POOL, SERVICE_STEPS } from './AdOrder/Constants.js';
 import OrderDetail from './AdOrder/Orderdetail';
 import DropOffStartConfirmationModal from './AdOrder/DropOffStartConfirmationModal.jsx';
 import ProductionAssignmentModal from './AdOrder/ProductionAssignmentModal.jsx';
-import { getActiveStepIndex } from '../../utils/helpers.js';
+import { getActiveStepIndex, getDerivedStatus } from '../../utils/helpers.js';
 import { computeOrderEarnings, convertBooking } from './AdOrder.jsx';
 import useOrderFeedSocket from '../../hooks/useOrderFeedSocket.js';
 
@@ -87,6 +87,11 @@ const hasAnyAssignedProductionRole = (order = {}) => {
     const requiredRoles = getVisibleProductionRoles(order);
     const assignments = getNormalizedAssignments(order);
     return requiredRoles.some((roleKey) => Boolean(String(assignments?.[roleKey] || '').trim()));
+};
+
+const isProductionAssignmentLocked = (order = {}) => {
+    const derivedStatus = getDerivedStatus(order);
+    return derivedStatus === 'Completed' || derivedStatus === 'Released';
 };
 
 const updateTailorAssignmentCache = (targetOrderId, tailorName) => {
@@ -434,6 +439,10 @@ export default function OrderDetailPage() {
     const handleManageAssignments = useCallback((targetOrderId) => {
         const targetOrder = orders.find((order) => (order.id || order._id) === targetOrderId);
         if (!targetOrder) return;
+        if (isProductionAssignmentLocked(targetOrder)) {
+            toast.error('Production team can no longer be managed once an order is completed or released.');
+            return;
+        }
         if (!hasAnyAssignedProductionRole(targetOrder)) {
             toast.error('Assign the production team from the drop-off workflow step first.');
             return;
@@ -474,6 +483,11 @@ export default function OrderDetailPage() {
 
     const handleAssignmentModalConfirm = useCallback(async () => {
         if (!targetModalOrder) return;
+        if (isProductionAssignmentLocked(targetModalOrder)) {
+            toast.error('Production team can no longer be managed once an order is completed or released.');
+            closeAssignmentModal();
+            return;
+        }
         if (!validateAssignments(targetModalOrder, assignmentDraft)) return;
 
         try {

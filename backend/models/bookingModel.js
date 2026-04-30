@@ -57,6 +57,13 @@ const formatBookingDateSegment = (date = new Date()) => {
   return `${year}${month}${day}`;
 };
 
+const formatBookingDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const createRandomSegment = (length = 6) =>
   crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length).toUpperCase();
 
@@ -157,6 +164,10 @@ const bookingSchema = new mongoose.Schema({
   // Pickup details  
   pickupDate: String,
   pickupSlot: String,
+  bookingDateKey: {
+    type: String,
+    index: true,
+  },
 
   // Status
   status: {
@@ -207,6 +218,10 @@ const bookingSchema = new mongoose.Schema({
 bookingSchema.pre('save', async function preSave() {
   if (!this.bookingId) {
     this.bookingId = await generateUniqueBookingId(this.constructor);
+  }
+
+  if (!this.bookingDateKey) {
+    this.bookingDateKey = formatBookingDateKey(this.createdAt || new Date());
   }
 
   // Initialize steps based on bookingType if not already set

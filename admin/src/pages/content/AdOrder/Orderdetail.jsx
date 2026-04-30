@@ -43,6 +43,10 @@ export default function OrderDetail({
         () => derivedStatus === 'Completed' || derivedStatus === 'Released',
         [derivedStatus]
     );
+    const isAssignmentLocked = useMemo(
+        () => derivedStatus === 'Completed' || derivedStatus === 'Released',
+        [derivedStatus]
+    );
     const canArchive = useMemo(
         () => !activeOrder?.isArchived && (derivedStatus === 'Released' || derivedStatus === 'Cancelled'),
         [activeOrder?.isArchived, derivedStatus]
@@ -420,6 +424,7 @@ export default function OrderDetail({
                             earningsPreview={earningsPreview}
                             onManageAssignments={handleManageAssignments}
                             isCancelled={isCancelled}
+                            isAssignmentLocked={isAssignmentLocked}
                         />
                         <ProductionTimeline
                             activeOrderSteps={activeOrderSteps}
