@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-    MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdPrint,
-    MdMoveToInbox, MdDesktopWindows, MdLocalPrintshop, MdLocalShipping,
-    MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
+    MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
     MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag, MdSort,
     MdOutlineIron,
 } from 'react-icons/md'
-import { GiSewingMachine } from 'react-icons/gi'
-import { 
-    FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle
+import {
+    FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
+    Inbox, Monitor, Printer, Scissors, Truck
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { orderApi }   from '../../../services/orderApi.js'
+import { orderApi } from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate, useParams } from 'react-router-dom'
 import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
@@ -25,12 +23,14 @@ import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 
 const STEP_ICON = {
-    'dropped off': MdMoveToInbox,
-    'layout':      MdDesktopWindows,
-    'printing':    MdLocalPrintshop,
-    'pressing':    MdOutlineIron,
-    'sewing':      GiSewingMachine,
-    'pick-up':     MdLocalShipping,
+    'dropped off': Inbox,
+    'drop off': Inbox,
+    'layout': Monitor,
+    'printing': Printer,
+    'pressing': MdOutlineIron,
+    'cutting': Scissors,
+    'sewing': Scissors,
+    'pick-up': Truck,
 }
 
 const TRACKING_REFRESH_DEBOUNCE_MS = 250
@@ -112,18 +112,18 @@ const matchesActiveFilter = (order, filter) => {
 
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
-    const label    = step.label?.toLowerCase().trim() ?? ''
-    const isDone   = step.done
+    const label = step.label?.toLowerCase().trim() ?? ''
+    const isDone = step.done
     const isActive = !step.done && step.active
-    const Icon     = STEP_ICON[label]
-    const sz       = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
-    const iconSz   = size === 'sm' ? 14 : 17
+    const Icon = STEP_ICON[label]
+    const sz = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
+    const iconSz = size === 'sm' ? 14 : 17
 
     return (
         <div className={`
             ${sz} rounded-full flex items-center justify-center shrink-0 transition-all
-            ${isDone   ? 'bg-blue-500 text-white border-2 border-blue-500'                 : ''}
-            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-md'      : ''}
+            ${isDone ? 'bg-blue-500 text-white border-2 border-blue-500' : ''}
+            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-md' : ''}
             ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border-2 border-gray-200' : ''}
         `}>
             {Icon && <Icon size={iconSz} />}
@@ -132,12 +132,12 @@ const StepIcon = ({ step, size = 'md' }) => {
 }
 
 const StepLabel = ({ step, size = 'md' }) => {
-    const isDone   = step.done
+    const isDone = step.done
     const isActive = !step.done && step.active
     const textSize = size === 'sm' ? 'text-[10px]' : 'text-[11px]'
     return (
         <span className={`${textSize} mt-1 whitespace-nowrap font-medium
-            ${isDone   ? 'text-blue-600' : ''}
+            ${isDone ? 'text-blue-600' : ''}
             ${isActive ? 'text-blue-500' : ''}
             ${!isDone && !isActive ? 'text-gray-400' : ''}
         `}>
@@ -162,7 +162,7 @@ const OrderProgressTracker = ({ steps }) => {
                                 ? <span className="text-[9px] text-blue-400 font-semibold mt-0.5">Active</span>
                                 : <span className="text-[9px] text-gray-300 mt-0.5">
                                     {step.date || '—'}
-                                  </span>
+                                </span>
                             }
                         </div>
                         {i < steps.length - 1 && (
@@ -197,12 +197,12 @@ const OrderProgressTracker = ({ steps }) => {
 // ─── Status Badge ─────────────────────────────
 const StatusBadge = ({ status }) => {
     const map = {
-        'Pending':     'bg-yellow-50 text-yellow-600 border-yellow-200',
-        'Approved':    'bg-blue-50 text-blue-600 border-blue-200',
+        'Pending': 'bg-yellow-50 text-yellow-600 border-yellow-200',
+        'Approved': 'bg-blue-50 text-blue-600 border-blue-200',
         'In Progress': 'bg-orange-50 text-orange-600 border-orange-200',
-        'Completed':   'bg-green-50 text-green-600 border-green-200',
-        'Released':    'bg-cyan-50 text-cyan-700 border-cyan-200',
-        'Cancelled':   'bg-red-50 text-red-500 border-red-200',
+        'Completed': 'bg-green-50 text-green-600 border-green-200',
+        'Released': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        'Cancelled': 'bg-red-50 text-red-500 border-red-200',
     }
     return (
         <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border ${map[status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
@@ -213,7 +213,7 @@ const StatusBadge = ({ status }) => {
 
 // ─── Details Modal ────────────────────────────
 const DetailsModal = ({ order, onClose, onOpenChat }) => {
-    const navigate  = useNavigate()
+    const navigate = useNavigate()
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
     const referenceCode = getTrackingReferenceCode(order)
@@ -256,7 +256,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     const loadQRCode = async () => {
         try {
             setLoadingQR(true)
-            const response = isBooking 
+            const response = isBooking
                 ? await bookingApi.getBookingQR(order._id)
                 : await orderApi.getOrderQR(order._id)
             setQrCode(response.qrCode)
@@ -305,21 +305,21 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 
     const fields = [
         { label: referenceLabel, value: referenceId },
-        { label: 'Status',       value: order.status },
+        { label: 'Status', value: order.status },
         { label: 'Item/Service', value: getTrackingDisplayName(order) },
         { label: 'Service Type', value: serviceTypeLabel },
-        { label: 'Date Placed',  value: order.date || new Date(order.createdAt).toLocaleDateString() },
+        { label: 'Date Placed', value: order.date || new Date(order.createdAt).toLocaleDateString() },
         { label: 'Est. Completion', value: order.estimatedCompletion },
         ...(!isBooking ? [
             { label: 'Assigned Tailor', value: order.assignedTailor },
-            { label: 'Notes',           value: order.notes },
+            { label: 'Notes', value: order.notes },
         ] : [
-            { label: 'Full Name',   value: order.contact?.fullName },
-            { label: 'Phone',       value: order.contact?.phone },
-            { label: 'Email',       value: order.contact?.email },
+            { label: 'Full Name', value: order.contact?.fullName },
+            { label: 'Phone', value: order.contact?.phone },
+            { label: 'Email', value: order.contact?.email },
             { label: 'Pickup Date', value: order.pickupDate },
             { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
-            { label: 'Address',     value: order.contact?.address },
+            { label: 'Address', value: order.contact?.address },
         ]),
     ].filter(f => f.value)
 
@@ -328,212 +328,212 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 
     return (
         <>
-        {/* Backdrop */}
-        <div 
-            className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={onClose}
-        />
-        
-        {/* Side Drawer - Mobile rounded-t-3xl, Desktop rounded-2xl */}
-        <div
-            className="fixed bottom-0 sm:right-0 sm:top-0 h-1/2 sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
-        >
-            {/* Mobile Handle Bar */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                <div className="w-10 h-1 bg-gray-200 rounded-full" />
-            </div>
+            {/* Backdrop */}
+            <div
+                className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/40 backdrop-blur-sm transition-opacity"
+                onClick={onClose}
+            />
 
-            {/* Header - Payroll Style */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                        <FileText size={16} className="text-white" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{referenceCode}</p>
-                    </div>
+            {/* Side Drawer - Mobile rounded-t-3xl, Desktop rounded-2xl */}
+            <div
+                className="fixed bottom-0 sm:right-0 sm:top-0 h-1/2 sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+            >
+                {/* Mobile Handle Bar */}
+                <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                    <div className="w-10 h-1 bg-gray-200 rounded-full" />
                 </div>
-                <button 
-                    onClick={onClose} 
-                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors shrink-0"
-                >
-                    <MdClose size={18} className="text-gray-400" />
-                </button>
-            </div>
 
-            {/* Tab Navigation */}
-            <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
-                <button
-                    onClick={() => setActiveTab('items')}
-                    className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
-                        ${activeTab === 'items' 
-                            ? 'text-blue-600 border-b-blue-600' 
-                            : 'text-gray-400 border-b-transparent hover:text-gray-600'
-                        }`}
-                >
-                    <Package size={14} />
-                    Ordered Items
-                </button>
-                {order.status !== 'Cancelled' && (
+                {/* Header - Payroll Style */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                            <FileText size={16} className="text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{referenceCode}</p>
+                        </div>
+                    </div>
                     <button
-                        onClick={() => setActiveTab('qr')}
+                        onClick={onClose}
+                        className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors shrink-0"
+                    >
+                        <MdClose size={18} className="text-gray-400" />
+                    </button>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
+                    <button
+                        onClick={() => setActiveTab('items')}
                         className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
-                            ${activeTab === 'qr' 
-                                ? 'text-blue-600 border-b-blue-600' 
+                        ${activeTab === 'items'
+                                ? 'text-blue-600 border-b-blue-600'
                                 : 'text-gray-400 border-b-transparent hover:text-gray-600'
                             }`}
                     >
-                        <QrCode size={14} />
-                        QR Code
+                        <Package size={14} />
+                        Ordered Items
                     </button>
-                )}
-            </div>
+                    {order.status !== 'Cancelled' && (
+                        <button
+                            onClick={() => setActiveTab('qr')}
+                            className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                            ${activeTab === 'qr'
+                                    ? 'text-blue-600 border-b-blue-600'
+                                    : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                                }`}
+                        >
+                            <QrCode size={14} />
+                            QR Code
+                        </button>
+                    )}
+                </div>
 
-            {/* Body — scrollable */}
-            <div className="overflow-y-auto p-5 flex-1 space-y-5 font-inter">
-                {activeTab === 'items' ? (
-                    <>
-                        {/* Details Section */}
-                        <div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                {fields.map(({ label, value }) => {
-                                    const Icon = iconMap[label]
-                                    return (
-                                        <div key={label} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
-                                            {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-                                                <p className="text-[11px] font-semibold text-gray-800 break-words">{value}</p>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Items Section */}
-                        {hasItems && (
+                {/* Body — scrollable */}
+                <div className="overflow-y-auto p-5 flex-1 space-y-5 font-inter">
+                    {activeTab === 'items' ? (
+                        <>
+                            {/* Details Section */}
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
-                                <div className="space-y-2.5">
-                                    {items.map((item, idx) => (
-                                        <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
-                                            <div className="flex items-start justify-between gap-2 mb-3">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {fields.map(({ label, value }) => {
+                                        const Icon = iconMap[label]
+                                        return (
+                                            <div key={label} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                                {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[11px] font-bold text-gray-800">{item.description}</p>
-                                                    <p className="text-[9px] text-gray-400 font-medium mt-0.5">Type: {item.type}</p>
-                                                </div>
-                                                <span className="bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
-                                                    ×{item.qty}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                                <div className="bg-white rounded-lg p-2 border border-gray-100/50">
-                                                    <p className="text-gray-400 font-medium">Unit Price</p>
-                                                    <p className="text-gray-800 font-bold mt-0.5">₱{item.unitPrice?.toLocaleString() || '—'}</p>
-                                                </div>
-                                                <div className="bg-white rounded-lg p-2 border border-gray-100/50">
-                                                    <p className="text-gray-400 font-medium">Total</p>
-                                                    <p className="text-gray-800 font-bold mt-0.5">₱{(item.qty * item.unitPrice)?.toLocaleString() || '—'}</p>
+                                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+                                                    <p className="text-[11px] font-semibold text-gray-800 break-words">{value}</p>
                                                 </div>
                                             </div>
-                                            {item.size && (
-                                                <p className="text-[9px] text-gray-500 mt-2">Size: <span className="font-semibold">{item.size}</span></p>
-                                            )}
-                                            {item.addOn && (
-                                                <p className="text-[9px] text-gray-500">Add-on: <span className="font-semibold">{item.addOn} (₱{item.addOnPrice || '—'})</span></p>
-                                            )}
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </div>
+
+                            {/* Items Section */}
+                            {hasItems && (
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
+                                    <div className="space-y-2.5">
+                                        {items.map((item, idx) => (
+                                            <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                                <div className="flex items-start justify-between gap-2 mb-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-bold text-gray-800">{item.description}</p>
+                                                        <p className="text-[9px] text-gray-400 font-medium mt-0.5">Type: {item.type}</p>
+                                                    </div>
+                                                    <span className="bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                                                        ×{item.qty}
+                                                    </span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                                    <div className="bg-white rounded-lg p-2 border border-gray-100/50">
+                                                        <p className="text-gray-400 font-medium">Unit Price</p>
+                                                        <p className="text-gray-800 font-bold mt-0.5">₱{item.unitPrice?.toLocaleString() || '—'}</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-2 border border-gray-100/50">
+                                                        <p className="text-gray-400 font-medium">Total</p>
+                                                        <p className="text-gray-800 font-bold mt-0.5">₱{(item.qty * item.unitPrice)?.toLocaleString() || '—'}</p>
+                                                    </div>
+                                                </div>
+                                                {item.size && (
+                                                    <p className="text-[9px] text-gray-500 mt-2">Size: <span className="font-semibold">{item.size}</span></p>
+                                                )}
+                                                {item.addOn && (
+                                                    <p className="text-[9px] text-gray-500">Add-on: <span className="font-semibold">{item.addOn} (₱{item.addOnPrice || '—'})</span></p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        // QR Code Tab
+                        <div className="space-y-4">
+                            {loadingQR ? (
+                                <div className="bg-white rounded-xl p-12 flex flex-col items-center justify-center gap-3">
+                                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center animate-pulse">
+                                        <QrCode size={24} className="text-purple-400" />
+                                    </div>
+                                    <p className="text-sm text-gray-500 font-medium">Loading QR Code...</p>
+                                </div>
+                            ) : qrCode ? (
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="bg-white p-4 rounded-xl border-2 border-purple-200 shadow-sm">
+                                        <img
+                                            src={qrCode}
+                                            alt="QR Code"
+                                            className="w-48 h-48 object-contain"
+                                        />
+                                    </div>
+                                    <p className="text-[9px] text-gray-500 text-center leading-relaxed max-w-xs">
+                                        Staff scans this code to release your order. Do not share with others.
+                                    </p>
+                                    <div className="flex gap-2 w-full">
+                                        <button
+                                            onClick={handleCopyQR}
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-purple-600 text-[11px] font-bold transition-colors cursor-pointer"
+                                        >
+                                            {copied ? (
+                                                <>
+                                                    <Check size={14} /> Copied
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy size={14} /> Copy
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleDownloadQR}
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
+                                        >
+                                            <Download size={14} /> Download
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-xl p-8 flex flex-col items-center justify-center gap-3">
+                                    <AlertCircle size={24} className="text-red-400" />
+                                    <p className="text-sm text-gray-600 font-medium">Failed to load QR code</p>
+                                    <button
+                                        onClick={loadQRCode}
+                                        className="text-blue-600 text-[11px] font-bold hover:text-blue-700"
+                                    >
+                                        Try Again
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                {(canViewInvoice || canMessageTailor) && (
+                    <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
+                        {canMessageTailor && (
+                            <button
+                                onClick={onOpenChat}
+                                className="w-full text-[12px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5 bg-white border border-emerald-200 rounded-xl shadow-sm"
+                            >
+                                <MessageCircle size={14} /> Message Tailor
+                            </button>
                         )}
-                    </>
-                ) : (
-                    // QR Code Tab
-                    <div className="space-y-4">
-                        {loadingQR ? (
-                            <div className="bg-white rounded-xl p-12 flex flex-col items-center justify-center gap-3">
-                                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center animate-pulse">
-                                    <QrCode size={24} className="text-purple-400" />
-                                </div>
-                                <p className="text-sm text-gray-500 font-medium">Loading QR Code...</p>
-                            </div>
-                        ) : qrCode ? (
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="bg-white p-4 rounded-xl border-2 border-purple-200 shadow-sm">
-                                    <img 
-                                        src={qrCode} 
-                                        alt="QR Code"
-                                        className="w-48 h-48 object-contain"
-                                    />
-                                </div>
-                                <p className="text-[9px] text-gray-500 text-center leading-relaxed max-w-xs">
-                                    Staff scans this code to release your order. Do not share with others.
-                                </p>
-                                <div className="flex gap-2 w-full">
-                                    <button
-                                        onClick={handleCopyQR}
-                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-purple-600 text-[11px] font-bold transition-colors cursor-pointer"
-                                    >
-                                        {copied ? (
-                                            <>
-                                                <Check size={14} /> Copied
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Copy size={14} /> Copy
-                                            </>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={handleDownloadQR}
-                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
-                                    >
-                                        <Download size={14} /> Download
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-white rounded-xl p-8 flex flex-col items-center justify-center gap-3">
-                                <AlertCircle size={24} className="text-red-400" />
-                                <p className="text-sm text-gray-600 font-medium">Failed to load QR code</p>
-                                <button
-                                    onClick={loadQRCode}
-                                    className="text-blue-600 text-[11px] font-bold hover:text-blue-700"
-                                >
-                                    Try Again
-                                </button>
-                            </div>
+                        {canViewInvoice && (
+                            <button
+                                onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
+                                className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
+                            >
+                                <FileText size={14} /> View Invoice
+                            </button>
                         )}
                     </div>
                 )}
             </div>
-
-            {/* Footer */}
-            {(canViewInvoice || canMessageTailor) && (
-                <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
-                    {canMessageTailor && (
-                        <button
-                            onClick={onOpenChat}
-                            className="w-full text-[12px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5 bg-white border border-emerald-200 rounded-xl shadow-sm"
-                        >
-                            <MessageCircle size={14} /> Message Tailor
-                        </button>
-                    )}
-                    {canViewInvoice && (
-                        <button
-                            onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
-                            className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
-                        >
-                            <FileText size={14} /> View Invoice
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
         </>
     )
 }
@@ -556,7 +556,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
         if (loadingQR || qrCode) return
         try {
             setLoadingQR(true)
-            const response = isBooking 
+            const response = isBooking
                 ? await bookingApi.getBookingQR(order._id)
                 : await orderApi.getOrderQR(order._id)
             setQrCode(response.qrCode)
@@ -583,139 +583,139 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
 
     return (
         <>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
 
-            {/* ── Header ── */}
-            <div className="p-4 sm:p-5 pb-3">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="text-base sm:text-lg font-black text-gray-800 tracking-tight leading-tight truncate">
-                                {displayName}
-                            </h3>
-                            <span className="bg-gray-100 text-gray-500 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-widest whitespace-nowrap shrink-0">
-                                {serviceTypeLabel || '—'}
-                            </span>
+                {/* ── Header ── */}
+                <div className="p-4 sm:p-5 pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 className="text-base sm:text-lg font-black text-gray-800 tracking-tight leading-tight truncate">
+                                    {displayName}
+                                </h3>
+                                <span className="bg-gray-100 text-gray-500 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-widest whitespace-nowrap shrink-0">
+                                    {serviceTypeLabel || '—'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
+                                <span className="truncate max-w-[120px] sm:max-w-none">
+                                    {referenceCode}
+                                </span>
+                                <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+                                <span>{order.date || new Date(order.createdAt).toLocaleDateString()}</span>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
-                            <span className="truncate max-w-[120px] sm:max-w-none">
-                                {referenceCode}
-                            </span>
-                            <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
-                            <span>{order.date || new Date(order.createdAt).toLocaleDateString()}</span>
+                        <div className="shrink-0 text-right">
+                            <StatusBadge status={order.status} />
+                            {!isBooking && order.estimatedCompletion && (
+                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
+                                    Due {order.estimatedCompletion}
+                                </p>
+                            )}
+                            {isBooking && order.pickupDate && (
+                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
+                                    Pickup {order.pickupDate}
+                                </p>
+                            )}
                         </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                        <StatusBadge status={order.status} />
-                        {!isBooking && order.estimatedCompletion && (
-                            <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                Due {order.estimatedCompletion}
-                            </p>
+                </div>
+
+                {/* ── Booking quick info ── */}
+                {isBooking && (
+                    <div className="px-4 sm:px-5 pb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                        {[
+                            { label: 'Customer', value: order.contact?.fullName },
+                            { label: 'Service', value: getTrackingDisplayName(order) },
+                            { label: 'Contact', value: order.contact?.phone || order.contact?.email },
+                            { label: 'Pickup', value: order.pickupDate },
+                        ].map(({ label, value }) => (
+                            <div key={label} className="bg-gray-50 rounded-xl px-3 py-2">
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
+                                <p className="text-[11px] font-bold text-gray-800 truncate">{value || '—'}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* ── Progress Steps ── */}
+                {steps.length > 0 && (
+                    <div className="px-4 sm:px-5 pb-3">
+                        <OrderProgressTracker steps={steps} />
+                    </div>
+                )}
+
+                {/* ── Footer ── */}
+                <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
+                            {order.assignedTailor ? 'Tailor:' : 'Status:'}
+                        </span>
+                        <span className="text-[11px] font-black text-gray-700 truncate">
+                            {order.assignedTailor || 'is not assigned'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {canMessageTailor && (
+                            <button
+                                onClick={() => setShowChatModal(true)}
+                                className="bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                            >
+                                <MessageCircle size={12} />
+                                <span className="hidden sm:inline">Message Tailor</span>
+                                <span className="sm:hidden">Chat</span>
+                            </button>
                         )}
-                        {isBooking && order.pickupDate && (
-                            <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                Pickup {order.pickupDate}
-                            </p>
+                        {canCancel && (
+                            <button
+                                onClick={() => onCancel(order)}
+                                className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                            >
+                                Cancel
+                            </button>
                         )}
+                        {order.status !== 'Cancelled' && (
+                            <button
+                                onClick={handleDownloadQR}
+                                disabled={loadingQR}
+                                className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                                title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
+                            >
+                                <Download size={12} />
+                                <span className="hidden sm:inline">Download QR</span>
+                                <span className="sm:hidden">QR</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={() => {
+                                if (typeof onOpenDetails === 'function') {
+                                    onOpenDetails(order)
+                                    return
+                                }
+
+                                setShowModal(true)
+                            }}
+                            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                        >
+                            <QrCode size={12} />
+                            Details
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* ── Booking quick info ── */}
-            {isBooking && (
-                <div className="px-4 sm:px-5 pb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {[
-                        { label: 'Customer', value: order.contact?.fullName },
-                        { label: 'Service',  value: getTrackingDisplayName(order) },
-                        { label: 'Contact',  value: order.contact?.phone || order.contact?.email },
-                        { label: 'Pickup',   value: order.pickupDate },
-                    ].map(({ label, value }) => (
-                        <div key={label} className="bg-gray-50 rounded-xl px-3 py-2">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-                            <p className="text-[11px] font-bold text-gray-800 truncate">{value || '—'}</p>
-                        </div>
-                    ))}
-                </div>
+            {/* ── Details Modal ── */}
+            {showModal && !onOpenDetails && (
+                <DetailsModal
+                    order={order}
+                    onClose={() => setShowModal(false)}
+                    onOpenChat={() => {
+                        setShowModal(false)
+                        setShowChatModal(true)
+                    }}
+                />
             )}
-
-            {/* ── Progress Steps ── */}
-            {steps.length > 0 && (
-                <div className="px-4 sm:px-5 pb-3">
-                    <OrderProgressTracker steps={steps} />
-                </div>
-            )}
-
-            {/* ── Footer ── */}
-            <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                        {order.assignedTailor ? 'Tailor:' : 'Status:'}
-                    </span>
-                    <span className="text-[11px] font-black text-gray-700 truncate">
-                        {order.assignedTailor || 'is not assigned'}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    {canMessageTailor && (
-                        <button
-                            onClick={() => setShowChatModal(true)}
-                            className="bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
-                        >
-                            <MessageCircle size={12} />
-                            <span className="hidden sm:inline">Message Tailor</span>
-                            <span className="sm:hidden">Chat</span>
-                        </button>
-                    )}
-                    {canCancel && (
-                        <button
-                            onClick={() => onCancel(order)}
-                            className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
-                        >
-                            Cancel
-                        </button>
-                    )}
-                    {order.status !== 'Cancelled' && (
-                        <button
-                            onClick={handleDownloadQR}
-                            disabled={loadingQR}
-                            className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                            title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
-                        >
-                            <Download size={12} />
-                            <span className="hidden sm:inline">Download QR</span>
-                            <span className="sm:hidden">QR</span>
-                        </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            if (typeof onOpenDetails === 'function') {
-                                onOpenDetails(order)
-                                return
-                            }
-
-                            setShowModal(true)
-                        }}
-                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
-                    >
-                        <QrCode size={12} />
-                        Details
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        {/* ── Details Modal ── */}
-        {showModal && !onOpenDetails && (
-            <DetailsModal
-                order={order}
-                onClose={() => setShowModal(false)}
-                onOpenChat={() => {
-                    setShowModal(false)
-                    setShowChatModal(true)
-                }}
-            />
-        )}
-        {showChatModal && <OrderTailorChatModal order={order} onClose={() => setShowChatModal(false)} />}
+            {showChatModal && <OrderTailorChatModal order={order} onClose={() => setShowChatModal(false)} />}
         </>
     )
 }
@@ -780,15 +780,15 @@ const FilterSheet = ({ active, onSelect, onClose }) => {
 const Order = () => {
     const navigate = useNavigate()
     const { orderId: selectedOrderId } = useParams()
-    const [searchQuery,  setSearchQuery]  = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('All Orders')
-    const [sortBy,       setSortBy]       = useState('latest')
-    const [orders,       setOrders]       = useState([])
-    const [bookings,     setBookings]     = useState([])
-    const [stats,        setStats]        = useState({ total: 0, inProgress: 0, fulfilled: 0 })
-    const [loading,      setLoading]      = useState(true)
-    const [error,        setError]        = useState(null)
-    const [showFilter,   setShowFilter]   = useState(false)
+    const [sortBy, setSortBy] = useState('latest')
+    const [orders, setOrders] = useState([])
+    const [bookings, setBookings] = useState([])
+    const [stats, setStats] = useState({ total: 0, inProgress: 0, fulfilled: 0 })
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [showFilter, setShowFilter] = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
     const [activeChatOrder, setActiveChatOrder] = useState(null)
@@ -797,7 +797,7 @@ const Order = () => {
     const searchTimeoutRef = useRef(null)
     const hasInitializedSearchRef = useRef(false)
     const refreshTimeoutRef = useRef(null)
-    
+
     const handleScroll = (e) => {
         setShowStickySearch(e.target.scrollTop > 300)
     }
@@ -813,7 +813,7 @@ const Order = () => {
         }
         try {
             const params = {}
-            if (search.trim())           params.search = search.trim()
+            if (search.trim()) params.search = search.trim()
             const [od, bd] = await Promise.all([
                 orderApi.getOrders(params),
                 bookingApi.getBookings(params),
@@ -894,11 +894,11 @@ const Order = () => {
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current)
         }
-        
+
         searchTimeoutRef.current = setTimeout(() => {
             fetchData(activeFilter, searchQuery)
         }, 500) // 500ms debounce
-        
+
         return () => {
             if (searchTimeoutRef.current) {
                 clearTimeout(searchTimeoutRef.current)
@@ -918,9 +918,9 @@ const Order = () => {
         const all = [...orders, ...bookings]
         setStats(prev => ({
             ...prev,
-            total:      all.length,
+            total: all.length,
             inProgress: all.filter(i => isActiveTrackingStatus(i.status)).length,
-            fulfilled:  all.filter(i => isFulfilledTrackingStatus(i.status)).length,
+            fulfilled: all.filter(i => isFulfilledTrackingStatus(i.status)).length,
         }))
     }, [orders, bookings])
 
@@ -1048,10 +1048,10 @@ const Order = () => {
             {/* ── Hero Banner ── */}
             <div className="bg-[#0F172A] rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-5 sm:mb-7">
                 <div className="absolute -top-4 right-3 opacity-10 text-white pointer-events-none">
-                    <GiSewingMachine size={120} />
+                    <Scissors size={120} />
                 </div>
                 <div className="absolute bottom-2 left-5 opacity-[0.07] text-white -rotate-12 pointer-events-none">
-                    <MdPrint size={90} />
+                    <Printer size={90} />
                 </div>
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                     <div>
@@ -1061,9 +1061,9 @@ const Order = () => {
                     {/* Stats — full width grid, no scroll */}
                     <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
                         {[
-                            { label: 'Total',       value: stats.total,      icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300'  },
-                            { label: 'In Progress', value: stats.inProgress, icon: MdLoop,        color: 'bg-amber-400/20 text-amber-300' },
-                            { label: 'Fulfilled',   value: stats.fulfilled,  icon: MdDoneAll,     color: 'bg-green-400/20 text-green-300' },
+                            { label: 'Total', value: stats.total, icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300' },
+                            { label: 'In Progress', value: stats.inProgress, icon: MdLoop, color: 'bg-amber-400/20 text-amber-300' },
+                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, color: 'bg-green-400/20 text-green-300' },
                         ].map(({ label, value, icon, color }) => (
                             <div key={label} className="bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-2.5">
                                 {/* Mobile: icon + label on top, number below */}
