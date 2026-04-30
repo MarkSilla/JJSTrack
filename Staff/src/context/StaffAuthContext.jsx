@@ -33,7 +33,16 @@ export const StaffAuthProvider = ({ children }) => {
       return data.staff
     }
 
-    const needsHydration = (user) => !String(user?.position || '').trim()
+    const needsHydration = (user) => {
+      if (!user) return true
+      if (!String(user?.position || '').trim()) return true
+      if (typeof user?.employmentType === 'undefined') return true
+      if (typeof user?.street === 'undefined') return true
+      if (typeof user?.dob === 'undefined') return true
+      if (typeof user?.hiredDate === 'undefined') return true
+      if (!user?.emergencyContact || typeof user.emergencyContact !== 'object') return true
+      return false
+    }
 
     const checkAuthentication = async () => {
       try {

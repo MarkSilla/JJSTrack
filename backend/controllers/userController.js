@@ -63,11 +63,33 @@ const buildStaffClientUser = (user, extra = {}) => ({
   firstName: user.firstName,
   lastName: user.lastName,
   employeeId: user.employeeId,
+  employmentType: user.employmentType,
   position: user.position,
   systemRole: user.systemRole,
   accountStatus: user.accountStatus,
   phoneNumber: user.phoneNumber,
+  address: user.address,
+  hiredDate: user.hiredDate,
+  dob: user.dob,
+  gender: user.gender,
+  emergencyContact: {
+    name: user.emergencyContact?.name || '',
+    relationship: user.emergencyContact?.relationship || '',
+    contact: user.emergencyContact?.contact || '',
+  },
+  regionCode: user.regionCode,
+  regionName: user.regionName,
+  provinceCode: user.provinceCode,
+  provinceName: user.provinceName,
+  cityCode: user.cityCode,
+  cityName: user.cityName,
+  brgyCode: user.brgyCode,
+  brgyName: user.brgyName,
+  street: user.street,
+  zipCode: user.zipCode,
   photoURL: user.photoURL,
+  lastLoginAt: user.lastLoginAt,
+  createdAt: user.createdAt,
   ...extra,
 });
 
@@ -1139,7 +1161,7 @@ export const getStaffSession = async (req, res) => {
     }
 
     const staffAccount = await userModel.findById(req.userId).select(
-      'email role fullName firstName lastName employeeId position systemRole accountStatus phoneNumber photoURL'
+      'email role fullName firstName lastName employeeId employmentType position systemRole accountStatus phoneNumber address hiredDate dob gender emergencyContact regionCode regionName provinceCode provinceName cityCode cityName brgyCode brgyName street zipCode photoURL lastLoginAt createdAt'
     );
 
     if (!staffAccount || staffAccount.role !== 'staff') {

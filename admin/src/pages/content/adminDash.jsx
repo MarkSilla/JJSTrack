@@ -676,19 +676,6 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         }),
     },
     {
-      icon: ShoppingBag,
-      label: "Total Orders",
-      value: totalOrders,
-      sub: "All bookings",
-      accent: "#0891B2",
-      bgAccent: "#ECFEFF",
-      trend: null,
-      onClick: () =>
-        navigateWithDashboardPreset("/admin/orders", {
-          filterStatus: "All",
-        }),
-    },
-    {
       icon: XCircle,
       label: "Cancel / Incomplete",
       value: cancelIncomplete,
@@ -699,6 +686,19 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       onClick: () =>
         navigateWithDashboardPreset("/admin/orders", {
           filterStatus: "Cancelled",
+        }),
+    },
+    {
+      icon: ShoppingBag,
+      label: "Total Orders",
+      value: totalOrders,
+      sub: "All bookings",
+      accent: "#0891B2",
+      bgAccent: "#ECFEFF",
+      trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "All",
         }),
     },
   ];
@@ -820,76 +820,86 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           </div>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }) => (
+        <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
+          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }, index) => (
             <button
               type="button"
               key={label}
               onClick={onClick}
-              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none"
+              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${
+                index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
+              }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
                 className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
                 style={{ background: accent }}
               />
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
+                    className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`}
                     style={{ background: bgAccent }}
                   >
-                    <Icon size={16} color={accent} strokeWidth={2.2} />
+                    <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
+                    <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                   </div>
-                  <span className="text-[12px] font-semibold text-gray-500">{label}</span>
+                  <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
                 </div>
                 {trend !== null && (
-                  <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
+                  <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
                     {trend}%
                   </div>
                 )}
               </div>
-              <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${
+                index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[15px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+              }`}>
                 {value}
               </div>
-              <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-          {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }) => (
+        <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
+          {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }, index) => (
             <button
               type="button"
               key={label}
               onClick={onClick}
-              className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none"
+              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${
+                index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
+              }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
                 className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
                 style={{ background: accent }}
               />
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                <div className="flex items-center gap-2 sm:gap-2.5">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
+                    className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`}
                     style={{ background: bgAccent }}
                   >
-                    <Icon size={16} color={accent} strokeWidth={2.2} />
+                    <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
+                    <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                   </div>
-                  <span className="text-[12px] font-semibold text-gray-500">{label}</span>
+                  <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
                 </div>
                 {trend !== null && (
-                  <div className="flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
+                  <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
                     {trend}%
                   </div>
                 )}
               </div>
-              <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${
+                index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[15px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+              }`}>
                 {value}
               </div>
-              <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
             </button>
           ))}
         </div>
@@ -984,7 +994,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </div>
 
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col h-full">
               <div className="mb-2 shrink-0">
                 <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Services</h2>

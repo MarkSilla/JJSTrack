@@ -259,7 +259,7 @@ export default function ArchivedItems() {
     }
 
     return (
-        <div className="font-[inter] h-screen flex flex-col overflow-hidden">
+        <div className="font-[inter] flex flex-col overflow-x-hidden">
             <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4 border-b border-slate-200 shadow-sm space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     <StatCard icon={FolderArchive} label="Total Archived" value={archivedItems.length} sub="historical records" color="amber" />
@@ -283,75 +283,75 @@ export default function ArchivedItems() {
                 )}
 
                 {archivedItems.length > 0 && (
-                    <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-                        <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-amber-50/60">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-gray-700">Archived Records</span>
-                                <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200">
-                                    {filteredItems.length} shown
-                                </span>
-                                <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">/ {archivedItems.length} total</span>
+                    <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible min-h-0">
+                        <div className="shrink-0 flex flex-col gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 bg-amber-50/60">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] sm:text-xs font-bold text-gray-700 uppercase tracking-tight">Archived Records</span>
+                                    <span className="bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200">
+                                        {filteredItems.length} shown
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleRefresh}
+                                    disabled={isRefreshing}
+                                    className="sm:hidden flex items-center justify-center w-8 h-8 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg transition-all cursor-pointer border-none shadow-sm"
+                                >
+                                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                                </button>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
                                     <input
                                         type="text"
                                         placeholder="Search ID, customer, service..."
                                         value={searchQuery}
                                         onChange={(event) => setSearchQuery(event.target.value)}
-                                        className="bg-white border border-slate-200 focus:border-amber-300 focus:ring-2 focus:ring-amber-500/10 rounded-lg py-1.5 pl-8 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-56"
+                                        className="bg-white border border-slate-200 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/5 rounded-xl py-2.5 sm:py-1.5 pl-10 sm:pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
                                     />
                                 </div>
 
-                                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
-                                    {STATUS_OPTIONS.map((option) => (
+                                <div className="flex items-center gap-2">
+                                    <div className="relative flex-1 sm:flex-none">
                                         <button
-                                            key={option}
-                                            onClick={() => setStatusFilter(option)}
-                                            className={`px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors cursor-pointer border-none ${statusFilter === option ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setShowSort((value) => !value)}
+                                            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
                                         >
-                                            {option}
+                                            <div className="flex items-center gap-1.5">
+                                                <SlidersHorizontal size={12} className="text-amber-500" />
+                                                <span className="truncate max-w-[100px]">{currentSortLabel}</span>
+                                            </div>
+                                            <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
                                         </button>
-                                    ))}
-                                </div>
+                                        {showSort && (
+                                            <div className="absolute left-0 sm:right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48 sm:w-44">
+                                                {SORT_OPTIONS.map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={() => {
+                                                            setSortBy(option.value);
+                                                            setShowSort(false);
+                                                        }}
+                                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortBy === option.value ? 'bg-amber-50 text-amber-700 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                <div className="relative">
                                     <button
-                                        onClick={() => setShowSort((value) => !value)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                                        onClick={handleRefresh}
+                                        disabled={isRefreshing}
+                                        className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-amber-200"
                                     >
-                                        <SlidersHorizontal size={12} className="text-amber-500" />
-                                        <span className="hidden sm:inline max-w-[120px] truncate">{currentSortLabel}</span>
-                                        <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                                        <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                                        <span>Refresh</span>
                                     </button>
-                                    {showSort && (
-                                        <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-44">
-                                            {SORT_OPTIONS.map((option) => (
-                                                <button
-                                                    key={option.value}
-                                                    onClick={() => {
-                                                        setSortBy(option.value);
-                                                        setShowSort(false);
-                                                    }}
-                                                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortBy === option.value ? 'bg-amber-50 text-amber-700 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
-                                                >
-                                                    {option.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
-
-                                <button
-                                    onClick={handleRefresh}
-                                    disabled={isRefreshing}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-amber-200"
-                                >
-                                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-                                    <span className="hidden sm:inline">Refresh</span>
-                                </button>
                             </div>
                         </div>
 
@@ -360,77 +360,135 @@ export default function ArchivedItems() {
                                 <p className="text-xs text-gray-400 font-medium">No archived records match the current filters.</p>
                             </div>
                         ) : (
-                            <div className="flex-1 overflow-auto table-scroll min-h-0">
-                                <table className="w-full text-left border-collapse" style={{ minWidth: 940 }}>
-                                    <thead className="sticky top-0 z-10">
-                                        <tr className="bg-slate-50 border-b border-slate-200">
-                                            {['No.', 'ID', 'Record', 'Final Status', 'Archived Date', 'Kind', 'Amount', 'Action'].map((header) => (
-                                                <th key={header} className="py-3 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
-                                                    {header}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredItems.map((item, index) => (
-                                            <tr
-                                                key={`${item.entityType}-${item.id}`}
-                                                onClick={() => setSelectedRecord(item)}
-                                                className="border-b border-slate-100 hover:bg-amber-50/40 transition-colors cursor-pointer"
-                                            >
-                                                <td className="py-3 px-4">
-                                                    <span className="text-[11px] font-bold text-gray-400 tabular-nums">{index + 1}</span>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
-                                                        {item.displayId}
+                            <>
+                                {/* Mobile Card View */}
+                                <div className="md:hidden overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                                    {filteredItems.map((item) => (
+                                        <div
+                                            key={`${item.entityType}-${item.id}`}
+                                            onClick={() => setSelectedRecord(item)}
+                                            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 active:scale-[0.98] transition-transform"
+                                        >
+                                            <div className="flex justify-between items-start mb-3">
+                                                <span className="text-[10px] font-bold font-mono text-slate-400 tracking-wider bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                    {item.displayId}
+                                                </span>
+                                                <div className="flex gap-1.5">
+                                                    <span className="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded-md uppercase border border-amber-100">
+                                                        {item.entityLabel}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
-                                                    <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
-                                                    {item.archivedBy && (
-                                                        <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mt-1">
-                                                            Archived by {item.archivedBy}
-                                                        </p>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4">
                                                     <StatusBadge status={item.sourceStatus} />
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">{item.archiveDate}</span>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    {item.totalPrice != null ? (
-                                                        <span className="text-sm font-bold text-gray-800 tabular-nums">
-                                                            P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
+
+                                            <h3 className="text-[15px] font-bold text-slate-900 mb-1">{item.headline}</h3>
+                                            <p className="text-[11px] text-slate-500 font-medium mb-4 truncate">
+                                                {item.secondaryLabel}
+                                            </p>
+
+                                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                                            Archived <span className="text-amber-600">{item.archiveDate}</span>
                                                         </span>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-400">N/A</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4">
+                                                    </div>
                                                     <button
                                                         onClick={(event) => {
                                                             event.stopPropagation();
                                                             setRestoreTarget(item);
                                                         }}
                                                         disabled={restoreLoading}
-                                                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-700 font-bold px-3 py-2 text-[11px] transition-colors border border-emerald-200 cursor-pointer"
+                                                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-700 font-bold px-2 py-1 text-[9px] transition-colors border border-emerald-200 cursor-pointer uppercase"
                                                     >
-                                                        <RotateCcw size={12} />
+                                                        <RotateCcw size={10} />
                                                         Restore
                                                     </button>
-                                                </td>
+                                                </div>
+                                                {item.totalPrice != null && (
+                                                    <span className="text-[14px] font-black text-slate-900">
+                                                        P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Desktop Table View */}
+                                <div className="hidden md:block flex-1 overflow-auto table-scroll min-h-0">
+                                    <table className="w-full text-left border-collapse" style={{ minWidth: 940 }}>
+                                        <thead className="sticky top-0 z-10">
+                                            <tr className="bg-slate-50 border-b border-slate-200">
+                                                {['No.', 'ID', 'Record', 'Final Status', 'Archived Date', 'Kind', 'Amount', 'Action'].map((header) => (
+                                                    <th key={header} className="py-3 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
+                                                        {header}
+                                                    </th>
+                                                ))}
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {filteredItems.map((item, index) => (
+                                                <tr
+                                                    key={`${item.entityType}-${item.id}`}
+                                                    onClick={() => setSelectedRecord(item)}
+                                                    className="border-b border-slate-100 hover:bg-amber-50/40 transition-colors cursor-pointer"
+                                                >
+                                                    <td className="py-3 px-4">
+                                                        <span className="text-[11px] font-bold text-gray-400 tabular-nums">{index + 1}</span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
+                                                            {item.displayId}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
+                                                        <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
+                                                        {item.archivedBy && (
+                                                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mt-1">
+                                                                Archived by {item.archivedBy}
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <StatusBadge status={item.sourceStatus} />
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">{item.archiveDate}</span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        {item.totalPrice != null ? (
+                                                            <span className="text-sm font-bold text-gray-800 tabular-nums">
+                                                                P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">N/A</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setRestoreTarget(item);
+                                                            }}
+                                                            disabled={restoreLoading}
+                                                            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-700 font-bold px-3 py-2 text-[11px] transition-colors border border-emerald-200 cursor-pointer"
+                                                        >
+                                                            <RotateCcw size={12} />
+                                                            Restore
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
                         )}
                     </div>
                 )}

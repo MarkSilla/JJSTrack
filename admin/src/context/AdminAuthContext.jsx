@@ -1,4 +1,11 @@
 import React, { createContext, useState, useEffect } from 'react'
+import { API_BASE_URL } from '../utils/apiBaseUrl'
+import {
+  clearStoredAdminSession,
+  getStoredAdminToken,
+  getStoredAdminUser,
+  persistStoredAdminUser,
+} from '../utils/adminSession'
 
 export const AdminAuthContext = createContext()
 
@@ -8,30 +15,60 @@ export const AdminAuthProvider = ({ children }) => {
   const [adminUser, setAdminUser] = useState(null)
 
   useEffect(() => {
-    const checkAuthentication = () => {
+    let isMounted = true
+
+    const fetchAdminSession = async (token) => {
+      const response = await fetch(`${API_BASE_URL}/users/admin/verify-token`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.success || !data?.admin) {
+        throw new Error(data?.message || 'Failed to verify admin session')
+      }
+
+      return data.admin
+    }
+
+    const checkAuthentication = async () => {
       try {
-        const token = localStorage.getItem('adminToken')
-        const storedUser = localStorage.getItem('adminUser')
-        
+        const token = getStoredAdminToken()
+
         if (token) {
-          setIsAuthenticated(true)
-          if (storedUser) {
+          let nextAdminUser = getStoredAdminUser()
+
+          if (!nextAdminUser) {
             try {
-              setAdminUser(JSON.parse(storedUser))
-            } catch {
-              setAdminUser(null)
+              nextAdminUser = await fetchAdminSession(token)
+              persistStoredAdminUser(nextAdminUser)
+            } catch (sessionError) {
+              console.error('Error hydrating admin session:', sessionError)
             }
           }
+
+          if (!isMounted) return
+
+          setIsAuthenticated(true)
+          setAdminUser(nextAdminUser)
         } else {
+          if (!isMounted) return
           setIsAuthenticated(false)
           setAdminUser(null)
         }
       } catch (error) {
         console.error('Error checking authentication:', error)
+        clearStoredAdminSession()
+        if (!isMounted) return
         setIsAuthenticated(false)
         setAdminUser(null)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -43,12 +80,14 @@ export const AdminAuthProvider = ({ children }) => {
     }
 
     window.addEventListener('admin-auth-changed', handleAuthStateChange)
-    return () => window.removeEventListener('admin-auth-changed', handleAuthStateChange)
+    return () => {
+      isMounted = false
+      window.removeEventListener('admin-auth-changed', handleAuthStateChange)
+    }
   }, [])
 
   const logout = () => {
-    localStorage.removeItem('adminToken')
-    localStorage.removeItem('adminUser')
+    clearStoredAdminSession()
     localStorage.removeItem('rememberAdminEmail')
     setIsAuthenticated(false)
     setAdminUser(null)

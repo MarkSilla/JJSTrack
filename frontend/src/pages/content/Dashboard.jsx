@@ -3,10 +3,11 @@ import BookingModal from './Bookingforms'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
-    MdDesktopWindows, MdPrint, MdMoveToInbox, MdLocalShipping, MdLocalPrintshop,
     MdRefresh, MdOutlineIron
 } from 'react-icons/md'
-import { GiSewingMachine } from 'react-icons/gi'
+import { 
+    Inbox, Monitor, Printer, Scissors, Truck, Shirt
+} from 'lucide-react'
 import { bookingApi } from '../../../services/bookingApi'
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
@@ -53,14 +54,14 @@ const normalizeStepLabel = (label = '') =>
 
 // ─── Step icons — lowercase keys to match .toLowerCase() ───
 const STEP_ICON = {
-    'dropped off': MdMoveToInbox,
-    'drop off':    MdMoveToInbox,
-    'layout':      MdDesktopWindows,
-    'printing':    MdLocalPrintshop,
+    'dropped off': Inbox,
+    'drop off':    Inbox,
+    'layout':      Monitor,
+    'printing':    Printer,
     'pressing':    MdOutlineIron,
-    'sewing':      GiSewingMachine,
-    'pick-up':     MdLocalShipping,
-    'pick up':     MdLocalShipping,
+    'cutting':     Scissors,
+    'sewing':      Scissors,
+    'pick-up':     Truck,
 }
 
 const StepIcon = ({ step }) => {
@@ -371,7 +372,7 @@ const Dashboard = () => {
                 {/* ── Hero Banner ── */}
                 <div className="bg-[#0F172A] rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 shadow-2xl relative overflow-hidden mb-6 sm:mb-8">
                     <div className="absolute -top-3 right-4 opacity-5 sm:opacity-10 text-white pointer-events-none">
-                        <GiSewingMachine size={100} />
+                        <Shirt size={100} />
                     </div>
                     <div className="absolute bottom-2 left-6 opacity-[0.03] sm:opacity-[0.07] text-white -rotate-12 pointer-events-none">
                         <MdInventory size={80} />
@@ -537,7 +538,7 @@ className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:
                         {/* Empty */}
                         {!loading && orders.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <GiSewingMachine size={32} className="text-gray-200 mb-3" />
+                                <Shirt size={32} className="text-gray-200 mb-3" />
                                 <p className="text-gray-400 font-semibold text-sm">No active orders</p>
                                 <p className="text-gray-300 text-xs mt-1">Book a service to get started</p>
                                 <button

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useCallback, useContext } from 'rea
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
-    Bell, Menu, X, User, LogOut, Settings
+    Bell, Menu, X, User, LogOut
 } from 'lucide-react'
 import { AdminAuthContext } from '../context/AdminAuthContext'
 import { getInventoryUpdatesWebSocketUrl } from '../services/inventoryApi'
 import { notificationApi } from '../services/notificationApi'
+import { getStoredAdminUser } from '../utils/adminSession'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -89,15 +90,16 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const notificationRefreshTimeoutRef = useRef(null)
     const navigate = useNavigate()
     const location = useLocation()
-    const { logout } = useContext(AdminAuthContext)
+    const { adminUser, logout } = useContext(AdminAuthContext)
 
     // ← DAGDAG ITO
     const currentPage = PAGE_TITLES[location.pathname] ?? { title: pageTitle, subtitle: pageSubtitle }
 
+    const storedAdminUser = getStoredAdminUser()
     const user = {
-        fullName: 'Admin User',
-        email: localStorage.getItem('rememberAdminEmail') || 'admin@jjstrack.com',
-        photoURL: null
+        fullName: adminUser?.fullName || storedAdminUser?.fullName || 'System Administrator',
+        email: adminUser?.email || storedAdminUser?.email || localStorage.getItem('rememberAdminEmail') || 'admin@jjstrack.com',
+        photoURL: adminUser?.photoURL || storedAdminUser?.photoURL || null,
     }
 
     const today = new Date()
@@ -270,6 +272,11 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const handleLogout = () => {
         logout()
         navigate('/')
+    }
+
+    const handleOpenProfile = () => {
+        setShowDropdown(false)
+        navigate('/admin/profile')
     }
 
     const toggleDropdown = () => {
@@ -508,13 +515,12 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                                     <p className="text-sm font-bold text-gray-900 truncate">{user.fullName}</p>
                                     <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
                                 </div>
-                                <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <button
+                                    onClick={handleOpenProfile}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
                                     <User size={16} className="text-gray-400" />
                                     <span>My Profile</span>
-                                </button>
-                                <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <Settings size={16} className="text-gray-400" />
-                                    <span>Settings</span>
                                 </button>
                                 <div className="my-2 border-t border-gray-50" />
                                 <button

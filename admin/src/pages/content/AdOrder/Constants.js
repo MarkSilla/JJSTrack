@@ -1,6 +1,5 @@
-import { AlertCircle } from 'lucide-react';
-import { MdDesktopWindows, MdLocalShipping, MdLocalPrintshop, MdMoveToInbox, MdOutlineIron } from 'react-icons/md';
-import { GiSewingMachine, GiScissors } from 'react-icons/gi';
+import { AlertCircle, Inbox, Monitor, Printer, Zap, Scissors, Shirt, Truck } from 'lucide-react';
+import { MdOutlineIron } from 'react-icons/md';
 
 export const EMPLOYEE_POOL = [
     { id: 'EMP-001', name: 'Juan Dela Cruz', role: 'Tailor', dept: 'Production' },
@@ -12,36 +11,35 @@ export const EMPLOYEE_POOL = [
 ];
 
 export const ASSIGNABLE_ROLES = ['Tailor', 'Sewing Staff', 'Production Staff'];
-// ASSIGNABLE_EMPLOYEES deprecated - use dynamic staffApi.getMyStaff() instead
 
 export const STATUS_CONFIG = {
-    "For Approval":      { color: "bg-violet-100 text-violet-700",      label: "For Approval" },
-    "Released":          { color: "bg-cyan-100 text-cyan-700",         label: "Released" },
-    "Completed":         { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
-    "Complete":          { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
-    "In-Progress":       { color: "bg-blue-100 text-blue-700",       label: "In Progress" },
-    "In Progress":       { color: "bg-blue-100 text-blue-700",       label: "In Progress" },
-    "Pending":           { color: "bg-amber-100 text-amber-700",     label: "Pending"  },
-    "Overdue":           { color: "bg-red-100 text-red-600",         label: "Overdue" },
-    "Cancelled":         { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },
-    "Cancel/Incomplete": { color: "bg-gray-100 text-gray-600",       label: "Cancelled" },
+    "For Approval": { color: "bg-violet-100 text-violet-700", label: "For Approval" },
+    "Released": { color: "bg-cyan-100 text-cyan-700", label: "Released" },
+    "Completed": { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
+    "Complete": { color: "bg-emerald-100 text-emerald-700", label: "Completed" },
+    "In-Progress": { color: "bg-blue-100 text-blue-700", label: "In Progress" },
+    "In Progress": { color: "bg-blue-100 text-blue-700", label: "In Progress" },
+    "Pending": { color: "bg-amber-100 text-amber-700", label: "Pending" },
+    "Overdue": { color: "bg-red-100 text-red-600", label: "Overdue" },
+    "Cancelled": { color: "bg-gray-100 text-gray-600", label: "Cancelled" },
+    "Cancel/Incomplete": { color: "bg-gray-100 text-gray-600", label: "Cancelled" },
 };
 
 export const TYPE_CONFIG = {
-    "Team Jersey":  { color: "bg-indigo-100 text-indigo-700" },
+    "Team Jersey": { color: "bg-indigo-100 text-indigo-700" },
     "Organization": { color: "bg-teal-100 text-teal-700" },
-    "Repair":       { color: "bg-orange-100 text-orange-700" },
+    "Repair": { color: "bg-orange-100 text-orange-700" },
 };
 
 export const SERVICE_STEPS = {
-    "Team Jersey":  ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
+    "Team Jersey": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
     "Organization": ["Dropped Off", "Layout", "Printing", "Pressing", "Sewing", "Pick-up"],
-    "Repair":       ["Drop Off", "Cutting", "Sewing", "Pick-up"],
+    "Repair": ["Drop Off", "Cutting", "Sewing", "Pick-up"],
 };
 
 export const PRIORITY_CONFIG = {
-    "Rush":         { color: "text-red-600 bg-red-50 border-red-200",     icon: AlertCircle },
-    "Normal":       { color: "text-gray-600 bg-gray-50 border-gray-200",  icon: null },
+    "Rush": { color: "text-red-600 bg-red-50 border-red-200", icon: AlertCircle },
+    "Normal": { color: "text-gray-600 bg-gray-50 border-gray-200", icon: null },
     "Low Priority": { color: "text-slate-500 bg-slate-50 border-slate-200", icon: null },
 };
 
@@ -51,12 +49,12 @@ export const PIECE_RATES = {
 
 
 export const STEP_ICON = {
-    'dropped off': MdMoveToInbox,
-    'drop off':    MdMoveToInbox,
-    'layout':      MdDesktopWindows,
-    'printing':    MdLocalPrintshop,
-    'pressing':    MdOutlineIron,
-    'cutting':     GiScissors,
-    'sewing':      GiSewingMachine,
-    'pick-up':     MdLocalShipping,
+    'dropped off': Inbox,
+    'drop off': Inbox,
+    'layout': Monitor,
+    'printing': Printer,
+    'pressing': MdOutlineIron,
+    'cutting': Scissors,
+    'sewing': Scissors,
+    'pick-up': Truck,
 };

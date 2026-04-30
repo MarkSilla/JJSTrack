@@ -8,7 +8,6 @@ import {
     X,
     User,
     LogOut,
-    Settings,
 } from 'lucide-react'
 import {
     getNotificationUpdatesWebSocketUrl,
@@ -95,10 +94,10 @@ const StaffNav = ({ onToggleSidebar }) => {
     const notificationIdsRef = useRef(new Set())
     const navigate = useNavigate()
     const location = useLocation()
-    const { logout } = useContext(StaffAuthContext)
+    const { logout, staffUser } = useContext(StaffAuthContext)
 
     const user = useMemo(() => {
-        const storedUser = getStoredStaffUser()
+        const storedUser = staffUser || getStoredStaffUser()
         return {
             fullName: storedUser?.fullName || 'Staff User',
             email:
@@ -107,7 +106,7 @@ const StaffNav = ({ onToggleSidebar }) => {
                 'staff@jjstrack.com',
             photoURL: storedUser?.photoURL || null,
         }
-    }, [])
+    }, [staffUser])
 
     const today = new Date()
     const dateStr = today.toLocaleDateString('en-US', {
@@ -360,6 +359,11 @@ const StaffNav = ({ onToggleSidebar }) => {
         navigate('/')
     }
 
+    const handleOpenProfile = () => {
+        setShowDropdown(false)
+        navigate('/staff/profile')
+    }
+
     const getUserInitials = (name) => {
         if (!name) return 'S'
         const parts = name.split(' ')
@@ -583,13 +587,12 @@ const StaffNav = ({ onToggleSidebar }) => {
                                     <p className="text-xs text-gray-400 truncate mt-0.5">{user.email}</p>
                                 </div>
 
-                                <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <button
+                                    onClick={handleOpenProfile}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
                                     <User size={16} className="text-gray-400" />
                                     <span>My Profile</span>
-                                </button>
-                                <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <Settings size={16} className="text-gray-400" />
-                                    <span>Settings</span>
                                 </button>
 
                                 <div className="my-2 border-t border-gray-50"></div>

@@ -10,6 +10,7 @@ import Dashboard from './pages/dashboard'
 import OrderPage from './pages/OrderPage'
 import ArchivesPage from './pages/ArchivesPage'
 import StaffInventoryPage from './pages/inventory/StaffInventoryPage'
+import StaffProfilePage from './pages/StaffProfilePage'
 
 function StaffAppShell() {
     return (
@@ -36,6 +37,7 @@ function App() {
                         <Route path="orders/:orderId" element={<OrderPage />} />
                         <Route path="archives" element={<ArchivesPage />} />
                         <Route path="inventory" element={<StaffInventoryPage />} />
+                        <Route path="profile" element={<StaffProfilePage />} />
                     </Route>
                     
                     <Route path="*" element={<Navigate to="/" replace />} />

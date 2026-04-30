@@ -1,4 +1,4 @@
-import { MdCalendarToday, MdAccessTime } from 'react-icons/md'
+import { Calendar, Clock } from 'lucide-react'
 import { TIME_SLOTS, getWeekDays } from './constants'
 
 const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSlot }) => {
@@ -13,7 +13,7 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
 
             <div className="max-w-xl mx-auto">
                 <div className="flex items-center gap-2 mb-4">
-                    <MdCalendarToday size={16} className="text-blue-500/70" />
+                    <Calendar size={16} className="text-blue-500/70" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Select Date</span>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-10">
@@ -37,7 +37,7 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                 </div>
 
                 <div className="flex items-center gap-2 mb-4">
-                    <MdAccessTime size={16} className="text-blue-500/70" />
+                    <Clock size={16} className="text-blue-500/70" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Select Time Range</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">

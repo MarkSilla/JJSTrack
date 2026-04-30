@@ -318,7 +318,7 @@ export default function ReleasedItems() {
 
     return (
         <>
-            <div className="font-[inter] h-screen flex flex-col overflow-hidden">
+            <div className="font-[inter] min-h-screen flex flex-col overflow-x-hidden">
                 <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4 border-b border-slate-200 shadow-sm space-y-4">
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         <StatCard icon={CheckCircle2} label="Total Released" value={releasedItems.length} sub="active records" color="blue" />
@@ -342,70 +342,90 @@ export default function ReleasedItems() {
                     )}
 
                     {releasedItems.length > 0 && (
-                        <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-0">
-                            <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3 border-b border-slate-100 bg-blue-50/60">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-gray-700">Released Records</span>
-                                    <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200">
-                                        {filteredItems.length} shown
-                                    </span>
-                                    <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">/ {releasedItems.length} total</span>
+                        <div className="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible min-h-0">
+                            <div className="shrink-0 flex flex-col gap-3 px-4 sm:px-5 py-3 border-b border-slate-100 bg-blue-50/60">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] sm:text-xs font-bold text-gray-700 uppercase tracking-tight">Released Records</span>
+                                        <span className="bg-blue-100 text-blue-600 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md border border-blue-200">
+                                            {filteredItems.length} shown
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleRefresh}
+                                            disabled={isRefreshing}
+                                            className="sm:hidden flex items-center justify-center w-8 h-8 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white rounded-lg transition-all cursor-pointer border-none shadow-sm"
+                                        >
+                                            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                                        </button>
+                                        <button
+                                            onClick={handleExportPDF}
+                                            className="sm:hidden flex items-center justify-center w-8 h-8 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-all cursor-pointer border-none shadow-sm"
+                                        >
+                                            <Download size={12} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
                                         <input
                                             type="text"
                                             placeholder="Search ID, customer, service..."
                                             value={searchQuery}
                                             onChange={(event) => setSearchQuery(event.target.value)}
-                                            className="bg-white border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 rounded-lg py-1.5 pl-8 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-56"
+                                            className="bg-white border border-slate-200 focus:border-blue-300 focus:ring-4 focus:ring-blue-500/5 rounded-xl py-2.5 sm:py-1.5 pl-10 sm:pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
                                         />
                                     </div>
 
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowSort((value) => !value)}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
-                                        >
-                                            <SlidersHorizontal size={12} className="text-blue-400" />
-                                            <span className="hidden sm:inline max-w-[120px] truncate">{currentSortLabel}</span>
-                                            <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {showSort && (
-                                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-44">
-                                                {SORT_OPTIONS.map((option) => (
-                                                    <button
-                                                        key={option.value}
-                                                        onClick={() => {
-                                                            setSortBy(option.value);
-                                                            setShowSort(false);
-                                                        }}
-                                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortBy === option.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative flex-1 sm:flex-none">
+                                            <button
+                                                onClick={() => setShowSort((value) => !value)}
+                                                className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-1.5">
+                                                    <SlidersHorizontal size={12} className="text-blue-400" />
+                                                    <span className="truncate max-w-[100px]">{currentSortLabel}</span>
+                                                </div>
+                                                <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {showSort && (
+                                                <div className="absolute left-0 sm:right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48 sm:w-44">
+                                                    {SORT_OPTIONS.map((option) => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={() => {
+                                                                setSortBy(option.value);
+                                                                setShowSort(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortBy === option.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
 
-                                    <button
-                                        onClick={handleRefresh}
-                                        disabled={isRefreshing}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-blue-200"
-                                    >
-                                        <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-                                        <span className="hidden sm:inline">Refresh</span>
-                                    </button>
-                                    <button
-                                        onClick={handleExportPDF}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm"
-                                    >
-                                        <Download size={12} />
-                                        <span className="hidden sm:inline">Export PDF</span>
-                                    </button>
+                                        <button
+                                            onClick={handleRefresh}
+                                            disabled={isRefreshing}
+                                            className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-blue-200"
+                                        >
+                                            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                                            <span>Refresh</span>
+                                        </button>
+                                        <button
+                                            onClick={handleExportPDF}
+                                            className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm"
+                                        >
+                                            <Download size={12} />
+                                            <span>Export</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -414,68 +434,117 @@ export default function ReleasedItems() {
                                     <p className="text-xs text-gray-400 font-medium">No released records match your search.</p>
                                 </div>
                             ) : (
-                                <div className="overflow-auto table-scroll min-h-0">
-                                    <table className="w-full text-left border-collapse" style={{ minWidth: 980 }}>
-                                        <thead className="sticky top-0 z-10">
-                                            <tr className="bg-slate-50 border-b border-slate-200">
-                                                {['No.', 'ID', 'Record', 'Drop Date', 'Released Date', 'Pay Status', 'Amount', 'Type'].map((header) => (
-                                                    <th key={header} className="py-3 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
-                                                        {header}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {paginatedItems.map((item, index) => {
-                                                const displayIndex = startIndex + index + 1;
-                                                return (
-                                                    <tr
-                                                        key={`${item.entityType}-${item.id}`}
-                                                        onClick={() => setSelectedRecord(item)}
-                                                        className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
-                                                    >
-                                                        <td className="py-3 px-4">
-                                                            <span className="text-[11px] font-bold text-gray-400 tabular-nums">{displayIndex}</span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
-                                                                {item.displayId}
-                                                            </span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
-                                                            <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{item.dropDate}</span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{item.releaseDate}</span>
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <PayBadge status={item.payStatus} />
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            {item.totalPrice != null ? (
-                                                                <span className="text-sm font-bold text-gray-800 tabular-nums">
-                                                                    P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                <>
+                                    {/* Mobile Card View */}
+                                    <div className="md:hidden overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                                        {paginatedItems.map((item) => (
+                                            <div
+                                                key={`${item.entityType}-${item.id}`}
+                                                onClick={() => setSelectedRecord(item)}
+                                                className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 active:scale-[0.98] transition-transform"
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className="text-[10px] font-bold font-mono text-slate-400 tracking-wider bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                                        {item.displayId}
+                                                    </span>
+                                                    <div className="flex gap-1.5">
+                                                        <span className="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded-md uppercase border border-blue-100">
+                                                            {item.entityLabel}
+                                                        </span>
+                                                        <PayBadge status={item.payStatus} />
+                                                    </div>
+                                                </div>
+
+                                                <h3 className="text-[15px] font-bold text-slate-900 mb-1">{item.headline}</h3>
+
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <TypeBadge typeKey={item.typeKey} />
+                                                    <span className="text-[11px] text-slate-500 font-medium truncate">
+                                                        {item.secondaryLabel}
+                                                    </span>
+                                                </div>
+
+                                                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                                            Released <span className="text-blue-600">{item.releaseDate}</span>
+                                                        </span>
+                                                    </div>
+                                                    {item.totalPrice != null && (
+                                                        <span className="text-[14px] font-black text-slate-900">
+                                                            P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Desktop Table View */}
+                                    <div className="hidden md:block overflow-auto table-scroll min-h-0">
+                                        <table className="w-full text-left border-collapse" style={{ minWidth: 940 }}>
+                                            <thead className="sticky top-0 z-10">
+                                                <tr className="bg-slate-50 border-b border-slate-200">
+                                                    {['No.', 'ID', 'Record', 'Drop Date', 'Released Date', 'Pay Status', 'Amount', 'Type'].map((header) => (
+                                                        <th key={header} className="py-3 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
+                                                            {header}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedItems.map((item, index) => {
+                                                    const displayIndex = startIndex + index + 1;
+                                                    return (
+                                                        <tr
+                                                            key={`${item.entityType}-${item.id}`}
+                                                            onClick={() => setSelectedRecord(item)}
+                                                            className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                                                        >
+                                                            <td className="py-3 px-4">
+                                                                <span className="text-[11px] font-bold text-gray-400 tabular-nums">{displayIndex}</span>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <span className="inline-block max-w-[180px] truncate text-[11px] font-bold font-mono text-gray-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tracking-wider align-middle">
+                                                                    {item.displayId}
                                                                 </span>
-                                                            ) : (
-                                                                <span className="text-xs text-gray-400">N/A</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 px-4">
-                                                            <div className="flex items-center gap-2">
-                                                                <TypeBadge typeKey={item.typeKey} />
-                                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <p className="text-sm font-semibold text-gray-800 leading-tight truncate max-w-[220px]">{item.headline}</p>
+                                                                <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-1">{item.secondaryLabel}</p>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{item.dropDate}</span>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{item.releaseDate}</span>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <PayBadge status={item.payStatus} />
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                {item.totalPrice != null ? (
+                                                                    <span className="text-sm font-bold text-gray-800 tabular-nums">
+                                                                        P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400">N/A</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <TypeBadge typeKey={item.typeKey} />
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.entityLabel}</span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
                             )}
 
                             {filteredItems.length > 0 && (

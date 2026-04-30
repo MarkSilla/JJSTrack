@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Package, Brush, Printer, Scissors, Truck, AlertCircle } from 'lucide-react';
+import { Check, Package, Monitor, Printer, Scissors, Truck, AlertCircle } from 'lucide-react';
 import { MdOutlineIron } from 'react-icons/md';
 import {
     canStaffAccessStep,
@@ -12,7 +12,7 @@ import {
 const STEP_ICONS = {
     "Dropped Off": Package,
     "Drop Off": Package,
-    "Layout": Brush,
+    "Layout": Monitor,
     "Printing": Printer,
     "Pressing": MdOutlineIron,
     "Sewing": Scissors,
@@ -55,8 +55,6 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                     </div>
                 )}
             </div>
-
-            {/* Desktop horizontal tracker */}
             <div className="hidden md:block">
                 <div className="relative pt-2">
                     <div className="absolute left-14 right-14 h-0.5 bg-gray-100 z-0 top-7">
@@ -83,7 +81,7 @@ const OrderStatusTracker = ({ steps = [], currentStepIdx = 0, onStepClick }) => 
                                         onClick={() => canAccess && onStepClick && onStepClick(idx)}
                                         disabled={!canAccess}
                                         title={canAccess ? '' : `Only ${formatWorkflowRoleLabel(requiredRole)} can access this step`}
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot} ${!canAccess && isCurrent ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 border-none outline-none ${config.dot} ${!canAccess && isCurrent ? 'opacity-100 cursor-not-allowed' : ''}`}
                                     >
                                         {isCompleted ? (
                                             <Check size={18} strokeWidth={3} />

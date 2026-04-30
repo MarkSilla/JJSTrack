@@ -14,7 +14,7 @@ import {
     PIECE_RATES,
 } from './AdOrder/Constants.js';
 
-import KPICards from './AdOrder/Kpicards';
+import KPICards from './AdOrder/KPICards';
 import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
@@ -397,7 +397,7 @@ export default function AdOrder() {
     }
 
     return (
-        <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
+        <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20 overflow-x-hidden">
             <KPICards counts={counts} />
 
             <div className="flex gap-6">

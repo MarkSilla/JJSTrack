@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import image from '../assets/img'
+import { API_BASE_URL } from '../utils/apiBaseUrl'
+import { persistStoredAdminUser } from '../utils/adminSession'
 
 function Login() {
     const [email, setEmail] = useState('')
@@ -54,7 +56,7 @@ function Login() {
         setLoading(true)
 
         try {
-            const response = await fetch('http://localhost:4000/api/users/admin/login', {
+            const response = await fetch(`${API_BASE_URL}/users/admin/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -74,6 +76,9 @@ function Login() {
             if (data.success) {
                 // Store token in localStorage
                 localStorage.setItem('adminToken', data.token)
+                if (data.admin) {
+                    persistStoredAdminUser(data.admin)
+                }
                 if (rememberMe) {
                     localStorage.setItem('rememberAdminEmail', email)
                 } else {

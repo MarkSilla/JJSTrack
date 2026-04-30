@@ -1,10 +1,9 @@
-import { MdContentCut, MdBusiness } from 'react-icons/md'
-import { FaTshirt } from 'react-icons/fa'
+import { Scissors, Shirt, Building2 } from 'lucide-react'
 
 const SERVICES = [
-    { id: 'repair', label: 'Custom Repair', desc: 'Alterations, repairs & fixes for your garments', Icon: MdContentCut },
-    { id: 'jersey', label: 'Team Jersey', desc: 'Custom jerseys for your team', Icon: FaTshirt },
-    { id: 'organizational', label: 'Organization', desc: 'T-shirts & polo shirts for your organization', Icon: MdBusiness },
+    { id: 'repair', label: 'Custom Repair', desc: 'Alterations, repairs & fixes for your garments', Icon: Scissors },
+    { id: 'jersey', label: 'Team Jersey', desc: 'Custom jerseys for your team', Icon: Shirt },
+    { id: 'organizational', label: 'Organization', desc: 'T-shirts & polo shirts for your organization', Icon: Building2 },
 ]
 
 const StepService = ({ service, setService }) => (

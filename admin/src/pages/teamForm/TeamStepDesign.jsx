@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { MdCloudUpload, MdImage, MdClose, MdLink } from 'react-icons/md'
+import { UploadCloud, Image as ImageIcon, X, Link as LinkIcon } from 'lucide-react'
 
 const TeamStepDesign = ({ designFile, setDesignFile, driveLink, setDriveLink }) => {
     const [preview, setPreview] = useState(null)
@@ -34,7 +34,7 @@ const TeamStepDesign = ({ designFile, setDesignFile, driveLink, setDriveLink }) 
                         className="group flex flex-col items-center justify-center gap-3 py-14 rounded-2xl border-2 border-dashed border-blue-300/50 bg-blue-50/30 hover:border-blue-400/60 hover:bg-blue-50/60 cursor-pointer transition-all duration-300"
                     >
                         <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-1 group-hover:bg-blue-200/70 transition-colors">
-                            <MdCloudUpload size={32} className="text-blue-500" />
+                            <UploadCloud size={32} className="text-blue-500" />
                         </div>
                         <p className="text-gray-700 font-semibold text-sm">Drop your design here or click to browse</p>
                         <p className="text-gray-400 text-xs">JPG, PNG up to 10MB</p>
@@ -47,7 +47,7 @@ const TeamStepDesign = ({ designFile, setDesignFile, driveLink, setDriveLink }) 
                             onClick={removeFile}
                             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-red-600/90 text-white flex items-center justify-center hover:bg-red-500 transition-colors cursor-pointer shadow-lg"
                         >
-                            <MdClose size={16} />
+                            <X size={16} />
                         </button>
                         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent px-4 py-3">
                             <p className="text-white text-xs font-medium truncate">{designFile?.name}</p>
@@ -63,7 +63,7 @@ const TeamStepDesign = ({ designFile, setDesignFile, driveLink, setDriveLink }) 
                 {/* GDrive Link */}
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <MdLink size={16} className="text-blue-500/70" />
+                        <LinkIcon size={16} className="text-blue-500/70" />
                         <label className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">Google Drive Link</label>
                     </div>
                     <span className="text-xs font-normal tracking-wider text-gray-600"> Please make sure that the link is set to "Anyone with the link can view" </span>
@@ -77,7 +77,7 @@ const TeamStepDesign = ({ designFile, setDesignFile, driveLink, setDriveLink }) 
 
                 {!preview && !driveLink && (
                     <div className="flex flex-col items-center mt-8 gap-2 text-gray-400">
-                        <MdImage size={44} className="text-gray-300" />
+                        <ImageIcon size={44} className="text-gray-300" />
                         <p className="text-sm">No design uploaded yet</p>
                     </div>
                 )}

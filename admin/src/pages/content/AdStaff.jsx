@@ -6,6 +6,7 @@ import AddEmployeeModal from "./Staff/AddEmployeeModal";
 import ProfilePanel from "./Staff/ProfilePanel";
 import { staffApi } from "../../services/staffApi";
 import { bookingApi } from "../../services/bookingApi";
+import { orderApi } from "../../services/orderApi";
 
 const EMP_TYPES = ["All Types", "Full Time", "Part Time", "Contractual"];
 const STATUSES = ["All Status", "Active", "Inactive", "Suspended"];
@@ -66,10 +67,27 @@ const getEmployeeMatchKeys = (employee = {}) => {
     );
 };
 
-const matchesEmployeeBooking = (booking, employee) => {
-    const assignedTailor = normalizeKey(booking?.assignedTailor);
-    if (!assignedTailor) return false;
-    return getEmployeeMatchKeys(employee).has(assignedTailor);
+const getAssignedStaffKeys = (workItem = {}) => (
+    [
+        workItem?.assignedTailor,
+        workItem?.staffAssignments?.tailor,
+        workItem?.staffAssignments?.presser,
+        workItem?.staffAssignments?.layoutArtist,
+    ].map(normalizeKey).filter(Boolean)
+);
+
+const matchesEmployeeWorkItem = (workItem, employee) => {
+    const employeeKeys = [...getEmployeeMatchKeys(employee)];
+    const assignedStaffKeys = getAssignedStaffKeys(workItem);
+    if (!assignedStaffKeys.length || !employeeKeys.length) return false;
+
+    return assignedStaffKeys.some((assignedKey) =>
+        employeeKeys.some((employeeKey) =>
+            employeeKey === assignedKey
+            || employeeKey.includes(assignedKey)
+            || assignedKey.includes(employeeKey)
+        )
+    );
 };
 
 const getBookingReference = (booking = {}) => {
@@ -109,24 +127,57 @@ const buildBookingTaskLabel = (booking = {}) => {
     return `${getBookingReference(booking)} - ${service} - ${stage}`;
 };
 
-const deriveEmployeeMetrics = (employee, bookings) => {
-    const matchedBookings = (Array.isArray(bookings) ? bookings : []).filter((booking) => matchesEmployeeBooking(booking, employee));
-    const trackedBookings = matchedBookings.filter((booking) => !BOOKING_EXCLUDED_STATUSES.has(normalizeKey(booking.status)));
-    const completedBookings = trackedBookings.filter((booking) => BOOKING_DONE_STATUSES.has(normalizeKey(booking.status)));
-    const activeBookings = trackedBookings.filter((booking) => !BOOKING_DONE_STATUSES.has(normalizeKey(booking.status)));
+const getOrderReference = (order = {}) => {
+    if (order?.orderId) return order.orderId;
+    const rawId = order?._id || order?.id || "";
+    const suffix = String(rawId).slice(-6).toUpperCase();
+    return suffix ? `ORD-${suffix}` : "Order";
+};
 
-    const bookingTasks = activeBookings.map(buildBookingTaskLabel);
+const buildOrderTaskLabel = (order = {}) => {
+    const steps = Array.isArray(order.steps) ? order.steps : [];
+    const activeStep = steps.find((step) => step?.active) || steps.find((step) => !step?.done);
+    const statusText = String(order.status || "").trim();
+    const stage = activeStep?.label || statusText || "Pending";
+    const service = order.item || order.serviceType || "Order";
+    return `${getOrderReference(order)} - ${service} - ${stage}`;
+};
+
+const getTrackedBookings = (bookings = [], orders = []) => {
+    const convertedBookingIds = new Set(
+        (Array.isArray(orders) ? orders : [])
+            .map((order) => String(order?.bookingId || "").trim())
+            .filter(Boolean)
+    );
+
+    return (Array.isArray(bookings) ? bookings : []).filter((booking) => {
+        const bookingId = String(booking?._id || booking?.id || "").trim();
+        return !bookingId || !convertedBookingIds.has(bookingId);
+    });
+};
+
+const deriveEmployeeMetrics = (employee, bookings, orders) => {
+    const trackedBookings = getTrackedBookings(bookings, orders);
+    const workItems = [...trackedBookings, ...(Array.isArray(orders) ? orders : [])];
+    const matchedWorkItems = workItems.filter((workItem) => matchesEmployeeWorkItem(workItem, employee));
+    const trackedWorkItems = matchedWorkItems.filter((workItem) => !BOOKING_EXCLUDED_STATUSES.has(normalizeKey(workItem.status)));
+    const completedWorkItems = trackedWorkItems.filter((workItem) => BOOKING_DONE_STATUSES.has(normalizeKey(workItem.status)));
+    const activeWorkItems = trackedWorkItems.filter((workItem) => !BOOKING_DONE_STATUSES.has(normalizeKey(workItem.status)));
+
+    const activeTasks = activeWorkItems.map((workItem) =>
+        workItem?.bookingType ? buildBookingTaskLabel(workItem) : buildOrderTaskLabel(workItem)
+    );
     const storedTasks = Array.isArray(employee.tasks) ? employee.tasks.filter(Boolean) : [];
-    const combinedTasks = Array.from(new Set([...bookingTasks, ...storedTasks]));
+    const combinedTasks = Array.from(new Set([...activeTasks, ...storedTasks]));
 
     return {
-        orders: trackedBookings.length > 0 ? trackedBookings.length : employee.orders,
-        productivity: trackedBookings.length > 0
-            ? clampPercentage((completedBookings.length / trackedBookings.length) * 100)
+        orders: trackedWorkItems.length > 0 ? trackedWorkItems.length : employee.orders,
+        productivity: trackedWorkItems.length > 0
+            ? clampPercentage((completedWorkItems.length / trackedWorkItems.length) * 100)
             : clampPercentage(employee.productivity),
         tasks: combinedTasks,
-        activeBookings: activeBookings.length,
-        completedBookings: completedBookings.length,
+        activeBookings: activeWorkItems.length,
+        completedBookings: completedWorkItems.length,
     };
 };
 
@@ -313,6 +364,7 @@ const EmployeeCard = ({ emp, onView, onDeactivate }) => {
 const AdStaff = () => {
     const [employees, setEmployees] = useState([]);
     const [bookings, setBookings] = useState([]);
+    const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState("");
     const [search, setSearch] = useState("");
@@ -330,9 +382,10 @@ const AdStaff = () => {
         try {
             setLoading(true);
             setApiError("");
-            const [staffResult, bookingResult] = await Promise.allSettled([
+            const [staffResult, bookingResult, orderResult] = await Promise.allSettled([
                 staffApi.getAllStaff(),
                 bookingApi.getAllBookings(),
+                orderApi.getAllOrders(),
             ]);
 
             if (staffResult.status !== "fulfilled") {
@@ -352,11 +405,20 @@ const AdStaff = () => {
                 console.error("Failed to fetch bookings for staff metrics:", bookingResult.reason);
                 setBookings([]);
             }
+
+            if (orderResult.status === "fulfilled") {
+                const rawOrders = Array.isArray(orderResult.value?.orders) ? orderResult.value.orders : [];
+                setOrders(rawOrders);
+            } else {
+                console.error("Failed to fetch orders for staff metrics:", orderResult.reason);
+                setOrders([]);
+            }
         } catch (error) {
             console.error("Failed to fetch staff:", error);
             setApiError(readErrorMessage(error, "Failed to load staff list"));
             setEmployees([]);
             setBookings([]);
+            setOrders([]);
         } finally {
             setLoading(false);
         }
@@ -379,9 +441,9 @@ const AdStaff = () => {
     const employeesWithMetrics = useMemo(() => (
         employees.map((employee) => ({
             ...employee,
-            ...deriveEmployeeMetrics(employee, bookings),
+            ...deriveEmployeeMetrics(employee, bookings, orders),
         }))
-    ), [employees, bookings]);
+    ), [employees, bookings, orders]);
 
     const filtered = useMemo(() => {
         let list = [...employeesWithMetrics];

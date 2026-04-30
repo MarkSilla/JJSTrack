@@ -57,6 +57,11 @@ const PAGE_META = [
         subtitle: 'Review detailed stock movement, FIFO usage, and audit activity.'
     },
     {
+        match: /^\/admin\/profile$/,
+        title: 'My Profile',
+        subtitle: 'View your administrator account details.'
+    },
+    {
         match: /^\/admin\/report$/,
         title: 'Reports',
         subtitle: 'Generate and view detailed business reports.'

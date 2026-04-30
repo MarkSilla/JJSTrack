@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { MdPersonAdd, MdEdit, MdDelete, MdCheck, MdClose } from 'react-icons/md'
-import { MdBusiness } from 'react-icons/md'
+import { UserPlus, Edit2, Trash2, Check, X, Building2 } from 'lucide-react'
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 
@@ -72,14 +71,14 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
             <div className="max-w-xl mx-auto mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <MdBusiness size={14} className="text-blue-500/70" />
+                        <Building2 size={14} className="text-blue-500/70" />
                         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {editIdx !== null ? 'Edit Member' : 'Add Member'}
                         </span>
                     </div>
                     {editIdx !== null && (
                         <button onClick={cancelEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
-                            <MdClose size={14} /> Cancel
+                            <X size={14} /> Cancel
                         </button>
                     )}
                 </div>
@@ -159,7 +158,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
                                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                     >
-                        <MdPersonAdd size={18} />
+                        <UserPlus size={18} />
                         {editIdx !== null ? 'Update Member' : 'Add Member'}
                     </button>
                 </div>
@@ -188,7 +187,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
                                                 </span>
                                             ) : (
                                                 <span className="w-10 h-10 rounded-lg bg-blue-50 text-blue-500 font-extrabold text-sm flex items-center justify-center shrink-0">
-                                                    <MdBusiness size={18} />
+                                                    <Building2 size={18} />
                                                 </span>
                                             )}
                                             <div className="min-w-0">
@@ -203,11 +202,11 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
                                             <div className="flex items-center gap-1.5">
                                                 <button onClick={() => startEdit(i)}
                                                     className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors cursor-pointer">
-                                                    <MdEdit size={14} />
+                                                    <Edit2 size={14} />
                                                 </button>
                                                 <button onClick={() => remove(i)}
                                                     className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer">
-                                                    <MdDelete size={14} />
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -221,7 +220,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers }) => {
 
             {members.length === 0 && (
                 <div className="max-w-xl mx-auto text-center py-8">
-                    <MdBusiness size={40} className="text-gray-300 mx-auto mb-3" />
+                    <Building2 size={40} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-400 text-sm">No members added yet. Add your first member above.</p>
                 </div>
             )}

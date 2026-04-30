@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-icons/md'
+import { Check, ArrowLeft, ArrowRight, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import img from '../../assets/img.js'
 
@@ -55,7 +55,7 @@ const Stepper = ({ currentStep, labels }) => (
                                             : 'bg-gray-100 text-gray-400 ring-1 ring-gray-300'
                                     }`}
                             >
-                                {done ? <MdCheck size={18} /> : num}
+                                {done ? <Check size={18} /> : num}
                             </span>
                             <span
                                 className={`mt-2 text-[8px] font-semibold uppercase tracking-widest transition-colors
@@ -87,7 +87,7 @@ const Stepper = ({ currentStep, labels }) => (
                                             : 'bg-gray-100 text-gray-400 ring-1 ring-gray-300'
                                     }`}
                             >
-                                {done ? <MdCheck size={14} /> : num}
+                                {done ? <Check size={14} /> : num}
                             </span>
                             <span className={`text-[9px] mt-1 font-semibold uppercase tracking-wider ${active ? 'text-blue-600' : done ? 'text-blue-500/60' : 'text-gray-400'}`}>
                                 {label}
@@ -484,7 +484,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                         onClick={handleClose}
                         className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/5 hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-600 transition-all cursor-pointer"
                     >
-                        <MdClose size={18} />
+                        <X size={18} />
                     </button>
 
                     {/* Header */}
@@ -524,14 +524,14 @@ const BookingModal = ({ isOpen, onClose }) => {
                                             onClick={() => setStep((s) => s - 1)}
                                             className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Back
+                                            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> Back
                                         </button>
                                     ) : (
                                         <button
                                             onClick={handleClose}
                                             className="flex items-center gap-1.5 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer text-sm font-semibold group py-2"
                                         >
-                                            <MdArrowBack size={18} className="group-hover:-translate-x-1 transition-transform" /> Cancel
+                                            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> Cancel
                                         </button>
                                     )}
 
@@ -543,7 +543,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                                                     ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
                                                     : 'bg-gray-200 text-gray-400 hover:bg-gray-300 shadow-none'}`}
                                         >
-                                            Next <MdArrowForward size={18} />
+                                            Next <ArrowRight size={18} />
                                         </button>
                                     ) : (
                                         <button
@@ -561,7 +561,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    {submitLabel} <MdSend size={16} />
+                                                    {submitLabel} <Send size={16} />
                                                 </>
                                             )}
                                         </button>
