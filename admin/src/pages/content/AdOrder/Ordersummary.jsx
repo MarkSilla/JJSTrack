@@ -94,46 +94,58 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="bg-blue-50/50 p-4 border-b border-gray-50">
                 <h4 className="text-[11px] font-black text-blue-900 tracking-wider uppercase mb-3">Order Details</h4>
-                <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-500">Drop Date</span>
-                        <span className="font-bold text-gray-900">{getDropDate(activeOrder)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-500">Due Date</span>
-                        <span className={`font-bold ${isOverdue(bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion) ? 'text-red-500' : 'text-gray-900'}`}>
-                            {activeOrder?.invoice?.dueDate
-                                ? new Date(activeOrder.invoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                : displayDueDate}
-                        </span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-gray-500">Pickup Time</span>
-                        <span className="font-bold text-gray-900">{displayTimeRange}</span>
-                    </div>
-                    {visibleRoles.map((roleKey) => (
-                        <div key={roleKey} className="flex justify-between items-center text-sm gap-3">
-                            <span className="font-semibold text-gray-500">{ROLE_META[roleKey]}</span>
-                            <span className="font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded text-right">
-                                {productionAssignments[roleKey] || 'Unassigned'}
+                <div className="flex gap-x-8">
+                    {/* Left Column: Dates */}
+                    <div className="flex-1 space-y-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Drop Date</span>
+                            <span className="text-sm font-bold text-gray-900">{getDropDate(activeOrder)}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Due Date</span>
+                            <span className={`text-sm font-bold ${isOverdue(bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion) ? 'text-red-500' : 'text-gray-900'}`}>
+                                {activeOrder?.invoice?.dueDate
+                                    ? new Date(activeOrder.invoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                    : displayDueDate}
                             </span>
                         </div>
-                    ))}
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Pickup Time</span>
+                            <span className="text-sm font-bold text-gray-900">{displayTimeRange}</span>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Roles */}
+                    <div className="flex-1 space-y-4">
+                        {visibleRoles.map((roleKey) => (
+                            <div key={roleKey} className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">{ROLE_META[roleKey]}</span>
+                                <span className="text-sm font-bold text-gray-900 truncate">
+                                    {productionAssignments[roleKey] || 'Unassigned'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
             <div className="p-4 bg-white">
-                <div className="space-y-3 mb-4">
+                <div className="space-y-4 mb-4 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
                     {displayItems.map((item, idx) => (
-                        <div key={item.id || `${item.description}-${idx}`} className="flex justify-between items-start text-sm">
+                        <div key={item.id || `${item.description}-${idx}`} className="flex justify-between items-start text-[13px]">
                             <div className="pr-4">
-                                <div className="font-semibold text-gray-800 line-clamp-1">{item.description}</div>
-                                <div className="text-[11px] font-medium text-gray-400 mt-0.5">Qty: {item.qty || 1}</div>
+                                <div className="font-bold text-gray-800 line-clamp-1">{item.description}</div>
+                                <div className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Qty: {item.qty || 1}</div>
                             </div>
-                            <div className="font-bold text-gray-900 whitespace-nowrap">
+                            <div className="font-black text-gray-900 whitespace-nowrap">
                                 {formatCurrency(getItemTotal(item))}
                             </div>
                         </div>
                     ))}
+                    {displayItems.length === 0 && (
+                        <div className="text-center py-8 text-gray-300 text-xs font-bold uppercase tracking-widest">
+                            No items recorded
+                        </div>
+                    )}
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                     <span className="text-xs uppercase tracking-wider font-bold text-gray-500">Total Price</span>

@@ -5,6 +5,8 @@ import {
     Calendar,
     CheckCircle2,
     CheckCheck,
+    ChevronLeft,
+    ChevronRight,
     CreditCard,
     ExternalLink,
     FileText,
@@ -172,21 +174,285 @@ export default function OrderRecordDetail({
             { label: 'Released', value: record?.releaseDate, color: 'text-green-600' },
         ];
 
-    const quickAction = typeof onArchive === 'function'
-        ? {
-            wrapperClass: 'bg-white border border-amber-200 rounded-2xl overflow-hidden shadow-sm',
-            headerClass: 'px-4 py-2.5 border-b border-amber-100 flex items-center gap-2 bg-amber-50',
-            headerIcon: <Archive size={14} className="text-amber-500" />,
-            bodyClass: 'p-4 space-y-2.5',
-            text: 'Move this released record to archives.',
-            buttonClass: 'inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold px-3.5 py-2 text-xs transition-colors border-none cursor-pointer',
-            buttonIcon: <Archive size={14} />,
-            busy: isArchiving,
-            idleLabel: 'Archive Record',
-            busyLabel: 'Archiving...',
-            onClick: onArchive,
-        }
-        : null;
+    const isComplex = isJersey || record?.typeKey === 'organizational';
+
+    const timelineSection = (
+        <Section
+            icon={<CheckCheck size={15} color="#00b400ff" />}
+            title="Production Timeline"
+        >
+            {steps.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">No production steps recorded.</p>
+            ) : (
+                steps.map((step, idx) => (
+                    <div key={`${step?.label || step?.step || idx}-${idx}`} className="flex gap-4 relative">
+                        {idx < steps.length - 1 && (
+                            <div className="absolute left-[15px] top-[34px] bottom-0 w-px bg-slate-200" />
+                        )}
+                        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white shadow-[0_0_0_4px_#F8FAFC] z-10 ${isArchivedView ? 'bg-amber-500' : 'bg-green-400'}`}>
+                            <CheckCircle2 size={14} />
+                        </div>
+                        <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-5' : ''}`}>
+                            <p className="text-[13px] font-bold text-slate-900 leading-snug">
+                                {step?.step || step?.label || `Step ${idx + 1}`}
+                            </p>
+                            <div className="flex gap-4 mt-1 flex-wrap text-[11px] text-slate-400 font-semibold">
+                                {step?.date && <span className="flex items-center gap-1"><Calendar size={10} />{fmtDate(step.date)}</span>}
+                                {step?.worker && <span className="flex items-center gap-1"><User size={10} />{step.worker}</span>}
+                            </div>
+                        </div>
+                    </div>
+                ))
+            )}
+        </Section>
+    );
+
+    const imagesSection = hasImages && (
+        <Section icon={<ImageIcon size={15} />} title="Uploaded Images">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {record.imageUrls.map((src, i) => (
+                    <a key={`${src}-${i}`} href={src} target="_blank" rel="noreferrer"
+                        className="block rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity">
+                        <img src={src} alt={`Image ${i + 1}`} className="w-full h-36 object-cover" />
+                    </a>
+                ))}
+            </div>
+        </Section>
+    );
+
+    const [rosterPage, setRosterPage] = React.useState(1);
+    const ITEMS_PER_PAGE = 10;
+
+    const rosterSection = isJersey && teamRoster.length > 0 && (() => {
+        const totalPages = Math.ceil(teamRoster.length / ITEMS_PER_PAGE);
+        const paginatedPlayers = teamRoster.slice(
+            (rosterPage - 1) * ITEMS_PER_PAGE,
+            rosterPage * ITEMS_PER_PAGE
+        );
+        const startIndex = (rosterPage - 1) * ITEMS_PER_PAGE + 1;
+        const endIndex = Math.min(rosterPage * ITEMS_PER_PAGE, teamRoster.length);
+
+        return (
+            <Section
+                icon={<Users size={15} />}
+                title="Team Roster"
+                badge={
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
+                        {teamRoster.length} players
+                    </span>
+                }
+            >
+                <div className="overflow-x-auto -mx-5">
+                    <table className="w-full min-w-[520px] border-collapse">
+                        <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50/60">
+                                {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
+                                    <th key={col} className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? 'text-left pl-5' : 'text-center px-3'}`}>
+                                        {col}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedPlayers.map((player, idx) => (
+                                <tr key={`${player?.surname || player?.name || 'p'}-${idx}`}
+                                    className={`h-12 border-b border-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                    <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player?.surname || player?.name || '—'}</td>
+                                    <td className="px-3 text-center text-[11px] font-black text-slate-600">#{player?.number ?? '—'}</td>
+                                    <td className="px-3 text-center text-[13px] font-semibold text-slate-700">{player?.jerseySize || player?.size || '—'}</td>
+                                    <td className="px-3 text-center text-[12px] font-semibold text-slate-700">{player?.shortSize || player?.size || '—'}</td>
+                                    <td className="px-3 pr-5 text-center text-[10px] text-slate-400">{getLineupAddOns(player).join(', ') || '—'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {totalPages > 1 && (
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setRosterPage(p => Math.max(1, p - 1))}
+                                disabled={rosterPage === 1}
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-900 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setRosterPage(pageNum)}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold transition-all cursor-pointer ${rosterPage === pageNum
+                                            ? 'bg-blue-600 text-white shadow-md'
+                                            : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setRosterPage(p => Math.min(totalPages, p + 1))}
+                                disabled={rosterPage === totalPages}
+                                className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-900 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            Showing <span className="text-slate-900">{startIndex}-{endIndex}</span> of <span className="text-slate-900">{teamRoster.length}</span>
+                        </div>
+                    </div>
+                )}
+            </Section>
+        );
+    })();
+
+    const contactSection = (
+        <Section icon={<User size={15} />} title="Contact">
+            <Field label="Name">{record?.customerName}</Field>
+            {record?.contact?.phone && (
+                <Field label="Phone">
+                    <a href={`tel:${record.contact.phone}`} className="text-blue-600 hover:underline">{record.contact.phone}</a>
+                </Field>
+            )}
+            {record?.contact?.email && (
+                <Field label="Email">
+                    <a href={`mailto:${record.contact.email}`} className="text-blue-600 hover:underline">{record.contact.email}</a>
+                </Field>
+            )}
+            {record?.contact?.address && (
+                <Field label="Address">{record.contact.address}</Field>
+            )}
+        </Section>
+    );
+
+    const infoSection = (
+        <Section icon={<Package size={15} />} title="Record Info">
+            <Field label="Type"><TypeBadge typeKey={record?.typeKey} /></Field>
+            <Field label="Service">{record?.serviceLabel}</Field>
+            <Field label="Status">
+                <div className="flex flex-wrap gap-1.5">
+                    <Pill className={headerConfig.statusPillClass}>
+                        {isArchivedView ? <Archive size={10} /> : <CheckCircle2 size={10} />}
+                        {headerConfig.statusLabel}
+                    </Pill>
+                    {isArchivedView && (
+                        <Pill className={getOriginStatusStyles(record?.sourceStatus)}>{record?.sourceStatus}</Pill>
+                    )}
+                </div>
+            </Field>
+            <Field label="Drop Date">{record?.dropDate}</Field>
+            {!isArchivedView && (
+                <Field label="Released">
+                    <span className="font-bold text-green-600">{record?.releaseDate}</span>
+                </Field>
+            )}
+            {isArchivedView && (
+                <Field label="Archived">
+                    <span className="font-bold text-amber-600">{record?.archiveDate}</span>
+                </Field>
+            )}
+            {isArchivedView && record?.archivedBy && (
+                <Field label="Archived By">
+                    <span className="font-semibold text-amber-700">{record.archivedBy}</span>
+                </Field>
+            )}
+        </Section>
+    );
+
+    const notesSection = (record?.notes || record?.adminNotes || record?.driveLink || record?.orgDriveLink) && (
+        <Section icon={<FileText size={15} />} title="Notes">
+            <div className="space-y-3">
+                {record?.notes && (
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Customer</p>
+                        <p className="text-sm text-slate-700 leading-relaxed">{record.notes}</p>
+                    </div>
+                )}
+                {record?.adminNotes && (
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admin</p>
+                        <p className="text-sm text-slate-700 leading-relaxed">{record.adminNotes}</p>
+                    </div>
+                )}
+                {(record?.driveLink || record?.orgDriveLink) && (
+                    <a
+                        href={record?.driveLink || record?.orgDriveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                    >
+                        <ExternalLink size={13} />
+                        Open Google Drive Reference
+                    </a>
+                )}
+            </div>
+        </Section>
+    );
+
+    const proofSection = (record?.releaseProofImage || record?.releaseNotes) && (
+        <Section icon={<CheckCircle2 size={15} color="#00b400ff" />} title="Release Proof">
+            <div className="space-y-4">
+                {record?.releaseProofImage && (
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Captured Photo</p>
+                        <a href={record.releaseProofImage} target="_blank" rel="noreferrer"
+                            className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:opacity-90 transition-opacity">
+                            <img src={record.releaseProofImage} alt="Release proof" className="w-full max-h-64 object-contain" />
+                        </a>
+                    </div>
+                )}
+                {record?.releaseNotes && (
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Notes / Signature Name</p>
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <p className="text-sm font-medium text-slate-700">{record.releaseNotes}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Section>
+    );
+
+    const repairSection = isRepair && (
+        <Section
+            icon={<Wrench size={15} />}
+            title="Repair Specification"
+        >
+            <div className="space-y-3">
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Repair Service</p>
+                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{repairDisplayLabel}</p>
+                </div>
+                {record?.notes && (
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Repair Notes</p>
+                        <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{record.notes}</p>
+                    </div>
+                )}
+            </div>
+        </Section>
+    );
+
+    const paymentSection = (
+        <Section icon={<CreditCard size={15} />} title="Payment">
+            <Field label="Status"><PayBadge status={record?.payStatus} /></Field>
+            <Field label="Amount">
+                <span className="text-base font-extrabold text-slate-900">
+                    {record?.totalPrice != null
+                        ? `P${record.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : 'N/A'}
+                </span>
+            </Field>
+            {record?.paidAt && (
+                <Field label="Paid At">
+                    {new Date(record.paidAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </Field>
+            )}
+        </Section>
+    );
 
     return (
         <div className="font-inter flex flex-col gap-4 pb-8">
@@ -272,227 +538,38 @@ export default function OrderRecordDetail({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-[60%_40%] gap-4">
+                {/* Left Column */}
                 <div className="space-y-4">
-                    <Section
-                        icon={<CheckCheck size={15} color="#00b400ff" />}
-                        title="Production Timeline"
-                    >
-                        {steps.length === 0 ? (
-                            <p className="text-sm text-slate-400 italic">No production steps recorded.</p>
-                        ) : (
-                            steps.map((step, idx) => (
-                                <div key={`${step?.label || step?.step || idx}-${idx}`} className="flex gap-4 relative">
-                                    {idx < steps.length - 1 && (
-                                        <div className="absolute left-[15px] top-[34px] bottom-0 w-px bg-slate-200" />
-                                    )}
-                                    <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white shadow-[0_0_0_4px_#F8FAFC] z-10 ${isArchivedView ? 'bg-amber-500' : 'bg-green-400'}`}>
-                                        <CheckCircle2 size={14} />
-                                    </div>
-                                    <div className={`flex-1 ${idx < steps.length - 1 ? 'pb-5' : ''}`}>
-                                        <p className="text-[13px] font-bold text-slate-900 leading-snug">
-                                            {step?.step || step?.label || `Step ${idx + 1}`}
-                                        </p>
-                                        <div className="flex gap-4 mt-1 flex-wrap text-[11px] text-slate-400 font-semibold">
-                                            {step?.date && <span className="flex items-center gap-1"><Calendar size={10} />{fmtDate(step.date)}</span>}
-                                            {step?.worker && <span className="flex items-center gap-1"><User size={10} />{step.worker}</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </Section>
-                    {isJersey && teamRoster.length > 0 && (
-                        <Section
-                            icon={<Users size={15} />}
-                            title="Team Roster"
-                            badge={
-                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
-                                    {teamRoster.length} players
-                                </span>
-                            }
-                        >
-                            <div className="overflow-x-auto -mx-5">
-                                <table className="w-full min-w-[520px] border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 bg-slate-50/60">
-                                            {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                                <th key={col} className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? 'text-left pl-5' : 'text-center px-3'}`}>
-                                                    {col}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {teamRoster.map((player, idx) => (
-                                            <tr key={`${player?.surname || player?.name || 'p'}-${idx}`}
-                                                className={`h-12 border-b border-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                                <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player?.surname || player?.name || '—'}</td>
-                                                <td className="px-3 text-center text-[11px] font-black text-slate-600">#{player?.number ?? '—'}</td>
-                                                <td className="px-3 text-center text-[13px] font-semibold text-slate-700">{player?.jerseySize || player?.size || '—'}</td>
-                                                <td className="px-3 text-center text-[12px] font-semibold text-slate-700">{player?.shortSize || player?.size || '—'}</td>
-                                                <td className="px-3 pr-5 text-center text-[10px] text-slate-400">{getLineupAddOns(player).join(', ') || '—'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </Section>
-                    )}
-                    {isRepair && (
-                        <Section
-                            icon={<Wrench size={15} />}
-                            title="Repair Specification"
-                        >
-                            <div className="space-y-3">
-                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Repair Service</p>
-                                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{repairDisplayLabel}</p>
-                                </div>
-                                {record?.notes && (
-                                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Repair Notes</p>
-                                        <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{record.notes}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </Section>
-                    )}
-
-                    {/* Uploaded Images */}
-                    {hasImages && (
-                        <Section icon={<ImageIcon size={15} />} title="Uploaded Images">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {record.imageUrls.map((src, i) => (
-                                    <a key={`${src}-${i}`} href={src} target="_blank" rel="noreferrer"
-                                        className="block rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity">
-                                        <img src={src} alt={`Image ${i + 1}`} className="w-full h-36 object-cover" />
-                                    </a>
-                                ))}
-                            </div>
-                        </Section>
-                    )}
-                    {(record?.releaseProofImage || record?.releaseNotes) && (
-                        <Section icon={<CheckCircle2 size={15} color="#00b400ff" />} title="Release Proof">
-                            <div className="space-y-4">
-                                {record?.releaseProofImage && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Captured Photo</p>
-                                        <a href={record.releaseProofImage} target="_blank" rel="noreferrer"
-                                            className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:opacity-90 transition-opacity">
-                                            <img src={record.releaseProofImage} alt="Release proof" className="w-full max-h-64 object-contain" />
-                                        </a>
-                                    </div>
-                                )}
-                                {record?.releaseNotes && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Notes / Signature Name</p>
-                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                                            <p className="text-sm font-medium text-slate-700">{record.releaseNotes}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </Section>
+                    {timelineSection}
+                    {isComplex ? (
+                        <>
+                            {rosterSection}
+                            {notesSection}
+                        </>
+                    ) : (
+                        <>
+                            {imagesSection}
+                            {rosterSection}
+                            {contactSection}
+                            {infoSection}
+                            {notesSection}
+                        </>
                     )}
                 </div>
 
-                <div className="space-y-4 ">
-                    <Section icon={<User size={15} />} title="Contact">
-                        <Field label="Name" clanss>{record?.customerName}</Field>
-                        {record?.contact?.phone && (
-                            <Field label="Phone">
-                                <a href={`tel:${record.contact.phone}`} className="text-blue-600 hover:underline">{record.contact.phone}</a>
-                            </Field>
-                        )}
-                        {record?.contact?.email && (
-                            <Field label="Email">
-                                <a href={`mailto:${record.contact.email}`} className="text-blue-600 hover:underline">{record.contact.email}</a>
-                            </Field>
-                        )}
-                        {record?.contact?.address && (
-                            <Field label="Address">{record.contact.address}</Field>
-                        )}
-                    </Section>
-
-                    <Section icon={<Package size={15} />} title="Record Info">
-                        <Field label="Type"><TypeBadge typeKey={record?.typeKey} /></Field>
-                        <Field label="Service">{record?.serviceLabel}</Field>
-                        <Field label="Status">
-                            <div className="flex flex-wrap gap-1.5">
-                                <Pill className={headerConfig.statusPillClass}>
-                                    {isArchivedView ? <Archive size={10} /> : <CheckCircle2 size={10} />}
-                                    {headerConfig.statusLabel}
-                                </Pill>
-                                {isArchivedView && (
-                                    <Pill className={getOriginStatusStyles(record?.sourceStatus)}>{record?.sourceStatus}</Pill>
-                                )}
-                            </div>
-                        </Field>
-                        <Field label="Drop Date">{record?.dropDate}</Field>
-                        {!isArchivedView && (
-                            <Field label="Released">
-                                <span className="font-bold text-green-600">{record?.releaseDate}</span>
-                            </Field>
-                        )}
-                        {isArchivedView && (
-                            <Field label="Archived">
-                                <span className="font-bold text-amber-600">{record?.archiveDate}</span>
-                            </Field>
-                        )}
-                        {isArchivedView && record?.archivedBy && (
-                            <Field label="Archived By">
-                                <span className="font-semibold text-amber-700">{record.archivedBy}</span>
-                            </Field>
-                        )}
-                    </Section>
-
-                    <Section icon={<CreditCard size={15} />} title="Payment">
-                        <Field label="Status"><PayBadge status={record?.payStatus} /></Field>
-                        <Field label="Amount">
-                            <span className="text-base font-extrabold text-slate-900">
-                                {record?.totalPrice != null
-                                    ? `P${record.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    : 'N/A'}
-                            </span>
-                        </Field>
-                        {record?.paidAt && (
-                            <Field label="Paid At">
-                                {new Date(record.paidAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </Field>
-                        )}
-                    </Section>
-
-                    {/* Notes */}
-                    {(record?.notes || record?.adminNotes || record?.driveLink || record?.orgDriveLink) && (
-                        <Section icon={<FileText size={15} />} title="Notes">
-                            <div className="space-y-3">
-                                {record?.notes && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Customer</p>
-                                        <p className="text-sm text-slate-700 leading-relaxed">{record.notes}</p>
-                                    </div>
-                                )}
-                                {record?.adminNotes && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Admin</p>
-                                        <p className="text-sm text-slate-700 leading-relaxed">{record.adminNotes}</p>
-                                    </div>
-                                )}
-                                {(record?.driveLink || record?.orgDriveLink) && (
-                                    <a
-                                        href={record?.driveLink || record?.orgDriveLink}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                                    >
-                                        <ExternalLink size={13} />
-                                        Open Google Drive Reference
-                                    </a>
-                                )}
-                            </div>
-                        </Section>
-                    )}
+                {/* Right Column */}
+                <div className="space-y-4">
+                    {isComplex ? (
+                        <>
+                            {imagesSection}
+                            {contactSection}
+                            {infoSection}
+                        </>
+                    ) : null}
+                    {proofSection}
+                    {repairSection}
+                    {paymentSection}
                 </div>
             </div>
         </div>

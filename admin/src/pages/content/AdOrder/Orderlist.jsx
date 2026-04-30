@@ -32,7 +32,7 @@ export default function OrderList({
     counts,
     orderTracking,
     assignments,
-    fullWidth = false,      
+    fullWidth = false,
 }) {
     const [showSort, setShowSort] = useState(false);
     const [showServiceTypeSort, setShowServiceTypeSort] = useState(false);
@@ -53,116 +53,126 @@ export default function OrderList({
         : 'w-full lg:w-[320px] xl:w-[350px] shrink-0';
 
     return (
-        <div className={`${containerWidth} flex flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden h-[calc(100vh-64px)]`}>
+        <div className={`${containerWidth} flex flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-visible h-[calc(100vh-64px)]`}>
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <div className="p-4 lg:p-4 pb-3 border-b border-gray-50 shrink-0 relative">
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Orders</h2>
+            <div className="p-4 sm:p-5 border-b border-gray-100 shrink-0 bg-white">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight">Orders</h2>
                 </div>
 
                 {/* Search + Filter */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 relative">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <div className="flex flex-col gap-3 relative">
+                    <div className="relative w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                         <input
                             type="text"
                             placeholder="Search ID, name, service..."
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-500/10 rounded-xl py-2 pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
+                            className="bg-slate-50 border border-slate-200 focus:border-blue-300 focus:ring-4 focus:ring-blue-500/5 rounded-2xl py-2.5 pl-10 pr-4 text-[13px] font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
                         />
                     </div>
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                setShowSort(v => !v);
-                                setShowServiceTypeSort(false);
-                                setIsFilterOpen(false);
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
-                        >
-                            <SlidersHorizontal size={13} className="text-blue-400" />
-                            <span className="hidden sm:inline max-w-[110px] truncate">{currentSortLabel}</span>
-                            <ChevronDown size={12} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
-                        </button>
-                        {showSort && (
-                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-44">
-                                {SORT_OPTIONS.map(o => (
-                                    <button
-                                        key={o.value}
-                                        onClick={() => { setSortOption(o.value); setShowSort(false); }}
-                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortOption === o.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
-                                    >
-                                        {o.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                setShowServiceTypeSort(v => !v);
-                                setShowSort(false);
-                                setIsFilterOpen(false);
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-xs font-semibold text-gray-600 transition-all cursor-pointer"
-                        >
-                            <SlidersHorizontal size={13} className="text-blue-400" />
-                            <span className="hidden sm:inline max-w-[145px] truncate">{currentServiceTypeLabel}</span>
-                            <ChevronDown size={12} className={`text-gray-400 transition-transform ${showServiceTypeSort ? 'rotate-180' : ''}`} />
-                        </button>
-                        {showServiceTypeSort && (
-                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48">
-                                {SERVICE_TYPE_OPTIONS.map(option => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => {
-                                            setServiceTypeFilter(option.value);
-                                            setShowServiceTypeSort(false);
-                                        }}
-                                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${serviceTypeFilter === option.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                setIsFilterOpen(!isFilterOpen);
-                                setShowSort(false);
-                                setShowServiceTypeSort(false);
-                            }}
-                            className={`p-3 rounded-2xl border transition-all flex items-center justify-center cursor-pointer
-                            ${isFilterOpen || filterStatus !== 'All'
-                                    ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm'
-                                    : 'bg-gray-50 border-transparent text-gray-500 hover:bg-gray-100'}`}
-                        >
-                            <Filter size={18} />
-                            {filterStatus !== 'All' && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 border-2 border-white rounded-full" />
-                            )}
-                        </button>
 
-                        {isFilterOpen && (
-                            <div className="absolute right-0 top-14 w-64 bg-white border border-gray-100 shadow-2xl rounded-2xl p-4 z-30">
-                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
-                                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Filters</h3>
-                                    <button
-                                        onClick={() => { setFilterStatus('All'); setIsFilterOpen(false); }}
-                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer"
-                                    >
-                                        Reset
-                                    </button>
+                    <div className="flex items-center gap-2 overflow-visible">
+                        {/* Sort Dropdown */}
+                        <div className="relative flex-1 sm:flex-none">
+                            <button
+                                onClick={() => {
+                                    setShowSort(v => !v);
+                                    setShowServiceTypeSort(false);
+                                    setIsFilterOpen(false);
+                                }}
+                                className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <SlidersHorizontal size={12} className="text-blue-500" />
+                                    <span className="max-w-[80px] sm:max-w-[100px] truncate">{currentSortLabel}</span>
                                 </div>
-                                <div>
-                                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">
-                                        Order Status
-                                    </label>
-                                    <div className="flex flex-col gap-1.5">
+                                <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                            </button>
+                            {showSort && (
+                                <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[40] overflow-hidden w-44">
+                                    {SORT_OPTIONS.map(o => (
+                                        <button
+                                            key={o.value}
+                                            onClick={() => { setSortOption(o.value); setShowSort(false); }}
+                                            className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${sortOption === o.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                        >
+                                            {o.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Service Type Dropdown */}
+                        <div className="relative flex-1 sm:flex-none">
+                            <button
+                                onClick={() => {
+                                    setShowServiceTypeSort(v => !v);
+                                    setShowSort(false);
+                                    setIsFilterOpen(false);
+                                }}
+                                className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <Filter size={12} className="text-blue-500" />
+                                    <span className="max-w-[80px] sm:max-w-[120px] truncate">{currentServiceTypeLabel}</span>
+                                </div>
+                                <ChevronDown size={11} className={`text-gray-400 transition-transform ${showServiceTypeSort ? 'rotate-180' : ''}`} />
+                            </button>
+                            {showServiceTypeSort && (
+                                <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[40] overflow-hidden w-48">
+                                    {SERVICE_TYPE_OPTIONS.map(option => (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => {
+                                                setServiceTypeFilter(option.value);
+                                                setShowServiceTypeSort(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none ${serviceTypeFilter === option.value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-slate-50'}`}
+                                        >
+                                            {option.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Status Filter Dropdown */}
+                        <div className="relative shrink-0">
+                            <button
+                                onClick={() => {
+                                    setIsFilterOpen(!isFilterOpen);
+                                    setShowSort(false);
+                                    setShowServiceTypeSort(false);
+                                }}
+                                className={`h-9 px-3 rounded-xl border transition-all flex items-center justify-center cursor-pointer gap-2
+                                ${isFilterOpen || filterStatus !== 'All'
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                        : 'bg-slate-50 border-transparent text-gray-500 hover:bg-slate-100'}`}
+                            >
+                                <SlidersHorizontal size={14} />
+                                <span className="text-[11px] font-bold hidden sm:inline">Status</span>
+                                {filterStatus !== 'All' && (
+                                    <span className="w-4 h-4 bg-white text-blue-600 rounded-full flex items-center justify-center text-[9px] font-black">
+                                        {counts[filterStatus] || '!'}
+                                    </span>
+                                )}
+                            </button>
+
+                            {isFilterOpen && (
+                                <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-100 shadow-2xl rounded-2xl p-3 z-[40]">
+                                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-50">
+                                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</h3>
+                                        <button
+                                            onClick={() => { setFilterStatus('All'); setIsFilterOpen(false); }}
+                                            className="text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-tighter bg-transparent border-none cursor-pointer"
+                                        >
+                                            Reset
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
                                         {statusTabs.map(tab => (
                                             <button
                                                 key={tab}
@@ -180,27 +190,28 @@ export default function OrderList({
                                         ))}
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Quick approval tabs */}
-                <div className="mt-3">
-                    <div className="inline-flex p-1 rounded-xl border border-gray-200 bg-gray-50 relative">
+                {/* Desktop-only Quick approval tabs */}
+                <div className="hidden lg:block mt-4 overflow-x-auto no-scrollbar">
+                    <div className="inline-flex p-1 rounded-2xl border border-gray-100 bg-slate-50/80">
                         {approvalTabs.map(tab => (
                             <div key={tab.value} className="relative">
                                 <button
                                     onClick={() => { setFilterStatus(tab.value); setIsFilterOpen(false); }}
-                                    className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer
+                                    className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap
                                     ${filterStatus === tab.value
-                                            ? 'bg-white text-blue-600 shadow-sm'
-                                            : 'text-gray-500 hover:text-gray-700'}`}
+                                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}
                                 >
-                                    {tab.label} ({counts[tab.value] ?? 0})
+                                    {tab.label}
+                                    <span className="ml-1.5 opacity-50 font-medium">({counts[tab.value] ?? 0})</span>
                                 </button>
                                 {tab.value === 'For Approval' && counts['For Approval'] > 0 && (
-                                    <span className="absolute -top-2.5 right-0 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full shadow-md">
+                                    <span className="absolute -top-2 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full shadow-md border-2 border-white">
                                         {counts['For Approval']}
                                     </span>
                                 )}
@@ -242,7 +253,7 @@ export default function OrderList({
                             || order.assignedTailor;
                         const listAssignee = listAssigneeValue
                             ? EMPLOYEE_POOL.find(e => [e.id, e.name, e.fullName].includes(listAssigneeValue))
-                                || { name: listAssigneeValue }
+                            || { name: listAssigneeValue }
                             : null;
                         const isNamedGroupBooking =
                             Boolean(order.isBooking) &&

@@ -1,5 +1,5 @@
 import React from 'react'
-import { MdEdit, MdBusiness, MdLink, MdImage } from 'react-icons/md'
+import { Edit2, Building2, Link as LinkIcon, Image as ImageIcon } from 'lucide-react'
 
 const PRODUCT_TYPES = [
     { id: 'tshirt', label: 'T-Shirt', price: 500 },
@@ -20,7 +20,7 @@ const ReviewBlock = ({ title, onEdit, children }) => (
             </h4>
             {onEdit && (
                 <button onClick={onEdit} className="flex items-center gap-1 text-[11px] text-blue-500/70 hover:text-blue-600 font-semibold uppercase tracking-wider transition-colors cursor-pointer">
-                    <MdEdit size={12} /> Edit
+                    <Edit2 size={12} /> Edit
                 </button>
             )}
         </div>
@@ -56,7 +56,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                                                 </span>
                                             ) : (
                                                 <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                                                    <MdBusiness size={14} />
+                                                    <Building2 size={14} />
                                                 </span>
                                             )}
                                             <div className="min-w-0">
@@ -85,7 +85,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                     {designFile ? (
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                                <MdImage size={20} className="text-blue-500" />
+                                <ImageIcon size={20} className="text-blue-500" />
                             </div>
                             <div>
                                 <p className="text-gray-800 text-sm font-medium">{designFile.name}</p>
@@ -95,7 +95,7 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                     ) : driveLink ? (
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                                <MdLink size={20} className="text-blue-500" />
+                                <LinkIcon size={20} className="text-blue-500" />
                             </div>
                             <a href={driveLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-sm font-medium underline underline-offset-2 truncate hover:text-blue-600 transition-colors">
                                 {driveLink}

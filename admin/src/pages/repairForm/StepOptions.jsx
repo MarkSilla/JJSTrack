@@ -1,4 +1,4 @@
-import { MdCheck, MdAdd, MdRemove, MdInfo } from 'react-icons/md'
+import { Check, Plus, Minus, Info } from 'lucide-react'
 import { REPAIR_OPTIONS } from './constants'
 
 const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, repairDescription, setRepairDescription }) => {
@@ -25,7 +25,7 @@ const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, r
                                         className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center transition-all duration-200
                         ${checked ? 'bg-blue-600 shadow-sm shadow-blue-600/40' : 'border-2 border-gray-300 group-hover:border-gray-400'}`}
                                     >
-                                        {checked && <MdCheck size={13} className="text-white" />}
+                                        {checked && <Check size={13} className="text-white" />}
                                     </span>
                                     <span className={`font-medium transition-colors ${checked ? 'text-gray-800' : 'text-gray-600'}`}>{opt.label}</span>
                                 </div>
@@ -48,14 +48,14 @@ const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, r
                                                 onClick={() => setQuantity(opt.id, Math.max(1, qty - 1))}
                                                 className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors cursor-pointer"
                                             >
-                                                <MdRemove size={14} />
+                                                <Minus size={14} />
                                             </button>
                                             <span className="text-gray-800 font-bold text-sm w-6 text-center tabular-nums">{qty}</span>
                                             <button
                                                 onClick={() => setQuantity(opt.id, qty + 1)}
                                                 className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors cursor-pointer"
                                             >
-                                                <MdAdd size={14} />
+                                                <Plus size={14} />
                                             </button>
 
                                         </div>
@@ -71,14 +71,14 @@ const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, r
                                             onClick={() => setQuantity(opt.id, Math.max(1, qty - 1))}
                                             className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors cursor-pointer"
                                         >
-                                            <MdRemove size={14} />
+                                            <Minus size={14} />
                                         </button>
                                         <span className="text-gray-800 font-bold text-sm w-6 text-center tabular-nums">{qty}</span>
                                         <button
                                             onClick={() => setQuantity(opt.id, qty + 1)}
                                             className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors cursor-pointer"
                                         >
-                                            <MdAdd size={14} />
+                                            <Plus size={14} />
                                         </button>
                                         <span className="text-blue-500/70 text-xs font-medium ml-1">= ₱{opt.price * qty}</span>
                                     </div>
@@ -97,7 +97,7 @@ const StepOptions = ({ selectedOptions, toggleOption, quantities, setQuantity, r
             </div>
 
             <div className="max-w-2xl mx-auto mt-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200/50">
-                <MdInfo size={20} className="text-blue-500 shrink-0 mt-0.5" />
+                <Info size={20} className="text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-600/80">Please go to the shop for accurate assessment of your repair.</p>
             </div>
         </section>

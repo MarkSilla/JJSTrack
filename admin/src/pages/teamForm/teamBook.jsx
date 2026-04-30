@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
+import { Check, ArrowLeft, ArrowRight, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import TeamStepPlayers from './TeamStepPlayers'
@@ -37,7 +37,7 @@ const Stepper = ({ currentStep }) => (
                                             : 'bg-[#1B2540] text-gray-500 ring-1 ring-gray-700'
                                     }`}
                             >
-                                {done ? <MdCheck size={18} /> : num}
+                                {done ? <Check size={18} /> : num}
                             </span>
                             <span
                                 className={`mt-2 text-[11px] font-semibold uppercase tracking-widest transition-colors
@@ -67,7 +67,7 @@ const Stepper = ({ currentStep }) => (
                                             : 'bg-[#1B2540] text-gray-600 ring-1 ring-gray-700'
                                     }`}
                             >
-                                {done ? <MdCheck size={14} /> : num}
+                                {done ? <Check size={14} /> : num}
                             </span>
                             <span className={`text-[9px] mt-1 font-semibold uppercase tracking-wider ${active ? 'text-blue-400' : done ? 'text-blue-400/50' : 'text-gray-600'}`}>
                                 {label}
@@ -218,14 +218,14 @@ const TeamBook = () => {
                                     }}
                                     className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer text-sm font-medium group"
                                 >
-                                    <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back
+                                    <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => navigate('/home')}
                                     className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer text-sm font-medium group"
                                 >
-                                    <MdArrowBack size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Dashboard
+                                    <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Dashboard
                                 </button>
                             )}
 
@@ -237,7 +237,7 @@ const TeamBook = () => {
                                             ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-500/30'
                                             : 'bg-gray-800 text-gray-400 hover:bg-gray-700 shadow-none'}`}
                                 >
-                                    Next <MdArrowForward size={16} />
+                                    Next <ArrowRight size={16} />
                                 </button>
                             ) : (
                                 <button
@@ -252,7 +252,7 @@ const TeamBook = () => {
                                         </>
                                     ) : (
                                         <>
-                                            Confirm & Submit <MdSend size={16} />
+                                            Confirm & Submit <Send size={16} />
                                         </>
                                     )}
                                 </button>

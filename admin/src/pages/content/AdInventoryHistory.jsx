@@ -575,8 +575,8 @@ export default function AdInventoryHistory() {
     { label: "Stock In", value: formatQty(stats.stockIn), sub: "Units received or opened", icon: ArrowUpCircle, accent: "#2563EB", bgAccent: "#EFF6FF" },
     { label: "Stock Out", value: formatQty(stats.stockOut), sub: "Units consumed by FIFO", icon: ArrowDownCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
     { label: "Items Touched", value: stats.touchedItems, sub: "Unique inventory records", icon: Package, accent: "#7C3AED", bgAccent: "#F5F3FF" },
-    { label: "Batch Touches", value: stats.batchTouches, sub: "FIFO batches involved", icon: Layers, accent: "#0891B2", bgAccent: "#ECFEFF" },
     { label: "Movement Value", value: fmt(stats.movementValue), sub: "Tracked stock cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
+    { label: "Batch Touches", value: stats.batchTouches, sub: "FIFO batches involved", icon: Layers, accent: "#0891B2", bgAccent: "#ECFEFF" },
     { label: "Adjustments", value: stats.nonStockChanges, sub: "Update, archive, restore", icon: Pencil, accent: "#D97706", bgAccent: "#FFFBEB" },
   ]
 
@@ -601,163 +601,145 @@ export default function AdInventoryHistory() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-inter">
-      <div className="px-4 lg:px-6 py-2 top-0 z-100">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
-          {statCards.map(({ icon: Icon, label, value, sub, accent, bgAccent }) => (
-            <StatCard
+    <div className="min-h-screen bg-slate-50 font-inter overflow-x-hidden">
+      <div className="px-4 lg:px-6 py-2 top-0 z-100 overflow-visible">
+        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 mb-3">
+          {statCards.map(({ icon: Icon, label, value, sub, accent, bgAccent }, index) => (
+            <div
               key={label}
-              icon={Icon}
-              label={label}
-              value={value}
-              sub={sub}
-              accent={accent}
-              bgAccent={bgAccent}
-            />
+              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${
+                index === 4 
+                  ? 'col-span-2 lg:col-span-1 order-last lg:order-none' 
+                  : 'col-span-1 order-none'
+              }`}
+              style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+            >
+              <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+              <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
+                <div className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`} style={{ background: bgAccent }}>
+                  <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
+                  <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
+                </div>
+                <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
+              </div>
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+                }`}>{value}</div>
+              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+            </div>
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-3">
-          <div className="flex flex-1 gap-2">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search item, SKU, actor, or note..."
-                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
-              />
-            </div>
-
-            <div className="flex gap-1">
-              <div className="relative inline-block">
-                <button
-                  onClick={() => setShowCategory((value) => !value)}
-                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[100px]"
-                >
-                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <span className="truncate">{categoryFilter === "All" ? "Category" : categoryFilter}</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? "rotate-180" : ""}`} />
-                </button>
-
-                {showCategory && (
-                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[150px] max-h-52 overflow-y-auto">
-                    {categoryOptions.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => {
-                          setCategoryFilter(category)
-                          setShowCategory(false)
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${categoryFilter === category ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => setShowAction((value) => !value)}
-                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[100px]"
-                >
-                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <span className="truncate">{actionFilter === "All" ? "Action" : ACTION_OPTIONS.find((option) => option.value === actionFilter)?.label}</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showAction ? "rotate-180" : ""}`} />
-                </button>
-
-                {showAction && (
-                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[150px] max-h-52 overflow-y-auto">
-                    {ACTION_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setActionFilter(option.value)
-                          setShowAction(false)
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${actionFilter === option.value ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => setShowSort((value) => !value)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
-                >
-                  <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
-                  <span className="truncate max-w-[90px]">Sort</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? "rotate-180 scale-110" : ""}`} />
-                </button>
-
-                {showSort && (
-                  <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
-                    {SORT_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setSortBy(option.value)
-                          setShowSort(false)
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === option.value ? "bg-blue-50 text-blue-600 font-semibold shadow-sm" : "text-slate-600 hover:text-slate-800"}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+        <div className="flex flex-col lg:flex-row items-center gap-3 mb-3">
+          {/* Search Input - Expands to fill space */}
+          <div className="relative flex-1 w-full lg:w-auto">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search item, SKU, actor, or note..."
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
+            />
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className={`hidden lg:flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
-              socketStatus === "connected"
-                ? "bg-emerald-50 border-emerald-200"
-                : "bg-amber-50 border-amber-200"
-            }`}>
-              <RefreshCw
-                size={13}
-                className={`${
-                  socketStatus === "connected" ? "text-emerald-600" : "text-amber-600"
-                } ${socketStatus === "connected" ? "" : "animate-spin"}`}
-              />
-              <div className="leading-tight">
-                <p className={`text-[11px] font-semibold ${
-                  socketStatus === "connected" ? "text-emerald-700" : "text-amber-700"
-                }`}>
-                  {socketStatus === "connected"
-                    ? "Live sync active"
-                    : socketStatus === "connecting"
-                      ? "Connecting live sync..."
-                      : "Reconnecting live sync..."}
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  {lastSyncedAt
-                    ? `Last sync ${lastSyncedAt.toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}`
-                    : "Waiting for history updates"}
-                </p>
-              </div>
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto">
+            {/* Category Filter */}
+            <div className="relative min-w-[110px] flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowCategory((value) => !value)}
+                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
+              >
+                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <span className="truncate">{categoryFilter === "All" ? "Category" : categoryFilter}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? "rotate-180" : ""}`} />
+              </button>
+
+              {showCategory && (
+                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[150px] max-h-52 overflow-y-auto">
+                  {categoryOptions.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => {
+                        setCategoryFilter(category)
+                        setShowCategory(false)
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${categoryFilter === category ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <button
-              onClick={() => void refreshHistoryPage({ showLoader: true })}
-              className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-            >
-              <RefreshCw size={14} />
-              Sync Now
-            </button>
+            {/* Action Filter */}
+            <div className="relative min-w-[110px] flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowAction((value) => !value)}
+                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
+              >
+                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <span className="truncate">{actionFilter === "All" ? "Action" : ACTION_OPTIONS.find((option) => option.value === actionFilter)?.label}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showAction ? "rotate-180" : ""}`} />
+              </button>
+
+              {showAction && (
+                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[150px] max-h-52 overflow-y-auto">
+                  {ACTION_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setActionFilter(option.value)
+                        setShowAction(false)
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${actionFilter === option.value ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sort Filter */}
+            <div className="relative flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowSort((value) => !value)}
+                className="flex items-center justify-between gap-1.5 px-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
+              >
+                <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
+                <span className="truncate">Sort</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? "rotate-180 scale-110" : ""}`} />
+              </button>
+
+              {showSort && (
+                <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                  {SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setSortBy(option.value)
+                        setShowSort(false)
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === option.value ? "bg-blue-50 text-blue-600 font-semibold shadow-sm" : "text-slate-600 hover:text-slate-800"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons Group */}
+            <div className="flex items-center gap-1.5 w-full lg:w-auto">
+              <button
+                onClick={() => void refreshHistoryPage({ showLoader: true })}
+                className="flex-1 lg:flex-none flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap"
+              >
+                <RefreshCw size={14} />
+                Sync Now
+              </button>
+            </div>
           </div>
         </div>
 

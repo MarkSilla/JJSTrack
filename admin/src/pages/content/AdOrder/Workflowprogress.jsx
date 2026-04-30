@@ -15,13 +15,13 @@ export default function WorkflowProgress({
         ? {
             title: 'Approval Required',
             desc: 'The admin needs to approve this order before the workflow can begin.',
-          }
+        }
         : !hasSchedule
-        ? {
-            title: 'No Schedule Set',
-            desc: 'After the production team is assigned, set the pickup date and time to unlock this workflow.',
-          }
-        : null;
+            ? {
+                title: 'No Schedule Set',
+                desc: 'After the production team is assigned, set the pickup date and time to unlock this workflow.',
+            }
+            : null;
 
     return (
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm relative">
@@ -46,28 +46,34 @@ export default function WorkflowProgress({
                             : `Step ${currentStepIdx + 1} of ${activeOrderSteps.length}`}
                     </span>
                 </div>
-
-                {/* Steps row — icons on top, connector line through icon centers */}
-                <div className="relative flex justify-between items-start px-4 pt-2">
-                    <div className="absolute left-8 right-8 h-0.5 bg-gray-100 rounded-full z-0" style={{ top: '16px' }} />
+                <div className="relative flex justify-between items-start pt-0.5">
                     <div
-                        className="absolute left-8 h-0.5 bg-gradient-to-r from-green-400 to-green-600 rounded-full z-0 transition-all duration-500"
+                        className="absolute h-0.5 bg-gray-100 rounded-full z-0"
                         style={{
                             top: '16px',
-                            width: activeOrderSteps.length <= 1
-                                ? '0%'
-                                : `${Math.min(100, (currentStepIdx / (activeOrderSteps.length - 1)) * (100 - (16 / (activeOrderSteps.length * 60)) * 100))}%`
+                            left: `${100 / (activeOrderSteps.length * 2)}%`,
+                            right: `${100 / (activeOrderSteps.length * 2)}%`
                         }}
-                    />
+                    >
+                        <div
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-500"
+                            style={{
+                                width: activeOrderSteps.length <= 1
+                                    ? '0%'
+                                    : `${(currentStepIdx / (activeOrderSteps.length - 1)) * 100}%`
+                            }}
+                        />
+                    </div>
                     {activeOrderSteps.map((step, idx) => {
-                        const isCompleted = idx < currentStepIdx;
-                        const isCurrent = idx === currentStepIdx;
+                        const isAllDone = activeOrderSteps.every(s => s.done);
+                        const isCompleted = idx < currentStepIdx || (isAllDone && idx === currentStepIdx);
+                        const isCurrent = idx === currentStepIdx && !isAllDone;
                         const label = step.label || step;
                         const Icon = STEP_ICON ? STEP_ICON[label.toLowerCase()] : null;
                         return (
                             <div key={idx} className="relative z-10 flex flex-col items-center gap-1.5 flex-1">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ring-4 ring-white shadow-sm shrink-0
-                                    ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white ring-blue-100' : 'bg-white text-gray-400 border-2 border-gray-200'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300  ring-4 ring-white shadow-sm shrink-0
+                                    ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white ring-blue-100' : 'bg-gray-200 text-gray-400 border-2 border-gray-200'}`}>
                                     {isCompleted ? <Check size={14} strokeWidth={3} /> : Icon ? <Icon size={14} /> : null}
                                 </div>
                             </div>

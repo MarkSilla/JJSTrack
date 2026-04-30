@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { MdCloudUpload, MdImage, MdClose } from 'react-icons/md'
+import { UploadCloud, Image as ImageIcon, X } from 'lucide-react'
 
 const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
     const handleFiles = useCallback(
@@ -34,7 +34,7 @@ const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
                         className="group flex flex-col items-center justify-center gap-3 py-14 rounded-2xl border-2 border-dashed border-blue-300/50 bg-blue-50/30 hover:border-blue-400/60 hover:bg-blue-50/60 cursor-pointer transition-all duration-300"
                     >
                         <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-1 group-hover:bg-blue-200/70 transition-colors">
-                            <MdCloudUpload size={32} className="text-blue-500" />
+                            <UploadCloud size={32} className="text-blue-500" />
                         </div>
                         <p className="text-gray-700 font-semibold text-sm">Drop your image here or click to browse</p>
                         <p className="text-gray-400 text-xs">JPG, PNG up to 5MB</p>
@@ -51,7 +51,7 @@ const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
                         {/* Overlay functionality for adding more & removing main photo */}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
                             <label className="cursor-pointer flex flex-col items-center justify-center p-6 rounded-xl hover:bg-white/10 transition-colors">
-                                <MdCloudUpload size={36} className="text-white drop-shadow-md" />
+                                <UploadCloud size={36} className="text-white drop-shadow-md" />
                                 <span className="text-white font-bold mt-2 drop-shadow-md text-sm">Add More Photos</span>
                                 <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => handleFiles(e.target.files)} />
                             </label>
@@ -61,7 +61,7 @@ const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
                                 className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg hover:bg-red-500 hover:scale-105 transition-all cursor-pointer"
                                 title="Remove Image"
                             >
-                                <MdClose size={18} />
+                                <X size={18} />
                             </button>
                         </div>
                     </div>
@@ -77,7 +77,7 @@ const StepPhoto = ({ photos, setPhotos, skipPhoto }) => {
                                     onClick={() => removePhoto(i + 1)}
                                     className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer shadow-md hover:scale-105"
                                 >
-                                    <MdClose size={14} />
+                                    <X size={14} />
                                 </button>
                             </div>
                         ))}

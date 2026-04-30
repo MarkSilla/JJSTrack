@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { MdPersonAdd, MdEdit, MdDelete, MdCheck, MdClose } from 'react-icons/md'
-import { FaTshirt } from 'react-icons/fa'
+import { UserPlus, Edit2, Trash2, Check, X, Shirt } from 'lucide-react'
 
 const JERSEY_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 const SHORT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
@@ -111,14 +110,14 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
             <div className="max-w-xl mx-auto mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <FaTshirt size={14} className="text-blue-500/70" />
+                        <Shirt size={14} className="text-blue-500/70" />
                         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {editIdx !== null ? 'Edit Player' : 'Add Player'}
                         </span>
                     </div>
                     {editIdx !== null && (
                         <button onClick={cancelEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
-                            <MdClose size={14} /> Cancel
+                            <X size={14} /> Cancel
                         </button>
                     )}
                 </div>
@@ -196,7 +195,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                                             <div className="flex items-center gap-2">
                                                 <span className={`w-4 h-4 rounded-sm flex items-center justify-center border transition-all
                                                     ${selected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
-                                                    {selected && <MdCheck size={12} className="text-white" />}
+                                                    {selected && <Check size={12} className="text-white" />}
                                                 </span>
                                                 <span className={`text-sm font-medium ${selected ? 'text-gray-800' : 'text-gray-600'}`}>{pt.label}</span>
                                             </div>
@@ -235,7 +234,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                         <label className="flex items-center gap-2.5 cursor-pointer group pt-1">
                             <span className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center transition-all duration-200
                                 ${form.pockets ? 'bg-blue-600 shadow-sm shadow-blue-600/40' : 'border-2 border-gray-300 group-hover:border-gray-400'}`}>
-                                {form.pockets && <MdCheck size={13} className="text-white" />}
+                                {form.pockets && <Check size={13} className="text-white" />}
                             </span>
                             <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors">
                                 Shorts with Pockets <span className="text-blue-500 font-semibold">(+₱{POCKET_PRICE})</span>
@@ -261,7 +260,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
                     >
-                        <MdPersonAdd size={18} />
+                        <UserPlus size={18} />
                         {editIdx !== null ? 'Update Player' : 'Add Player'}
                     </button>
                 </div>
@@ -307,11 +306,11 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
                                             <div className="flex items-center gap-1.5">
                                                 <button onClick={() => startEdit(i)}
                                                     className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors cursor-pointer">
-                                                    <MdEdit size={14} />
+                                                    <Edit2 size={14} />
                                                 </button>
                                                 <button onClick={() => remove(i)}
                                                     className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer">
-                                                    <MdDelete size={14} />
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -325,7 +324,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers }) => {
 
             {players.length === 0 && (
                 <div className="max-w-xl mx-auto text-center py-8">
-                    <FaTshirt size={40} className="text-gray-300 mx-auto mb-3" />
+                    <Shirt size={40} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-400 text-sm">No players added yet. Add your first player above.</p>
                 </div>
             )}

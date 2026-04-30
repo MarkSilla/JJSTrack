@@ -1,5 +1,4 @@
-import { MdContentCut } from 'react-icons/md'
-import { FaTshirt } from 'react-icons/fa'
+import { Scissors, Shirt } from 'lucide-react'
 
 export const STEP_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Review']
 
@@ -22,8 +21,8 @@ export const TIME_SLOTS = [
 ]
 
 export const SERVICES = [
-    { id: 'repair', label: 'Custom Repair', desc: 'Alterations, repairs & fixes for your garments', Icon: MdContentCut },
-    { id: 'jersey', label: 'Team Jersey', desc: 'Custom jerseys for your team or organization', Icon: FaTshirt },
+    { id: 'repair', label: 'Custom Repair', desc: 'Alterations, repairs & fixes for your garments', Icon: Scissors },
+    { id: 'jersey', label: 'Team Jersey', desc: 'Custom jerseys for your team or organization', Icon: Shirt },
 ]
 
 export const getWeekDays = () => {

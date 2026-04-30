@@ -165,14 +165,14 @@ function getMaxStock(item) {
 function stringSimilarity(str1, str2) {
   const s1 = str1.toLowerCase().trim();
   const s2 = str2.toLowerCase().trim();
-  
+
   if (s1 === s2) return 1;
-  
+
   const longer = s1.length > s2.length ? s1 : s2;
   const shorter = s1.length > s2.length ? s2 : s1;
-  
+
   if (longer.length === 0) return 1;
-  
+
   const editDistance = getEditDistance(longer, shorter);
   return (longer.length - editDistance) / longer.length;
 }
@@ -364,10 +364,10 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Check if form has changed from original
-  const hasChanges = form.name !== item.name || 
-                     form.category !== item.category || 
-                     form.unit !== item.unit || 
-                     form.unitPrice !== item.unitPrice;
+  const hasChanges = form.name !== item.name ||
+    form.category !== item.category ||
+    form.unit !== item.unit ||
+    form.unitPrice !== item.unitPrice;
 
   const handleConfirm = () => {
     if (!form.name.trim()) return;
@@ -539,9 +539,8 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
 
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button onClick={handleConfirm} disabled={!hasChanges} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-              hasChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"
-            }`}>
+            <button onClick={handleConfirm} disabled={!hasChanges} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"
+              }`}>
               <Check size={15} /> Update
             </button>
           </div>
@@ -833,11 +832,10 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           <button
             onClick={handleConfirm}
             disabled={adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill}
-            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-              adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
-                ? "bg-slate-300 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
+              ? "bg-slate-300 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+              }`}
           >
             <Check size={15} /> {adjType === "increase" ? "Receive Batch" : "Confirm FIFO"}
           </button>
@@ -958,7 +956,7 @@ function AddItemModal({ settings, onConfirm, onClose }) {
   const handleConfirm = () => {
     if (!form.name.trim()) return;
     const stockValue = Number(form.stock) || 0;
-    
+
     if (stockValue < 0) {
       toast.error("Current stock cannot be negative");
       return;
@@ -968,7 +966,7 @@ function AddItemModal({ settings, onConfirm, onClose }) {
       toast.error("Batch cost per unit is required when receiving stock");
       return;
     }
-    
+
     const newData = {
       name: form.name.trim(),
       category: form.category,
@@ -977,7 +975,7 @@ function AddItemModal({ settings, onConfirm, onClose }) {
       unitPrice: Number(form.unitPrice) || 0,
       receivedAt: form.receivedAt || formatDateInput(new Date()),
     };
-    
+
     onConfirm(newData);
   };
 
@@ -991,13 +989,13 @@ function AddItemModal({ settings, onConfirm, onClose }) {
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-          <div className="flex items-center justify-between mb-5">
-            <div>
+        <div className="flex items-center justify-between mb-5">
+          <div>
             <h3 className="text-lg font-black text-gray-900">Add Item / Receive Batch</h3>
             <p className="text-xs text-slate-400">Create a new item or add a new FIFO batch to an existing one</p>
-            </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
           </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+        </div>
 
         <div className="mb-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
@@ -1092,17 +1090,17 @@ function AddItemModal({ settings, onConfirm, onClose }) {
                 setShowUnitModal(true);
               }}
               className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-              >
-                <span className="truncate">{form.unit}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
-              </button>
-              {showUnitModal && (
-                <div style={unitMenuStyle}>
-                  {UNIT_OPTIONS.map(u => (
-                    <button
-                      key={u}
-                      onClick={() => {
-                        set("unit", u);
+            >
+              <span className="truncate">{form.unit}</span>
+              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
+            </button>
+            {showUnitModal && (
+              <div style={unitMenuStyle}>
+                {UNIT_OPTIONS.map(u => (
+                  <button
+                    key={u}
+                    onClick={() => {
+                      set("unit", u);
                       setShowUnitModal(false);
                     }}
                     className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
@@ -1120,8 +1118,8 @@ function AddItemModal({ settings, onConfirm, onClose }) {
           </p>
         </div>
 
-          {fields.filter(f => f.key !== "name").map(f => (
-            <div key={f.key} className="mb-4">
+        {fields.filter(f => f.key !== "name").map(f => (
+          <div key={f.key} className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               {f.label}
             </label>
@@ -1131,30 +1129,29 @@ function AddItemModal({ settings, onConfirm, onClose }) {
               onChange={e => set(f.key, e.target.value)}
               placeholder={f.placeholder}
               step={f.step || undefined}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
-            </div>
-          ))}
-
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
-            <input
-              type="date"
-              value={form.receivedAt}
-              onChange={e => set("receivedAt", e.target.value)}
-              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
-            />
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
           </div>
+        ))}
+
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
+          <input
+            type="date"
+            value={form.receivedAt}
+            onChange={e => set("receivedAt", e.target.value)}
+            className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
+          />
+        </div>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           <button
             onClick={handleConfirm}
             disabled={isSaveDisabled}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-              isSaveDisabled
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-            }`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${isSaveDisabled
+              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
           >
             <Plus size={15} /> Save Item / Batch
           </button>
@@ -1292,7 +1289,7 @@ function InventorySystemContent() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
-const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('newest');
   const [showSort, setShowSort] = useState(false);
   const [showCategory, setShowCategory] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
@@ -1497,12 +1494,12 @@ const [sortBy, setSortBy] = useState('newest');
     return items;
   }, [activeInventory, archivedInventory, search, catFilter, statFilter, showArchived, sortBy]);
 
-const STAT_CARDS = [
+  const STAT_CARDS = [
     { label: "Total Items", value: activeInventory.length, sub: "Active supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
     { label: "Open Batches", value: totalBatchCount, sub: "FIFO layers on hand", icon: Layers, accent: "#7C3AED", bgAccent: "#F5F3FF" },
-    { label: "Current Value", value: fmt(currentValue), sub: "Exact batch-based cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
     { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
+    { label: "Current Value", value: fmt(currentValue), sub: "Exact batch-based cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
     { label: "Out of Stock", value: outCount, sub: "Critical - reorder ASAP", icon: XCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
     { label: "Archived", value: archivedInventory.length, sub: "Out of service", icon: Archive, accent: "#6366F1", bgAccent: "#EEF2FF" }
   ];
@@ -1523,8 +1520,8 @@ const STAT_CARDS = [
   const handleAddItem = async (data) => {
     try {
       // Check for existing item with same name and unit
-      const existingItem = inventory.find(item => 
-        item.name.toLowerCase() === data.name.toLowerCase() && 
+      const existingItem = inventory.find(item =>
+        item.name.toLowerCase() === data.name.toLowerCase() &&
         item.unit.toLowerCase() === data.unit.toLowerCase() &&
         !item.archived
       );
@@ -1555,7 +1552,7 @@ const STAT_CARDS = [
 
       // No duplicate or similar item found, proceed with adding
       const result = await inventoryApi.createInventory(data);
-      
+
       if (result.isUpdate) {
         setInventory(inv => inv.map(i => i._id === result._id ? result : i));
       } else {
@@ -1633,11 +1630,11 @@ const STAT_CARDS = [
   const handleArchive = async (itemId, restore = false) => {
     try {
       const item = inventory.find(i => i._id === itemId);
-      setArchiveConfirm({ 
-        show: true, 
-        id: itemId, 
-        isRestore: restore, 
-        itemName: item.name 
+      setArchiveConfirm({
+        show: true,
+        id: itemId,
+        isRestore: restore,
+        itemName: item.name
       });
     } catch (err) {
       console.error("Error finding item:", err);
@@ -1648,10 +1645,10 @@ const STAT_CARDS = [
     try {
       const { id, isRestore } = archiveConfirm;
       const item = inventory.find(i => i._id === id);
-      const updatedItem = isRestore 
+      const updatedItem = isRestore
         ? await inventoryApi.restoreInventory(id)
         : await inventoryApi.archiveInventory(id);
-      
+
       setInventory(inv => inv.map(i => i._id === id ? updatedItem : i));
       await fetchActivities();
       setArchiveConfirm({ show: false, id: null, isRestore: false, itemName: '' });
@@ -1669,192 +1666,158 @@ const STAT_CARDS = [
   const alertCount = lowCount + outCount;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-inter">
-      <div className="px-4 lg:px-6 py-2 top-0 z-100">
-
-        {/* ALERT 
-        {!alertDismissed && alertCount > 0 && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 rounded-xl p-4 mb-6">
-            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
-            <p className="text-sm font-medium text-amber-800 flex-1">
-              <strong>{alertCount} item{alertCount > 1 ? "s" : ""}</strong> need{alertCount === 1 ? "s" : ""} attention —{" "}
-              {lowCount > 0 && `${lowCount} low stock`}{lowCount > 0 && outCount > 0 && ", "}
-              {outCount > 0 && `${outCount} out of stock`}.
-            </p>
-            <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 transition-colors flex-shrink-0">
-              <X size={15} />
-            </button>
-          </div>
-        )} */}
-
+    <div className="min-h-screen bg-slate-50 font-inter overflow-x-hidden">
+      <div className="px-4 lg:px-6 py-2 top-0 z-100 overflow-visible">
         {/* STAT */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-3">
-          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, }) => (
+        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 mb-3">
+          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent }, index) => (
             <div
               key={label}
-              className="bg-white rounded-2xl py-2.5 px-3 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${
+                index === 4
+                  ? 'col-span-2 lg:col-span-1 order-last lg:order-none'
+                  : 'col-span-1 order-none'
+              }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-                  <Icon size={15} color={accent} strokeWidth={2.2} />
+              <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
+                <div className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`} style={{ background: bgAccent }}>
+                  <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
+                  <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                 </div>
-                <span className="text-[11px] font-semibold text-gray-500">{label}</span>
+                <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
               </div>
-              <div className="mt-[-4px] text-[14px] font-extrabold text-gray-900 leading-none tracking-tight pl-[40px]">{value}</div>
-              <div className="text-[10px] text-gray-400 mt-0.5 pl-[40px]">{sub}</div>
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+                }`}>{value}</div>
+              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
             </div>
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-3">
-          <div className="flex flex-1 gap-2">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search items…"
-                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors" />
-            </div>
-
-            {/* Filters */}
-            <div className="flex gap-1">
-              {/* Category Filter */}
-              <div className="relative inline-block">
-                <button
-                  onClick={() => setShowCategory(v => !v)}
-                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[100px]"
-                >
-                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <span className="truncate">{catFilter === "All" ? "Category" : catFilter}</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? 'rotate-180' : ''}`} />
-                </button>
-                {showCategory && (
-                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[140px] max-h-48 overflow-y-auto">
-                    {CATEGORIES.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => { 
-                          setCatFilter(c); 
-                          setShowCategory(false); 
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${catFilter === c ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Status Filter */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowStatus(v => !v)}
-                  className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[110px]"
-                >
-                  <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <span className="truncate">{statFilter === "All" ? "Status" : statFilter}</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showStatus ? 'rotate-180' : ''}`} />
-                </button>
-                {showStatus && (
-                  <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[120px] max-h-48 overflow-y-auto">
-                    {STATUS_OPTIONS.map(s => (
-                      <button
-                        key={s}
-                        onClick={() => { 
-                          setStatFilter(s); 
-                          setShowStatus(false); 
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${statFilter === s ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Sort dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowSort(v => !v)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
-                >
-                  <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
-                  <span className="truncate max-w-[90px]">Sort</span>
-                  <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? 'rotate-180 scale-110' : ''}`} />
-                </button>
-                {showSort && (
-                  <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
-                    {SORT_INVENTORY_OPTIONS.map(o => (
-                      <button
-                        key={o.value}
-                        onClick={() => { 
-                          setSortBy(o.value); 
-                          setShowSort(false); 
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === o.value ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+        <div className="flex flex-col lg:flex-row items-center gap-3 mb-3">
+          {/* Search Input - Expands to fill space */}
+          <div className="relative flex-1 w-full lg:w-auto">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search items…"
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors" />
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className={`hidden lg:flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
-              socketStatus === "connected"
-                ? "bg-emerald-50 border-emerald-200"
-                : "bg-amber-50 border-amber-200"
-            }`}>
-              <RefreshCw
-                size={13}
-                className={`${
-                  socketStatus === "connected" ? "text-emerald-600" : "text-amber-600"
-                } ${socketStatus === "connected" ? "" : "animate-spin"}`}
-              />
-              <div className="leading-tight">
-                <p className={`text-[11px] font-semibold ${
-                  socketStatus === "connected" ? "text-emerald-700" : "text-amber-700"
-                }`}>
-                  {socketStatus === "connected"
-                    ? "Live sync active"
-                    : socketStatus === "connecting"
-                      ? "Connecting live sync..."
-                      : "Reconnecting live sync..."}
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  {lastSyncedAt
-                    ? `Last sync ${lastSyncedAt.toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}`
-                    : "Waiting for inventory updates"}
-                </p>
-              </div>
+          {/* Filters and Actions */}
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto">
+            {/* Category Filter */}
+            <div className="relative min-w-[110px] flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowCategory(v => !v)}
+                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
+              >
+                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <span className="truncate">{catFilter === "All" ? "Category" : catFilter}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? 'rotate-180' : ''}`} />
+              </button>
+              {showCategory && (
+                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[140px] max-h-48 overflow-y-auto">
+                  {CATEGORIES.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setCatFilter(c);
+                        setShowCategory(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${catFilter === c ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => void refreshInventoryPage()}
-              className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-            >
-              <RefreshCw size={14} />
-              Sync Now
-            </button>
-            <button
-              onClick={() => setSettingsModal(true)}
-              className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-            >
-              <Settings size={14} />
-              Low Stock Settings
-            </button>
-            <button onClick={() => setAddModal(true)}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
-              <Plus size={15} /> Add New Stock
-            </button>
+
+            {/* Status Filter */}
+            <div className="relative min-w-[110px] flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowStatus(v => !v)}
+                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
+              >
+                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <span className="truncate">{statFilter === "All" ? "Status" : statFilter}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showStatus ? 'rotate-180' : ''}`} />
+              </button>
+              {showStatus && (
+                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[120px] max-h-48 overflow-y-auto">
+                  {STATUS_OPTIONS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setStatFilter(s);
+                        setShowStatus(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${statFilter === s ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sort Filter */}
+            <div className="relative flex-1 lg:flex-none">
+              <button
+                onClick={() => setShowSort(v => !v)}
+                className="flex items-center justify-between gap-1.5 px-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
+              >
+                <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
+                <span className="truncate">Sort</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? 'rotate-180 scale-110' : ''}`} />
+              </button>
+              {showSort && (
+                <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                  {SORT_INVENTORY_OPTIONS.map(o => (
+                    <button
+                      key={o.value}
+                      onClick={() => {
+                        setSortBy(o.value);
+                        setShowSort(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === o.value ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons Group */}
+            <div className="flex items-center gap-1.5 w-full lg:w-auto">
+              <button
+                onClick={() => void refreshInventoryPage()}
+                className="w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all"
+                title="Sync Now"
+              >
+                <RefreshCw size={14} />
+                <span className="hidden lg:inline text-sm font-semibold">Sync</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsModal(true)}
+                className="w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all"
+                title="Low Stock Settings"
+              >
+                <Settings size={14} />
+                <span className="hidden lg:inline text-sm font-semibold">Settings</span>
+              </button>
+
+              <button
+                onClick={() => setAddModal(true)}
+                className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap shadow-sm"
+              >
+                <Plus size={15} />
+                <span>Add Stock</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1884,16 +1847,28 @@ const STAT_CARDS = [
             </div>
           </div>
         </div>
+        {!alertDismissed && alertCount > 0 && (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 rounded-xl p-4 mb-6">
+            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-800 flex-1">
+              <strong>{alertCount} item{alertCount > 1 ? "s" : ""}</strong> need{alertCount === 1 ? "s" : ""} attention —{" "}
+              {lowCount > 0 && `${lowCount} low stock`}{lowCount > 0 && outCount > 0 && ", "}
+              {outCount > 0 && `${outCount} out of stock`}.
+            </p>
+            <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 transition-colors flex-shrink-0">
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         <div className="lg:hidden space-y-3 mb-8">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-bold text-gray-900">All Supplies <span className="text-slate-400 font-normal">({filtered.length})</span></p>
             <button onClick={() => setShowArchived(!showArchived)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                showArchived 
-                  ? "bg-indigo-100 text-indigo-700" 
-                  : "bg-slate-100 text-slate-600"
-              }`}>
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${showArchived
+                ? "bg-indigo-100 text-indigo-700"
+                : "bg-slate-100 text-slate-600"
+                }`}>
               {showArchived ? (
                 <>
                   <Archive size={13} /> Archived
@@ -1927,11 +1902,10 @@ const STAT_CARDS = [
               <span className="bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-0.5 rounded-full">{filtered.length}</span>
             </p>
             <button onClick={() => setShowArchived(!showArchived)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                showArchived 
-                  ? "bg-indigo-100 text-indigo-700" 
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}>
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${showArchived
+                ? "bg-indigo-100 text-indigo-700"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}>
               {showArchived ? (
                 <>
                   <Archive size={13} /> Archived Items
@@ -2128,10 +2102,10 @@ const STAT_CARDS = [
           }}
         />
       )}
-      <ArchiveConfirmModal 
+      <ArchiveConfirmModal
         archiveConfirm={archiveConfirm}
         onConfirm={handleArchiveConfirm}
-        onCancel={handleArchiveCancel} 
+        onCancel={handleArchiveCancel}
       />
     </div>
   );

@@ -725,7 +725,7 @@ export default function QRScanner() {
                                                     value={proofNotes}
                                                     onChange={e => setProofNotes(e.target.value)}
                                                     placeholder="e.g. Received by Someone"
-                                                    className="w-full text-xs p-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none h-28"
+                                                    className="w-full text-xs p-3 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none resize-none h-12"
                                                 />
                                             </div>
                                             <div className="flex gap-2 mt-2">

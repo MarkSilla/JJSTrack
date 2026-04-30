@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText, ChevronLeft, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
@@ -7,6 +7,7 @@ import TeamRoster from './Teamroster';
 import AssignedTailorPanel from './Assignedtailorpanel';
 import OrderSummary from './Ordersummary';
 import RescheduleModal from './RescheduleModal';
+import GDriveLogo from '../../../assets/gdrive.jpg';
 import { getDerivedStatus } from '../../../utils/helpers.js';
 import { orderApi } from '../../../services/orderApi.js';
 import { bookingApi } from '../../../services/bookingApi.js';
@@ -256,9 +257,7 @@ export default function OrderDetail({
     if (!activeOrder) {
         return (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <svg className="w-16 h-16 mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
+                <ClipboardList size={64} className="mb-4 text-gray-200" />
                 <p className="font-medium text-sm text-gray-400">Select an order to view production details</p>
             </div>
         );
@@ -274,9 +273,7 @@ export default function OrderDetail({
                             onClick={() => setActiveOrderId(null)}
                             className="lg:hidden p-1.5 -ml-2 mr-1 text-gray-400 hover:text-gray-700 bg-gray-50 rounded-lg border-none cursor-pointer"
                         >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                            </svg>
+                            <ChevronLeft size={20} />
                         </button>
                         <span className="text-[11px] lg:text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg tracking-wider">{visibleOrderId}</span>
                         {activeOrder.isBooking && (
@@ -295,12 +292,7 @@ export default function OrderDetail({
                         )}
                     </div>
                     <div className="relative">
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="p-2 text-gray-400 hover:text-gray-900 border border-transparent hover:border-gray-200 hover:bg-white rounded-xl transition-all shadow-sm bg-transparent cursor-pointer"
-                        >
-                            <MoreHorizontal size={20} />
-                        </button>
+
                         {isMenuOpen && (
                             <div className="absolute right-0 top-12 w-48 bg-white border border-gray-100 shadow-xl rounded-2xl py-2 z-20">
                                 <button
@@ -372,8 +364,9 @@ export default function OrderDetail({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
-                    <div className="col-span-2 flex flex-col gap-5">
+                {/* Top Row: Workflow & Quick Actions */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-5">
+                    <div className="lg:col-span-8">
                         <WorkflowProgress
                             activeOrderSteps={activeOrderSteps}
                             currentStepIdx={currentStepIdx}
@@ -381,6 +374,52 @@ export default function OrderDetail({
                             orderId={activeOrder.id}
                             isForApproval={isForApproval}
                             hasSchedule={hasSchedule}
+                        />
+                    </div>
+                    <div className="lg:col-span-4">
+                        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm h-full flex flex-col">
+                            <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Quick Actions</h4>
+                            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 h-full">
+                                <button
+                                    onClick={() => {
+                                        if (isRescheduleDisabled) return;
+                                        setApprovalMode(false);
+                                        setShowRescheduleModal(true);
+                                    }}
+                                    disabled={isRescheduleDisabled}
+                                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
+                                >
+                                    <CalendarClock size={16} /> Reschedule
+                                </button>
+                                {activeOrder.status !== 'Cancelled' && (
+                                    <button
+                                        onClick={() => setShowCancelConfirm(true)}
+                                        className="flex-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
+                                    >
+                                        <XCircle size={16} /> Cancel
+                                    </button>
+                                )}
+                                {canArchive && (
+                                    <button
+                                        onClick={() => setShowArchiveConfirm(true)}
+                                        className="flex-1 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Archive size={16} /> Archive
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+                    <div className="col-span-2 flex flex-col gap-5">
+                        <AssignedTailorPanel
+                            activeOrder={activeOrder}
+                            staffAssignments={staffAssignments}
+                            earningsPreview={earningsPreview}
+                            onManageAssignments={handleManageAssignments}
+                            isCancelled={isCancelled}
                         />
                         <ProductionTimeline
                             activeOrderSteps={activeOrderSteps}
@@ -390,89 +429,69 @@ export default function OrderDetail({
                             isForApproval={isForApproval}
                             hasSchedule={hasSchedule}
                         />
-                        <TeamRoster players={rosterPlayers} invoiceItems={rosterInvoiceItems} />
+                        <TeamRoster 
+                            players={rosterPlayers} 
+                            invoiceItems={rosterInvoiceItems} 
+                            teamName={bookingExtras?.teamName || activeOrder?.item || 'N/A'}
+                            customerContact={activeOrder?.invoice?.billTo?.phone || activeOrder?.phone || activeOrder?.contact?.phone || 'N/A'}
+                        />
                     </div>
                     <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-2">
-                            <h4 className="text-[11px] font-black tracking-wider uppercase mb-2 text-gray-400">Quick Actions</h4>
-                            <button
-                                onClick={() => {
-                                    if (isRescheduleDisabled) return;
-                                    setApprovalMode(false);
-                                    setShowRescheduleModal(true);
-                                }}
-                                disabled={isRescheduleDisabled}
-                                className="w-full bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
-                            >
-                                <CalendarClock size={18} /> Reschedule Delivery
-                            </button>
-                            {activeOrder.status !== 'Cancelled' && (
-                                <button
-                                    onClick={() => setShowCancelConfirm(true)}
-                                    className="w-full bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border"
-                                >
-                                    <XCircle size={18} /> Cancel Order
-                                </button>
-                            )}
-                            {canArchive && (
-                                <button
-                                    onClick={() => setShowArchiveConfirm(true)}
-                                    className="w-full bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Archive size={18} /> Archive Record
-                                </button>
-                            )}
-                        </div>
-                        <AssignedTailorPanel
-                            activeOrder={activeOrder}
-                            staffAssignments={staffAssignments}
-                            earningsPreview={earningsPreview}
-                            onManageAssignments={handleManageAssignments}
-                            isCancelled={isCancelled}
-                        />
-{imageUrls.length > 0 && (
-                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                                <h4 className="text-[11px] font-black tracking-wider uppercase mb-4 text-gray-400">Uploaded Images</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {imageUrls.map((src, index) => (
-                                        <a
-                                            key={`${src}-${index}`}
-                                            href={src}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="block rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm"
-                                        >
-                                            <img
-                                                src={src}
-                                                alt={`Uploaded image ${index + 1}`}
-                                                className="w-full h-32 object-cover"
-                                            />
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {(activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
-                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                                <h4 className="text-[11px] font-black tracking-wider uppercase mb-4 text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg inline-flex items-center gap-1.5">
-                                    <ExternalLink size={12} /> Google Drive Link
-                                </h4>
-                                <a
-                                    href={activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block p-4 text-center hover:bg-indigo-50 transition-colors rounded-xl group border border-gray-100"
-                                >
-                                    <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
-                                        <LinkIcon size={20} className="text-white" />
+                        {(imageUrls.length > 0 || activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
+                            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                                    {/* Left Side: Images */}
+                                    <div className="p-4 flex flex-col">
+                                        <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Uploaded Images</h4>
+                                        {imageUrls.length > 0 ? (
+                                            <div className="grid grid-cols-1 gap-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                                                {imageUrls.map((src, index) => (
+                                                    <a
+                                                        key={`${src}-${index}`}
+                                                        href={src}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="block rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm hover:ring-2 hover:ring-blue-100 transition-all"
+                                                    >
+                                                        <img
+                                                            src={src}
+                                                            alt={`Uploaded image ${index + 1}`}
+                                                            className="w-38 h-38 object-cover"
+                                                        />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
+                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No images</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="text-sm font-bold text-gray-900 mb-1 truncate">
-                                        Design Reference (Google Drive)
-                                    </p>
-                                    <span className="text-xs text-indigo-600 font-semibold bg-indigo-100 px-2.5 py-1 rounded-full group-hover:bg-indigo-200 transition-colors">
-                                        Open in new tab →
-                                    </span>
-                                </a>
+                                    <div className="p-4 flex flex-col">
+                                        <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg inline-flex items-center self-start gap-1.5">
+                                            <ExternalLink size={12} /> Design References
+                                        </h4>
+                                        {(activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) ? (
+                                            <a
+                                                href={activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex-1 flex flex-col items-center justify-center p-4 text-center hover:bg-indigo-50/30 transition-all rounded-xl group border border-gray-50 hover:border-indigo-100"
+                                            >
+                                                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all border border-gray-50 overflow-hidden">
+                                                    <img src={GDriveLogo} alt="Google Drive" className="w-12 h-12 object-contain" />
+                                                </div>
+                                                <span className="text-[10px] text-indigo-600 font-black uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full group-hover:bg-indigo-100 transition-colors">
+                                                    Open Link →
+                                                </span>
+                                            </a>
+                                        ) : (
+                                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
+                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No link set</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
                         <OrderSummary
