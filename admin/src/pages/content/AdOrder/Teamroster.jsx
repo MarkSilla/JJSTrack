@@ -54,7 +54,7 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
     const handleDownloadPDF = () => {
         try {
             const doc = new jsPDF();
-            
+
             // Safe strings
             const safeTeamName = String(teamName || 'N/A');
             const safeCustomerContact = String(customerContact || 'N/A');
@@ -64,13 +64,13 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
             doc.setFontSize(22);
             doc.setTextColor(40, 40, 40);
             doc.text("JJS SPORTSWEAR", 105, 20, { align: "center" });
-            
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text("CONTACT: 09759558902", 105, 26, { align: "center" });
-            doc.text("#12 DOMINGO ST. GORDON HEIGHTS, OLONGAPO CITY", 105, 31, { align: "center" });
-            
+            doc.text("CONTACT: 0908 997 2332", 105, 26, { align: "center" });
+            doc.text("Purok 3B National Highway,Calapacuan, Subic, Zambales", 105, 31, { align: "center" });
+
             doc.setDrawColor(200, 200, 200);
             doc.line(14, 38, 196, 38);
 
@@ -124,15 +124,15 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                 body: tableRows,
                 startY: 55,
                 theme: 'grid',
-                headStyles: { 
-                    fillColor: [255, 255, 255], 
-                    textColor: [0, 0, 0], 
+                headStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0],
                     fontStyle: 'bold',
                     lineWidth: 0.5,
                     lineColor: [0, 0, 0],
                     halign: 'center'
                 },
-                bodyStyles: { 
+                bodyStyles: {
                     textColor: [0, 0, 0],
                     lineColor: [0, 0, 0],
                     lineWidth: 0.2,
@@ -162,7 +162,7 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                     <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                         <User size={18} className="text-orange-500" /> Team Roster
                     </h3>
-                    <button 
+                    <button
                         onClick={handleDownloadPDF}
                         className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
                     >
