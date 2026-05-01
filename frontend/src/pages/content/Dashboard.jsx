@@ -5,7 +5,7 @@ import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
     MdRefresh, MdOutlineIron
 } from 'react-icons/md'
-import { 
+import {
     Inbox, Monitor, Printer, Scissors, Truck, Shirt
 } from 'lucide-react'
 import { bookingApi } from '../../../services/bookingApi'
@@ -94,26 +94,27 @@ const normalizeStepLabel = (label = '') =>
 // ─── Step icons — lowercase keys to match .toLowerCase() ───
 const STEP_ICON = {
     'dropped off': Inbox,
-    'drop off':    Inbox,
-    'layout':      Monitor,
-    'printing':    Printer,
-    'pressing':    MdOutlineIron,
-    'cutting':     Scissors,
-    'sewing':      Scissors,
-    'pick-up':     Truck,
+    'drop off': Inbox,
+    'layout': Monitor,
+    'printing': Printer,
+    'pressing': MdOutlineIron,
+    'cutting': Scissors,
+    'sewing': Scissors,
+    'pick-up': Truck,
+    'pick up': Truck,
 }
 
 const StepIcon = ({ step }) => {
-    const label    = normalizeStepLabel(step.label)
-    const isDone   = step.done
+    const label = normalizeStepLabel(step.label)
+    const isDone = step.done
     const isActive = !step.done && step.active
-    const Icon     = STEP_ICON[label]
+    const Icon = STEP_ICON[label]
 
     return (
         <div className={`
             w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all
-            ${isDone   ? 'bg-blue-500 text-white border-2 border-blue-500'                 : ''}
-            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-sm'      : ''}
+            ${isDone ? 'bg-blue-500 text-white border-2 border-blue-500' : ''}
+            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-sm' : ''}
             ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border-2 border-gray-200' : ''}
         `}>
             {Icon && <Icon size={15} />}
@@ -130,7 +131,7 @@ const ProgressTracker = ({ steps }) => (
                     <div className="flex flex-col items-center min-w-[60px]">
                         <StepIcon step={step} />
                         <span className={`text-[10px] mt-1 whitespace-nowrap font-medium
-                            ${step.done   ? 'text-blue-600' : ''}
+                            ${step.done ? 'text-blue-600' : ''}
                             ${step.active ? 'text-blue-500' : ''}
                             ${!step.done && !step.active ? 'text-gray-400' : ''}
                         `}>
@@ -155,7 +156,7 @@ const ProgressTracker = ({ steps }) => (
                     <div className="flex flex-col items-center flex-1">
                         <StepIcon step={step} />
                         <span className={`text-[9px] mt-1 text-center font-medium leading-tight
-                            ${step.done   ? 'text-blue-600' : ''}
+                            ${step.done ? 'text-blue-600' : ''}
                             ${step.active ? 'text-blue-500' : ''}
                             ${!step.done && !step.active ? 'text-gray-400' : ''}
                         `}>
@@ -176,12 +177,12 @@ const ProgressTracker = ({ steps }) => (
 // ─── Status Badge ─────────────────────────────
 const StatusBadge = ({ status }) => {
     const map = {
-        'Pending':     'bg-yellow-50 text-yellow-600',
-        'Approved':    'bg-blue-50 text-blue-600',
+        'Pending': 'bg-yellow-50 text-yellow-600',
+        'Approved': 'bg-blue-50 text-blue-600',
         'In Progress': 'bg-blue-50 text-blue-600',
-        'Completed':   'bg-green-50 text-green-600',
-        'Released':    'bg-cyan-50 text-cyan-700',
-        'Cancelled':   'bg-red-50 text-red-500',
+        'Completed': 'bg-green-50 text-green-600',
+        'Released': 'bg-cyan-50 text-cyan-700',
+        'Cancelled': 'bg-red-50 text-red-500',
     }
     return (
         <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full ${map[status] || 'bg-gray-100 text-gray-500'}`}>
@@ -218,9 +219,9 @@ const Dashboard = () => {
                 setOrders(data)
                 // Compute stats from bookings if no stats API
                 setStats({
-                    active:       data.filter(b => isActiveTrackingStatus(b.status)).length,
-                    pickupReady:  data.filter(b => isPickupReadyTrackingStatus(b.status)).length,
-                    total:        data.length,
+                    active: data.filter(b => isActiveTrackingStatus(b.status)).length,
+                    pickupReady: data.filter(b => isPickupReadyTrackingStatus(b.status)).length,
+                    total: data.length,
                 })
             }
 
@@ -290,6 +291,10 @@ const Dashboard = () => {
     }, [])
 
     const handleDateClick = useCallback((arg) => {
+        const now = new Date()
+        now.setHours(0, 0, 0, 0)
+        if (arg.date < now) return
+
         const dateKey = arg?.dateStr || toKey(arg.date)
         setSelectedDate(dateKey)
     }, [])
@@ -314,7 +319,7 @@ const Dashboard = () => {
         const classes = []
         const now = new Date()
         now.setHours(0, 0, 0, 0)
-        if (arg.date < now) classes.push('day-past-clickable')
+        if (arg.date < now) classes.push('day-past')
 
         const slotInfo = slotSummaryByDate[key]
         const ratio = slotInfo?.max > 0 ? slotInfo.used / slotInfo.max : 0
@@ -350,36 +355,35 @@ const Dashboard = () => {
                 {hasUserBooking && !isSelected && <span className="pickup-badge">Order</span>}
                 {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
                 {hasSlotInfo && !isFull && used > 0 && !isSelected && (
-                        <div className="slot-badge">
-                            <div className="slot-bar">
-                                <div className={`slot-bar-fill ${fillColor}`} style={{ width: `${ratio * 100}%` }} />
-                            </div>
-                            <span className="slot-text">{used}/{max}</span>
+                    <div className="slot-badge">
+                        <div className="slot-bar">
+                            <div className={`slot-bar-fill ${fillColor}`} style={{ width: `${ratio * 100}%` }} />
                         </div>
-                    )}
-                </div>
-            )
+                        <span className="slot-text">{used}/{max}</span>
+                    </div>
+                )}
+            </div>
+        )
     }, [slotSummaryByDate, selectedDate, userBookingDateSet])
 
     return (
         <>
             <style>{`
                 .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-                    pointer-events: auto;
-                    opacity: 1;
+                    background-color: #f3f4f6 !important;
+                    cursor: not-allowed !important;
                 }
                 .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
-                    color: #94a3b8;
+                    color: #94a3b8 !important;
+                    opacity: 0.6;
                 }
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number:hover {
-                    color: #334155 !important;
-                    background: #e2e8f0 !important;
-                    opacity: 1 !important;
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day-frame {
+                    cursor: pointer;
                 }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-past-clickable .fc-daygrid-day-frame:hover {
-                    background: #f8fafc;
-                    transform: translateY(-1px);
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame:hover {
+                    background: #f3f4f6 !important;
+                    transform: none !important;
+                    box-shadow: none !important;
                 }
                 .dashboard-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame {
                     background: linear-gradient(135deg, #ecfdf5, #dcfce7);
@@ -442,7 +446,7 @@ const Dashboard = () => {
                             </div>
                             <button
                                 onClick={() => setShowBooking(true)}
-className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"                            >
+                                className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"                            >
                                 Book Now <MdAdd size={16} />
                             </button>
                         </div>
@@ -450,9 +454,9 @@ className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:
                         {/* Stat Cards */}
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto">
                             {[
-                                { label: 'My Orders',     value: stats.active,                   sub: 'Active',   icon: MdShoppingBag,  bg: 'bg-blue-400/20',   text: 'text-blue-300'   },
-                                { label: 'Pickup Ready',  value: stats.pickupReady || 0,         sub: 'Awaiting', icon: MdCheckCircle,  bg: 'bg-green-400/20',  text: 'text-green-300'  },
-                                { label: 'Total Orders',  value: stats.total || 0,               sub: 'Lifetime', icon: MdInventory,    bg: 'bg-orange-400/20', text: 'text-orange-300' },
+                                { label: 'My Orders', value: stats.active, sub: 'Active', icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                                { label: 'Pickup Ready', value: stats.pickupReady || 0, sub: 'Awaiting', icon: MdCheckCircle, bg: 'bg-green-400/20', text: 'text-green-300' },
+                                { label: 'Total Orders', value: stats.total || 0, sub: 'Lifetime', icon: MdInventory, bg: 'bg-orange-400/20', text: 'text-orange-300' },
                             ].map(({ label, value, sub, icon: Icon, bg, text }) => (
                                 <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all">
                                     {/* Mobile: icon + label on top */}
@@ -496,7 +500,7 @@ className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:
                             <div className="flex flex-wrap items-center gap-4 mt-4 px-1">
                                 {[
                                     { gradient: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Selected Date' },
-                                    { gradient: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-2 ring-blue-400/30', label: 'May Booking/Order Ka' },
+                                    { gradient: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-2 ring-blue-400/30', label: 'You have a booking' },
                                     { gradient: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available Slots' },
                                     { gradient: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
                                     { gradient: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },

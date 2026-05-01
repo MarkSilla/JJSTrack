@@ -278,8 +278,11 @@ const Appointment = () => {
 
     const handleDateClick = useCallback(
         (info) => {
-            const dateStr = info.dateStr
+            const now = new Date()
+            now.setHours(0, 0, 0, 0)
+            if (info.date < now) return
 
+            const dateStr = info.dateStr
             setSelectedDate(dateStr)
             const userEntry = bookingsByDate[dateStr] || appointmentsByDate[dateStr]
             if (userEntry) {
@@ -301,7 +304,7 @@ const Appointment = () => {
             now.setHours(0, 0, 0, 0)
             const classes = []
 
-            if (arg.date < now) classes.push('day-past-clickable')
+            if (arg.date < now) classes.push('day-past')
 
             const slotInfo = slotInfoByDate[key]
             const isNearFull = Boolean(
@@ -369,21 +372,20 @@ const Appointment = () => {
         <>
             <style>{`
                 .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-                    pointer-events: auto;
-                    opacity: 1;
+                    background-color: #f3f4f6 !important;
+                    cursor: not-allowed !important;
                 }
                 .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
-                    color: #94a3b8;
+                    color: #94a3b8 !important;
+                    opacity: 0.6;
                 }
-                .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number:hover {
-                    color: #334155 !important;
-                    background: #e2e8f0 !important;
-                    opacity: 1 !important;
+                .appointment-interactive-past .calendar-wrapper .fc .fc-daygrid-day-frame {
+                    cursor: pointer;
                 }
-                .appointment-interactive-past .calendar-wrapper .fc .day-past-clickable .fc-daygrid-day-frame:hover {
-                    background: #f8fafc;
-                    transform: translateY(-1px);
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame:hover {
+                    background: #f3f4f6 !important;
+                    transform: none !important;
+                    box-shadow: none !important;
                 }
                 .appointment-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame {
                     background: linear-gradient(135deg, #ecfdf5, #dcfce7);

@@ -54,12 +54,8 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
     const handleDownloadPDF = () => {
         try {
             const doc = new jsPDF();
-
-            // Safe strings
             const safeTeamName = String(teamName || 'N/A');
             const safeCustomerContact = String(customerContact || 'N/A');
-
-            // --- HEADER SECTION ---
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
             doc.setTextColor(40, 40, 40);
@@ -87,8 +83,6 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
             doc.setFont("helvetica", "normal");
             doc.text(safeCustomerContact, 155, 48);
             doc.line(155, 49, 196, 49);
-
-            // --- TABLE SECTION ---
             const tableColumn = [
                 { header: "NO.", dataKey: "no" },
                 { header: "FULL NAME", dataKey: "name" },

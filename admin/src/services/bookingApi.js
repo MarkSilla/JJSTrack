@@ -161,6 +161,19 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  // Get slot summary
+  getSlotSummary: async (from, to) => {
+    try {
+      const response = await api.get('/bookings/slots/summary', {
+        params: { from, to },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get Slot Summary Error:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;
