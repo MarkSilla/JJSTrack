@@ -15,6 +15,51 @@ const SERVICE_TYPE_OPTIONS = [
     { value: 'organization', label: 'Service: Organization' },
 ];
 
+const ROLE_LABELS = {
+    layoutArtist: 'Layout',
+    presser: 'Press',
+    tailor: 'Tailor',
+};
+
+const normalizeStepLabel = (label = '') =>
+    String(label || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ');
+
+const getVisibleAssignmentRoles = (order = {}) => {
+    const labels = (Array.isArray(order.steps) ? order.steps : [])
+        .map((step) => normalizeStepLabel(step?.label || step?.step || step));
+
+    const roles = [];
+    if (labels.includes('layout') || labels.includes('printing')) roles.push('layoutArtist');
+    if (labels.includes('pressing')) roles.push('presser');
+    if (labels.includes('sewing')) roles.push('tailor');
+
+    const assignments = order.staffAssignments || {};
+    Object.keys(ROLE_LABELS).forEach((roleKey) => {
+        if (assignments[roleKey] && !roles.includes(roleKey)) {
+            roles.push(roleKey);
+        }
+    });
+
+    if ((order.assignedTailor || roles.length === 0) && !roles.includes('tailor')) {
+        roles.push('tailor');
+    }
+
+    return roles;
+};
+
+const getInitials = (name = '') =>
+    String(name)
+        .trim()
+        .split(/\s+/)
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
 export default function OrderList({
     filteredOrders,
     activeOrderId,          // null when used on the list page; orderId string when used inside detail page breadcrumb etc.
@@ -248,13 +293,22 @@ export default function OrderList({
                         const priorityConf = order.priority ? PRIORITY_CONFIG[order.priority] : null;
                         const PriorityIcon = priorityConf?.icon;
                         const typeConf = TYPE_CONFIG[order.serviceType] || TYPE_CONFIG['Team Jersey'];
-                        const listAssigneeValue = assignments[orderId]
-                            || order.staffAssignments?.tailor
-                            || order.assignedTailor;
-                        const listAssignee = listAssigneeValue
-                            ? EMPLOYEE_POOL.find(e => [e.id, e.name, e.fullName].includes(listAssigneeValue))
-                            || { name: listAssigneeValue }
-                            : null;
+                        const listAssignees = getVisibleAssignmentRoles(order)
+                            .map((roleKey) => {
+                                const assignedValue = roleKey === 'tailor'
+                                    ? (assignments[orderId] || order.staffAssignments?.tailor || order.assignedTailor)
+                                    : order.staffAssignments?.[roleKey];
+                                const employee = assignedValue
+                                    ? EMPLOYEE_POOL.find(e => [e.id, e.name, e.fullName].includes(assignedValue))
+                                    : null;
+
+                                return {
+                                    roleKey,
+                                    label: ROLE_LABELS[roleKey],
+                                    name: employee?.name || employee?.fullName || assignedValue || '',
+                                };
+                            })
+                            .filter((assignee) => assignee.name);
                         const isNamedGroupBooking =
                             Boolean(order.isBooking) &&
                             (order.serviceType === 'Team Jersey' || order.serviceType === 'Organization') &&
@@ -319,12 +373,25 @@ export default function OrderList({
                                         </span>
                                     </div>
 
-                                    {listAssignee && (
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                            <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-black text-blue-600 shrink-0">
-                                                {listAssignee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                                            </div>
-                                            <span className="text-[10px] font-semibold text-blue-600 truncate">{listAssignee.name}</span>
+                                    {listAssignees.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                                            {listAssignees.map((assignee) => (
+                                                <div
+                                                    key={`${orderId}-${assignee.roleKey}`}
+                                                    className="flex max-w-full items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2 py-1"
+                                                    title={`${assignee.label}: ${assignee.name}`}
+                                                >
+                                                    <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-[8px] font-black text-blue-600 shrink-0">
+                                                        {getInitials(assignee.name)}
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase tracking-wide text-blue-500 shrink-0">
+                                                        {assignee.label}
+                                                    </span>
+                                                    <span className="max-w-[120px] truncate text-[10px] font-semibold text-blue-700">
+                                                        {assignee.name}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
 

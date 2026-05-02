@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import OrderStatusTracker from './OrderStatusTracker';
 import useOrderDetails from '../hooks/useOrderDetails';
@@ -115,8 +116,10 @@ const StatusBadge = ({ conf, label }) => (
 
 const ConfirmationModal = ({ isOpen, stageName, onConfirm, onCancel }) => {
     if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[10020] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 transition-opacity" onClick={onCancel} />
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center"
                 style={{ animation: 'modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
@@ -151,14 +154,17 @@ const ConfirmationModal = ({ isOpen, stageName, onConfirm, onCancel }) => {
                     to { transform: translateY(0); opacity: 1; }
                 }
             `}</style>
-        </div>
+        </div>,
+        document.body
     );
 };
 
 const ArchiveConfirmModal = ({ isOpen, onConfirm, onCancel, isArchiving }) => {
     if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[10020] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 transition-opacity backdrop-blur-sm" onClick={!isArchiving ? onCancel : undefined} />
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center"
                 style={{ animation: 'modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
@@ -189,7 +195,8 @@ const ArchiveConfirmModal = ({ isOpen, onConfirm, onCancel, isArchiving }) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

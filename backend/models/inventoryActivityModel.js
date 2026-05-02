@@ -35,6 +35,42 @@ const inventoryActivityBatchSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const inventoryUsageContextSchema = new mongoose.Schema(
+  {
+    orderId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    orderDisplayId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    orderLabel: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    customerName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    serviceType: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    source: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
 const inventoryActivitySchema = new mongoose.Schema(
   {
     inventoryId: {
@@ -105,6 +141,10 @@ const inventoryActivitySchema = new mongoose.Schema(
     batchBreakdown: {
       type: [inventoryActivityBatchSchema],
       default: [],
+    },
+    usageContext: {
+      type: inventoryUsageContextSchema,
+      default: () => ({}),
     },
     totalCost: {
       type: Number,

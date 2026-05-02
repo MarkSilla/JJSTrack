@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useContext } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useContext, useEffect } from 'react'
 import { AdminAuthProvider, AdminAuthContext } from './context/AdminAuthContext'
 import Login from './pages/login'
 import AdminLayout from './layout/adminLayout'
@@ -18,6 +18,7 @@ import AdminProfile from './pages/content/AdminProfile'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { StockAlertProvider } from './context/StockAlertContext'
 import { GlobalStockAlert } from './components/GlobalStockAlert'
+import StaffRoutes from './staff/StaffRoutes'
 
 function AdminAppShell() {
     return (
@@ -28,23 +29,31 @@ function AdminAppShell() {
     )
 }
 
-function AppRoutes() {
+function LoadingScreen() {
+    return (
+        <div className="flex items-center justify-center h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
+            <div className="text-center">
+                <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-white text-lg">Loading...</p>
+            </div>
+        </div>
+    )
+}
+
+function AdminLoginRoute() {
     const { isAuthenticated, loading } = useContext(AdminAuthContext)
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
-                <div className="text-center">
-                    <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-white text-lg">Loading...</p>
-                </div>
-            </div>
-        )
+        return <LoadingScreen />
     }
 
+    return isAuthenticated ? <Navigate to='/admin/dashboard' replace /> : <Login />
+}
+
+function AppRoutes() {
     return (
         <Routes>
-            <Route path='/' element={isAuthenticated ? <Navigate to='/admin/dashboard' replace /> : <Login />} />
+            <Route path='/' element={<AdminLoginRoute />} />
             <Route path='/admin' element={
                 <ProtectedRoute>
                     <AdminAppShell />
@@ -64,15 +73,29 @@ function AppRoutes() {
                 <Route path='inventory/history' element={<AdInventoryHistory />} />
                 <Route path='profile' element={<AdminProfile />} />
             </Route>
+            <Route path='/staff/*' element={<StaffRoutes />} />
             <Route path='*' element={<Navigate to="/" replace />} />
         </Routes>
     )
+}
+
+function DocumentTitle() {
+    const location = useLocation()
+
+    useEffect(() => {
+        document.title = location.pathname.startsWith('/staff')
+            ? 'JJSTrack Staff'
+            : 'JJSTrack Admin'
+    }, [location.pathname])
+
+    return null
 }
 
 function App() {
     return (
         <AdminAuthProvider>
             <Router>
+                <DocumentTitle />
                 <AppRoutes />
             </Router>
         </AdminAuthProvider>

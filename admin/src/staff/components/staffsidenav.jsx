@@ -1,20 +1,33 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown, Settings, Archive,
+    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
+const isPathActive = (pathname, targetPath, matchNested = false) => {
+    if (!targetPath) return false
+    return pathname === targetPath || (matchNested && pathname.startsWith(`${targetPath}/`))
+}
+
 const navItems = [
+    { type: 'section', label: 'Overview' },
     { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/staff/dashboard' },
+    { type: 'section', label: 'Operations' },
     {
-        icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
+        icon: ShoppingBag, label: 'Orders', description: 'Assigned production work',
         subItems: [
-            { label: 'Job Orders', path: '/staff/orders' },
-            { label: 'Archives', path: '/staff/archives' },
+            { label: 'Job Orders', path: '/staff/orders', matchNested: true },
+            { label: 'Order Archives', path: '/staff/archives' },
         ]
     },
-    { icon: Package, label: 'Inventory', description: 'Manage stocks', path: '/staff/inventory' },
+    {
+        icon: Package, label: 'Inventory', description: 'Supplies and stock usage',
+        subItems: [
+            { label: 'Current Stock', path: '/staff/inventory' },
+            { label: 'Usage History', path: '/staff/inventory/history' },
+        ],
+    },
 ]
 
 const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
@@ -29,6 +42,23 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
     const setMobileExpanded = setIsMobileExpanded ?? (() => { })
 
     const [expandedMenus, setExpandedMenus] = useState({})
+
+    useEffect(() => {
+        const nextExpanded = navItems.reduce((acc, item) => {
+            if (item.type === 'section') return acc
+            if (item.subItems?.some((subItem) => isPathActive(location.pathname, subItem.path, subItem.matchNested))) {
+                acc[item.label] = true
+            }
+            return acc
+        }, {})
+
+        if (Object.keys(nextExpanded).length === 0) return
+
+        setExpandedMenus(prev => ({
+            ...prev,
+            ...nextExpanded,
+        }))
+    }, [location.pathname])
 
     const toggleSubMenu = (label) => {
         if (isDesktopCollapsed && !isSmallScreen) {
@@ -67,7 +97,7 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
         // Clear authentication data from localStorage
         localStorage.removeItem('staffToken')
         localStorage.removeItem('rememberStaffEmail')
-        navigate('/')
+        navigate('/staff/login')
     }
 
     const toggleDesktop = () => {
@@ -111,7 +141,17 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
                 <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
                     <ul className={`space-y-1.5 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
                         {navItems.map((item) => {
-                            const isActive = item.path ? location.pathname === item.path : item.subItems?.some(sub => location.pathname === sub.path)
+                            if (item.type === 'section') {
+                                return (
+                                    <li key={item.label} className={showLabel ? 'px-4 pt-4 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500' : 'my-3 border-t border-gray-800'} >
+                                        {showLabel ? item.label : null}
+                                    </li>
+                                )
+                            }
+
+                            const isActive = item.path
+                                ? isPathActive(location.pathname, item.path, item.matchNested)
+                                : item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))
                             const isExpanded = expandedMenus[item.label]
 
                             return (
@@ -161,7 +201,7 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
                                     {item.subItems && isExpanded && showLabel && (
                                         <ul className="mt-1 space-y-1 px-3 ml-6 border-l border-gray-700">
                                             {item.subItems.map((subItem) => {
-                                                const isSubActive = location.pathname === subItem.path
+                                                const isSubActive = isPathActive(location.pathname, subItem.path, subItem.matchNested)
                                                 return (
                                                     <li key={subItem.path}>
                                                         <Link
@@ -191,7 +231,7 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
                                                         <Link
                                                             key={subItem.path}
                                                             to={subItem.path}
-                                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${location.pathname === subItem.path ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
+                                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${isPathActive(location.pathname, subItem.path, subItem.matchNested) ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
                                                         >
                                                             {subItem.label}
                                                         </Link>

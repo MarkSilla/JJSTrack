@@ -139,6 +139,11 @@ const buildActivityText = (activity) => {
   const actorName = activity.performedByName || getActorFallback(activity.performedByRole);
   const inventoryName = activity.inventoryName || "inventory item";
   const quantity = formatQuantity(activity.amount, activity.unit);
+  const usageTarget =
+    activity.usageContext?.orderDisplayId ||
+    activity.usageContext?.orderLabel ||
+    "";
+  const usageSuffix = usageTarget ? ` for ${usageTarget}` : "";
 
   switch (activity.actionType) {
     case "create":
@@ -146,7 +151,7 @@ const buildActivityText = (activity) => {
     case "increase":
       return `${actorName} added ${quantity} to "${inventoryName}"`;
     case "decrease":
-      return `${actorName} removed ${quantity} from "${inventoryName}"`;
+      return `${actorName} removed ${quantity} from "${inventoryName}"${usageSuffix}`;
     case "update":
       return `${actorName} updated "${inventoryName}" details`;
     case "archive":
@@ -173,8 +178,17 @@ const serializeActivity = (activity) => ({
   newStock: Math.max(0, Number(activity.newStock) || 0),
   performedByName: activity.performedByName,
   performedByRole: activity.performedByRole,
+  performedById: activity.performedById?.toString?.() || "",
   createdAt: activity.createdAt,
   note: activity.note || "",
+  usageContext: {
+    orderId: activity.usageContext?.orderId || "",
+    orderDisplayId: activity.usageContext?.orderDisplayId || "",
+    orderLabel: activity.usageContext?.orderLabel || "",
+    customerName: activity.usageContext?.customerName || "",
+    serviceType: activity.usageContext?.serviceType || "",
+    source: activity.usageContext?.source || "",
+  },
   totalCost: Math.max(0, Number(activity.totalCost) || 0),
   batchBreakdown: Array.isArray(activity.batchBreakdown)
     ? activity.batchBreakdown.map((entry) => ({
@@ -206,6 +220,38 @@ const buildFifoNote = (breakdown = []) => {
   return breakdown
     .map((entry) => `${entry.batchCode || "BATCH"}:${formatNumber(entry.quantity ?? entry.willUse)}`)
     .join(", ");
+};
+
+const sanitizeActivityText = (value, maxLength = 180) =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+
+const normalizeUsageContext = (usageContext = {}) => ({
+  orderId: sanitizeActivityText(usageContext?.orderId, 80),
+  orderDisplayId: sanitizeActivityText(usageContext?.orderDisplayId, 80),
+  orderLabel: sanitizeActivityText(usageContext?.orderLabel, 120),
+  customerName: sanitizeActivityText(usageContext?.customerName, 120),
+  serviceType: sanitizeActivityText(usageContext?.serviceType, 80),
+  source: sanitizeActivityText(usageContext?.source, 40),
+});
+
+const buildUsageContextNote = (usageContext = {}) => {
+  const normalized = normalizeUsageContext(usageContext);
+  const target =
+    normalized.orderDisplayId ||
+    normalized.orderLabel ||
+    normalized.orderId ||
+    "";
+
+  return [
+    target ? `Used for order ${target}` : "",
+    normalized.customerName ? `Customer: ${normalized.customerName}` : "",
+    normalized.serviceType ? `Service: ${normalized.serviceType}` : "",
+  ]
+    .filter(Boolean)
+    .join(" | ");
 };
 
 const hydrateInventoryForSave = (inventory) => {
@@ -278,6 +324,7 @@ const logInventoryActivity = async ({
   previousStock = 0,
   newStock = 0,
   note = "",
+  usageContext = {},
   batchBreakdown = [],
   totalCost = 0,
 }) => {
@@ -300,6 +347,7 @@ const logInventoryActivity = async ({
       performedByName: actor.performedByName,
       performedByRole: actor.performedByRole,
       note,
+      usageContext: normalizeUsageContext(usageContext),
       batchBreakdown: buildActivityBatchBreakdown(batchBreakdown),
       totalCost: normalizeMoney(totalCost),
     });
@@ -389,7 +437,12 @@ export const getInventoryActivity = async (req, res) => {
       ? Math.min(Math.max(parsedLimit, 1), 500)
       : 20;
 
-    const activities = await InventoryActivity.find()
+    const query = {};
+    if (req.query.scope === "mine" && req.userId && mongoose.Types.ObjectId.isValid(req.userId)) {
+      query.performedById = req.userId;
+    }
+
+    const activities = await InventoryActivity.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -851,7 +904,7 @@ export const updateInventory = async (req, res) => {
 export const adjustStock = async (req, res) => {
   try {
     const { thresholds } = await getInventoryStockSettings();
-    const { type, amount, unitPrice, receivedAt, supplier } = req.body;
+    const { type, amount, unitPrice, receivedAt, supplier, note, usageContext } = req.body;
     const adjustmentAmount = normalizeQuantity(amount);
     const hasUnitPrice = unitPrice != null && unitPrice !== "";
 
@@ -930,6 +983,15 @@ export const adjustStock = async (req, res) => {
 
     const updatedSummary = hydrateInventoryForSave(inventory);
     const updatedInventory = await inventory.save();
+    const usageNote = type === "decrease" ? buildUsageContextNote(usageContext) : "";
+    const customNote = sanitizeActivityText(note, 260);
+    const defaultActivityNote =
+      type === "decrease" && batchBreakdown.length > 0
+        ? `Stock deducted with FIFO batches (${buildFifoNote(batchBreakdown)})`
+        : type === "increase" && batchBreakdown.length > 0
+          ? `New FIFO batch received (${batchBreakdown[0].batchCode})`
+          : `Stock ${type}d through adjust stock flow`;
+
     await logInventoryActivity({
       req,
       inventory: updatedInventory,
@@ -937,12 +999,8 @@ export const adjustStock = async (req, res) => {
       amount: adjustmentAmount,
       previousStock,
       newStock: updatedSummary.stock,
-      note:
-        type === "decrease" && batchBreakdown.length > 0
-          ? `Stock deducted with FIFO batches (${buildFifoNote(batchBreakdown)})`
-          : type === "increase" && batchBreakdown.length > 0
-            ? `New FIFO batch received (${batchBreakdown[0].batchCode})`
-            : `Stock ${type}d through adjust stock flow`,
+      note: customNote || usageNote || defaultActivityNote,
+      usageContext: type === "decrease" ? usageContext : {},
       batchBreakdown,
       totalCost,
     });

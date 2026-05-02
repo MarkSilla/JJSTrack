@@ -11,10 +11,12 @@ const isPathActive = (pathname, targetPath, matchNested = false) => {
 }
 
 const navItems = [
+    { type: 'section', label: 'Overview' },
     { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/admin/dashboard' },
-    { icon: Calendar, label: 'Appointment', description: 'Manage appointments', path: '/admin/appointment' },
+    { type: 'section', label: 'Operations' },
+    { icon: Calendar, label: 'Appointment', description: 'Booking schedule and service queue', path: '/admin/appointment' },
     {
-        icon: ShoppingBag, label: 'Orders', description: 'Manage orders',
+        icon: ShoppingBag, label: 'Orders', description: 'Production workflow and records',
         subItems: [
             { label: 'All Orders', path: '/admin/orders', matchNested: true },
             { label: 'Released', path: '/admin/released' },
@@ -22,15 +24,17 @@ const navItems = [
         ]
     },
     {
-        icon: Package, label: 'Inventory', description: 'Manage stocks',
+        icon: Package, label: 'Inventory', description: 'Stock control and movement logs',
         subItems: [
             { label: 'Current Stock', path: '/admin/inventory' },
-            { label: 'History', path: '/admin/inventory/history' },
+            { label: 'Stock History', path: '/admin/inventory/history' },
         ]
     },
-    { icon: Users, label: 'Staff', description: 'Manage staff', path: '/admin/staff' },
-    { icon: BarChart3, label: 'Report', description: 'View Data', path: '/admin/report' },
-    { icon: QrCode, label: 'QR Scanner', description: 'Scan QR codes', path: '/admin/qr-scanner' },
+    { icon: QrCode, label: 'QR Scanner', description: 'Release and pickup scanning', path: '/admin/qr-scanner' },
+    { type: 'section', label: 'Management' },
+    { icon: Users, label: 'Staff', description: 'Employee profiles and access', path: '/admin/staff' },
+    { type: 'section', label: 'Insights' },
+    { icon: BarChart3, label: 'Report', description: 'Analytics and business performance', path: '/admin/report' },
 ]
 
 const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
@@ -48,6 +52,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
     useEffect(() => {
         const nextExpanded = navItems.reduce((acc, item) => {
+            if (item.type === 'section') return acc
             if (item.subItems?.some((subItem) => isPathActive(location.pathname, subItem.path, subItem.matchNested))) {
                 acc[item.label] = true
             }
@@ -143,6 +148,14 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                 <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
                     <ul className={`space-y-1.5 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
                         {navItems.map((item) => {
+                            if (item.type === 'section') {
+                                return (
+                                    <li key={item.label} className={showLabel ? 'px-4 pt-4 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500' : 'my-3 border-t border-gray-800'} >
+                                        {showLabel ? item.label : null}
+                                    </li>
+                                )
+                            }
+
                             const isActive = item.path
                                 ? isPathActive(location.pathname, item.path, item.matchNested)
                                 : item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))

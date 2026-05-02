@@ -151,6 +151,15 @@ function getBatchSummary(activity) {
   return `${preview} +${batchBreakdown.length - 2} more`
 }
 
+function getUsageTarget(activity) {
+  return (
+    activity?.usageContext?.orderDisplayId ||
+    activity?.usageContext?.orderLabel ||
+    activity?.usageContext?.orderId ||
+    ""
+  )
+}
+
 function StatCard({ label, value, sub, icon: Icon, accent, bgAccent }) {
   return (
     <div
@@ -222,6 +231,9 @@ function MobileHistoryCard({ item, onView }) {
       <div className="space-y-1.5 text-xs text-slate-500 mb-3">
         <p className="flex items-center gap-1.5"><Clock size={11} /> {formatDateTime(item.createdAt)}</p>
         <p className="flex items-center gap-1.5"><User size={11} /> {item.performedByName || "System"} ({item.performedByRole || "system"})</p>
+        {getUsageTarget(item) && (
+          <p className="text-blue-600 font-semibold">Used for {getUsageTarget(item)}</p>
+        )}
         <p className="text-slate-400 leading-relaxed">{item.note || getBatchSummary(item)}</p>
       </div>
 
@@ -311,7 +323,17 @@ function DetailModal({ item, onClose }) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 lg:col-span-2">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Used For</p>
+                <p className="font-semibold text-gray-900">{getUsageTarget(item) || "No order reference"}</p>
+                {(item.usageContext?.customerName || item.usageContext?.serviceType) && (
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[item.usageContext?.customerName, item.usageContext?.serviceType].filter(Boolean).join(" / ")}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Notes</p>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   {item.note || "No additional note was recorded for this movement."}
@@ -524,6 +546,9 @@ export default function AdInventoryHistory() {
           activity.category,
           activity.performedByName,
           activity.note,
+          getUsageTarget(activity),
+          activity.usageContext?.customerName,
+          activity.usageContext?.serviceType,
         ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(query))

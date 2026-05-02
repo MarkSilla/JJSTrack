@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 
 import { inventoryApi } from "../../services/inventoryApi";
+import { bookingApi } from "../../services/bookingApi";
+import { orderApi } from "../../services/orderApi";
 
 const getStatus = (stock, minStock) => {
   if (stock <= 0) return "Out of Stock";
@@ -56,15 +58,118 @@ function StatusBadge({ status }) {
   );
 }
 
-function UseItemModal({ item, onConfirm, onClose, submitting }) {
+const getOrderDisplayId = (order = {}) =>
+  order.displayId || order.orderId || order.bookingId || order._id || order.id || "";
+
+const getOrderLabel = (order = {}) =>
+  order.item ||
+  order.itemType ||
+  order.service ||
+  order.teamName ||
+  order.orgName ||
+  order.repairDescription ||
+  order.serviceType ||
+  "Order";
+
+const getOrderCustomerName = (order = {}) =>
+  order.customer ||
+  order.customerName ||
+  order.contact?.fullName ||
+  order.invoice?.billTo?.name ||
+  "Unknown customer";
+
+const mapOrderOption = (order = {}, source = "order") => ({
+  id: order.id || order._id || order.orderId,
+  orderId: order._id || order.id || order.orderId,
+  displayId: getOrderDisplayId(order),
+  label: getOrderLabel(order),
+  customerName: getOrderCustomerName(order),
+  isArchived: Boolean(order.isArchived),
+  serviceType:
+    order.serviceType ||
+    (order.bookingType === "jersey"
+      ? "Team Jersey"
+      : order.bookingType === "organizational"
+        ? "Organization"
+        : order.bookingType === "repair"
+          ? "Repair"
+          : order.orderType || order.bookingType || "Service"),
+  source,
+});
+
+function UseItemModal({
+  item,
+  orderOptions,
+  ordersLoading,
+  onRefreshOrders,
+  onConfirm,
+  onClose,
+  submitting,
+}) {
   const [qty, setQty] = useState("");
+  const [orderChoice, setOrderChoice] = useState("");
+  const [manualOrder, setManualOrder] = useState("");
+  const [purposeNote, setPurposeNote] = useState("");
+  const [showOrderDropdown, setShowOrderDropdown] = useState(false);
+  const [orderSearch, setOrderSearch] = useState("");
   const stock = Math.max(0, Number(item?.stock) || 0);
   const parsedQty = Number(qty);
+  const selectedOrder = orderOptions.find((order) => order.id === orderChoice);
+  const hasUsageTarget =
+    Boolean(selectedOrder) ||
+    (orderChoice === "__manual__" && manualOrder.trim().length > 0);
   const canSubmit =
     Number.isFinite(parsedQty) &&
     parsedQty > 0 &&
     parsedQty <= stock &&
+    hasUsageTarget &&
     !submitting;
+
+  const usageContext = selectedOrder
+    ? {
+        orderId: selectedOrder.orderId,
+        orderDisplayId: selectedOrder.displayId,
+        orderLabel: selectedOrder.label,
+        customerName: selectedOrder.customerName,
+        serviceType: selectedOrder.serviceType,
+        source: selectedOrder.source,
+      }
+    : {
+        orderId: "",
+        orderDisplayId: manualOrder.trim(),
+        orderLabel: manualOrder.trim(),
+        customerName: "",
+        serviceType: "",
+        source: "manual",
+      };
+  const selectedOrderLabel = selectedOrder
+    ? `${selectedOrder.displayId} - ${selectedOrder.label}`
+    : orderChoice === "__manual__" && manualOrder.trim()
+      ? manualOrder.trim()
+      : "Select assigned order...";
+  const filteredOrderOptions = orderOptions.filter((order) => {
+    const query = orderSearch.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      order.displayId,
+      order.label,
+      order.customerName,
+      order.serviceType,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+
+  const handleSelectOrder = (value) => {
+    setOrderChoice(value);
+    setShowOrderDropdown(false);
+    setOrderSearch("");
+
+    if (value !== "__manual__") {
+      setManualOrder("");
+    }
+  };
 
   return (
     <div
@@ -127,6 +232,131 @@ function UseItemModal({ item, onConfirm, onClose, submitting }) {
             )}
           </div>
 
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700">
+                Use for Order
+              </label>
+              <button
+                type="button"
+                onClick={onRefreshOrders}
+                disabled={ordersLoading || submitting}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-700 disabled:text-slate-300"
+              >
+                {ordersLoading ? "Loading..." : "Refresh orders"}
+              </button>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => !submitting && setShowOrderDropdown((value) => !value)}
+                disabled={submitting}
+                className="w-full flex items-center justify-between gap-2 border border-slate-200 rounded-xl px-4 py-2.5 text-left text-sm outline-none focus:border-blue-500 transition-colors font-medium bg-white disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <span className={`truncate ${selectedOrder || orderChoice === "__manual__" ? "text-slate-800" : "text-slate-400"}`}>
+                  {selectedOrderLabel}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-400 shrink-0 transition-transform ${showOrderDropdown ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {showOrderDropdown && (
+                <div className="absolute left-0 right-0 top-full mt-2 z-[10030] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5">
+                  <div className="p-2 border-b border-slate-100">
+                    <div className="relative">
+                      <Search
+                        size={13}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                      />
+                      <input
+                        type="text"
+                        value={orderSearch}
+                        onChange={(event) => setOrderSearch(event.target.value)}
+                        placeholder="Search order, customer, service..."
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs font-medium text-slate-700 outline-none transition-colors focus:border-blue-400 focus:bg-white"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto py-1">
+                    {filteredOrderOptions.length === 0 ? (
+                      <div className="px-4 py-4 text-center text-xs font-semibold text-slate-400">
+                        No matching orders
+                      </div>
+                    ) : (
+                      filteredOrderOptions.map((order) => (
+                        <button
+                          type="button"
+                          key={`${order.source}-${order.id}`}
+                          onClick={() => handleSelectOrder(order.id)}
+                          className={`w-full px-4 py-2.5 text-left transition-colors hover:bg-slate-50 ${
+                            orderChoice === order.id ? "bg-blue-50" : "bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-black text-slate-900">
+                                {order.displayId} - {order.label}
+                              </p>
+                              <p className="mt-0.5 truncate text-[11px] font-medium text-slate-400">
+                                {order.customerName} / {order.serviceType}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-500">
+                              {order.source}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectOrder("__manual__")}
+                    className={`w-full border-t border-slate-100 px-4 py-2.5 text-left text-xs font-bold transition-colors hover:bg-blue-50 ${
+                      orderChoice === "__manual__" ? "bg-blue-50 text-blue-700" : "text-slate-600"
+                    }`}
+                  >
+                    Manual / other order reference
+                  </button>
+                </div>
+              )}
+            </div>
+            {orderChoice === "__manual__" && (
+              <input
+                type="text"
+                value={manualOrder}
+                onChange={(event) => setManualOrder(event.target.value)}
+                placeholder="Enter order ID, customer, or production use"
+                disabled={submitting}
+                className="mt-2 w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium disabled:bg-slate-50 disabled:text-slate-400"
+              />
+            )}
+            {!hasUsageTarget && (orderChoice || qty) && (
+              <p className="text-xs text-amber-600 mt-1.5 font-medium">
+                Please choose an order or enter a manual order reference.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Usage Note
+            </label>
+            <textarea
+              value={purposeNote}
+              onChange={(event) => setPurposeNote(event.target.value)}
+              rows={3}
+              placeholder="Example: For layout sample, sewing repair, or team jersey production."
+              disabled={submitting}
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium resize-none disabled:bg-slate-50 disabled:text-slate-400"
+            />
+          </div>
+
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <p className="text-sm font-bold text-gray-900 mb-1">
               Stock deduction
@@ -148,7 +378,13 @@ function UseItemModal({ item, onConfirm, onClose, submitting }) {
             </button>
             <button
               type="button"
-              onClick={() => canSubmit && onConfirm(item, parsedQty)}
+              onClick={() =>
+                canSubmit &&
+                onConfirm(item, parsedQty, {
+                  ...usageContext,
+                  note: purposeNote.trim(),
+                })
+              }
               disabled={!canSubmit}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
                 canSubmit
@@ -231,6 +467,11 @@ function UsageHistory({ history }) {
                   minute: "2-digit",
                 })}
               </p>
+              {(entry.usageContext?.orderDisplayId || entry.usageContext?.orderLabel) && (
+                <p className="text-xs text-blue-600 mt-1 truncate">
+                  Used for {entry.usageContext.orderDisplayId || entry.usageContext.orderLabel}
+                </p>
+              )}
             </div>
             <span className="text-sm font-bold text-red-600 tabular-nums flex-shrink-0">
               -{entry.quantity}{" "}
@@ -298,6 +539,8 @@ export default function StaffInventoryPage() {
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [useModal, setUseModal] = useState(null);
   const [submittingUse, setSubmittingUse] = useState(false);
+  const [orderOptions, setOrderOptions] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [usageHistory, setUsageHistory] = useState(() => {
     try {
       const saved = localStorage.getItem(usageStorageKey);
@@ -323,8 +566,43 @@ export default function StaffInventoryPage() {
     }
   };
 
+  const loadOrderOptions = async () => {
+    try {
+      setOrdersLoading(true);
+      const [bookingResponse, orderResponse] = await Promise.allSettled([
+        bookingApi.getAllBookings(),
+        orderApi.getAllOrders(),
+      ]);
+
+      const bookingItems =
+        bookingResponse.status === "fulfilled"
+          ? bookingResponse.value?.bookings || bookingResponse.value?.data || []
+          : [];
+      const orderItems =
+        orderResponse.status === "fulfilled"
+          ? orderResponse.value?.orders || orderResponse.value?.data || []
+          : [];
+
+      const mergedOptions = [
+        ...(Array.isArray(orderItems) ? orderItems.map((order) => mapOrderOption(order, "order")) : []),
+        ...(Array.isArray(bookingItems) ? bookingItems.map((booking) => mapOrderOption(booking, "booking")) : []),
+      ]
+        .filter((order) => order.id && !order.isArchived)
+        .sort((left, right) => String(right.displayId).localeCompare(String(left.displayId)));
+
+      setOrderOptions(mergedOptions);
+    } catch (ordersError) {
+      console.error("Failed to fetch staff order options:", ordersError);
+      toast.error("Unable to load assigned orders. You can enter a manual reference.");
+      setOrderOptions([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadInventory();
+    loadOrderOptions();
   }, []);
 
   useEffect(() => {
@@ -362,13 +640,28 @@ export default function StaffInventoryPage() {
     (item) => (Number(item.stock) || 0) <= 0
   ).length;
 
-  const handleUseItem = async (item, quantity) => {
+  const handleUseItem = async (item, quantity, usageContext) => {
     try {
       setSubmittingUse(true);
+      const targetLabel =
+        usageContext?.orderDisplayId ||
+        usageContext?.orderLabel ||
+        usageContext?.orderId ||
+        "manual order reference";
+      const noteParts = [
+        `Used for order ${targetLabel}`,
+        usageContext?.customerName ? `Customer: ${usageContext.customerName}` : "",
+        usageContext?.serviceType ? `Service: ${usageContext.serviceType}` : "",
+        usageContext?.note ? `Note: ${usageContext.note}` : "",
+      ].filter(Boolean);
       const updatedItem = await inventoryApi.adjustStock(
         item._id,
         "decrease",
-        quantity
+        quantity,
+        {
+          usageContext,
+          note: noteParts.join(" | "),
+        }
       );
 
       setInventory((current) =>
@@ -385,6 +678,8 @@ export default function StaffInventoryPage() {
           quantity,
           unit: item.unit,
           date: new Date().toISOString(),
+          usageContext,
+          note: usageContext?.note || "",
         },
         ...current,
       ]);
@@ -706,6 +1001,9 @@ export default function StaffInventoryPage() {
       {useModal && (
         <UseItemModal
           item={useModal}
+          orderOptions={orderOptions}
+          ordersLoading={ordersLoading}
+          onRefreshOrders={loadOrderOptions}
           onConfirm={handleUseItem}
           onClose={() => !submittingUse && setUseModal(null)}
           submitting={submittingUse}

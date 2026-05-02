@@ -356,7 +356,7 @@ const StaffNav = ({ onToggleSidebar }) => {
 
     const handleLogout = () => {
         logout()
-        navigate('/')
+        navigate('/staff/login')
     }
 
     const handleOpenProfile = () => {
