@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import { persistStoredAdminUser } from '../utils/adminSession'
@@ -136,7 +137,15 @@ function Login() {
             </div>
 
             {/* Right Login Side */}
-            <div className="flex-1 flex items-center justify-center md:p-12 bg-slate-100">
+            <div className="flex-1 relative flex items-center justify-center md:p-12 bg-slate-100">
+                <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="absolute left-5 top-5 md:left-8 md:top-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                >
+                    <ArrowLeft size={16} />
+                    Access Portal
+                </button>
                 <div className="w-full max-w-md">
                     <div className="rounded-[2.5rem] p-8 md:p-12 relative ">
                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
