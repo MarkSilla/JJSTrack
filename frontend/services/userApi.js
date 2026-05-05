@@ -7,6 +7,22 @@ const clearAuthData = () => {
     sessionStorage.removeItem("user");
 }
 
+const notifyAuthChanged = () => {
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth-state-changed"));
+    }
+}
+
+const storeAuthData = (token, user) => {
+    if (!token || !user) return;
+
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    notifyAuthChanged();
+}
+
 const handleApiError = (error) => {
     console.error('API Error:', error.response?.data || error.message);
     throw error;
@@ -27,8 +43,7 @@ export const userApi = {
         try {
             const response = await api.post('/users/login', credentials);
             if (response.data.success) {
-                localStorage.setItem("token", response.data.token);
-                localStorage.setItem("user", JSON.stringify(response.data.user));
+                storeAuthData(response.data.token, response.data.user);
             }
             return response.data;
         } catch (error) {
@@ -40,8 +55,7 @@ export const userApi = {
         try {
             const response = await api.post('/users/google-auth', userData);
             if (response.data.success) {
-                localStorage.setItem("token", response.data.token);
-                localStorage.setItem("user", JSON.stringify(response.data.user));
+                storeAuthData(response.data.token, response.data.user);
             }
             return response.data;
         } catch (error) {

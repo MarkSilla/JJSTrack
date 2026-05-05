@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/apiBaseUrl';
 
-export const API_BASE_URL = 'http://localhost:4000/api';
+export { API_BASE_URL };
 
 export const getInventoryUpdatesWebSocketUrl = () => {
   const url = new URL(API_BASE_URL);

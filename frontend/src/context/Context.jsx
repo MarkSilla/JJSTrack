@@ -12,6 +12,14 @@ const clearStoredAuth = () => {
   sessionStorage.removeItem('user')
 }
 
+const persistAuth = (userData, token, remember = true) => {
+  const storage = remember ? localStorage : sessionStorage
+
+  clearStoredAuth()
+  storage.setItem('token', token)
+  storage.setItem('user', JSON.stringify(userData))
+}
+
 const Context = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
@@ -67,10 +75,20 @@ const Context = ({ children }) => {
     }
   }, [syncAuthFromStorage])
 
-  const login = (userData) => {
+  const login = (userData, token, remember = true) => {
+    const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token')
+
+    if (!authToken || !userData) {
+      clearStoredAuth()
+      setIsAuthenticated(false)
+      setUser(null)
+      window.dispatchEvent(new CustomEvent('auth-state-changed'))
+      return
+    }
+
+    persistAuth(userData, authToken, remember)
     setIsAuthenticated(true)
     setUser(userData)
-    localStorage.setItem('user', JSON.stringify(userData))
     window.dispatchEvent(new CustomEvent('auth-state-changed'))
   }
 
