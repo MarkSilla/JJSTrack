@@ -102,8 +102,13 @@ function Login() {
     return (
         <div className="flex min-h-screen w-full font-sans bg-slate-50 overflow-hidden">
             <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 pointer-events-none"
-                    style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+                <div className="absolute inset-0 z-0 pointer-events-none">
+                    <img
+                        src={image.bgjjs}
+                        alt="Staff Background"
+                        className="w-full h-full object-cover opacity-30"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b]/"></div>
                 </div>
 
                 <div className="relative z-10 flex items-center gap-3">
@@ -139,7 +144,7 @@ function Login() {
                         </div>
 
                         <div className="text-start mt-6 mb-5 xl:mb-10">
-                            <h2 className="text-black text-2xl lg:text-3xl mb-2 font-playfair">Welcome Back</h2>
+                            <h2 className="text-extrabold text-2xl lg:text-3xl mb-2 font-playfair">Welcome Back</h2>
                             <p className="text-slate-400 text-sm">Enter your credentials to access the admin panel</p>
                         </div>
 
@@ -188,8 +193,8 @@ function Login() {
 
                             <div className="flex items-center">
                                 <label className="flex items-center gap-2 text-slate-400 text-sm cursor-pointer select-none">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         className="w-4 h-4 rounded border-slate-800 bg-[#0f172a] text-blue-600 focus:ring-blue-500/20"
                                         checked={rememberMe}
                                         onChange={(e) => setRememberMe(e.target.checked)}
@@ -199,8 +204,8 @@ function Login() {
                                 </label>
                             </div>
 
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={loading}
                                 className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transform transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
