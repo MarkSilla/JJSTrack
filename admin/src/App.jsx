@@ -19,6 +19,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { StockAlertProvider } from './context/StockAlertContext'
 import { GlobalStockAlert } from './components/GlobalStockAlert'
 import StaffRoutes from './staff/StaffRoutes'
+import RBAC from './pages/Rbac'
 
 function AdminAppShell() {
     return (
@@ -53,7 +54,8 @@ function AdminLoginRoute() {
 function AppRoutes() {
     return (
         <Routes>
-            <Route path='/' element={<AdminLoginRoute />} />
+            <Route path='/' element={<RBAC />} />
+            <Route path='/admin/login' element={<AdminLoginRoute />} />
             <Route path='/admin' element={
                 <ProtectedRoute>
                     <AdminAppShell />
@@ -83,9 +85,11 @@ function DocumentTitle() {
     const location = useLocation()
 
     useEffect(() => {
-        document.title = location.pathname.startsWith('/staff')
-            ? 'JJSTrack Staff'
-            : 'JJSTrack Admin'
+        document.title = location.pathname === '/'
+            ? 'JJSTrack Access Portal'
+            : location.pathname.startsWith('/staff')
+                ? 'JJSTrack Staff'
+                : 'JJSTrack Admin'
     }, [location.pathname])
 
     return null
