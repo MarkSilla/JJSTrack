@@ -6,13 +6,15 @@ import nodemailer from 'nodemailer';
 // Email transporter configuration
 const transporter = nodemailer.createTransport({
   service: 'gmail',
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  pool: {
-    maxConnections: 1,
-  },
+  pool: true,
+  maxConnections: 1,
 });
 
 // Verify email connection on startup

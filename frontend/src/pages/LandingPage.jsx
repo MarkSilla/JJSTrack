@@ -4,7 +4,8 @@ import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 import { AuthContext } from '../context/Context'
 import img from '../assets/img.js'
-import { Quote } from 'lucide-react'
+import { Download, Quote } from 'lucide-react'
+import { toast } from 'sonner'
 
 
 const testimonials = [
@@ -56,11 +57,68 @@ const faqData = [
 
 const LandingPage = () => {
   const [openFaq, setOpenFaq] = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(null)
+  const [isAppInstalled, setIsAppInstalled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator?.standalone === true
+  })
   const { isAuthenticated, loading } = useContext(AuthContext)
   const navigate = useNavigate()
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault()
+      setInstallPrompt(event)
+    }
+
+    const handleAppInstalled = () => {
+      setInstallPrompt(null)
+      setIsAppInstalled(true)
+      toast.success('JJSTrack app installed successfully.')
+    }
+
+    const standaloneQuery = window.matchMedia?.('(display-mode: standalone)')
+    const handleStandaloneChange = (event) => setIsAppInstalled(event.matches)
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
+
+    if (standaloneQuery?.addEventListener) {
+      standaloneQuery.addEventListener('change', handleStandaloneChange)
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+      if (standaloneQuery?.removeEventListener) {
+        standaloneQuery.removeEventListener('change', handleStandaloneChange)
+      }
+    }
+  }, [])
+
+  const handleDownloadApp = async () => {
+    if (isAppInstalled) {
+      toast.success('JJSTrack is already installed on this device.')
+      return
+    }
+
+    if (installPrompt) {
+      installPrompt.prompt()
+      const choice = await installPrompt.userChoice
+
+      if (choice?.outcome === 'accepted') {
+        setInstallPrompt(null)
+      }
+      return
+    }
+
+    toast.info('Open your browser menu and choose Install app or Add to Home Screen.', {
+      duration: 6500,
+    })
+  }
 
   // Show loading state while checking auth
   if (loading) {
@@ -104,6 +162,14 @@ const LandingPage = () => {
                 className="group relative px-12 py-5 bg-white text-[#020617] rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all hover:bg-blue-500 hover:text-white hover:scale-105 active:scale-95 shadow-2xl shadow-white/10"
               >
                 Sign Up Now!
+              </button>
+              <button
+                onClick={handleDownloadApp}
+                className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
+                type="button"
+              >
+                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                Download App
               </button>
             </div>
           </div>

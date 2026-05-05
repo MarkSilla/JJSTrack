@@ -1,90 +1,95 @@
-import React, { createContext, useState, useEffect } from 'react'
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import {
   clearStoredAdminSession,
   getStoredAdminToken,
-  getStoredAdminUser,
   persistStoredAdminUser,
 } from '../utils/adminSession'
 
 export const AdminAuthContext = createContext()
 
+const fetchAdminSession = async (token) => {
+  const response = await fetch(`${API_BASE_URL}/users/admin/verify-token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok || !data?.success || !data?.admin) {
+    throw new Error(data?.message || 'Failed to verify admin session')
+  }
+
+  return data.admin
+}
+
 export const AdminAuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [adminUser, setAdminUser] = useState(null)
+  const isMountedRef = useRef(true)
 
-  useEffect(() => {
-    let isMounted = true
-
-    const fetchAdminSession = async (token) => {
-      const response = await fetch(`${API_BASE_URL}/users/admin/verify-token`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok || !data?.success || !data?.admin) {
-        throw new Error(data?.message || 'Failed to verify admin session')
-      }
-
-      return data.admin
+  const refreshAdminSession = useCallback(async (
+    token = getStoredAdminToken(),
+    { showLoader = true, throwOnError = false } = {}
+  ) => {
+    if (showLoader && isMountedRef.current) {
+      setLoading(true)
     }
 
-    const checkAuthentication = async () => {
-      try {
-        const token = getStoredAdminToken()
-
-        if (token) {
-          let nextAdminUser = getStoredAdminUser()
-
-          if (!nextAdminUser) {
-            try {
-              nextAdminUser = await fetchAdminSession(token)
-              persistStoredAdminUser(nextAdminUser)
-            } catch (sessionError) {
-              console.error('Error hydrating admin session:', sessionError)
-            }
-          }
-
-          if (!isMounted) return
-
-          setIsAuthenticated(true)
-          setAdminUser(nextAdminUser)
-        } else {
-          if (!isMounted) return
+    try {
+      if (!token) {
+        if (isMountedRef.current) {
           setIsAuthenticated(false)
           setAdminUser(null)
         }
-      } catch (error) {
-        console.error('Error checking authentication:', error)
-        clearStoredAdminSession()
-        if (!isMounted) return
+        return null
+      }
+
+      const nextAdminUser = await fetchAdminSession(token)
+      persistStoredAdminUser(nextAdminUser)
+
+      if (isMountedRef.current) {
+        setIsAuthenticated(true)
+        setAdminUser(nextAdminUser)
+      }
+
+      return nextAdminUser
+    } catch (error) {
+      console.error('Error checking authentication:', error)
+      clearStoredAdminSession()
+      if (isMountedRef.current) {
         setIsAuthenticated(false)
         setAdminUser(null)
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+      }
+      if (throwOnError) {
+        throw error
+      }
+      return null
+    } finally {
+      if (showLoader && isMountedRef.current) {
+        setLoading(false)
       }
     }
+  }, [])
 
-    checkAuthentication()
+  useEffect(() => {
+    isMountedRef.current = true
+    refreshAdminSession()
 
     // Listen for custom auth state change event
     const handleAuthStateChange = () => {
-      checkAuthentication()
+      refreshAdminSession()
     }
 
     window.addEventListener('admin-auth-changed', handleAuthStateChange)
     return () => {
-      isMounted = false
+      isMountedRef.current = false
       window.removeEventListener('admin-auth-changed', handleAuthStateChange)
     }
-  }, [])
+  }, [refreshAdminSession])
 
   const logout = () => {
     clearStoredAdminSession()
@@ -94,7 +99,7 @@ export const AdminAuthProvider = ({ children }) => {
   }
 
   return (
-    <AdminAuthContext.Provider value={{ isAuthenticated, loading, adminUser, logout }}>
+    <AdminAuthContext.Provider value={{ isAuthenticated, loading, adminUser, logout, refreshAdminSession }}>
       {children}
     </AdminAuthContext.Provider>
   )

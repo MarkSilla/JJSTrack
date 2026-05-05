@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getOrderFeedUpdatesWebSocketUrl } from '../services/realtimeApi.js';
+import { handleAdminUnauthorized } from '../utils/adminApiAuth.js';
 
 const SOCKET_RECONNECT_MS = 2500;
 const REFRESH_DEBOUNCE_MS = 250;
@@ -66,8 +67,13 @@ const useOrderFeedSocket = (onRefresh, { enabled = true } = {}) => {
         }
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (isDisposed) {
+          return;
+        }
+
+        if (event?.code === 4401) {
+          handleAdminUnauthorized();
           return;
         }
 
@@ -90,12 +96,17 @@ const useOrderFeedSocket = (onRefresh, { enabled = true } = {}) => {
         clearTimeout(refreshTimeoutRef.current);
       }
 
-      if (
-        socketRef.current &&
-        (socketRef.current.readyState === WebSocket.OPEN ||
-          socketRef.current.readyState === WebSocket.CONNECTING)
-      ) {
-        socketRef.current.close();
+      if (socketRef.current) {
+        const socket = socketRef.current;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
+
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        } else if (socket.readyState === WebSocket.CONNECTING) {
+          socket.onopen = () => socket.close();
+        }
       }
     };
   }, [enabled]);

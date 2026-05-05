@@ -1,9 +1,8 @@
 import { API_BASE_URL } from '../utils/apiBaseUrl';
-
-const getStoredToken = () => localStorage.getItem('adminToken') || '';
+import { getAdminAuthToken } from '../utils/adminApiAuth';
 
 export const getOrderFeedUpdatesWebSocketUrl = () => {
-  const token = getStoredToken();
+  const token = getAdminAuthToken();
   if (!token) {
     return '';
   }

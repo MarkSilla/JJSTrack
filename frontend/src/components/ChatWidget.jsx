@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck, Users, MoreVertical, ArrowLeft } from "lucide-react";
 import img from "../assets/img";
 import { chatApi } from "../../services/chatApi";
+import { requestWebNotificationPermission, showWebNotification } from "../utils/webNotification";
 
 const mapApiMessage = (raw) => {
   const senderRole = String(raw?.senderRole || "").toLowerCase();
@@ -47,6 +48,7 @@ const getConversationInitial = (conversation) =>
 
 const CHAT_SIZE = "md:w-[720px] md:h-[600px]";
 const CHAT_POSITION = "md:bottom-24 md:right-8";
+const CHAT_SUMMARY_REFRESH_MS = 5000;
 
 const MessageActionMenu = ({ onEdit, onDeleteForEveryone, onDeleteForMe, onClose, isSystem, isDeleted, isOwn }) => {
   const ref = useRef(null);
@@ -526,8 +528,20 @@ export default function ChatWidget() {
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [currentUserId, setCurrentUserId] = useState("");
+  const conversationSummaryRef = useRef(new Map());
+  const hasLoadedConversationSummaryRef = useRef(false);
+  const isOpenRef = useRef(isOpen);
+  const selectedConversationRef = useRef(selectedConversation);
 
   const QUICK_REPLIES = ["Track my order", "Pricing details", "Talk to an agent"];
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   useEffect(() => {
     try {
@@ -539,18 +553,79 @@ export default function ChatWidget() {
     } catch { /* ignore */ }
   }, []);
 
+  const showChatNotification = useCallback((conversation) => {
+    const conversationId = String(conversation?.id || conversation?._id || "");
+    if (!conversationId) return;
+
+    const selectedConversationId = String(selectedConversationRef.current?.id || "");
+    if (
+      isOpenRef.current &&
+      selectedConversationId === conversationId &&
+      document.visibilityState === "visible"
+    ) {
+      return;
+    }
+
+    const senderName = getConversationDisplayName(conversation);
+    const preview = String(conversation?.lastMessagePreview || "").trim();
+
+    showWebNotification(
+      {
+        _id: `chat-${conversationId}-${conversation?.lastMessageAt || Date.now()}`,
+        title: `New message from ${senderName}`,
+        message: preview || "You have a new chat message.",
+      },
+      {
+        tagPrefix: "jjstrack-user-chat",
+        onClick: () => {
+          setIsOpen(true);
+          setSelectedConversation(conversation);
+        },
+      }
+    );
+  }, []);
+
+  const notifyNewUnreadConversations = useCallback((nextConversations = []) => {
+    const previousMap = conversationSummaryRef.current;
+
+    if (hasLoadedConversationSummaryRef.current) {
+      nextConversations.forEach((conversation) => {
+        const conversationId = String(conversation?.id || conversation?._id || "");
+        if (!conversationId) return;
+
+        const unreadCount = Number(conversation?.unreadCount || 0);
+        if (unreadCount <= 0) return;
+
+        const previousConversation = previousMap.get(conversationId);
+        const previousUnreadCount = Number(previousConversation?.unreadCount || 0);
+
+        if (unreadCount > previousUnreadCount) {
+          showChatNotification(conversation);
+        }
+      });
+    }
+
+    conversationSummaryRef.current = new Map(
+      nextConversations
+        .map((conversation) => [String(conversation?.id || conversation?._id || ""), conversation])
+        .filter(([conversationId]) => Boolean(conversationId))
+    );
+    hasLoadedConversationSummaryRef.current = true;
+  }, [showChatNotification]);
+
   const loadConversationSummary = useCallback(async () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) return;
     try {
       const response = await chatApi.getConversations();
       const rawConvs = Array.isArray(response?.conversations) ? response.conversations : [];
+      notifyNewUnreadConversations(rawConvs);
       setConversations(rawConvs);
       setUnreadCount(rawConvs.reduce((sum, c) => sum + Number(c.unreadCount || 0), 0));
     } catch (error) {
       // Ignored
     }
-  }, []);
+  }, [notifyNewUnreadConversations]);
 
   const loadMessages = useCallback(async (conversationId, silent = false) => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -616,7 +691,7 @@ export default function ChatWidget() {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) return;
     loadConversationSummary();
-    const id = setInterval(loadConversationSummary, 5000);
+    const id = setInterval(loadConversationSummary, CHAT_SUMMARY_REFRESH_MS);
     return () => clearInterval(id);
   }, [loadConversationSummary]);
 
@@ -641,6 +716,7 @@ export default function ChatWidget() {
       {!isOpen && (
         <ChatLauncher
           onClick={() => {
+            void requestWebNotificationPermission();
             setIsOpen(true);
             setSelectedConversation(null);
           }}

@@ -4,10 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
     Bell, Menu, X, User, LogOut
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { AdminAuthContext } from '../context/AdminAuthContext'
-import { getInventoryUpdatesWebSocketUrl } from '../services/inventoryApi'
-import { notificationApi } from '../services/notificationApi'
+import { getNotificationUpdatesWebSocketUrl, notificationApi } from '../services/notificationApi'
+import { handleAdminUnauthorized } from '../utils/adminApiAuth'
 import { getStoredAdminUser } from '../utils/adminSession'
+import { requestWebNotificationPermission, showWebNotification } from '../utils/webNotification'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -53,6 +55,24 @@ const getVisibleNotifications = (notifications, filter) => {
     return notifications
 }
 
+const upsertNotifications = (current = [], incoming = []) => {
+    const map = new Map()
+
+    current.forEach((item) => {
+        if (item?._id) map.set(item._id, item)
+    })
+
+    incoming.forEach((item) => {
+        if (item?._id) map.set(item._id, item)
+    })
+
+    return [...map.values()].sort((first, second) => {
+        const firstTime = new Date(first?.createdAt || 0).getTime()
+        const secondTime = new Date(second?.createdAt || 0).getTime()
+        return secondTime - firstTime
+    })
+}
+
 const getEmptyNotificationState = (filter) => {
     if (filter === 'inventory') return { title: 'No inventory notifications', description: 'Inventory updates will appear here.' }
     if (filter === 'booking') return { title: 'No booking notifications', description: 'Booking updates will appear here.' }
@@ -88,6 +108,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const notificationSocketRef = useRef(null)
     const notificationReconnectTimeoutRef = useRef(null)
     const notificationRefreshTimeoutRef = useRef(null)
+    const notificationIdsRef = useRef(new Set())
     const navigate = useNavigate()
     const location = useLocation()
     const { adminUser, logout } = useContext(AdminAuthContext)
@@ -157,6 +178,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             if (!isMountedRef.current) return
             const nextNotifications = Array.isArray(response?.notifications) ? response.notifications : []
             const parsedUnreadCount = Number(response?.unreadCount)
+            notificationIdsRef.current = new Set(nextNotifications.map((item) => item?._id).filter(Boolean))
             setNotifications(nextNotifications)
             setUnreadCount(
                 Number.isFinite(parsedUnreadCount)
@@ -173,6 +195,35 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             if (showLoader && isMountedRef.current) setNotificationsLoading(false)
         }
     }, [])
+
+    const openNotificationRoute = useCallback((notification) => {
+        const targetRoute = resolveNotificationRoute(notification)
+        if (targetRoute && targetRoute !== location.pathname) {
+            navigate(targetRoute)
+        }
+    }, [location.pathname, navigate])
+
+    const showRealtimeNotificationToast = useCallback((notification) => {
+        if (!notification?._id) return
+
+        const targetRoute = resolveNotificationRoute(notification)
+
+        toast.info(notification.title || 'New notification', {
+            description: notification.message || 'A new admin update is available.',
+            duration: 8000,
+            action: targetRoute
+                ? {
+                    label: 'Open',
+                    onClick: () => openNotificationRoute(notification),
+                }
+                : undefined,
+        })
+
+        showWebNotification(notification, {
+            tagPrefix: 'jjstrack-admin',
+            onClick: openNotificationRoute,
+        })
+    }, [openNotificationRoute])
 
     useEffect(() => {
         isMountedRef.current = true
@@ -214,7 +265,10 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         const connectNotificationSocket = () => {
             if (isDisposed) return
 
-            const socket = new WebSocket(getInventoryUpdatesWebSocketUrl())
+            const socketUrl = getNotificationUpdatesWebSocketUrl()
+            if (!socketUrl) return
+
+            const socket = new WebSocket(socketUrl)
             notificationSocketRef.current = socket
 
             socket.onmessage = (event) => {
@@ -223,7 +277,27 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 try {
                     const message = JSON.parse(event.data)
 
-                    if (message?.type === 'inventory:changed') {
+                    if (message?.type === 'notification:created' && message?.notification?._id) {
+                        const incomingNotification = message.notification
+
+                        setNotifications((current) => {
+                            if (current.some((item) => item?._id === incomingNotification._id)) {
+                                return current
+                            }
+
+                            notificationIdsRef.current.add(incomingNotification._id)
+                            return upsertNotifications(current, [incomingNotification]).slice(0, NOTIFICATION_LIMIT)
+                        })
+
+                        if (!incomingNotification.isRead) {
+                            setUnreadCount((current) => current + 1)
+                        }
+
+                        showRealtimeNotificationToast(incomingNotification)
+                        return
+                    }
+
+                    if (message?.type === 'feed:refresh') {
                         scheduleNotificationRefresh()
                     }
                 } catch (socketError) {
@@ -237,8 +311,13 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 }
             }
 
-            socket.onclose = () => {
+            socket.onclose = (event) => {
                 if (isDisposed) return
+
+                if (event?.code === 4401) {
+                    handleAdminUnauthorized()
+                    return
+                }
 
                 notificationReconnectTimeoutRef.current = window.setTimeout(() => {
                     connectNotificationSocket()
@@ -259,15 +338,20 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 clearTimeout(notificationReconnectTimeoutRef.current)
             }
 
-            if (
-                notificationSocketRef.current &&
-                (notificationSocketRef.current.readyState === WebSocket.OPEN ||
-                    notificationSocketRef.current.readyState === WebSocket.CONNECTING)
-            ) {
-                notificationSocketRef.current.close()
+            if (notificationSocketRef.current) {
+                const ws = notificationSocketRef.current
+                ws.onmessage = null
+                ws.onerror = null
+                ws.onclose = null
+
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close()
+                } else if (ws.readyState === WebSocket.CONNECTING) {
+                    ws.onopen = () => ws.close()
+                }
             }
         }
-    }, [loadNotifications])
+    }, [loadNotifications, showRealtimeNotificationToast])
 
     const handleLogout = () => {
         logout()
@@ -290,6 +374,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         setShowDropdown(false)
         if (nextState) {
             setNotificationFilter('all')
+            void requestWebNotificationPermission()
             loadNotifications({ showLoader: notifications.length === 0 })
         }
     }
@@ -325,10 +410,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             }
         }
         setShowNotifications(false)
-        const targetRoute = resolveNotificationRoute(notification)
-        if (targetRoute && targetRoute !== location.pathname) {
-            navigate(targetRoute)
-        }
+        openNotificationRoute(notification)
     }
 
     const getUserInitials = (name) => {

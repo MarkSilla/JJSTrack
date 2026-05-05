@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/apiBaseUrl';
+import { attachAdminAuthInterceptors } from '../utils/adminApiAuth';
 
 export { API_BASE_URL };
 
@@ -19,14 +20,7 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+attachAdminAuthInterceptors(api);
 
 export const inventoryApi = {
   getInventorySettings: async () => {

@@ -82,7 +82,13 @@ const VerifyEmailPage = () => {
         setError(response.message || 'Failed to resend code');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to resend code. Please try again.');
+      if (err.code === 'ECONNABORTED') {
+        setError('Sending the email took too long. Please check your connection and try again.');
+      } else if (!err.response) {
+        setError('Cannot reach the server right now. Please make sure the backend is running.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to resend code. Please try again.');
+      }
     } finally {
       setResendLoading(false);
     }

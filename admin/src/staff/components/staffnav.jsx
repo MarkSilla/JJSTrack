@@ -16,6 +16,7 @@ import {
 import { StaffAuthContext } from '../context/StaffAuthContext.jsx'
 import { playAlertSound } from '../utils/soundAlert.js'
 import { getStoredStaffUser } from '../utils/staffSession.js'
+import { requestWebNotificationPermission, showWebNotification } from '../../utils/webNotification.js'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -217,6 +218,15 @@ const StaffNav = ({ onToggleSidebar }) => {
                 }
                 : undefined,
         })
+
+        showWebNotification(notification, {
+            tagPrefix: 'jjstrack-staff',
+            onClick: () => {
+                if (targetRoute && targetRoute !== location.pathname) {
+                    navigate(targetRoute)
+                }
+            },
+        })
     }, [location.pathname, navigate])
 
     useEffect(() => {
@@ -379,6 +389,7 @@ const StaffNav = ({ onToggleSidebar }) => {
         setShowDropdown(false)
 
         if (nextState) {
+            void requestWebNotificationPermission()
             loadNotifications({ showLoader: notifications.length === 0 })
         }
     }

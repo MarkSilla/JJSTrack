@@ -5,6 +5,9 @@ import {
 } from "lucide-react";
 import img from "../assets/img";
 import { chatApi } from "../services/chatApi";
+import { requestWebNotificationPermission, showWebNotification } from "../utils/webNotification";
+
+const CHAT_SUMMARY_REFRESH_MS = 5000;
 
 const fileToDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -54,6 +57,12 @@ const mapMessage = (message) => {
     senderRole,
   };
 };
+
+const getChatNotificationId = (conversation) =>
+  `chat-${conversation?.id || conversation?._id || "conversation"}-${conversation?.lastMessageAt || Date.now()}`;
+
+const getChatNotificationMessage = (conversation) =>
+  String(conversation?.lastMessagePreview || "").trim() || "You have a new chat message.";
 
 const MessageActionMenu = ({ onEdit, onDeleteForEveryone, onDeleteForMe, onClose, isSystem, isDeleted, isOwn }) => {
   const ref = useRef(null);
@@ -443,6 +452,9 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const clientSummaryRef = useRef(new Map());
+  const hasLoadedClientSummaryRef = useRef(false);
+  const activeClientIdRef = useRef(activeClientId);
 
   const activeClient = clients.find((client) => client.id === activeClientId) || null;
   const activeMessages = activeClientId ? (messagesByConversation[activeClientId] || []) : [];
@@ -471,6 +483,62 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
       });
   }, [clients, filter, searchQuery]);
 
+  useEffect(() => {
+    activeClientIdRef.current = activeClientId;
+  }, [activeClientId]);
+
+  const showAdminChatNotification = useCallback((client) => {
+    const conversationId = String(client?.id || "");
+    if (!conversationId) return;
+
+    if (
+      String(activeClientIdRef.current || "") === conversationId &&
+      document.visibilityState === "visible"
+    ) {
+      return;
+    }
+
+    showWebNotification(
+      {
+        _id: getChatNotificationId(client),
+        title: `New message from ${client?.name || "Customer"}`,
+        message: getChatNotificationMessage(client),
+      },
+      {
+        tagPrefix: "jjstrack-admin-chat",
+        onClick: () => setActiveClientId(conversationId),
+      }
+    );
+  }, []);
+
+  const notifyNewUnreadClients = useCallback((nextClients = []) => {
+    const previousMap = clientSummaryRef.current;
+
+    if (hasLoadedClientSummaryRef.current) {
+      nextClients.forEach((client) => {
+        const conversationId = String(client?.id || "");
+        if (!conversationId) return;
+
+        const unreadCount = Number(client?.unreadCount || 0);
+        if (unreadCount <= 0) return;
+
+        const previousClient = previousMap.get(conversationId);
+        const previousUnreadCount = Number(previousClient?.unreadCount || 0);
+
+        if (unreadCount > previousUnreadCount) {
+          showAdminChatNotification(client);
+        }
+      });
+    }
+
+    clientSummaryRef.current = new Map(
+      nextClients
+        .map((client) => [String(client?.id || ""), client])
+        .filter(([conversationId]) => Boolean(conversationId))
+    );
+    hasLoadedClientSummaryRef.current = true;
+  }, [showAdminChatNotification]);
+
   const loadConversations = useCallback(async (silent = false) => {
     if (!localStorage.getItem('adminToken')) return;
     try {
@@ -480,6 +548,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
         ? response.conversations.map(mapConversation)
         : [];
 
+      notifyNewUnreadClients(nextClients);
       setClients(nextClients);
       onUnreadChange?.(nextClients.reduce((sum, client) => sum + Number(client.unreadCount || 0), 0));
       setErrorText("");
@@ -491,7 +560,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     } finally {
       if (!silent) setIsLoadingClients(false);
     }
-  }, [activeClientId, onUnreadChange]);
+  }, [activeClientId, notifyNewUnreadClients, onUnreadChange]);
 
   const loadMessages = useCallback(async (conversationId, silent = false) => {
     if (!conversationId || !localStorage.getItem('adminToken')) return;
@@ -586,7 +655,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
   useEffect(() => {
     if (!localStorage.getItem('adminToken')) return;
     loadConversations();
-    const inv = setInterval(() => loadConversations(true), 5000);
+    const inv = setInterval(() => loadConversations(true), CHAT_SUMMARY_REFRESH_MS);
     return () => clearInterval(inv);
   }, [loadConversations]);
 
@@ -718,6 +787,9 @@ export default function AdminChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [totalUnread, setTotalUnread] = useState(0);
+  const closedClientSummaryRef = useRef(new Map());
+  const hasLoadedClosedClientSummaryRef = useRef(false);
+  const isOpenRef = useRef(isOpen);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -725,17 +797,88 @@ export default function AdminChatWidget() {
   }, []);
 
   useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const notifyClosedUnreadClients = useCallback((nextClients = []) => {
+    const previousMap = closedClientSummaryRef.current;
+
+    if (!isOpenRef.current && hasLoadedClosedClientSummaryRef.current) {
+      nextClients.forEach((client) => {
+        const conversationId = String(client?.id || "");
+        if (!conversationId) return;
+
+        const unreadCount = Number(client?.unreadCount || 0);
+        if (unreadCount <= 0) return;
+
+        const previousClient = previousMap.get(conversationId);
+        const previousUnreadCount = Number(previousClient?.unreadCount || 0);
+
+        if (unreadCount > previousUnreadCount) {
+          showWebNotification(
+            {
+              _id: getChatNotificationId(client),
+              title: `New message from ${client?.name || "Customer"}`,
+              message: getChatNotificationMessage(client),
+            },
+            {
+              tagPrefix: "jjstrack-admin-chat",
+              onClick: () => setIsOpen(true),
+            }
+          );
+        }
+      });
+    }
+
+    closedClientSummaryRef.current = new Map(
+      nextClients
+        .map((client) => [String(client?.id || ""), client])
+        .filter(([conversationId]) => Boolean(conversationId))
+    );
+    hasLoadedClosedClientSummaryRef.current = true;
+  }, []);
+
+  const loadChatSummary = useCallback(async () => {
+    if (!localStorage.getItem('adminToken')) {
+      setTotalUnread(0);
+      closedClientSummaryRef.current = new Map();
+      hasLoadedClosedClientSummaryRef.current = false;
+      return;
+    }
+
+    try {
+      const response = await chatApi.getConversations();
+      const nextClients = Array.isArray(response?.conversations)
+        ? response.conversations.map(mapConversation)
+        : [];
+      notifyClosedUnreadClients(nextClients);
+      setTotalUnread(nextClients.reduce((sum, client) => sum + Number(client.unreadCount || 0), 0));
+    } catch {
+      // Keep the last unread count if the lightweight poll misses once.
+    }
+  }, [notifyClosedUnreadClients]);
+
+  useEffect(() => {
     const handleCloseEvent = () => setIsOpen(false);
     window.addEventListener('close-admin-chat', handleCloseEvent);
     return () => window.removeEventListener('close-admin-chat', handleCloseEvent);
   }, []);
+
+  useEffect(() => {
+    loadChatSummary();
+    const intervalId = setInterval(loadChatSummary, CHAT_SUMMARY_REFRESH_MS);
+    return () => clearInterval(intervalId);
+  }, [loadChatSummary]);
 
   return (
     <React.Fragment>
       {!isOpen && (
         <button
           id="admin-chat-bubble"
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            void requestWebNotificationPermission();
+            setIsOpen(true);
+          }}
           className="fixed bottom-6 right-8 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
         >
           <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />

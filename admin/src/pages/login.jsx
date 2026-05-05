@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import { persistStoredAdminUser } from '../utils/adminSession'
+import { AdminAuthContext } from '../context/AdminAuthContext'
 
 function Login() {
     const [email, setEmail] = useState('')
@@ -12,6 +13,7 @@ function Login() {
     const [error, setError] = useState('')
     const [rememberMe, setRememberMe] = useState(false)
     const navigate = useNavigate()
+    const { refreshAdminSession } = useContext(AdminAuthContext)
 
     useEffect(() => {
         const rememberedEmail = localStorage.getItem('rememberAdminEmail')
@@ -86,11 +88,10 @@ function Login() {
                     localStorage.removeItem('rememberAdminEmail')
                 }
 
-                // Notify auth context of the change
-                window.dispatchEvent(new Event('admin-auth-changed'))
-
-                // Redirect to dashboard
-                navigate('/admin/dashboard')
+                await refreshAdminSession(data.token, {
+                    showLoader: false,
+                    throwOnError: true,
+                })
             }
         } catch (err) {
             setError(err.message || 'An error occurred during login')

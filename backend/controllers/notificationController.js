@@ -4,6 +4,7 @@ import { getRequestActor } from '../utils/requestActor.js';
 import { resolveNotificationAudience } from '../utils/notificationHelpers.js';
 import { syncUpcomingBookingNotifications } from '../utils/bookingReminderNotifications.js';
 import { syncUpcomingAssignedTaskNotifications } from '../utils/staffNotificationEvents.js';
+import { syncUpcomingUserOrderNotifications } from '../utils/userOrderReminderNotifications.js';
 
 const serializeNotification = (notification) => ({
   _id: notification._id,
@@ -68,6 +69,12 @@ export const getNotifications = async (req, res) => {
 
     if (scope.audience === 'admin') {
       await syncUpcomingBookingNotifications();
+    }
+
+    if (scope.audience === 'user' && scope.actorId) {
+      await syncUpcomingUserOrderNotifications({
+        recipientId: scope.actorId,
+      });
     }
 
     if (scope.audience === 'staff' && scope.actorId) {

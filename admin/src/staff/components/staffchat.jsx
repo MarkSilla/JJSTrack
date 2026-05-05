@@ -5,6 +5,9 @@ import {
 } from 'lucide-react';
 import img from '../assets/img';
 import { chatApi } from '../services/chatApi';
+import { requestWebNotificationPermission, showWebNotification } from '../../utils/webNotification';
+
+const CHAT_SUMMARY_REFRESH_MS = 5000;
 
 const fileToDataUrl = (file) =>
     new Promise((resolve, reject) => {
@@ -60,6 +63,12 @@ const mapMessage = (message) => {
         senderRole,
     };
 };
+
+const getChatNotificationId = (conversation) =>
+    `chat-${conversation?.id || conversation?._id || 'conversation'}-${conversation?.lastMessageAt || Date.now()}`;
+
+const getChatNotificationMessage = (conversation) =>
+    String(conversation?.lastMessagePreview || '').trim() || 'You have a new chat message.';
 
 const MessageActionMenu = ({ onEdit, onDeleteForEveryone, onDeleteForMe, onClose, isSystem, isDeleted, isOwn }) => {
     const ref = useRef(null);
@@ -460,6 +469,9 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     const [isLoadingConversations, setIsLoadingConversations] = useState(false);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [errorText, setErrorText] = useState('');
+    const conversationSummaryRef = useRef(new Map());
+    const hasLoadedConversationSummaryRef = useRef(false);
+    const activeConversationIdRef = useRef(activeConversationId);
 
     const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
     const activeMessages = activeConversationId ? (messagesByConversation[activeConversationId] || []) : [];
@@ -494,6 +506,10 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     }, [conversations, filter, searchQuery]);
 
     useEffect(() => {
+        activeConversationIdRef.current = activeConversationId;
+    }, [activeConversationId]);
+
+    useEffect(() => {
         try {
             const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
             if (token) {
@@ -504,6 +520,58 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
         } catch { /* ignore */ }
     }, []);
 
+    const showStaffChatNotification = useCallback((conversation) => {
+        const conversationId = String(conversation?.id || '');
+        if (!conversationId) return;
+
+        if (
+            String(activeConversationIdRef.current || '') === conversationId &&
+            document.visibilityState === 'visible'
+        ) {
+            return;
+        }
+
+        showWebNotification(
+            {
+                _id: getChatNotificationId(conversation),
+                title: `New message from ${conversation?.name || 'Customer'}`,
+                message: getChatNotificationMessage(conversation),
+            },
+            {
+                tagPrefix: 'jjstrack-staff-chat',
+                onClick: () => setActiveConversationId(conversationId),
+            }
+        );
+    }, []);
+
+    const notifyNewUnreadConversations = useCallback((nextConversations = []) => {
+        const previousMap = conversationSummaryRef.current;
+
+        if (hasLoadedConversationSummaryRef.current) {
+            nextConversations.forEach((conversation) => {
+                const conversationId = String(conversation?.id || '');
+                if (!conversationId) return;
+
+                const unreadCount = Number(conversation?.unreadCount || 0);
+                if (unreadCount <= 0) return;
+
+                const previousConversation = previousMap.get(conversationId);
+                const previousUnreadCount = Number(previousConversation?.unreadCount || 0);
+
+                if (unreadCount > previousUnreadCount) {
+                    showStaffChatNotification(conversation);
+                }
+            });
+        }
+
+        conversationSummaryRef.current = new Map(
+            nextConversations
+                .map((conversation) => [String(conversation?.id || ''), conversation])
+                .filter(([conversationId]) => Boolean(conversationId))
+        );
+        hasLoadedConversationSummaryRef.current = true;
+    }, [showStaffChatNotification]);
+
     const loadConversations = useCallback(async (silent = false) => {
         try {
             if (!silent) setIsLoadingConversations(true);
@@ -512,6 +580,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
                 ? response.conversations.map(mapConversation)
                 : [];
 
+            notifyNewUnreadConversations(nextConversations);
             setConversations(nextConversations);
             onUnreadChange?.(nextConversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0));
             setErrorText('');
@@ -524,7 +593,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
         } finally {
             if (!silent) setIsLoadingConversations(false);
         }
-    }, [activeConversationId, onUnreadChange]);
+    }, [activeConversationId, notifyNewUnreadConversations, onUnreadChange]);
 
     const loadMessages = useCallback(async (conversationId, silent = false) => {
         if (!conversationId) return;
@@ -676,7 +745,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
             if (activeConversationId) {
                 loadMessages(activeConversationId, true);
             }
-        }, 5000);
+        }, CHAT_SUMMARY_REFRESH_MS);
 
         return () => window.clearInterval(interval);
     }, [activeConversationId, loadConversations, loadMessages]);
@@ -806,11 +875,77 @@ export default function StaffChatWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [totalUnread, setTotalUnread] = useState(0);
+    const closedConversationSummaryRef = useRef(new Map());
+    const hasLoadedClosedConversationSummaryRef = useRef(false);
+    const isOpenRef = useRef(isOpen);
 
     const handleClose = useCallback(() => {
         setIsOpen(false);
         setIsFullScreen(false);
     }, []);
+
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    const notifyClosedUnreadConversations = useCallback((nextConversations = []) => {
+        const previousMap = closedConversationSummaryRef.current;
+
+        if (!isOpenRef.current && hasLoadedClosedConversationSummaryRef.current) {
+            nextConversations.forEach((conversation) => {
+                const conversationId = String(conversation?.id || '');
+                if (!conversationId) return;
+
+                const unreadCount = Number(conversation?.unreadCount || 0);
+                if (unreadCount <= 0) return;
+
+                const previousConversation = previousMap.get(conversationId);
+                const previousUnreadCount = Number(previousConversation?.unreadCount || 0);
+
+                if (unreadCount > previousUnreadCount) {
+                    showWebNotification(
+                        {
+                            _id: getChatNotificationId(conversation),
+                            title: `New message from ${conversation?.name || 'Customer'}`,
+                            message: getChatNotificationMessage(conversation),
+                        },
+                        {
+                            tagPrefix: 'jjstrack-staff-chat',
+                            onClick: () => setIsOpen(true),
+                        }
+                    );
+                }
+            });
+        }
+
+        closedConversationSummaryRef.current = new Map(
+            nextConversations
+                .map((conversation) => [String(conversation?.id || ''), conversation])
+                .filter(([conversationId]) => Boolean(conversationId))
+        );
+        hasLoadedClosedConversationSummaryRef.current = true;
+    }, []);
+
+    const loadChatSummary = useCallback(async () => {
+        const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
+        if (!token) {
+            setTotalUnread(0);
+            closedConversationSummaryRef.current = new Map();
+            hasLoadedClosedConversationSummaryRef.current = false;
+            return;
+        }
+
+        try {
+            const response = await chatApi.getConversations({ scope: 'order' });
+            const nextConversations = Array.isArray(response?.conversations)
+                ? response.conversations.map(mapConversation)
+                : [];
+            notifyClosedUnreadConversations(nextConversations);
+            setTotalUnread(nextConversations.reduce((sum, conversation) => sum + Number(conversation.unreadCount || 0), 0));
+        } catch {
+            // Keep the last unread count if the lightweight poll misses once.
+        }
+    }, [notifyClosedUnreadConversations]);
 
     useEffect(() => {
         const handleOpenEvent = () => setIsOpen(true);
@@ -825,11 +960,20 @@ export default function StaffChatWidget() {
         };
     }, [handleClose]);
 
+    useEffect(() => {
+        loadChatSummary();
+        const intervalId = window.setInterval(loadChatSummary, CHAT_SUMMARY_REFRESH_MS);
+        return () => window.clearInterval(intervalId);
+    }, [loadChatSummary]);
+
     return (
         <React.Fragment>
             {!isOpen && (
                 <button
-                    onClick={() => setIsOpen(true)}
+                    onClick={() => {
+                        void requestWebNotificationPermission();
+                        setIsOpen(true);
+                    }}
                     className="fixed bottom-6 right-8 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
                 >
                     <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
