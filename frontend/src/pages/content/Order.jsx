@@ -8,6 +8,7 @@ import {
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
     Inbox, Monitor, Printer, Scissors, Truck
 } from 'lucide-react'
+import { GiSewingMachine } from 'react-icons/gi'
 import { toast } from 'sonner'
 import { orderApi } from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
@@ -45,6 +46,17 @@ const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 
 const FULFILLED_TRACKING_STATUSES = new Set(['completed', 'released'])
 const CLOSED_TRACKING_STATUSES = new Set(['completed', 'released', 'cancelled'])
 
+const toStatCount = (value) => {
+    const count = Number(value)
+    return Number.isFinite(count) ? count : 0
+}
+
+const getApiList = (response, primaryKey) => {
+    if (Array.isArray(response?.[primaryKey])) return response[primaryKey]
+    if (Array.isArray(response?.data)) return response.data
+    return []
+}
+
 const normalizeTrackingStatus = (status = '') => String(status || '').trim().toLowerCase()
 const isActiveTrackingStatus = (status = '') => ACTIVE_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
 const isFulfilledTrackingStatus = (status = '') => FULFILLED_TRACKING_STATUSES.has(normalizeTrackingStatus(status))
@@ -61,6 +73,12 @@ const hasReachedDropOffStep = (steps = []) =>
         const label = normalizeStepLabel(step?.label)
         return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active)
     })
+
+const getTrackingStats = (items = []) => ({
+    total: items.length,
+    inProgress: items.filter((item) => isActiveTrackingStatus(item?.status)).length,
+    fulfilled: items.filter((item) => isFulfilledTrackingStatus(item?.status)).length,
+})
 
 const getServiceTypeLabel = (entry = {}) => {
     const serviceType = String(entry.serviceType || '').trim()
@@ -646,8 +664,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 )}
 
                 {/* ── Footer ── */}
-                <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-1.5 min-w-0 w-full sm:w-auto">
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
                             {order.assignedTailor ? 'Tailor:' : 'Status:'}
                         </span>
@@ -655,21 +673,20 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             {order.assignedTailor || 'is not assigned'}
                         </span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
                         {canMessageTailor && (
                             <button
                                 onClick={() => setShowChatModal(true)}
-                                className="bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                                className="min-w-0 bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                             >
                                 <MessageCircle size={12} />
-                                <span className="hidden sm:inline">Message Tailor</span>
-                                <span className="sm:hidden">Chat</span>
+                                <span className="truncate">Message Tailor</span>
                             </button>
                         )}
                         {canCancel && (
                             <button
                                 onClick={() => onCancel(order)}
-                                className="bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                                className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                             >
                                 Cancel
                             </button>
@@ -678,7 +695,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             <button
                                 onClick={handleDownloadQR}
                                 disabled={loadingQR}
-                                className="bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                                className="min-w-0 bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0 disabled:opacity-50"
                                 title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
                             >
                                 <Download size={12} />
@@ -695,7 +712,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
 
                                 setShowModal(true)
                             }}
-                            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center gap-1.5 shrink-0"
+                            className="min-w-0 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                         >
                             <QrCode size={12} />
                             Details
@@ -814,13 +831,24 @@ const Order = () => {
         try {
             const params = {}
             if (search.trim()) params.search = search.trim()
-            const [od, bd] = await Promise.all([
+            const [orderResult, bookingResult] = await Promise.allSettled([
                 orderApi.getOrders(params),
                 bookingApi.getBookings(params),
             ])
-            if (od.success) setOrders(od.orders)
-            if (bd.success) setBookings(bd.bookings || bd.data || [])
-        } catch {
+
+            const od = orderResult.status === 'fulfilled' ? orderResult.value : null
+            const bd = bookingResult.status === 'fulfilled' ? bookingResult.value : null
+            const hasOrders = od?.success !== false && (Array.isArray(od?.orders) || Array.isArray(od?.data))
+            const hasBookings = bd?.success !== false && (Array.isArray(bd?.bookings) || Array.isArray(bd?.data))
+
+            if (hasOrders) setOrders(getApiList(od, 'orders'))
+            if (hasBookings) setBookings(getApiList(bd, 'bookings'))
+
+            if (!hasOrders && !hasBookings) {
+                throw new Error('No order data loaded')
+            }
+        } catch (error) {
+            console.error('Fetch orders error:', error)
             if (!silent) {
                 setError('Failed to load orders. Please try again.')
             }
@@ -906,22 +934,9 @@ const Order = () => {
         }
     }, [searchQuery, fetchData])
 
-    // Stats from API
-    useEffect(() => {
-        orderApi.getOrderStats()
-            .then(d => { if (d.success) setStats({ total: d.stats.total, inProgress: d.stats.inProgress, fulfilled: d.stats.completed }) })
-            .catch(console.error)
-    }, [])
-
     // Update stats when data changes
     useEffect(() => {
-        const all = [...orders, ...bookings]
-        setStats(prev => ({
-            ...prev,
-            total: all.length,
-            inProgress: all.filter(i => isActiveTrackingStatus(i.status)).length,
-            fulfilled: all.filter(i => isFulfilledTrackingStatus(i.status)).length,
-        }))
+        setStats(getTrackingStats([...orders, ...bookings]))
     }, [orders, bookings])
 
     useEffect(() => {
@@ -1059,28 +1074,19 @@ const Order = () => {
                         <p className="text-slate-400 text-xs sm:text-sm">Track and manage your tailoring orders.</p>
                     </div>
                     {/* Stats — full width grid, no scroll */}
-                    <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+                    <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
                         {[
-                            { label: 'Total', value: stats.total, icon: MdShoppingBag, color: 'bg-blue-400/20 text-blue-300' },
-                            { label: 'In Progress', value: stats.inProgress, icon: MdLoop, color: 'bg-amber-400/20 text-amber-300' },
-                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, color: 'bg-green-400/20 text-green-300' },
-                        ].map(({ label, value, icon, color }) => (
-                            <div key={label} className="bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-2.5">
-                                {/* Mobile: icon + label on top, number below */}
-                                <div className="flex items-center gap-1.5 sm:hidden">
-                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                        {React.createElement(icon, { size: 13, className: color.split(' ')[1] })}
-                                    </div>
-                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
+                            { label: 'Total', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                            { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
+                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-green-400/20', text: 'text-green-300' },
+                        ].map(({ label, value, icon: Icon, bg, text }) => (
+                            <div key={label} className="min-w-0 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex items-center gap-3 min-[420px]:flex-col min-[420px]:items-center min-[420px]:gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
+                                    <Icon size={16} className={text} />
                                 </div>
-                                <p className="text-white text-xl sm:text-lg font-bold leading-tight sm:hidden">{value}</p>
-                                {/* Desktop: original side-by-side layout */}
-                                <div className={`hidden sm:flex w-8 h-8 rounded-lg items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                    {React.createElement(icon, { size: 16, className: color.split(' ')[1] })}
-                                </div>
-                                <div className="hidden sm:block">
-                                    <p className="text-slate-400 text-[9px] font-medium">{label}</p>
-                                    <p className="text-white text-lg font-bold leading-tight">{value}</p>
+                                <div className="min-w-0 flex-1 min-[420px]:text-center sm:text-left">
+                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide leading-tight truncate min-[420px]:whitespace-normal sm:whitespace-nowrap">{label}</p>
+                                    <p className="text-white text-xl sm:text-lg font-bold leading-tight">{toStatCount(value)}</p>
                                 </div>
                             </div>
                         ))}

@@ -1,6 +1,6 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:4000/api';
+import { API_BASE_URL } from '../utils/apiBaseUrl';
+import { attachAdminAuthInterceptors } from '../utils/adminApiAuth';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -21,17 +21,9 @@ const getAdminArchiveActor = () => {
   }
 };
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken') || localStorage.getItem('staffToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+attachAdminAuthInterceptors(api);
 
 export const orderApi = {
-  // Get all orders
   getAllOrders: async () => {
     try {
       const response = await api.get('/orders');

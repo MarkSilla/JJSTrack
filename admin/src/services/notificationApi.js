@@ -1,6 +1,18 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/apiBaseUrl';
+import { attachAdminAuthInterceptors, getAdminAuthToken } from '../utils/adminApiAuth';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+export const getNotificationUpdatesWebSocketUrl = () => {
+  const token = getAdminAuthToken();
+  if (!token) return '';
+
+  const url = new URL(API_BASE_URL);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = '/notification-updates';
+  url.search = new URLSearchParams({ token }).toString();
+  url.hash = '';
+  return url.toString();
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,13 +21,7 @@ const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+attachAdminAuthInterceptors(api);
 
 export const notificationApi = {
   getNotifications: async (limit = 10) => {

@@ -13,6 +13,7 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    remember: true,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,10 +24,10 @@ const LoginPage = () => {
   const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, type, checked, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
     setError('');
   };
@@ -43,9 +44,8 @@ const LoginPage = () => {
     try {
       const response = await userApi.login(formData);
 
-      if (response.success) {
-        // Save to context
-        login(response.user);
+      if (response.success && response.token) {
+        login(response.user, response.token, formData.remember);
         toast.success('Login successful!');
         navigate('/home', { replace: true });
       } else {
@@ -70,12 +70,9 @@ const LoginPage = () => {
         photoURL: user.photoURL || '',
       });
 
-      if (response.success) {
-        // Store user data temporarily
-        login(response.user);
+      if (response.success && response.token) {
+        login(response.user, response.token);
         setGoogleUser(response.user);
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response.user));
 
         // Navigate to home first, then show modal from there
         navigate('/home', { replace: true });

@@ -21,7 +21,7 @@ const MessageBubble = ({ message }) => {
   if (message.sender === 'system') {
     return (
       <div className="flex justify-center">
-        <span className="max-w-[90%] rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-center text-[11px] font-semibold text-blue-700">
+        <span className="max-w-[92%] break-words rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-center text-[11px] font-semibold text-blue-700">
           {message.message}
         </span>
       </div>
@@ -40,7 +40,7 @@ const MessageBubble = ({ message }) => {
   return (
     <div className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[82%] rounded-2xl px-4 py-3 shadow-sm ${
+        className={`max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[82%] sm:px-4 sm:py-3 ${
           isClient
             ? 'rounded-br-sm bg-blue-600 text-white'
             : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700'
@@ -50,7 +50,7 @@ const MessageBubble = ({ message }) => {
           <p className="mb-1 text-[11px] font-semibold text-slate-400">{senderLabel}</p>
         ) : null}
         {message.imageUrl ? (
-          <img src={message.imageUrl} alt="Chat attachment" className="mb-2 max-h-52 rounded-xl object-cover" />
+          <img src={message.imageUrl} alt="Chat attachment" className="mb-2 max-h-52 max-w-full rounded-xl object-cover" />
         ) : null}
         {message.message ? <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.message}</p> : null}
         <p className={`mt-1 text-[10px] ${isClient ? 'text-blue-100' : 'text-slate-400'}`}>{timeLabel}</p>
@@ -85,7 +85,7 @@ const InputBar = ({ disabled, onSend }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-slate-200 bg-white">
+    <form onSubmit={handleSubmit} className="border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
       {imageFile ? (
         <div className="px-4 pt-3">
           <div className="relative inline-flex">
@@ -105,12 +105,12 @@ const InputBar = ({ disabled, onSend }) => {
         </div>
       ) : null}
 
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex items-center gap-2 p-2.5 sm:p-3">
         <button
           type="button"
           disabled={disabled || sending}
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-full p-2 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40"
+          className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40"
         >
           <Paperclip size={18} />
         </button>
@@ -130,12 +130,12 @@ const InputBar = ({ disabled, onSend }) => {
           onChange={(event) => setText(event.target.value)}
           placeholder={disabled ? 'Tailor chat unavailable' : 'Type your message here...'}
           disabled={disabled || sending}
-          className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition-all focus:border-blue-400 focus:bg-white"
+          className="min-w-0 flex-1 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13px] outline-none transition-all focus:border-blue-400 focus:bg-white sm:px-4 sm:text-sm"
         />
         <button
           type="submit"
           disabled={disabled || sending || (!text.trim() && !imageFile)}
-          className="rounded-full bg-blue-600 p-2.5 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-full bg-blue-600 p-2.5 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={18} />
         </button>
@@ -283,16 +283,16 @@ export default function OrderTailorChatModal({ order, onClose }) {
   return (
     <>
       <div className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-x-0 bottom-0 top-auto z-[101] flex h-[78vh] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:inset-y-8 sm:left-1/2 sm:right-auto sm:h-[720px] sm:w-[440px] sm:-translate-x-1/2 sm:rounded-[28px]">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+      <div className="fixed inset-x-0 bottom-0 top-auto z-[101] flex h-[88dvh] max-h-[720px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-[calc(100dvh-4rem)] sm:w-[440px] sm:max-w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px]">
+        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3.5 sm:gap-3 sm:px-5 sm:py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="shrink-0 rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 min-[360px]:flex">
             <UserRound size={18} />
           </div>
           <div className="min-w-0 flex-1">
@@ -304,13 +304,13 @@ export default function OrderTailorChatModal({ order, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 px-4 py-4">
+        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 px-3 py-4 sm:px-4">
           {loading ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-500">

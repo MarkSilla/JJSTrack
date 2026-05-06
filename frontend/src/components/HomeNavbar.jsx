@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { MdNotificationsNone, MdMenu, MdClose, MdPerson, MdLogout, MdEmail, MdPhone, MdLocationOn } from 'react-icons/md'
 import { AuthContext } from '../context/Context'
 import { getNotificationUpdatesWebSocketUrl, notificationApi } from '../../services/notificationApi.js'
+import { requestWebNotificationPermission, showWebNotification } from '../utils/webNotification.js'
 
 const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
@@ -76,6 +77,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
   const notificationSocketRef = useRef(null)
   const notificationReconnectTimeoutRef = useRef(null)
   const liveAlertTimeoutsRef = useRef(new Map())
+  const hasLoadedNotificationsRef = useRef(false)
   const isMountedRef = useRef(true)
   const navigate = useNavigate()
   const location = useLocation()
@@ -120,6 +122,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
         setUnreadCount(0)
       }
       notificationIdsRef.current = new Set()
+      hasLoadedNotificationsRef.current = false
       return
     }
 
@@ -132,9 +135,29 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
       if (!isMountedRef.current) return
 
       const nextNotifications = Array.isArray(response?.notifications) ? response.notifications : []
+      const previousNotificationIds = new Set(notificationIdsRef.current)
+      const now = Date.now()
+
+      nextNotifications.forEach((notification) => {
+        if (!notification?._id || notification.isRead || previousNotificationIds.has(notification._id)) {
+          return
+        }
+
+        const createdAtMs = new Date(notification.createdAt || 0).getTime()
+        const isFreshInitialNotification =
+          !hasLoadedNotificationsRef.current &&
+          Number.isFinite(createdAtMs) &&
+          now - createdAtMs < 30000
+
+        if (hasLoadedNotificationsRef.current || isFreshInitialNotification) {
+          showWebNotification(notification, { tagPrefix: 'jjstrack-user' })
+        }
+      })
+
       notificationIdsRef.current = new Set(
         nextNotifications.map((item) => item?._id).filter(Boolean)
       )
+      hasLoadedNotificationsRef.current = true
 
       setNotifications(nextNotifications)
       setUnreadCount(
@@ -185,6 +208,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
       setUnreadCount(0)
       setLiveAlerts([])
       notificationIdsRef.current = new Set()
+      hasLoadedNotificationsRef.current = false
     }
   }, [user])
 
@@ -249,6 +273,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
           if (!incomingNotification.isRead) {
             setUnreadCount((current) => current + 1)
             pushLiveAlert(incomingNotification)
+            showWebNotification(incomingNotification, { tagPrefix: 'jjstrack-user' })
           }
         } catch (error) {
           console.error('Failed to parse realtime notification message:', error)
@@ -324,6 +349,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
     setShowDropdown(false)
 
     if (nextState) {
+      requestWebNotificationPermission()
       loadNotifications({ showLoader: notifications.length === 0 })
     }
   }
