@@ -799,9 +799,16 @@ const Order = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [showFilter, setShowFilter] = useState(false)
+    const [showSortDropdown, setShowSortDropdown] = useState(false)
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+    const [showCombinedDropdown, setShowCombinedDropdown] = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
     const [activeChatOrder, setActiveChatOrder] = useState(null)
+
+    const statusDropdownRef = useRef(null)
+    const sortDropdownRef = useRef(null)
+    const combinedDropdownRef = useRef(null)
 
     const mainRef = useRef(null)
     const searchTimeoutRef = useRef(null)
@@ -878,6 +885,22 @@ const Order = () => {
         }, FALLBACK_REFRESH_MS)
         return () => clearInterval(interval);
     }, [activeFilter, searchQuery, fetchData])
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+                setShowStatusDropdown(false)
+            }
+            if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+                setShowSortDropdown(false)
+            }
+            if (combinedDropdownRef.current && !combinedDropdownRef.current.contains(event.target)) {
+                setShowCombinedDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     useEffect(() => {
         const handleWindowFocus = () => {
@@ -1069,7 +1092,7 @@ const Order = () => {
                     {/* Stats — full width grid, no scroll */}
                     <div className="grid w-full grid-cols-3 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
                         {[
-                            { label: 'Total', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                            { label: 'Total Orders', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
                             { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-green-400/20', text: 'text-green-300' },
                         ].map(({ label, value, icon: Icon, bg, text }) => (
@@ -1097,66 +1120,82 @@ const Order = () => {
             </div>
 
             {/* ── Controls ── */}
-            <div className="space-y-2 mb-5">
-                <div className="flex items-center gap-2">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search orders..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
-                        />
-                    </div>
-
-                    {/* Refresh button - visible on all sizes */}
-                    <button
+            <div className="flex items-center gap-2 mb-6 sm:mb-8">
+                {/* Search Bar - Flex 1 */}
+                <div className="relative flex-1 group">
+                    <button 
                         onClick={() => fetchData(activeFilter, searchQuery)}
-                        className="bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                        title="Refresh orders"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 hover:text-blue-600 transition-colors z-10"
                     >
-                        <MdLoop size={16} />
-                        <span className="hidden sm:inline">Refresh</span>
+                        <MdSearch size={18} />
                     </button>
+                    <input
+                        type="text"
+                        placeholder="Search orders..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                    />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 sm:flex-none sm:min-w-[210px]">
-                        <MdSort size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="w-full appearance-none pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all font-medium text-gray-600"
+                {/* Minimal Icons (Filter & Refresh) */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    {/* Combined Filter/Sort Dropdown */}
+                    <div className="relative" ref={combinedDropdownRef}>
+                        <button
+                            onClick={() => setShowCombinedDropdown(!showCombinedDropdown)}
+                            className={`w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl shadow-sm transition-all hover:bg-gray-50 active:scale-95
+                                ${showCombinedDropdown ? 'ring-4 ring-blue-500/5 border-blue-400 text-blue-600' : 'text-gray-400'}`}
+                            title="Filters & Sorting"
                         >
-                            {SORT_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                            <MdFilterList size={20} />
+                        </button>
+
+                        {showCombinedDropdown && (
+                            <div className="absolute top-full right-0 mt-2 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl z-30 py-3 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                                <div className="px-4 pb-2">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Sort By</p>
+                                    <div className="space-y-1">
+                                        {SORT_OPTIONS.map(option => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => { setSortBy(option.value); setShowCombinedDropdown(false) }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
+                                                    ${sortBy === option.value ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="border-t border-gray-50 mt-2 pt-2 px-4">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Status Filter</p>
+                                    <div className="space-y-1">
+                                        {ORDER_STATUS_FILTERS.map(filter => (
+                                            <button
+                                                key={filter}
+                                                onClick={() => { setActiveFilter(filter); setShowCombinedDropdown(false) }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
+                                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                                            >
+                                                {filter}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Mobile filter button */}
+                    {/* Refresh Button */}
                     <button
-                        onClick={() => setShowFilter(true)}
-                        className="sm:hidden flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-600 shadow-sm shrink-0"
+                        onClick={() => fetchData(activeFilter, searchQuery)}
+                        className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 text-gray-400 hover:bg-gray-50 rounded-xl shadow-sm transition-all active:scale-95 group"
+                        title="Refresh orders"
                     >
-                        <MdFilterList size={16} />
-                        <span className="hidden xs:inline">{activeFilter === 'All Orders' ? 'Filter' : activeFilter}</span>
+                        <MdLoop size={20} className="group-active:rotate-180 transition-transform duration-500" />
                     </button>
-
-                    {/* Desktop filter tabs */}
-                    <div className="hidden sm:flex items-center gap-1.5">
-                        {ORDER_STATUS_FILTERS.map(filter => (
-                            <button key={filter} onClick={() => setActiveFilter(filter)}
-                                className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer
-                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
-                                {filter}
-                            </button>
-                        ))}
-                    </div>
                 </div>
             </div>
 

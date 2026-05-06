@@ -925,54 +925,55 @@ export const createBooking = async (req, res) => {
 // Get all bookings (admin/staff) or user's bookings
 export const getBookings = async (req, res) => {
   try {
-    const { status, bookingType } = req.query;
+    const { status, bookingType, search } = req.query;
     const userId = req.userId;
     let query = {};
 
     // Only filter by userId if the user is NOT an admin or staff
     if (userId !== 'admin') {
-      try {
-        const user = await userModel.findById(userId);
-        if (user) {
-          if (user.role === 'staff') {
-            const assignmentQuery = buildStaffAssignmentQuery(user);
-            console.log('🔍 Staff Booking Query:', {
-              userId: userId,
-              fullName: user.fullName,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              employeeId: user.employeeId,
-              email: user.email,
-              assignmentQuery
-            });
-            if (assignmentQuery) {
-              Object.assign(query, assignmentQuery);
+        try {
+            const user = await userModel.findById(userId);
+            if (user) {
+                if (user.role === 'staff') {
+                    const assignmentQuery = buildStaffAssignmentQuery(user);
+                    if (assignmentQuery) {
+                        Object.assign(query, assignmentQuery);
+                    } else {
+                        query._id = null;
+                    }
+                } else if (user.role !== 'admin') {
+                    query.userId = userId;
+                }
             } else {
-              query._id = null;
+                query.userId = userId;
             }
-          } else if (user.role !== 'admin') {
+        } catch (err) {
             query.userId = userId;
-          }
-        } else {
-          // If user not found, filter by userId (for customers)
-          query.userId = userId;
         }
-      } catch (err) {
-        // If user lookup fails, filter by userId (for customers)
-        query.userId = userId;
-      }
     }
-    // If userId is 'admin', no filtering - show all bookings
 
     if (status) {
-      query.status = status;
+        query.status = status;
     }
 
     if (bookingType) {
-      query.bookingType = bookingType;
+        query.bookingType = bookingType;
     }
 
-    console.log('getBookings called with userId:', userId, 'query:', query);
+    if (search) {
+        query = {
+            $and: [
+                query,
+                {
+                    $or: [
+                        { service: { $regex: search, $options: 'i' } },
+                        { bookingId: { $regex: search, $options: 'i' } },
+                        { 'contact.fullName': { $regex: search, $options: 'i' } },
+                    ],
+                },
+            ],
+        };
+    }
 
     const bookings = await bookingModel.find(query).sort({ createdAt: -1 });
     await ensureBookingIds(bookings);

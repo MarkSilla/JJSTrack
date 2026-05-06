@@ -544,7 +544,7 @@ const Invoices = () => {
                         </div>
 
                         {/* Invoice Preview — desktop */}
-                        <div className="hidden lg:flex lg:col-span-3 sticky top-24">
+                        <div className="hidden lg:block lg:col-span-3 sticky top-24">
                             {invoice ? (
                                 <InvoiceDetail invoice={invoice} subtotal={subtotal} tax={tax} discount={discount} total={total} />
                             ) : (
