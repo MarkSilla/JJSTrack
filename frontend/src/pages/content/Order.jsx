@@ -48,7 +48,20 @@ const CLOSED_TRACKING_STATUSES = new Set(['completed', 'released', 'cancelled'])
 
 const toStatCount = (value) => {
     const count = Number(value)
-    return Number.isFinite(count) ? count : 0
+    if (isNaN(count)) return '0'
+    return count.toLocaleString()
+}
+
+const formatDateLong = (dateStr) => {
+    if (!dateStr) return '—'
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    })
 }
 
 const getApiList = (response, primaryKey) => {
@@ -169,7 +182,6 @@ const OrderProgressTracker = ({ steps }) => {
     if (!steps || steps.length === 0) return null
     return (
         <>
-            {/* Desktop & Tablet — horizontal */}
             <div className="hidden sm:flex items-center w-full mt-2 overflow-x-auto pb-1 gap-0">
                 {steps.map((step, i) => (
                     <React.Fragment key={step.label + i}>
@@ -191,8 +203,6 @@ const OrderProgressTracker = ({ steps }) => {
                     </React.Fragment>
                 ))}
             </div>
-
-            {/* Mobile — no scroll, fits full width evenly */}
             <div className="sm:hidden flex items-start w-full mt-3">
                 {steps.map((step, i) => (
                     <React.Fragment key={step.label + i}>
@@ -351,17 +361,12 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/40 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
-
-            {/* Side Drawer - Mobile rounded-t-3xl, Desktop rounded-2xl */}
             <div
-                className="fixed bottom-0 sm:right-0 sm:top-0 h-1/2 sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+                className="fixed bottom-0 sm:right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
             >
-                {/* Mobile Handle Bar */}
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
                 </div>
-
-                {/* Header - Payroll Style */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
@@ -409,7 +414,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 </div>
 
                 {/* Body — scrollable */}
-                <div className="overflow-y-auto p-5 flex-1 space-y-5 font-inter">
+                <div className="overflow-y-auto p-5 pb-10 flex-1 space-y-5 font-inter">
                     {activeTab === 'items' ? (
                         <>
                             {/* Details Section */}
@@ -615,26 +620,14 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                                     {serviceTypeLabel || '—'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
-                                <span className="truncate max-w-[120px] sm:max-w-none">
+                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium">
+                                <span className="truncate">
                                     {referenceCode}
                                 </span>
-                                <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
-                                <span>{order.date || new Date(order.createdAt).toLocaleDateString()}</span>
                             </div>
                         </div>
                         <div className="shrink-0 text-right">
                             <StatusBadge status={order.status} />
-                            {!isBooking && order.estimatedCompletion && (
-                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                    Due {order.estimatedCompletion}
-                                </p>
-                            )}
-                            {isBooking && order.pickupDate && (
-                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                    Pickup {order.pickupDate}
-                                </p>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -645,8 +638,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                         {[
                             { label: 'Customer', value: order.contact?.fullName },
                             { label: 'Service', value: getTrackingDisplayName(order) },
-                            { label: 'Contact', value: order.contact?.phone || order.contact?.email },
-                            { label: 'Pickup', value: order.pickupDate },
+                            { label: 'Drop-off', value: formatDateLong(order.date || order.createdAt) },
+                            { label: 'Pickup', value: formatDateLong(order.pickupDate || order.estimatedCompletion) },
                         ].map(({ label, value }) => (
                             <div key={label} className="bg-gray-50 rounded-xl px-3 py-2">
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
@@ -1074,19 +1067,28 @@ const Order = () => {
                         <p className="text-slate-400 text-xs sm:text-sm">Track and manage your tailoring orders.</p>
                     </div>
                     {/* Stats — full width grid, no scroll */}
-                    <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
+                    <div className="grid w-full grid-cols-3 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
                         {[
                             { label: 'Total', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
                             { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-green-400/20', text: 'text-green-300' },
                         ].map(({ label, value, icon: Icon, bg, text }) => (
-                            <div key={label} className="min-w-0 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex items-center gap-3 min-[420px]:flex-col min-[420px]:items-center min-[420px]:gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
-                                    <Icon size={16} className={text} />
+                            <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
+                                {/* Mobile: icon + label on top */}
+                                <div className="flex items-center gap-1.5 sm:hidden">
+                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
+                                        <Icon size={13} className={text} />
+                                    </div>
+                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
                                 </div>
-                                <div className="min-w-0 flex-1 min-[420px]:text-center sm:text-left">
-                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide leading-tight truncate min-[420px]:whitespace-normal sm:whitespace-nowrap">{label}</p>
-                                    <p className="text-white text-xl sm:text-lg font-bold leading-tight">{toStatCount(value)}</p>
+                                <p className="text-white text-xl font-bold leading-tight sm:hidden">{toStatCount(value)}</p>
+                                {/* Desktop/Tablet */}
+                                <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
+                                    <Icon size={18} className={text} />
+                                </div>
+                                <div className="hidden sm:block">
+                                    <p className="text-slate-400 text-[10px] font-medium">{label}</p>
+                                    <p className="text-white text-xl font-bold leading-tight">{toStatCount(value)}</p>
                                 </div>
                             </div>
                         ))}

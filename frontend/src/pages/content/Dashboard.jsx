@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import BookingModal from './Bookingforms'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import {
     MdAdd, MdShoppingBag, MdCheckCircle, MdInventory,
-    MdRefresh, MdOutlineIron
+    MdRefresh, MdOutlineIron, MdFilterList
 } from 'react-icons/md'
 import {
     Inbox, Monitor, Printer, Scissors, Truck, Shirt
@@ -191,7 +192,9 @@ const StatusBadge = ({ status }) => {
     )
 }
 
-const Dashboard = () => {
+export default function Dashboard() {
+    const user = useUser()
+    const navigate = useNavigate()
     const [showBooking, setShowBooking] = useState(false)
     const [selectedDate, setSelectedDate] = useState(null)
     const [orders, setOrders] = useState([])
@@ -200,7 +203,34 @@ const Dashboard = () => {
     const [stats, setStats] = useState({ active: 0, pickupReady: 0, total: 0 })
     const [loading, setLoading] = useState(true)
     const refreshTimeoutRef = useRef(null)
-    const user = useUser()
+    const [activeFilter, setActiveFilter] = useState('All')
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+
+    const isOverdue = (order) => {
+        if (['Released', 'Cancelled'].includes(order.status)) return false
+        if (!order.estimatedCompletion) return false
+        const est = new Date(order.estimatedCompletion)
+        if (isNaN(est.getTime())) return false
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return est < today
+    }
+
+    const filteredOrders = useMemo(() => {
+        let list = [...orders]
+        if (activeFilter === 'Overdue') {
+            return list.filter(isOverdue)
+        }
+        if (activeFilter !== 'All') {
+            return list.filter(o => {
+                const status = o.status?.toLowerCase().replace(/[-_]/g, ' ')
+                const filter = activeFilter.toLowerCase()
+                return status === filter
+            })
+        }
+        return list
+    }, [orders, activeFilter])
+
 
     const fetchData = useCallback(async ({ silent = false } = {}) => {
         try {
@@ -291,13 +321,9 @@ const Dashboard = () => {
     }, [])
 
     const handleDateClick = useCallback((arg) => {
-        const now = new Date()
-        now.setHours(0, 0, 0, 0)
-        if (arg.date < now) return
-
         const dateKey = arg?.dateStr || toKey(arg.date)
-        setSelectedDate(dateKey)
-    }, [])
+        navigate('/appointment', { state: { selectedDate: dateKey } })
+    }, [navigate])
 
     const handleDatesSet = useCallback((viewInfo) => {
         const nextRange = buildCalendarRangeFromView(viewInfo)
@@ -370,8 +396,8 @@ const Dashboard = () => {
         <>
             <style>{`
                 .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-                    background-color: #f3f4f6 !important;
-                    cursor: not-allowed !important;
+                    background-color: #f8fafc !important;
+                    cursor: pointer !important;
                 }
                 .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
                     color: #94a3b8 !important;
@@ -440,13 +466,13 @@ const Dashboard = () => {
                         <div className="flex flex-col gap-2 sm:gap-3">
                             <div>
                                 <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1">
-                                    {getGreeting()}, <span className="text-blue-300">{name}</span> 👋
+                                    {getGreeting()}, <span className="text-blue-300">{name}</span>
                                 </h2>
                                 <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
                             </div>
                             <button
                                 onClick={() => setShowBooking(true)}
-                                className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-full sm:w-fit"                            >
+                                className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-[335px] sm:w-[200px]"                            >
                                 Book Now <MdAdd size={16} />
                             </button>
                         </div>
@@ -467,7 +493,6 @@ const Dashboard = () => {
                                         <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
                                     </div>
                                     <p className="text-white text-xl font-bold leading-tight sm:hidden">{value}</p>
-                                    {/* Desktop: original layout */}
                                     <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
                                         <Icon size={18} className={text} />
                                     </div>
@@ -483,11 +508,11 @@ const Dashboard = () => {
                 </div>
 
                 {/* ── Calendar + Order Tracker ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
 
                     {/* Calendar */}
                     <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
+                        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-5 shadow-sm">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-3 sm:mb-4">Calendar</h3>
                             <div className="calendar-wrapper" style={{ padding: 0, boxShadow: 'none', border: 'none' }}>
                                 <CalendarComponent
@@ -497,19 +522,23 @@ const Dashboard = () => {
                                     datesSet={handleDatesSet}
                                 />
                             </div>
-                            <div className="flex flex-wrap items-center gap-4 mt-4 px-1">
-                                {[
-                                    { gradient: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Selected Date' },
-                                    { gradient: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-2 ring-blue-400/30', label: 'You have a booking' },
-                                    { gradient: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available Slots' },
-                                    { gradient: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
-                                    { gradient: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },
-                                ].map(({ gradient, label }) => (
-                                    <div key={label} className="flex items-center gap-2">
-                                        <span className={`w-3.5 h-3.5 rounded-md ${gradient}`} />
-                                        <span className="text-[11px] text-gray-500 font-semibold tracking-wide">{label}</span>
-                                    </div>
-                                ))}
+                            {/* Legend */}
+                            <div className="mt-4 pt-3 border-t border-gray-100">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+                                    {[
+                                        { color: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Selected Date' },
+                                        { color: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-1 ring-blue-300/40', label: 'Your Booking' },
+                                        { color: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available' },
+                                        { color: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
+                                        { color: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },
+                                        { color: 'bg-gray-200', label: 'Past Date' },
+                                    ].map(({ color, label }) => (
+                                        <div key={label} className="flex items-center gap-1.5">
+                                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
+                                            <span className="text-[10px] text-gray-500 font-medium">{label}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -518,10 +547,47 @@ const Dashboard = () => {
                     <div className="lg:col-span-3 bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800">Order Tracker</h3>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[11px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-semibold">
-                                    {stats.active} Active
-                                </span>
+                            <div className="flex items-center gap-2 relative">
+                                <div className="hidden sm:flex items-center gap-2">
+                                    <span className="text-[11px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-semibold">
+                                        {stats.active} Active
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                        className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors cursor-pointer ${showFilterDropdown ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-500'}`}
+                                        title="Filter"
+                                    >
+                                        <MdFilterList size={15} />
+                                    </button>
+
+                                    {showFilterDropdown && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-30"
+                                                onClick={() => setShowFilterDropdown(false)}
+                                            />
+                                            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl z-40 py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <p className="px-3 py-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">Filter Status</p>
+                                                {['All', 'In Progress', 'Completed', 'Released', 'Cancelled', 'Overdue'].map((f) => (
+                                                    <button
+                                                        key={f}
+                                                        onClick={() => {
+                                                            setActiveFilter(f)
+                                                            setShowFilterDropdown(false)
+                                                        }}
+                                                        className={`w-full text-left px-3 py-2 text-[11px] font-bold transition-colors flex items-center justify-between
+                                                            ${activeFilter === f ? 'text-blue-600 bg-blue-50/50' : 'text-gray-600 hover:bg-gray-50'}`}
+                                                    >
+                                                        {f}
+                                                        {activeFilter === f && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                                 <button
                                     onClick={fetchData}
                                     className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors cursor-pointer"
@@ -553,10 +619,14 @@ const Dashboard = () => {
                         )}
 
                         {/* Orders */}
-                        {!loading && orders.length > 0 && (
-                            <div className="flex flex-col gap-3 sm:gap-4 overflow-y-auto max-h-[500px] pr-1">
-                                {orders.map((order) => (
-                                    <div key={order._id} className="border border-gray-100 rounded-xl p-3 sm:p-4 hover:border-blue-100 hover:bg-blue-50/20 transition-all">
+                        {!loading && filteredOrders.length > 0 && (
+                            <div className="flex flex-col gap-3 sm:gap-4 overflow-y-auto max-h-[780px] pr-1">
+                                {filteredOrders.slice(0, 5).map((order) => (
+                                    <div
+                                        key={order._id}
+                                        onClick={() => navigate(`/order/${order._id}`)}
+                                        className="border border-gray-100 rounded-xl p-3 sm:p-4 hover:border-blue-100 hover:bg-blue-50/20 transition-all cursor-pointer group"
+                                    >
                                         {/* Order header */}
                                         <div className="flex items-start justify-between gap-2 mb-1">
                                             <p className="text-xs sm:text-sm font-bold text-gray-800 truncate">
@@ -614,4 +684,4 @@ const Dashboard = () => {
     )
 }
 
-export default Dashboard
+

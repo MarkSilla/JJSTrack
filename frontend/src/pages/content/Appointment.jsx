@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import { appointmentApi } from '../../../services/appointmentApi'
 import { bookingApi } from '../../../services/bookingApi'
@@ -107,7 +108,9 @@ const BookingModal = ({ booking, onClose }) => {
 }
 
 const Appointment = () => {
-    const [selectedDate, setSelectedDate] = useState(null)
+    const location = useLocation()
+    const navigate = useNavigate()
+    const [selectedDate, setSelectedDate] = useState(location.state?.selectedDate || null)
     const [modalBooking, setModalBooking] = useState(null)
     const [appointments, setAppointments] = useState([])
     const [bookings, setBookings] = useState([])
@@ -117,74 +120,74 @@ const Appointment = () => {
     const [error, setError] = useState(null)
 
     const fetchAppointmentsAndBookings = useCallback(async (silent = false) => {
-            try {
-                if (!silent) {
-                    setLoading(true)
-                    setError(null)
-                }
-
-                const [appointmentsRes, bookingsRes] = await Promise.allSettled([
-                    appointmentApi.getAppointments(),
-                    bookingApi.getBookings(),
-                ])
-
-                const appointmentsList =
-                    appointmentsRes.status === 'fulfilled'
-                        ? (Array.isArray(appointmentsRes.value)
-                            ? appointmentsRes.value
-                            : appointmentsRes.value?.appointments || [])
-                        : []
-
-                const bookingsList =
-                    bookingsRes.status === 'fulfilled'
-                        ? (Array.isArray(bookingsRes.value?.bookings)
-                            ? bookingsRes.value.bookings
-                            : Array.isArray(bookingsRes.value?.data)
-                                ? bookingsRes.value.data
-                                : [])
-                        : []
-
-                const normalizedBookings = bookingsList
-                    .map((booking) => {
-                        const dateKey = normalizeDateKey(booking.createdAt || booking.orderDate || booking.date || booking.pickupDate)
-                        return {
-                            ...booking,
-                            dateKey,
-                            date: dateKey ? formatDateForUi(dateKey) : 'N/A',
-                            time: getPickupSlotDisplay(booking.pickupSlot, 'Not specified'),
-                            service:
-                                booking.bookingType === 'repair'
-                                    ? getRepairDisplayLabel(booking)
-                                    : booking.service || booking.bookingType || 'Booking',
-                            status: booking.status || 'Pending',
-                        }
-                    })
-                    .sort((a, b) => {
-                        const at = new Date(a.createdAt || 0).getTime()
-                        const bt = new Date(b.createdAt || 0).getTime()
-                        return bt - at
-                    })
-
-                setAppointments(appointmentsList)
-                setBookings(normalizedBookings)
-
-                if (!silent && appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected') {
-                    setError('Failed to load appointments and bookings.')
-                } else if (!silent && appointmentsRes.status === 'rejected') {
-                    setError('Some data failed to load (appointments).')
-                } else if (!silent && bookingsRes.status === 'rejected') {
-                    setError('Some data failed to load (bookings).')
-                }
-            } catch (err) {
-                console.error('Failed to fetch appointments/bookings:', err)
-                if (!silent) {
-                    setError('Failed to load appointments')
-                    setAppointments([])
-                    setBookings([])
-                }
-            } finally {
-                if (!silent) setLoading(false)
+        try {
+            if (!silent) {
+                setLoading(true)
+                setError(null)
             }
+
+            const [appointmentsRes, bookingsRes] = await Promise.allSettled([
+                appointmentApi.getAppointments(),
+                bookingApi.getBookings(),
+            ])
+
+            const appointmentsList =
+                appointmentsRes.status === 'fulfilled'
+                    ? (Array.isArray(appointmentsRes.value)
+                        ? appointmentsRes.value
+                        : appointmentsRes.value?.appointments || [])
+                    : []
+
+            const bookingsList =
+                bookingsRes.status === 'fulfilled'
+                    ? (Array.isArray(bookingsRes.value?.bookings)
+                        ? bookingsRes.value.bookings
+                        : Array.isArray(bookingsRes.value?.data)
+                            ? bookingsRes.value.data
+                            : [])
+                    : []
+
+            const normalizedBookings = bookingsList
+                .map((booking) => {
+                    const dateKey = normalizeDateKey(booking.createdAt || booking.orderDate || booking.date || booking.pickupDate)
+                    return {
+                        ...booking,
+                        dateKey,
+                        date: dateKey ? formatDateForUi(dateKey) : 'N/A',
+                        time: getPickupSlotDisplay(booking.pickupSlot, 'Not specified'),
+                        service:
+                            booking.bookingType === 'repair'
+                                ? getRepairDisplayLabel(booking)
+                                : booking.service || booking.bookingType || 'Booking',
+                        status: booking.status || 'Pending',
+                    }
+                })
+                .sort((a, b) => {
+                    const at = new Date(a.createdAt || 0).getTime()
+                    const bt = new Date(b.createdAt || 0).getTime()
+                    return bt - at
+                })
+
+            setAppointments(appointmentsList)
+            setBookings(normalizedBookings)
+
+            if (!silent && appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected') {
+                setError('Failed to load appointments and bookings.')
+            } else if (!silent && appointmentsRes.status === 'rejected') {
+                setError('Some data failed to load (appointments).')
+            } else if (!silent && bookingsRes.status === 'rejected') {
+                setError('Some data failed to load (bookings).')
+            }
+        } catch (err) {
+            console.error('Failed to fetch appointments/bookings:', err)
+            if (!silent) {
+                setError('Failed to load appointments')
+                setAppointments([])
+                setBookings([])
+            }
+        } finally {
+            if (!silent) setLoading(false)
+        }
     }, [])
 
     const fetchSlotSummary = useCallback(async (range = calendarRange, silent = true) => {
@@ -214,6 +217,7 @@ const Appointment = () => {
     useEffect(() => {
         fetchSlotSummary(calendarRange, false)
     }, [calendarRange, fetchSlotSummary])
+
 
     const appointmentsByDate = useMemo(() => {
         const map = {}
@@ -247,6 +251,15 @@ const Appointment = () => {
     const highlightedDateSet = useMemo(() => {
         return new Set([...Object.keys(appointmentsByDate), ...Object.keys(bookingsByDate)])
     }, [appointmentsByDate, bookingsByDate])
+    useEffect(() => {
+        if (location.state?.selectedDate && highlightedDateSet.has(location.state.selectedDate)) {
+            const entry = bookingsByDate[location.state.selectedDate] || appointmentsByDate[location.state.selectedDate]
+            if (entry) {
+                setModalBooking(entry)
+                navigate(location.pathname, { replace: true, state: {} })
+            }
+        }
+    }, [location.state?.selectedDate, location.pathname, highlightedDateSet, bookingsByDate, appointmentsByDate, navigate])
 
     const listRecords = bookings.length > 0
         ? bookings
@@ -372,8 +385,8 @@ const Appointment = () => {
         <>
             <style>{`
                 .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-                    background-color: #f3f4f6 !important;
-                    cursor: not-allowed !important;
+                    background-color: #f8fafc !important;
+                    cursor: pointer !important;
                 }
                 .appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
                     color: #94a3b8 !important;
@@ -503,11 +516,10 @@ const Appointment = () => {
                                         {new Date(`${selectedDate}T00:00:00`).getFullYear()}
                                     </p>
 
-                                    <div className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border ${
-                                        selectedSlotInfo?.isFull
+                                    <div className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border ${selectedSlotInfo?.isFull
                                             ? 'bg-red-50 border-red-100'
                                             : 'bg-green-50 border-green-100'
-                                    }`}>
+                                        }`}>
                                         <MdAccessTime
                                             size={14}
                                             className={selectedSlotInfo?.isFull ? 'text-red-500' : 'text-green-500'}
@@ -523,11 +535,10 @@ const Appointment = () => {
                                     <div className="mt-3 mx-auto max-w-[200px]">
                                         <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${
-                                                    selRatio >= 0.8
+                                                className={`h-full rounded-full transition-all duration-500 ${selRatio >= 0.8
                                                         ? 'bg-gradient-to-r from-orange-400 to-orange-500'
                                                         : 'bg-gradient-to-r from-blue-400 to-blue-600'
-                                                }`}
+                                                    }`}
                                                 style={{ width: `${Math.min(100, Math.max(0, selRatio * 100))}%` }}
                                             />
                                         </div>
