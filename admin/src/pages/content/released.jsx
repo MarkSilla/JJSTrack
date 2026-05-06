@@ -471,6 +471,12 @@ export default function ReleasedItems() {
                                                             Released <span className="text-blue-600">{item.releaseDate}</span>
                                                         </span>
                                                     </div>
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                                            By <span className="text-slate-600">{item.releasedBy}</span>
+                                                        </span>
+                                                    </div>
                                                     {item.totalPrice != null && (
                                                         <span className="text-[14px] font-black text-slate-900">
                                                             P{item.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
@@ -486,7 +492,7 @@ export default function ReleasedItems() {
                                         <table className="w-full text-left border-collapse" style={{ minWidth: 940 }}>
                                             <thead className="sticky top-0 z-10">
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    {['No.', 'ID', 'Record', 'Drop Date', 'Released Date', 'Pay Status', 'Amount', 'Type'].map((header) => (
+                                                    {['No.', 'ID', 'Record', 'Drop Date', 'Released Date', 'Released By', 'Pay Status', 'Amount', 'Type'].map((header) => (
                                                         <th key={header} className="py-3 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
                                                             {header}
                                                         </th>
@@ -519,6 +525,9 @@ export default function ReleasedItems() {
                                                             </td>
                                                             <td className="py-3 px-4">
                                                                 <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{item.releaseDate}</span>
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{item.releasedBy}</span>
                                                             </td>
                                                             <td className="py-3 px-4">
                                                                 <PayBadge status={item.payStatus} />

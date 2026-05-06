@@ -23,7 +23,7 @@ const getAdminArchiveActor = () => {
 
 // Add token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
+  const token = localStorage.getItem('adminToken') || localStorage.getItem('staffToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -137,9 +137,9 @@ export const orderApi = {
   },
 
   // Mark order as released by scanning QR
-  markAsReleased: async (orderId, releaseProofImage, releaseNotes) => {
+  markAsReleased: async (orderId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
-      const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes });
+      const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes, releasedBy });
       return response.data;
     } catch (error) {
       console.error('Error marking order as released:', error);

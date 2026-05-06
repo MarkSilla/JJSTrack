@@ -94,6 +94,7 @@ const orderSchema = new mongoose.Schema({
   isArchived: { type: Boolean, default: false },
   archivedAt: Date,
   archivedBy: String,
+  releasedBy: String,
   completedAt: Date,
 }, { timestamps: true });
 

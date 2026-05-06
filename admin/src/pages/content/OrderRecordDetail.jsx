@@ -19,6 +19,7 @@ import {
     Wrench,
     Shirt,
     X,
+    ClipboardList,
 } from 'lucide-react';
 import { fmtDate, getRepairDisplayLabel } from './orderRecordUtils.js';
 
@@ -349,6 +350,11 @@ export default function OrderRecordDetail({
                     <span className="font-bold text-green-600">{record?.releaseDate}</span>
                 </Field>
             )}
+            {!isArchivedView && record?.releasedBy && (
+                <Field label="Released By">
+                    <span className="font-semibold text-green-700">{record.releasedBy}</span>
+                </Field>
+            )}
             {isArchivedView && (
                 <Field label="Archived">
                     <span className="font-bold text-amber-600">{record?.archiveDate}</span>
@@ -412,6 +418,34 @@ export default function OrderRecordDetail({
                         </div>
                     </div>
                 )}
+            </div>
+        </Section>
+    );
+
+    const itemsSection = (Array.isArray(record?.items) && record.items.length > 0) && (
+        <Section icon={<ClipboardList size={15} />} title="Items Ordered">
+            <div className="space-y-4">
+                {record.items.map((item, idx) => (
+                    <div key={`${item.description}-${idx}`} className="bg-slate-50/50 rounded-xl p-4 border border-slate-100 flex justify-between items-start">
+                        <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-800">{item.description}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type: {item.type || 'Service'}</p>
+                            <div className="flex gap-4 mt-2">
+                                <div>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Unit Price</p>
+                                    <p className="text-xs font-bold text-slate-700">P{(item.unitPrice || 0).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Total</p>
+                                    <p className="text-xs font-extrabold text-blue-600">P{((item.qty || 1) * (item.unitPrice || 0)).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm shadow-blue-100">
+                            x{item.qty || 1}
+                        </span>
+                    </div>
+                ))}
             </div>
         </Section>
     );
@@ -544,11 +578,13 @@ export default function OrderRecordDetail({
                     {timelineSection}
                     {isComplex ? (
                         <>
+                            {itemsSection}
                             {rosterSection}
                             {notesSection}
                         </>
                     ) : (
                         <>
+                            {itemsSection}
                             {imagesSection}
                             {rosterSection}
                             {contactSection}

@@ -6,11 +6,39 @@ import {
     PackageCheck, Loader,
     User, Wrench, CalendarDays, Hash,
     Camera, Info, ChevronDown, ChevronUp,
-    ImageUp, ScanQrCode, Sun
+    ImageUp, ScanQrCode, Sun, RefreshCw
 } from 'lucide-react';
 import { orderApi } from '../../services/orderApi';
 import { bookingApi } from '../../services/bookingApi';
 import { toast } from 'sonner';
+
+// Read the name of whoever is currently logged in (staff or admin)
+const getLoggedInUserName = () => {
+    // Check staff session first (staffUser is stored by staff login)
+    try {
+        const staffUser = localStorage.getItem('staffUser') || sessionStorage.getItem('staffUser');
+        if (staffUser) {
+            const parsed = JSON.parse(staffUser);
+            const name = parsed?.fullName ||
+                [parsed?.firstName, parsed?.lastName].filter(Boolean).join(' ').trim();
+            if (name) return name;
+        }
+    } catch { }
+
+    // Fallback: check admin session
+    try {
+        const adminUser = localStorage.getItem('adminUser');
+        if (adminUser) {
+            const parsed = JSON.parse(adminUser);
+            // Env admin has no fullName — just show 'Admin'
+            const name = parsed?.fullName || parsed?.name;
+            if (name) return name;
+            if (parsed?.role === 'admin') return 'Admin';
+        }
+    } catch { }
+
+    return 'Staff/Admin';
+};
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -211,6 +239,9 @@ export default function QRScanner() {
     const proofCanvasRef = useRef(null);
     const proofStreamRef = useRef(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [facingMode, setFacingMode] = useState('environment');
+    const [proofFacingMode, setProofFacingMode] = useState('environment');
+    const qrScannerRef = useRef(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -219,24 +250,9 @@ export default function QRScanner() {
     }, []);
 
     useEffect(() => {
-        let isCleaningUp = false;
-        if (html5QrcodeScanner.current) return;
-
-        const scanner = new Html5QrcodeScanner(
-            'qr-reader',
-            {
-                fps: 10,
-                qrbox: { width: 200, height: 200 },
-                aspectRatio: 1.0,
-                showTorchButtonIfSupported: true,
-                showZoomSliderIfSupported: true,
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA, Html5QrcodeScanType.SCAN_TYPE_FILE],
-            },
-            false
-        );
-
-        scanner.render(onScanSuccess, () => { });
-        html5QrcodeScanner.current = scanner;
+        if (!qrScannerRef.current) {
+            qrScannerRef.current = new Html5Qrcode('qr-reader');
+        }
 
         const obs = new MutationObserver(() => {
             const hasVideo = !!document.querySelector('#qr-reader video');
@@ -246,16 +262,19 @@ export default function QRScanner() {
                 return prev;
             });
         });
-        obs.observe(document.getElementById('qr-reader') || document.body, { childList: true, subtree: true });
+
+        const target = document.getElementById('qr-reader');
+        if (target) {
+            obs.observe(target, { childList: true, subtree: true });
+        }
 
         return () => {
             obs.disconnect();
             clearInterval(videoCheckRef.current);
-            if (html5QrcodeScanner.current) {
-                html5QrcodeScanner.current.clear().catch(err => {
-                    console.error("Failed to clear scanner:", err);
-                });
-                html5QrcodeScanner.current = null;
+            if (qrScannerRef.current) {
+                if (qrScannerRef.current.isScanning) {
+                    qrScannerRef.current.stop().catch(err => console.error("Stop failed", err));
+                }
             }
         };
     }, []);
@@ -304,7 +323,10 @@ export default function QRScanner() {
 
         try {
             const releaseId = record.isBooking ? record._id : (record.orderId || record._id);
-            const res = record.isBooking ? await bookingApi.markAsPickedUp(releaseId, proofImg, pNotes) : await orderApi.markAsReleased(releaseId, proofImg, pNotes);
+            const releasedBy = getLoggedInUserName();
+            const res = record.isBooking
+                ? await bookingApi.markAsPickedUp(releaseId, proofImg, pNotes, releasedBy)
+                : await orderApi.markAsReleased(releaseId, proofImg, pNotes, releasedBy);
 
             if (res.success) {
                 finalizeSuccessfulScan(record);
@@ -416,11 +438,14 @@ export default function QRScanner() {
         stopProofCamera();
     };
 
-    const startProofCamera = async () => {
+    const startProofCamera = async (mode = proofFacingMode) => {
         setIsProofCameraOpen(true);
         triggerStopCamera(); // Stop QR scanner
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            if (proofStreamRef.current) {
+                proofStreamRef.current.getTracks().forEach(track => track.stop());
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
             proofStreamRef.current = stream;
             if (proofVideoRef.current) {
                 proofVideoRef.current.srcObject = stream;
@@ -429,6 +454,14 @@ export default function QRScanner() {
             console.error('Error accessing camera:', err);
             toast.error('Could not access camera for proof.');
             setIsProofCameraOpen(false);
+        }
+    };
+
+    const toggleProofCamera = async () => {
+        const newMode = proofFacingMode === 'environment' ? 'user' : 'environment';
+        setProofFacingMode(newMode);
+        if (isProofCameraOpen) {
+            await startProofCamera(newMode);
         }
     };
 
@@ -497,12 +530,89 @@ export default function QRScanner() {
         }
     };
 
-    const triggerStartCamera = () => {
-        document.getElementById('html5-qrcode-button-camera-start')?.click() ||
-            document.getElementById('html5-qrcode-button-camera-permission')?.click() ||
-            document.querySelector('#qr-reader button')?.click();
+    const triggerStartCamera = async (mode = facingMode) => {
+        if (!qrScannerRef.current) return;
+
+        if (qrScannerRef.current.isScanning) {
+            try {
+                await qrScannerRef.current.stop();
+            } catch (err) {
+                console.error("Failed to stop before restart:", err);
+            }
+        }
+
+        try {
+            // Attempt to get available cameras for better selection
+            const cameras = await Html5Qrcode.getCameras().catch(() => []);
+            let cameraIdOrConfig = { facingMode: mode };
+
+            if (cameras && cameras.length > 0) {
+                const targetLabel = String(mode).toLowerCase() === 'user' ? 'front' : 'back';
+                const selectedCamera = cameras.find(c => 
+                    c.label.toLowerCase().includes(targetLabel) || 
+                    (targetLabel === 'front' && c.label.toLowerCase().includes('user')) ||
+                    (targetLabel === 'back' && c.label.toLowerCase().includes('environment'))
+                );
+                
+                if (selectedCamera) {
+                    cameraIdOrConfig = selectedCamera.id;
+                } else if (cameras.length === 1) {
+                    // Only one camera, just use it directly to avoid constraint issues on desktop
+                    cameraIdOrConfig = cameras[0].id;
+                }
+            }
+
+            await qrScannerRef.current.start(
+                cameraIdOrConfig,
+                {
+                    fps: 10,
+                    qrbox: { width: 200, height: 200 },
+                    aspectRatio: 1.0,
+                },
+                onScanSuccess,
+                () => { }
+            );
+            setCameraActive(true);
+        } catch (err) {
+            console.error("Camera start failed:", err);
+            const errorMsg = String(err);
+            if (errorMsg.includes('facingMode')) {
+                try {
+                    await qrScannerRef.current.start(
+                        { facingMode: { exact: mode } },
+                        { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 },
+                        onScanSuccess,
+                        () => { }
+                    );
+                    setCameraActive(true);
+                    return;
+                } catch (fallbackErr) {
+                    console.error("Fallback camera start failed:", fallbackErr);
+                }
+            }
+            
+            toast.error("Failed to start camera. Please ensure permissions are granted.");
+        }
     };
-    const triggerStopCamera = () => document.getElementById('html5-qrcode-button-camera-stop')?.click();
+
+    const triggerStopCamera = async () => {
+        if (qrScannerRef.current && qrScannerRef.current.isScanning) {
+            try {
+                await qrScannerRef.current.stop();
+                setCameraActive(false);
+            } catch (err) {
+                console.error("Failed to stop camera:", err);
+            }
+        }
+    };
+
+    const toggleFacingMode = async () => {
+        const newMode = facingMode === 'environment' ? 'user' : 'environment';
+        setFacingMode(newMode);
+        if (cameraActive) {
+            await triggerStartCamera(newMode);
+        }
+    };
 
     const hasResult = scanState === 'processing' || scanState === 'success' || scanState === 'error' || scanState === 'proof';
 
@@ -601,11 +711,18 @@ export default function QRScanner() {
                                             Start Camera
                                         </button>
                                     ) : (
-                                        <button onClick={triggerStopCamera}
-                                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 text-xs font-semibold transition-all cursor-pointer">
-                                            <Camera size={13} />
-                                            Stop Camera
-                                        </button>
+                                        <div className="flex-1 flex gap-2">
+                                            <button onClick={() => triggerStopCamera()}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 text-xs font-semibold transition-all cursor-pointer">
+                                                <Camera size={13} />
+                                                Stop Camera
+                                            </button>
+                                            <button onClick={toggleFacingMode}
+                                                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 text-xs font-semibold transition-all cursor-pointer">
+                                                <RefreshCw size={13} className={facingMode === 'user' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                                                <span className="hidden xs:inline">Switch</span>
+                                            </button>
+                                        </div>
                                     )}
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
@@ -710,6 +827,9 @@ export default function QRScanner() {
                                                         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-3">
                                                             <button onClick={stopProofCamera} className="px-4 py-1.5 bg-white text-gray-800 rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-gray-100">Cancel</button>
                                                             <button onClick={captureProofPhoto} className="px-4 py-1.5 bg-blue-500 text-white rounded-full font-semibold text-xs border-none cursor-pointer shadow-md hover:bg-blue-600">Take Photo</button>
+                                                            <button onClick={toggleProofCamera} className="w-9 h-9 flex items-center justify-center bg-gray-800/80 text-white rounded-full border-none cursor-pointer shadow-md hover:bg-gray-900">
+                                                                <RefreshCw size={14} />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ) : (

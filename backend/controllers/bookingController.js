@@ -1729,7 +1729,7 @@ export const getBookingQR = async (req, res) => {
 // Mark booking as picked up by scanning QR code
 export const markAsPickedUp = async (req, res) => {
   try {
-    const { bookingId, releaseProofImage, releaseNotes } = req.body;
+    const { bookingId, releaseProofImage, releaseNotes, releasedBy: releasedByFromClient } = req.body;
 
     const booking = await bookingModel.findById(bookingId);
     if (!booking) {
@@ -1752,6 +1752,14 @@ export const markAsPickedUp = async (req, res) => {
     booking.status = 'Released';  // Set status to Released when QR is scanned
     booking.paid = true;  // Mark as paid when scanned
     booking.paidAt = new Date();
+
+    // Use name passed from frontend (most reliable) — fallback to token actor lookup
+    let releasedByName = releasedByFromClient || '';
+    if (!releasedByName) {
+      const actor = await getRequestActor(req);
+      releasedByName = actor?.fullName || actor?.name || 'Staff/Admin';
+    }
+    booking.releasedBy = releasedByName;
 
     if (releaseProofImage) {
       if (releaseProofImage.startsWith('data:image')) {

@@ -119,9 +119,9 @@ export const bookingApi = {
   },
 
   // Mark booking as picked up by scanning QR
-  markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes) => {
+  markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
-      const response = await api.post('/bookings/qr/pickup', { bookingId, releaseProofImage, releaseNotes });
+      const response = await api.post('/bookings/qr/pickup', { bookingId, releaseProofImage, releaseNotes, releasedBy });
       return response.data;
     } catch (error) {
       console.error('Error marking booking as picked up:', error);

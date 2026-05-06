@@ -391,6 +391,7 @@ export function exportReleasedToPDF({ records, totalRevenue, paidCount }) {
             <td>${r.serviceLabel || "—"}</td>
             <td>${r.dropDate || "—"}</td>
             <td style="color:#000000;font-weight:600">${r.releaseDate || "—"}</td>
+            <td>${r.releasedBy || "—"}</td>
             <td>
                 <span style="display:inline-block;padding:2px 8px;font-size:10px;font-weight:800;
                     background:${r.payStatus === "Paid" ? "#ECFDF5" : "#FFF1F2"};
@@ -460,15 +461,16 @@ export function exportReleasedToPDF({ records, totalRevenue, paidCount }) {
                 <th>Service</th>
                 <th>Drop Date</th>
                 <th>Released Date</th>
+                <th>Released By</th>
                 <th>Pay Status</th>
                 <th style="text-align:right">Amount</th>
                 <th>Type</th>
             </tr>
         </thead>
-        <tbody>${rows || '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8">No released records found.</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="11" style="padding:20px;text-align:center;color:#94a3b8">No released records found.</td></tr>'}</tbody>
         <tfoot>
             <tr>
-                <td colspan="8">Grand Total (${records.length} records, ${paidCount} paid)</td>
+                <td colspan="9">Grand Total (${records.length} records, ${paidCount} paid)</td>
                 <td style="text-align:right;color:#1D4ED8">${fmtAmt(totalRevenue)}</td>
                 <td></td>
             </tr>
