@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck, Users, MoreVertical, ArrowLeft } from "lucide-react";
 import img from "../assets/img";
 import { chatApi } from "../../services/chatApi";
@@ -518,6 +519,7 @@ const ChatLauncher = ({ onClick, unreadCount }) => (
 );
 
 export default function ChatWidget() {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -710,6 +712,11 @@ export default function ChatWidget() {
 
   const adminConversations = conversations.filter((c) => !c.assignedStaffId);
   const tailorConversations = conversations.filter((c) => c.assignedStaffId);
+
+  const hidePaths = ["/order", "/invoices"];
+  const shouldHide = hidePaths.some(path => location.pathname.startsWith(path));
+
+  if (shouldHide) return null;
 
   return (
     <>

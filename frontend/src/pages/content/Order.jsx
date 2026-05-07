@@ -57,8 +57,7 @@ const formatDateLong = (dateStr) => {
     const date = new Date(dateStr)
     if (isNaN(date.getTime())) return dateStr
     return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         year: 'numeric'
     })
@@ -332,23 +331,21 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     }
 
     const fields = [
+        { label: 'Full Name', value: order.contact?.fullName || order.customerName },
+        { label: 'Phone', value: order.contact?.phone || order.phone },
         { label: referenceLabel, value: referenceId },
         { label: 'Status', value: order.status },
         { label: 'Item/Service', value: getTrackingDisplayName(order) },
         { label: 'Service Type', value: serviceTypeLabel },
-        { label: 'Date Placed', value: order.date || new Date(order.createdAt).toLocaleDateString() },
-        { label: 'Est. Completion', value: order.estimatedCompletion },
+        { label: 'Date Placed', value: formatDateLong(order.date || order.createdAt) },
+        { label: 'Pickup Date', value: formatDateLong(order.pickupDate || order.estimatedCompletion) },
+        { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
+        { label: 'Email', value: order.contact?.email || order.email },
+        { label: 'Address', value: order.contact?.address || order.address },
         ...(!isBooking ? [
             { label: 'Assigned Tailor', value: order.assignedTailor },
             { label: 'Notes', value: order.notes },
-        ] : [
-            { label: 'Full Name', value: order.contact?.fullName },
-            { label: 'Phone', value: order.contact?.phone },
-            { label: 'Email', value: order.contact?.email },
-            { label: 'Pickup Date', value: order.pickupDate },
-            { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
-            { label: 'Address', value: order.contact?.address },
-        ]),
+        ] : []),
     ].filter(f => f.value)
 
     const items = order.items || []
@@ -362,7 +359,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 onClick={onClose}
             />
             <div
-                className="fixed bottom-0 sm:right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+                className="fixed  bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
             >
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -423,8 +420,9 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                 <div className="grid grid-cols-2 gap-3">
                                     {fields.map(({ label, value }) => {
                                         const Icon = iconMap[label]
+                                        const isAddress = label === 'Address'
                                         return (
-                                            <div key={label} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                            <div key={label} className={`bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors ${isAddress ? 'col-span-2' : ''}`}>
                                                 {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -1123,7 +1121,7 @@ const Order = () => {
             <div className="flex items-center gap-2 mb-6 sm:mb-8">
                 {/* Search Bar - Flex 1 */}
                 <div className="relative flex-1 group">
-                    <button 
+                    <button
                         onClick={() => fetchData(activeFilter, searchQuery)}
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 hover:text-blue-600 transition-colors z-10"
                     >
