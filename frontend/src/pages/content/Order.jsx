@@ -6,7 +6,8 @@ import {
 } from 'react-icons/md'
 import {
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
-    Inbox, Monitor, Printer, Scissors, Truck
+    Inbox, Monitor, Printer, Scissors, Truck,
+    Package2
 } from 'lucide-react'
 import { GiSewingMachine } from 'react-icons/gi'
 import { toast } from 'sonner'
@@ -61,6 +62,31 @@ const formatDateLong = (dateStr) => {
         day: 'numeric',
         year: 'numeric'
     })
+}
+
+const formatFullDateTime = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    })
+}
+
+const formatDateSmall = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const formatTimeSmall = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 const getApiList = (response, primaryKey) => {
@@ -142,19 +168,19 @@ const matchesActiveFilter = (order, filter) => {
 
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
-    const label = step.label?.toLowerCase().trim() ?? ''
     const isDone = step.done
     const isActive = !step.done && step.active
-    const Icon = STEP_ICON[label]
+    const label = normalizeStepLabel(step.label)
+    const Icon = STEP_ICON[label] || Package
     const sz = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
     const iconSz = size === 'sm' ? 14 : 17
 
     return (
         <div className={`
             ${sz} rounded-full flex items-center justify-center shrink-0 transition-all
-            ${isDone ? 'bg-blue-500 text-white border-2 border-blue-500' : ''}
-            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-md' : ''}
-            ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border-2 border-gray-200' : ''}
+            ${isDone ? 'bg-blue-600 text-white shadow-sm border-none' : ''}
+            ${isActive ? 'bg-white text-blue-600 border-2 border-blue-500 shadow-md animate-pulse' : ''}
+            ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border border-gray-200' : ''}
         `}>
             {Icon && <Icon size={iconSz} />}
         </div>
@@ -176,7 +202,7 @@ const StepLabel = ({ step, size = 'md' }) => {
     )
 }
 
-// ─── Progress Tracker ────────────────────────
+// ─── Progress Tracker (Horizontal) ─────────────
 const OrderProgressTracker = ({ steps }) => {
     if (!steps || steps.length === 0) return null
     return (
@@ -184,19 +210,34 @@ const OrderProgressTracker = ({ steps }) => {
             <div className="hidden sm:flex items-center w-full mt-2 overflow-x-auto pb-1 gap-0">
                 {steps.map((step, i) => (
                     <React.Fragment key={step.label + i}>
-                        <div className="flex flex-col items-center min-w-[72px]">
+                        <div className="flex flex-col items-center min-w-[95px]">
                             <StepIcon step={step} />
                             <StepLabel step={step} />
-                            {step.active
-                                ? <span className="text-[9px] text-blue-400 font-semibold mt-0.5">Active</span>
-                                : <span className="text-[9px] text-gray-300 mt-0.5">
-                                    {step.date || '—'}
-                                </span>
-                            }
+                            <div className="flex flex-col items-center mt-1 text-center min-h-[35px]">
+                                {step.active ? (
+                                    <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest animate-pulse">
+                                        Active
+                                    </span>
+                                ) : step.done ? (
+                                    <>
+                                        <span className="text-[10px] text-gray-800 font-black uppercase tracking-tighter leading-tight">
+                                            {formatDateSmall(step.date)}
+                                        </span>
+                                        <span className="text-[9px] text-gray-500 font-bold">
+                                            {step.time || formatTimeSmall(step.date)}
+                                        </span>
+
+                                    </>
+                                ) : (
+                                    <span className="text-[9px] text-gray-300 font-bold uppercase tracking-tighter">
+                                        Pending
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         {i < steps.length - 1 && (
-                            <div className={`h-[2px] flex-1 min-w-[16px] -mt-9 mx-1 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            <div className={`h-[1px] flex-1 min-w-[12px] -mt-12 mx-1 rounded transition-all
+                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
                             />
                         )}
                     </React.Fragment>
@@ -210,14 +251,60 @@ const OrderProgressTracker = ({ steps }) => {
                             <StepLabel step={step} size="sm" />
                         </div>
                         {i < steps.length - 1 && (
-                            <div className={`h-[2px] flex-1 mt-3 mx-0.5 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            <div className={`h-[1px] flex-1 mt-3 mx-0.5 rounded transition-all
+                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
                             />
                         )}
                     </React.Fragment>
                 ))}
             </div>
         </>
+    )
+}
+
+const OrderTimelineVertical = ({ steps }) => {
+    if (!steps || steps.length === 0) return null
+    return (
+        <div className="space-y-0.5">
+            {steps.map((step, i) => {
+                const isDone = step.done
+                const isActive = step.active
+                const label = normalizeStepLabel(step.label)
+                const Icon = STEP_ICON[label] || Package
+
+                return (
+                    <div key={i} className="flex gap-4 relative">
+                        {i < steps.length - 1 && (
+                            <div className={`absolute left-[15.5px] top-[32px] w-[1px] h-[calc(100%-24px)] ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`} />
+                        )}
+
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 transition-all duration-500
+                            ${isDone ? 'bg-blue-600 text-white shadow-md shadow-blue-200 border-none' :
+                                isActive ? 'bg-white text-blue-600 border-2 border-blue-500 shadow-lg shadow-blue-100 animate-pulse' :
+                                    'bg-gray-50 text-gray-300 border border-gray-200'}`}>
+                            <Icon size={14} />
+                        </div>
+                        <div className="flex-1 pb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                <h4 className={`text-[12px] font-black tracking-tight ${isDone ? 'text-gray-900' : isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    {step.label}
+                                </h4>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <MdDateRange size={14} className={isDone || isActive ? 'text-blue-500' : 'text-gray-300'} />
+                                <span className={`text-[11px] font-bold uppercase tracking-tight ${isDone || isActive ? 'text-black' : 'text-gray-300'}`}>
+                                    {step.date
+                                        ? `${formatDateLong(step.date)}${step.time ? ` | ${step.time}` : ''}`
+                                        : (isActive ? 'Phase in progress...' : 'Scheduled Phase')
+                                    }
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
     )
 }
 
@@ -349,6 +436,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     ].filter(f => f.value)
 
     const items = order.items || []
+    const steps = order.steps || []
     const hasItems = items.length > 0
 
     return (
@@ -367,11 +455,10 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <FileText size={16} className="text-white" />
+                            <Package2 size={16} className="text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
                             <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{referenceCode}</p>
                         </div>
                     </div>
                     <button
@@ -409,12 +496,9 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                         </button>
                     )}
                 </div>
-
-                {/* Body — scrollable */}
                 <div className="overflow-y-auto p-5 pb-10 flex-1 space-y-5 font-inter">
                     {activeTab === 'items' ? (
                         <>
-                            {/* Details Section */}
                             <div>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
                                 <div className="grid grid-cols-2 gap-3">
@@ -436,9 +520,9 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 
                             {/* Items Section */}
                             {hasItems && (
-                                <div>
+                                <div className="border-t border-gray-100 pt-5">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
-                                    <div className="space-y-2.5">
+                                    <div className="space-y-2.5 mb-8">
                                         {items.map((item, idx) => (
                                             <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
                                                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -469,6 +553,12 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                             </div>
                                         ))}
                                     </div>
+                                    {steps.length > 0 && (
+                                        <div className="border-t border-gray-100 pt-5 md:hidden">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Order Progress</p>
+                                            <OrderTimelineVertical steps={steps} />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </>
@@ -484,7 +574,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                 </div>
                             ) : qrCode ? (
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="bg-white p-4 rounded-xl border-2 border-purple-200 shadow-sm">
+                                    <div className="bg-white p-4 rounded-xl border-2 border-blue-200 shadow-sm">
                                         <img
                                             src={qrCode}
                                             alt="QR Code"
@@ -497,7 +587,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                     <div className="flex gap-2 w-full">
                                         <button
                                             onClick={handleCopyQR}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-purple-600 text-[11px] font-bold transition-colors cursor-pointer"
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5  hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-600 text-[11px] font-bold transition-colors cursor-pointer"
                                         >
                                             {copied ? (
                                                 <>
@@ -561,6 +651,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
 
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel, onOpenDetails }) => {
+    const navigate = useNavigate()
     const [showModal, setShowModal] = useState(false)
     const [showChatModal, setShowChatModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
@@ -604,7 +695,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
 
     return (
         <>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
+            <div
+                onClick={() => navigate(`/order/${order._id}`)}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all overflow-hidden cursor-pointer group"
+            >
 
                 {/* ── Header ── */}
                 <div className="p-4 sm:p-5 pb-3">
@@ -667,7 +761,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                     <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
                         {canMessageTailor && (
                             <button
-                                onClick={() => setShowChatModal(true)}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowChatModal(true)
+                                }}
                                 className="min-w-0 bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                             >
                                 <MessageCircle size={12} />
@@ -676,7 +773,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                         )}
                         {canCancel && (
                             <button
-                                onClick={() => onCancel(order)}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onCancel(order)
+                                }}
                                 className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                             >
                                 Cancel
@@ -684,7 +784,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                         )}
                         {order.status !== 'Cancelled' && (
                             <button
-                                onClick={handleDownloadQR}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDownloadQR()
+                                }}
                                 disabled={loadingQR}
                                 className="min-w-0 bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0 disabled:opacity-50"
                                 title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
@@ -695,17 +798,13 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             </button>
                         )}
                         <button
-                            onClick={() => {
-                                if (typeof onOpenDetails === 'function') {
-                                    onOpenDetails(order)
-                                    return
-                                }
-
-                                setShowModal(true)
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                navigate(`/order/${order._id}`)
                             }}
                             className="min-w-0 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                         >
-                            <QrCode size={12} />
+                            <Eye size={12} />
                             Details
                         </button>
                     </div>
@@ -1096,7 +1195,7 @@ const Order = () => {
                         ].map(({ label, value, icon: Icon, bg, text }) => (
                             <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
                                 {/* Mobile: icon + label on top */}
-                                <div className="flex items-center gap-1.5 sm:hidden">
+                                <div className="flex items-center gap-0.5 sm:hidden">
                                     <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
                                         <Icon size={13} className={text} />
                                     </div>

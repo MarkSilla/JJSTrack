@@ -128,38 +128,54 @@ const InvoiceDetail = ({ invoice, subtotal, tax, discount, total }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-500" />
             <div className="p-4 sm:p-8 lg:p-10">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-8 pb-6 border-b border-gray-100">
-                    <div className="flex flex-col xs:flex-row items-center xs:items-start text-center xs:text-left gap-4 sm:gap-6">
-                        <img src={img.jjslogo1} alt="Logo" className="w-16 sm:w-20 shrink-0" />
-                        <div className="min-w-0 text-center xs:text-left">
-                            <h3 className="text-base sm:text-lg font-bold text-gray-800">JJS Track</h3>
-                            <p className="text-xs text-gray-400">Jennoel-Jennyl SportsweaR</p>
-                            <p className="text-xs text-gray-400 flex items-center justify-center xs:justify-start gap-1 mt-1"><MdLocationOn size={12} className="shrink-0" />Purok 3B National Highway, Calapacuan, Subic</p>
-                            <p className="text-xs text-gray-400 flex items-center justify-center xs:justify-start gap-1"><MdPhone size={12} className="shrink-0" /> 0908 997 2332</p>
-                            <span className="text-xs text-blue-500 flex items-center justify-center xs:justify-start gap-1 mt-0.5"><MdEmail size={12} className="shrink-0" />jjsportswearph@gmail.com</span>
+                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 mb-5 pb-8 border-b border-gray-100">
+                    <div className="flex-1 order-2 md:order-1 w-full text-center md:text-left">
+                        <p className="text-[10px] font-black text-gray-900 uppercase tracking-[0.2em] mb-2">Service Provider</p>
+                        <h4 className="text-sm font-bold text-gray-800 mb-1 ">Jennoel-Jennyl Sportswear</h4>
+                        <div className="space-y-1">
+                            <p className="text-xs text-gray-400 flex items-center justify-center md:justify-start gap-1.5">
+                                <MdLocationOn size={14} className="text-blue-500/50" />
+                                Purok 3B National Highway, Calapacuan, Subic
+                            </p>
+                            <p className="text-xs text-gray-400 flex items-center justify-center md:justify-start gap-1.5">
+                                <MdPhone size={14} className="text-blue-500/50" />
+                                0908 997 2332
+                            </p>
+                            <p className="text-xs text-blue-500 font-semibold flex items-center justify-center md:justify-start gap-1.5">
+                                <MdEmail size={14} className="text-blue-400" />
+                                jjsportswearph@gmail.com
+                            </p>
                         </div>
                     </div>
-                    <div className="text-center sm:text-right flex-shrink-0">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-200 tracking-wide uppercase leading-none">Invoice</h2>
-                        <div className="mt-3 space-y-1 text-[11px] sm:text-sm">
-                            <div className="flex justify-center sm:justify-end gap-3 leading-tight">
-                                <span className="text-gray-400 min-w-[70px]">Booking ID:</span>
-                                <span className="text-gray-700 font-bold font-mono">{invoice.referenceId || 'N/A'}</span>
+
+                    <div className="flex-1 order-1 md:order-2 flex flex-col items-center">
+                        <div className="w-20 h-20 flex items-center justify-center mb-1 p-2">
+                            <img src={img.jjslogo1} alt="Logo" className="w-full h-full object-contain" />
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900 uppercase tracking-[0.5px] underline ">JJSportswear</h3>
+                    </div>
+
+                    {/* Right Column: Invoice Details */}
+                    <div className="flex-1 order-3 md:order-3 w-full text-center md:text-right">
+                        <h2 className="text-3xl font-black text-gray-100/80 tracking-[0.3em] uppercase leading-none mb-4">Invoice</h2>
+                        <div className="space-y-2 text-[11px] font-bold uppercase tracking-wider">
+                            <div className="flex justify-center md:justify-end gap-3 leading-tight">
+                                <span className="text-gray-400">Booking ID</span>
+                                <span className="text-gray-900 font-black font-mono">{invoice.referenceId || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-center sm:justify-end gap-3 leading-tight">
-                                <span className="text-gray-400 min-w-[70px]">Date:</span>
-                                <span className="text-gray-700">{invoice.date}</span>
+                            <div className="flex justify-center md:justify-end gap-3 leading-tight">
+                                <span className="text-gray-400">Date Issued</span>
+                                <span className="text-gray-800">{invoice.date}</span>
                             </div>
-                            <div className="flex justify-center sm:justify-end gap-3 leading-tight">
-                                <span className="text-gray-400 min-w-[70px]">Due Date:</span>
-                                <span className="text-gray-700">{invoice.dueDate}</span>
+                            <div className="flex justify-center md:justify-end gap-3 leading-tight">
+                                <span className="text-gray-400">Due Date</span>
+                                <span className="text-gray-800">{invoice.dueDate}</span>
                             </div>
                         </div>
-                        <div className="mt-3">
-                            <span className={`inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded-full font-bold tracking-tight ${statusStyle(invoice.status)}`}>
-                                {statusIcon(invoice.status)}
-                                {invoice.status.toUpperCase()}
+                        <div className="mt-4 flex justify-center md:justify-end">
+                            <span className={`inline-flex items-center gap-1.5 text-[10px] px-4 py-1.5 rounded-xl font-black uppercase tracking-widest shadow-sm ${statusStyle(invoice.status)}`}>
+                                {invoice.status === 'Paid' ? <MdCheckCircle size={14} /> : null}
+                                {invoice.status}
                             </span>
                         </div>
                     </div>
