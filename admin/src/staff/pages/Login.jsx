@@ -106,17 +106,17 @@ function Login() {
                 <button
                     type="button"
                     onClick={() => navigate('/')}
-                    className="absolute left-5 top-5 md:left-8 md:top-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                    className="absolute left-5 top-3 md:left-8 md:top-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                 >
                     <ArrowLeft size={16} />
                     Access Portal
                 </button>
                 <div className="w-full max-w-md px-4">
                     <div className="rounded-2xl md:rounded-3xl p-3 md:p-8 relative">
-                        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-13 h-13" />
                         </div>
-                        <div className="text-start mt-6 mb-8">
+                        <div className="text-start mt-12 mb-8">
                             <h2 className="text-light text-2xl md:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
                             <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access your staff portal</p>
                         </div>

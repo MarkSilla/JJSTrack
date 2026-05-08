@@ -150,11 +150,11 @@ function Login() {
                 </button>
                 <div className="w-full max-w-md">
                     <div className="rounded-[2.5rem] p-8 md:p-12 relative ">
-                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+                        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-30 h-30" />
                         </div>
 
-                        <div className="text-start mt-6 mb-8 xl:mb-10">
+                        <div className="text-start mt-14 mb-6 xl:mb-10">
                             <h2 className="text-black text-2xl lg:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
                             <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access the admin panel</p>
                         </div>
