@@ -116,7 +116,7 @@ function Login() {
                         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-13 h-13" />
                         </div>
-                        <div className="text-start mt-14 mb-8">
+                        <div className="text-start mt-6 mb-8">
                             <h2 className="text-light text-2xl md:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
                             <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access your staff portal</p>
                         </div>
