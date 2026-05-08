@@ -4,6 +4,8 @@ import { STATUS_CONFIG, TYPE_CONFIG, PRIORITY_CONFIG, SERVICE_STEPS, EMPLOYEE_PO
 import { getDerivedStatus, getActiveStepIndex } from '../../../utils/helpers.js';
 
 const SORT_OPTIONS = [
+    { value: 'date-today-appointment', label: "Today's Appointment" },
+    { value: 'date-today-due', label: "Today's Due Date" },
     { value: 'date-newest', label: 'Date: Newest' },
     { value: 'date-oldest', label: 'Date: Oldest' },
 ];
@@ -60,6 +62,46 @@ const getInitials = (name = '') =>
         .slice(0, 2)
         .toUpperCase();
 
+function FilterSelect({ value, options, onChange, isOpen, onToggle }) {
+    const selectedLabel = options.find(o => (typeof o === 'object' ? o.value : o) === value);
+    const displayLabel = typeof selectedLabel === 'object' ? selectedLabel.label : selectedLabel;
+
+    return (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden transition-all shadow-sm">
+            <button
+                onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                className="w-full px-3 py-2 text-xs font-medium text-slate-700 flex justify-between items-center transition-colors hover:bg-slate-100"
+            >
+                <span className="truncate">{displayLabel || value}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isOpen && (
+                <div className="border-t border-slate-200 bg-white py-1 max-h-48 overflow-y-auto">
+                    {options.map((opt) => {
+                        const val = typeof opt === 'object' ? opt.value : opt;
+                        const label = typeof opt === 'object' ? opt.label : opt;
+                        const isSelected = value === val;
+
+                        return (
+                            <button
+                                key={val}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onChange(val);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-xs font-medium transition-colors border-none ${isSelected ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function OrderList({
     filteredOrders,
     activeOrderId,          // null when used on the list page; orderId string when used inside detail page breadcrumb etc.
@@ -81,12 +123,15 @@ export default function OrderList({
 }) {
     const [showSort, setShowSort] = useState(false);
     const [showServiceTypeSort, setShowServiceTypeSort] = useState(false);
-    const statusTabs = ['All', 'For Approval', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
+    const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+    const [activeMobileMenu, setActiveMobileMenu] = useState(null);
+    const statusTabs = ['All', 'For Approval', 'Pending', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
     const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
     const currentServiceTypeLabel = SERVICE_TYPE_OPTIONS.find(o => o.value === serviceTypeFilter)?.label || 'Service: All';
     const approvalTabs = [
         { label: 'All', value: 'All' },
-        { label: 'Pending Approval', value: 'For Approval' },
+        { label: 'For Approval', value: 'For Approval' },
+        { label: 'Pending', value: 'Pending' },
         { label: 'Completed', value: 'Completed' },
         { label: 'Released', value: 'Released' },
         { label: 'Overdue', value: 'Overdue' },
@@ -106,8 +151,8 @@ export default function OrderList({
                 </div>
 
                 {/* Search + Filter */}
-                <div className="flex flex-col gap-3 relative">
-                    <div className="relative w-full">
+                <div className="flex flex-row items-center gap-2 lg:gap-3 relative z-10">
+                    <div className="relative flex-1">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                         <input
                             type="text"
@@ -118,22 +163,74 @@ export default function OrderList({
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 overflow-visible">
+                    {/* Mobile Unified Filter Button */}
+                    <div className="relative lg:hidden shrink-0">
+                        <button
+                            onClick={() => { setMobileFilterOpen(!mobileFilterOpen); setActiveMobileMenu(null); }}
+                            className={`h-10 w-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer
+                                ${mobileFilterOpen || filterStatus !== 'All' || sortOption !== 'date-newest' || serviceTypeFilter !== 'all'
+                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                    : 'bg-white border-slate-200 text-gray-500 hover:bg-slate-50'
+                                }`}
+                        >
+                            <Filter size={16} />
+                        </button>
+
+                        {mobileFilterOpen && (
+                            <div className="absolute right-0 top-full mt-2 w-60 bg-white border border-gray-100 shadow-2xl rounded-2xl p-4 z-[99] animate-in fade-in zoom-in-95 duration-200">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Sort By</label>
+                                        <FilterSelect
+                                            value={sortOption}
+                                            isOpen={activeMobileMenu === 'sort'}
+                                            onToggle={() => setActiveMobileMenu(activeMobileMenu === 'sort' ? null : 'sort')}
+                                            onChange={(val) => { setSortOption(val); setActiveMobileMenu(null); }}
+                                            options={SORT_OPTIONS}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Service</label>
+                                        <FilterSelect
+                                            value={serviceTypeFilter}
+                                            isOpen={activeMobileMenu === 'service'}
+                                            onToggle={() => setActiveMobileMenu(activeMobileMenu === 'service' ? null : 'service')}
+                                            onChange={(val) => { setServiceTypeFilter(val); setActiveMobileMenu(null); }}
+                                            options={SERVICE_TYPE_OPTIONS}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">Status</label>
+                                        <FilterSelect
+                                            value={filterStatus}
+                                            isOpen={activeMobileMenu === 'status'}
+                                            onToggle={() => setActiveMobileMenu(activeMobileMenu === 'status' ? null : 'status')}
+                                            onChange={(val) => { setFilterStatus(val); setActiveMobileMenu(null); }}
+                                            options={['All', ...statusTabs.filter(t => t !== 'All')]}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop Inline Filters */}
+                    <div className="hidden lg:flex items-center gap-2 overflow-visible shrink-0">
                         {/* Sort Dropdown */}
-                        <div className="relative flex-1 sm:flex-none">
+                        <div className="relative">
                             <button
                                 onClick={() => {
                                     setShowSort(v => !v);
                                     setShowServiceTypeSort(false);
                                     setIsFilterOpen(false);
                                 }}
-                                className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
+                                className="h-10 flex items-center justify-between gap-1.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
                             >
                                 <div className="flex items-center gap-1.5">
-                                    <SlidersHorizontal size={12} className="text-blue-500" />
-                                    <span className="max-w-[80px] sm:max-w-[100px] truncate">{currentSortLabel}</span>
+                                    <SlidersHorizontal size={14} className="text-blue-500" />
+                                    <span className="max-w-[100px] truncate">{currentSortLabel}</span>
                                 </div>
-                                <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={12} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
                             </button>
                             {showSort && (
                                 <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[40] overflow-hidden w-44">
@@ -151,20 +248,20 @@ export default function OrderList({
                         </div>
 
                         {/* Service Type Dropdown */}
-                        <div className="relative flex-1 sm:flex-none">
+                        <div className="relative">
                             <button
                                 onClick={() => {
                                     setShowServiceTypeSort(v => !v);
                                     setShowSort(false);
                                     setIsFilterOpen(false);
                                 }}
-                                className="w-full flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
+                                className="h-10 flex items-center justify-between gap-1.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-gray-600 transition-all cursor-pointer whitespace-nowrap"
                             >
                                 <div className="flex items-center gap-1.5">
-                                    <Filter size={12} className="text-blue-500" />
-                                    <span className="max-w-[80px] sm:max-w-[120px] truncate">{currentServiceTypeLabel}</span>
+                                    <Filter size={14} className="text-blue-500" />
+                                    <span className="max-w-[120px] truncate">{currentServiceTypeLabel}</span>
                                 </div>
-                                <ChevronDown size={11} className={`text-gray-400 transition-transform ${showServiceTypeSort ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={12} className={`text-gray-400 transition-transform ${showServiceTypeSort ? 'rotate-180' : ''}`} />
                             </button>
                             {showServiceTypeSort && (
                                 <div className="absolute left-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[40] overflow-hidden w-48">
@@ -192,13 +289,13 @@ export default function OrderList({
                                     setShowSort(false);
                                     setShowServiceTypeSort(false);
                                 }}
-                                className={`h-9 px-3 rounded-xl border transition-all flex items-center justify-center cursor-pointer gap-2
+                                className={`h-10 px-3 rounded-xl border transition-all flex items-center justify-center cursor-pointer gap-2
                                 ${isFilterOpen || filterStatus !== 'All'
                                         ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                                        : 'bg-slate-50 border-transparent text-gray-500 hover:bg-slate-100'}`}
+                                        : 'bg-white border-slate-200 text-gray-600 hover:bg-slate-50'}`}
                             >
                                 <SlidersHorizontal size={14} />
-                                <span className="text-[11px] font-bold hidden sm:inline">Status</span>
+                                <span className="text-[11px] font-bold">Status</span>
                                 {filterStatus !== 'All' && (
                                     <span className="w-4 h-4 bg-white text-blue-600 rounded-full flex items-center justify-center text-[9px] font-black">
                                         {counts[filterStatus] || '!'}
@@ -240,30 +337,7 @@ export default function OrderList({
                     </div>
                 </div>
 
-                {/* Desktop-only Quick approval tabs */}
-                <div className="hidden lg:block mt-4 overflow-x-auto no-scrollbar">
-                    <div className="inline-flex p-1 rounded-2xl border border-gray-100 bg-slate-50/80">
-                        {approvalTabs.map(tab => (
-                            <div key={tab.value} className="relative">
-                                <button
-                                    onClick={() => { setFilterStatus(tab.value); setIsFilterOpen(false); }}
-                                    className={`px-4 py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap
-                                    ${filterStatus === tab.value
-                                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                                            : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}`}
-                                >
-                                    {tab.label}
-                                    <span className="ml-1.5 opacity-50 font-medium">({counts[tab.value] ?? 0})</span>
-                                </button>
-                                {tab.value === 'For Approval' && counts['For Approval'] > 0 && (
-                                    <span className="absolute -top-2 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full shadow-md border-2 border-white">
-                                        {counts['For Approval']}
-                                    </span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+
             </div>
 
             {/* ── Order rows ─────────────────────────────────────────────── */}

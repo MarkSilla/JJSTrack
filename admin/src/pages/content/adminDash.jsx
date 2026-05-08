@@ -72,6 +72,7 @@ const getBookingDisplayLabel = (booking = {}) => {
 
 const normalizeAppointmentStatus = (status) => {
   const text = String(status || "").toLowerCase();
+  if (text.includes("overdue")) return "Overdue";
   if (text.includes("cancel")) return "Cancel/Incomplete";
   if (text.includes("released") || text.includes("complete")) return "Complete";
   if (text.includes("progress")) return "In-Progress";
@@ -114,6 +115,7 @@ const BADGE_CLASSES = {
   "In-Progress": "bg-violet-100 text-violet-700",
   Complete: "bg-emerald-100 text-emerald-700",
   "Cancel/Incomplete": "bg-red-100 text-red-600",
+  Overdue: "bg-rose-100 text-rose-700 border border-rose-200",
   Repair: "bg-orange-100 text-orange-700",
   "Team Jersey": "bg-indigo-100 text-indigo-700",
   Organization: "bg-teal-100 text-teal-700",
@@ -291,6 +293,8 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [overdueFilter, setOverdueFilter] = useState("all");
 
   useEffect(() => {
     let isMounted = true;
@@ -321,11 +325,17 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                 ? booking.orderId
                 : booking.orderId?._id) || booking._id;
 
+            const dropStep = Array.isArray(booking.steps)
+              ? booking.steps.find(s => String(s.label || s.step || "").toLowerCase().includes("drop") && s.date)
+              : null;
+            const dropDateObj = dropStep ? parseDateValue(dropStep.date) : null;
+
             return {
               id: booking._id,
               service: getBookingDisplayLabel(booking),
               date: formatDateLabel(dateObj),
               dateObj,
+              dropDateObj,
               time: getPickupSlotDisplay(booking.pickupSlot, "No Time"),
               status: normalizeAppointmentStatus(booking.status),
               customer: booking.contact?.fullName || "Unknown Customer",
@@ -397,61 +407,59 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const apptToday = useMemo(
     () =>
       appointments
-        .filter((a) => isSameDay(a.dateObj, todayDate))
+        .filter((a) => isSameDay(a.dropDateObj, todayDate))
         .sort((a, b) => parseTime(a.time) - parseTime(b.time)),
     [appointments, todayDate]
   );
 
-  const apptTomorrow = useMemo(
+  const apptOverdue = useMemo(
     () =>
       appointments
-        .filter((a) => isSameDay(a.dateObj, tomorrowDate))
-        .sort((a, b) => parseTime(a.time) - parseTime(b.time)),
-    [appointments, tomorrowDate]
-  );
+        .filter((a) => {
+          if (!a.dateObj) return false;
+          const isPast = a.dateObj < todayDate;
+          const isPending = a.status !== "Complete" && a.status !== "Cancel/Incomplete";
+          if (!isPast || !isPending) return false;
 
-  const filteredAllAppts = useMemo(() => {
-    const all = [...appointments];
-
-    switch (apptFilter) {
-      case "time":
-        return all.sort((a, b) => {
-          const priority = (d) => {
-            if (isSameDay(d, todayDate)) return 0;
-            if (isSameDay(d, tomorrowDate)) return 1;
-            return 2;
-          };
-
-          const pd = priority(a.dateObj) - priority(b.dateObj);
-          if (pd !== 0) return pd;
-
-          const dateDelta = parseDate(a.dateObj) - parseDate(b.dateObj);
-          if (dateDelta !== 0) return dateDelta;
-
-          return parseTime(a.time) - parseTime(b.time);
-        });
-      case "date":
-        return all.sort(
+          if (overdueFilter === "yesterday") {
+            const yesterday = new Date(todayDate);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return isSameDay(a.dateObj, yesterday);
+          }
+          if (overdueFilter === "week") {
+            const lastWeek = new Date(todayDate);
+            lastWeek.setDate(lastWeek.getDate() - 7);
+            return a.dateObj >= lastWeek;
+          }
+          if (overdueFilter === "month") {
+            const lastMonth = new Date(todayDate);
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+            return a.dateObj >= lastMonth;
+          }
+          return true;
+        })
+        .sort(
           (a, b) =>
             parseDate(a.dateObj) - parseDate(b.dateObj) ||
             parseTime(a.time) - parseTime(b.time)
-        );
-      case "In-Progress":
-        return all
-          .filter((a) => a.status === "In-Progress")
-          .sort((a, b) => parseDate(a.dateObj) - parseDate(b.dateObj));
-      case "Complete":
-        return all
-          .filter((a) => a.status === "Complete")
-          .sort((a, b) => parseDate(a.dateObj) - parseDate(b.dateObj));
-      case "Pending":
-        return all
-          .filter((a) => a.status === "Pending")
-          .sort((a, b) => parseDate(a.dateObj) - parseDate(b.dateObj));
-      default:
-        return all;
+        ),
+    [appointments, todayDate, overdueFilter]
+  );
+
+  const filteredAllAppts = useMemo(() => {
+    let all = appointments.filter(a => a.status === "Complete");
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      all = all.filter(a =>
+        a.service.toLowerCase().includes(q) ||
+        a.customer.toLowerCase().includes(q) ||
+        String(a.orderId || "").toLowerCase().includes(q)
+      );
     }
-  }, [appointments, apptFilter, todayDate, tomorrowDate]);
+
+    return all.sort((a, b) => parseDate(a.dateObj) - parseDate(b.dateObj));
+  }, [appointments, searchQuery]);
 
   const bookingCounts = useMemo(() => {
     const counts = {
@@ -826,13 +834,12 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               type="button"
               key={label}
               onClick={onClick}
-              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${
-                index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
-              }`}
+              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
+                }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
-                className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
+                className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
                 style={{ background: accent }}
               />
               <div className="flex items-center justify-between mb-1.5 sm:mb-3">
@@ -844,7 +851,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                     <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
                     <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                   </div>
-                  <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
+                  <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight ${index === 4 ? 'max-w-none' : 'max-w-none'}`}>{label}</span>
                 </div>
                 {trend !== null && (
                   <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
@@ -852,12 +859,11 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                   </div>
                 )}
               </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${
-                index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[15px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
-              }`}>
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
+                }`}>
                 {value}
               </div>
-              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{sub}</div>
             </button>
           ))}
         </div>
@@ -868,9 +874,8 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               type="button"
               key={label}
               onClick={onClick}
-              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${
-                index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
-              }`}
+              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
+                }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
               <div
@@ -880,13 +885,13 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               <div className="flex items-center justify-between mb-1.5 sm:mb-3">
                 <div className="flex items-center gap-2 sm:gap-2.5">
                   <div
-                    className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`}
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
                     style={{ background: bgAccent }}
                   >
-                    <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
+                    <Icon size={14} color={accent} strokeWidth={2.5} className="sm:hidden" />
                     <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                   </div>
-                  <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
+                  <span className="text-[10px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
                 </div>
                 {trend !== null && (
                   <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
@@ -894,12 +899,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                   </div>
                 )}
               </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${
-                index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[15px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
-              }`}>
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 mt-1 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px] text-left`}>
                 {value}
               </div>
-              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[40px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
             </button>
           ))}
         </div>
@@ -994,7 +997,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col h-full">
               <div className="mb-2 shrink-0">
                 <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Services</h2>
@@ -1086,23 +1089,30 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div>
                 <div className="flex items-center gap-2">
-                  <CalendarDays size={14} className="text-violet-500" />
-                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Tomorrow</h2>
+                  <CalendarDays size={14} className="text-red-500" />
+                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Overdue Dates</h2>
                 </div>
                 <p className="mt-0.5 text-[10px] text-gray-400">
-                  {TOMORROW} - {apptTomorrow.length} appointment{apptTomorrow.length !== 1 ? "s" : ""}
+                  {apptOverdue.length} pending record{apptOverdue.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <span className="text-[9px] font-bold bg-violet-100 text-violet-700 rounded-full px-2.5 py-0.5">
-                Upcoming
-              </span>
+              <select
+                value={overdueFilter}
+                onChange={(e) => setOverdueFilter(e.target.value)}
+                className="text-[10px] font-bold bg-slate-100 border-none rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-red-400"
+              >
+                <option value="all">All</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+              </select>
             </div>
             <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
-              {apptTomorrow.length === 0 ? (
-                <div className="text-gray-400 text-center py-8 text-[12px]">No appointments tomorrow</div>
+              {apptOverdue.length === 0 ? (
+                <div className="text-gray-400 text-center py-8 text-[12px]">No overdue appointments</div>
               ) : (
-                apptTomorrow.map((appt) => (
-                  <ApptCard key={appt.id} appt={appt} showView={false} onViewOrder={handleViewOrder} isClickable />
+                apptOverdue.map((appt) => (
+                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>
@@ -1112,19 +1122,27 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div>
                 <div className="flex items-center gap-2">
-                  <CalendarDays size={14} className="text-emerald-500" />
-                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">All Appointments</h2>
+                  <Package size={14} className="text-emerald-500" />
+                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Complete</h2>
                 </div>
-                <p className="mt-0.5 text-[10px] text-gray-400">{appointments.length} total records</p>
+                <p className="mt-0.5 text-[10px] text-gray-400">{filteredAllAppts.length} ready to release</p>
               </div>
-              <FilterDropdown value={apptFilter} onChange={setApptFilter} />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-32 sm:w-52 px-2 py-1 text-[10px] bg-slate-100 border-none rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
               {filteredAllAppts.length === 0 ? (
-                <div className="text-gray-400 text-center py-8 text-[12px]">No appointments found</div>
+                <div className="text-gray-400 text-center py-8 text-[12px]">No orders ready to release</div>
               ) : (
                 filteredAllAppts.map((appt) => (
-                  <ApptCard key={appt.id} appt={appt} showView={false} onViewOrder={handleViewOrder} isClickable />
+                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>

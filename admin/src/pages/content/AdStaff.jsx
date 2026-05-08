@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, Key, Clock, EyeOff } from "lucide-react";
+import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, Key, Clock, EyeOff, Filter, ArrowDownUp, Activity } from "lucide-react";
 import { toast } from "sonner";
 import StatCard from "./Staff/StatCard";
 import AddEmployeeModal from "./Staff/AddEmployeeModal";
@@ -261,21 +261,21 @@ const TypeBadge = ({ type }) => {
     );
 };
 
-const Dropdown = ({ label, options, value, onChange }) => {
-    const [open, setOpen] = useState(false);
+const Dropdown = ({ label, options, value, onChange, icon: Icon, align = "left", isOpen, onToggle }) => {
     return (
         <div className="relative">
             <button
-                onClick={() => setOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer w-full"
+                onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                className="flex items-center justify-center lg:justify-between gap-2 px-2.5 lg:px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer w-full min-w-[42px]"
             >
-                <span className="flex-1 text-left">{value}</span>
-                <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
+                {Icon && <Icon size={14} className="text-slate-500 lg:text-slate-400 shrink-0" />}
+                <span className="flex-1 text-left hidden lg:block truncate">{value}</span>
+                <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 hidden lg:block ${isOpen ? "rotate-180" : ""}`} />
             </button>
-            {open && (
-                <div className="absolute top-full mt-1 left-0 bg-white border border-slate-200 rounded-xl shadow-lg z-[60] py-1 min-w-[140px]">
+            {isOpen && (
+                <div className={`absolute top-full mt-1 ${align === "right" ? "right-0" : "left-0"} bg-white border border-slate-200 rounded-xl shadow-lg z-[60] py-1 min-w-[140px]`}>
                     {options.map(opt => (
-                        <button key={opt} onClick={() => { onChange(opt); setOpen(false); }}
+                        <button key={opt} onClick={() => { onChange(opt); onToggle(); }}
                             className={`w-full text-left px-3.5 py-2.5 text-[12px] transition-colors border-none cursor-pointer
                                 ${value === opt ? "bg-blue-50 text-blue-700 font-semibold" : "bg-white text-slate-700 hover:bg-slate-50"}`}>
                             {opt}
@@ -329,32 +329,33 @@ const UsersIcon = ({ size, className, style }) => (
 const EmployeeCard = ({ emp, onView, onDeactivate }) => {
     return (
         <div
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3.5 cursor-pointer active:bg-slate-50 transition-colors"
+            className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-4 cursor-pointer active:bg-slate-50 transition-colors"
             onClick={() => onView(emp)}
         >
-            <div className="flex items-center gap-3">
-                <Avatar initials={emp.avatar} color={emp.color} size={42} />
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                            <div className="text-[14px] font-bold text-slate-900 leading-tight truncate">{emp.name}</div>
-                            <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                                <Hash size={9} />{emp.id}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                            <StatusBadge status={emp.status} />
-                            <RowMenu emp={emp} onView={() => onView(emp)} onDeactivate={() => emp.onDeactivate(emp.id)} onReactivate={() => emp.onReactivate(emp.id)} onResetPassword={() => emp.onResetPassword(emp)} />
+            <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Avatar initials={emp.avatar} color={emp.color} size={40} />
+                    <div className="min-w-0">
+                        <div className="text-[15px] font-bold text-slate-900 leading-tight truncate">{emp.name}</div>
+                        <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                            <Hash size={9} />{emp.id}
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <TypeBadge type={emp.type} />
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">{emp.position}</span>
-                    </div>
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
-                        <span className="truncate">{emp.email}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{emp.contact}</div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                    <StatusBadge status={emp.status} />
+                    <RowMenu emp={emp} onView={() => onView(emp)} onDeactivate={() => emp.onDeactivate(emp.id)} onReactivate={() => emp.onReactivate(emp.id)} onResetPassword={() => emp.onResetPassword(emp)} />
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <TypeBadge type={emp.type} />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">{emp.position}</span>
+                </div>
+                <div className="space-y-1">
+                    <div className="text-[12px] text-slate-600 font-medium truncate">{emp.email}</div>
+                    <div className="text-[12px] text-slate-400 font-semibold">{emp.contact}</div>
                 </div>
             </div>
         </div>
@@ -374,6 +375,13 @@ const AdStaff = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingEmp, setEditingEmp] = useState(null);
     const [selected, setSelected] = useState(null);
+    const [openDropdown, setOpenDropdown] = useState(null); // 'type', 'status', 'sort'
+
+    useEffect(() => {
+        const handleClose = () => setOpenDropdown(null);
+        window.addEventListener("click", handleClose);
+        return () => window.removeEventListener("click", handleClose);
+    }, []);
 
     const readErrorMessage = (error, fallback = "Request failed") =>
         error?.response?.data?.message || error?.message || fallback;
@@ -660,19 +668,6 @@ const AdStaff = () => {
     return (
         <div className="font-inter min-h-screen overflow-x-hidden">
             <div className="px-3 sm:px-6 lg:px-4 py-2">
-                <div className="flex items-center justify-between gap-3 mb-5">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900">Staff Management</h1>
-                        <p className="text-[11px] sm:text-[13px] text-slate-500 mt-0.5">Manage employee accounts, roles, and system access.</p>
-                    </div>
-                    <button
-                        onClick={() => { setEditingEmp(null); setShowModal(true); }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all shadow-md active:scale-95 shrink-0"
-                    >
-                        <Plus size={15} />
-                        <span className="hidden xs:inline sm:inline">Add Employee</span>
-                    </button>
-                </div>
                 {apiError && (
                     <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] font-medium text-red-700">
                         {apiError}
@@ -683,27 +678,48 @@ const AdStaff = () => {
                         <StatCard key={i} {...s} />
                     ))}
                 </div>
-                <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3 mb-4 shadow-sm relative z-10">
+                <div className="px-1 py-3 mb-1 relative z-10">
                     <div className="flex flex-col lg:flex-row items-center gap-3">
-                        <div className="relative flex-1 w-full">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Search by name or ID..."
-                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[12px] text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
-                            />
+                        <div className="flex items-center gap-2 w-full lg:flex-1">
+                            <div className="relative flex-1">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder="Search by name or ID"
+                                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-[12px] text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
+                                />
+                            </div>
+                            <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+                                <Dropdown options={EMP_TYPES} value={typeFilter} onChange={setTypeFilter} icon={Filter} isOpen={openDropdown === 'type'} onToggle={() => setOpenDropdown(prev => prev === 'type' ? null : 'type')} />
+                                <Dropdown options={STATUSES} value={statusFilter} onChange={setStatusFilter} icon={Activity} isOpen={openDropdown === 'status'} onToggle={() => setOpenDropdown(prev => prev === 'status' ? null : 'status')} />
+                                <Dropdown options={SORT_OPTS} value={sortBy} onChange={setSortBy} icon={ArrowDownUp} align="right" isOpen={openDropdown === 'sort'} onToggle={() => setOpenDropdown(prev => prev === 'sort' ? null : 'sort')} />
+                                <button
+                                    onClick={() => { setEditingEmp(null); setShowModal(true); }}
+                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-md border-none cursor-pointer active:scale-95 shrink-0"
+                                    title="Add Employee"
+                                >
+                                    <Plus size={18} />
+                                </button>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 xs:grid-cols-3 sm:flex items-center gap-2 w-full lg:w-auto">
-                            <div className="w-full sm:w-[130px]">
-                                <Dropdown label="Type" options={EMP_TYPES} value={typeFilter} onChange={setTypeFilter} />
+                        <div className="hidden lg:flex items-center gap-2 w-auto">
+                            <div className="w-[130px]">
+                                <Dropdown label="Type" options={EMP_TYPES} value={typeFilter} onChange={setTypeFilter} isOpen={openDropdown === 'type-pc'} onToggle={() => setOpenDropdown(prev => prev === 'type-pc' ? null : 'type-pc')} />
                             </div>
-                            <div className="w-full sm:w-[130px]">
-                                <Dropdown label="Status" options={STATUSES} value={statusFilter} onChange={setStatusFilter} />
+                            <div className="w-[130px]">
+                                <Dropdown label="Status" options={STATUSES} value={statusFilter} onChange={setStatusFilter} isOpen={openDropdown === 'status-pc'} onToggle={() => setOpenDropdown(prev => prev === 'status-pc' ? null : 'status-pc')} />
                             </div>
-                            <div className="w-full sm:w-[130px]">
-                                <Dropdown label="Sort" options={SORT_OPTS} value={sortBy} onChange={setSortBy} />
+                            <div className="w-[130px]">
+                                <Dropdown label="Sort" options={SORT_OPTS} value={sortBy} onChange={setSortBy} isOpen={openDropdown === 'sort-pc'} onToggle={() => setOpenDropdown(prev => prev === 'sort-pc' ? null : 'sort-pc')} />
                             </div>
+                            <button
+                                onClick={() => { setEditingEmp(null); setShowModal(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl border-none cursor-pointer transition-all shadow-md active:scale-95 shrink-0 ml-1"
+                            >
+                                <Plus size={15} />
+                                <span>Add Employee</span>
+                            </button>
                         </div>
                     </div>
                 </div>

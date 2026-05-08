@@ -93,19 +93,19 @@ const MonoTag = ({ children, className = '' }) => (
 
 const Section = ({ icon, title, badge, children }) => (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-slate-50">
             <span className="text-slate-500">{icon}</span>
-            <span className="text-[13px] font-bold text-slate-800">{title}</span>
+            <span className="text-[12px] sm:text-[13px] font-bold text-slate-800">{title}</span>
             {badge && <span className="ml-auto">{badge}</span>}
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-3 sm:p-5">{children}</div>
     </div>
 );
 
 const Field = ({ label, children }) => (
-    <div className="flex items-start py-2.5 border-b border-slate-50 last:border-0">
-        <span className="w-28 shrink-0 text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-0.5">{label}</span>
-        <span className="flex-1 text-[13px] font-medium text-slate-800 leading-snug">{children}</span>
+    <div className="flex flex-col sm:flex-row items-start py-2 sm:py-2.5 border-b border-slate-50 last:border-0 gap-0.5 sm:gap-0">
+        <span className="w-full sm:w-28 shrink-0 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-0 sm:pt-0.5">{label}</span>
+        <span className="flex-1 text-[12px] sm:text-[13px] font-medium text-slate-800 leading-snug">{children}</span>
     </div>
 );
 
@@ -499,7 +499,7 @@ export default function OrderRecordDetail({
 
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm relative">
                 <div className={`h-1 ${headerConfig.accentBar}`} />
-                <div className="pt-5 px-6 pb-5">
+                <div className="pt-3 sm:pt-5 px-4 sm:px-6 pb-4 sm:pb-5">
                     <div className="flex items-center gap-2 flex-wrap mb-3.5">
                         <MonoTag>{record?.displayId}</MonoTag>
                         <Pill className={headerConfig.statusPillClass}>
@@ -517,7 +517,7 @@ export default function OrderRecordDetail({
                         </Pill>
                     </div>
 
-                    <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
+                    <h1 className="text-[18px] sm:text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
                         {record?.headline}
                     </h1>
                     <p className="text-xs text-slate-400 font-medium mb-4">

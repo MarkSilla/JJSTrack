@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft,
     ChevronRight,
@@ -10,7 +10,8 @@ import {
     Scissors,
     Briefcase,
     Plus,
-    X
+    X,
+    Package
 } from 'lucide-react';
 import BookingModal from './Bookingforms.jsx';
 import { bookingApi } from '../../services/bookingApi.js';
@@ -98,7 +99,13 @@ const BookingDetailsModal = ({ booking, onClose }) => {
                 </div>
 
                 <div className="shrink-0 px-6 py-4 border-t border-gray-100">
-                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer" onClick={onClose}>
+                    <button
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors shadow-sm cursor-pointer"
+                        onClick={() => {
+                            onClose();
+                            window.location.href = `/admin/orders/${booking.id}`;
+                        }}
+                    >
                         View Details
                     </button>
                 </div>
@@ -109,6 +116,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
 
 const AdAppointment = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const [showBooking, setShowBooking] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showSchedule, setShowSchedule] = useState(false);
@@ -154,36 +162,36 @@ const AdAppointment = () => {
     };
 
     const fetchBookings = useCallback(async (silent = false) => {
-            try {
-                if (!silent) {
-                    setLoading(true);
-                    setError(null);
-                }
-                const response = await bookingApi.getAllBookings();
-                const mappedAppointments = response.bookings?.map(booking => ({
-                    id: booking._id,
-                    date: booking.pickupDate
-                        ? booking.pickupDate.substring(0, 10)
-                        : new Date(booking.createdAt).toISOString().split('T')[0],
-                    time: getPickupSlotDisplay(booking.pickupSlot, '09:00 AM'),
-                    customer: booking.contact?.fullName || 'Unknown Customer',
-                    service: booking.bookingType === 'repair' ? getRepairDisplayLabel(booking) : booking.service,
-                    type: booking.bookingType === 'organizational' ? 'org' : booking.bookingType,
-                    status: mapStatus(booking.status),
-                    staff: booking.assignedTailor || 'Unassigned',
-                })) || [];
-                setAppointments(mappedAppointments);
-            } catch (err) {
-                console.error('Failed to fetch bookings:', err);
-                if (!silent) {
-                    setError('Failed to load appointments');
-                    setAppointments([]);
-                }
-            } finally {
-                if (!silent) {
-                    setLoading(false);
-                }
+        try {
+            if (!silent) {
+                setLoading(true);
+                setError(null);
             }
+            const response = await bookingApi.getAllBookings();
+            const mappedAppointments = response.bookings?.map(booking => ({
+                id: booking._id,
+                date: booking.pickupDate
+                    ? booking.pickupDate.substring(0, 10)
+                    : new Date(booking.createdAt).toISOString().split('T')[0],
+                time: getPickupSlotDisplay(booking.pickupSlot, '09:00 AM'),
+                customer: booking.contact?.fullName || 'Unknown Customer',
+                service: booking.bookingType === 'repair' ? getRepairDisplayLabel(booking) : booking.service,
+                type: booking.bookingType === 'organizational' ? 'org' : booking.bookingType,
+                status: mapStatus(booking.status),
+                staff: booking.assignedTailor || 'Unassigned',
+            })) || [];
+            setAppointments(mappedAppointments);
+        } catch (err) {
+            console.error('Failed to fetch bookings:', err);
+            if (!silent) {
+                setError('Failed to load appointments');
+                setAppointments([]);
+            }
+        } finally {
+            if (!silent) {
+                setLoading(false);
+            }
+        }
     }, []);
 
     useEffect(() => {
@@ -228,7 +236,6 @@ const AdAppointment = () => {
         return [...types];
     }, [selectedAppointments]);
 
-    // Auto-reset filter if current active type no longer exists on the selected date
     useEffect(() => {
         if (activeFilter !== 'all' && !typesOnSelectedDate.includes(activeFilter)) {
             setActiveFilter('all');
@@ -261,54 +268,72 @@ const AdAppointment = () => {
             const activeTypes = Object.keys(marks).sort();
             const totalCount = Object.values(marks).reduce((s, n) => s + n, 0);
 
+            const countStatus =
+                totalCount >= 7 ? 'full' :
+                    totalCount >= 4 ? 'near-full' :
+                        totalCount >= 1 ? 'available' : 'none';
+
             cells.push(
                 <div
                     key={d}
                     onClick={() => handleDayClick(dateStr)}
                     className={`
-                        relative transition-all duration-200 border rounded-xl flex flex-col
-                        aspect-square sm:aspect-auto sm:min-h-[90px]
-                        p-1.5 sm:p-2.5
+                        relative transition-all duration-300 border rounded-2xl flex flex-col
+                        aspect-square sm:aspect-auto sm:min-h-[100px]
+                        p-2 sm:p-3 cursor-pointer group
                         ${isSelected
-                            ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-md cursor-pointer'
-                            : totalCount >= 8
-                                ? 'bg-red-50 border-red-200 hover:shadow-md cursor-pointer'
-                                : totalCount >= 5
-                                    ? 'bg-yellow-50 border-yellow-200 hover:shadow-md cursor-pointer'
-                                    : isToday
-                                        ? 'bg-blue-50 border-blue-200 hover:shadow-md cursor-pointer'
-                                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 hover:shadow-sm cursor-pointer'
+                            ? 'bg-green-600/70 border-green-600 shadow-xl z-10 -translate-y-0.5'
+                            : countStatus === 'full'
+                                ? 'bg-red-50/50 border-red-100 hover:border-red-300 hover:shadow-md'
+                                : countStatus === 'near-full'
+                                    ? 'bg-amber-50/50 border-amber-100 hover:border-amber-300 hover:shadow-md'
+                                    : countStatus === 'available'
+                                        ? 'bg-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-md'
+                                        : isToday
+                                            ? 'bg-slate-100 border-slate-200 hover:shadow-md'
+                                            : 'bg-white border-slate-100 hover:border-blue-200 hover:bg-slate-50/50 hover:shadow-sm'
                         }
                     `}
                 >
                     <div className={`
-                        w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full font-bold shrink-0 text-[11px] sm:text-sm
-                        ${isSelected ? 'bg-blue-600 text-white shadow-sm' : totalCount >= 8 ? 'bg-red-500 text-white shadow-sm' : totalCount >= 5 ? 'bg-yellow-400 text-gray-800 shadow-sm' : isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700'}
+                        w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-black shrink-0 text-[11px] sm:text-[13px] transition-all duration-300
+                        ${isSelected
+                            ? 'bg-white/20 text-white backdrop-blur-sm'
+                            : countStatus === 'full'
+                                ? 'bg-red-500 text-white shadow-sm ring-4 ring-red-50'
+                                : countStatus === 'near-full'
+                                    ? 'bg-amber-400 text-amber-900 shadow-sm ring-4 ring-amber-50'
+                                    : countStatus === 'available'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                                        : isToday
+                                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
+                                            : 'text-slate-600 group-hover:text-blue-600'
+                        }
                     `}>
                         {d}
                     </div>
 
-                    <div className="mt-auto">
+                    <div className="mt-auto pt-2">
                         {activeTypes.length > 0 && (
-                            <>
-                                <div className="hidden sm:flex flex-col gap-1 w-full mt-1">
-                                    {activeTypes.map(type => (
-                                        <div key={type} className="flex items-center gap-1.5 w-full">
-                                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TYPE_CONFIG[type].hex }} />
-                                            <span className="text-[9px] font-bold uppercase tracking-wider truncate" style={{ color: TYPE_CONFIG[type].hex }}>
-                                                {TYPE_CONFIG[type].label}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex sm:hidden gap-0.5 mt-1 flex-wrap">
-                                    {activeTypes.map(type => (
-                                        <div key={type} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TYPE_CONFIG[type].hex }} />
-                                    ))}
-                                </div>
-                            </>
+                            <div className="flex gap-1 flex-wrap">
+                                {activeTypes.map(type => (
+                                    <div
+                                        key={type}
+                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-white"
+                                        style={{ backgroundColor: isSelected ? '#fff' : TYPE_CONFIG[type].hex }}
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
+
+                    {totalCount > 0 && !isSelected && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-slate-800 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md">
+                                {totalCount}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -316,16 +341,51 @@ const AdAppointment = () => {
         return cells;
     };
 
-    const selectedDateFormatted = new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const selectedDateFormatted = new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+
+    const stats = useMemo(() => {
+        const repairCount = appointments.filter(a => a.type === 'repair').length;
+        const jerseyCount = appointments.filter(a => a.type === 'jersey').length;
+        const orgCount = appointments.filter(a => a.type === 'org').length;
+        const totalCount = appointments.length;
+
+        return [
+            { label: 'Repair', value: repairCount, sub: 'Repair services', icon: Scissors, color: '#EF4444', bg: '#FEF2F2' },
+            { label: 'Jersey', value: jerseyCount, sub: 'Jersey orders', icon: Briefcase, color: '#0400ff', bg: '#EEF2FF' },
+            { label: 'Organization', value: orgCount, sub: 'Company Order', icon: Calendar, color: '#F59E0B', bg: '#FFFBEB' },
+            { label: 'Overall Total', value: totalCount, sub: 'All appointments', icon: Package, color: '#2563EB', bg: '#EFF6FF' },
+        ];
+    }, [appointments]);
 
     return (
         <div className="font-inter min-h-screen bg-slate-50">
             <div className="px-4 sm:px-6 py-5 pb-24 sm:pb-10">
 
-                {/* KEY FIX: items-start so the right panel doesn't stretch to match calendar height */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
+                    {stats.map((stat, index) => (
+                        <div
+                            key={stat.label}
+                            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
+                            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
+                        >
+                            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: stat.color }} />
+                            <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
+                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: stat.bg }}>
+                                    <stat.icon size={13} color={stat.color} strokeWidth={2.5} className="sm:hidden" />
+                                    <stat.icon size={16} color={stat.color} strokeWidth={2.2} className="hidden sm:block" />
+                                </div>
+                                <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{stat.label}</span>
+                            </div>
+                            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
+                                {stat.value}
+                            </div>
+                            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{stat.sub}</div>
+                        </div>
+                    ))}
+                </div>
+
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 xl:items-start">
 
-                    {/* ── Calendar Panel ── */}
                     <div className="xl:col-span-2 bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-5 sm:mb-8 flex-wrap gap-3 sm:gap-4">
                             <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2 sm:gap-3 tracking-tight">
@@ -382,48 +442,13 @@ const AdAppointment = () => {
                             {renderCalendarCells()}
                         </div>
 
-                        <div className="flex flex-col gap-3 mt-5 sm:mt-8 p-3 sm:p-4 bg-gray-50/80 rounded-xl sm:rounded-2xl border border-gray-100">
-                            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-blue-600" />
-                                    <span className="text-[10px] sm:text-xs font-bold text-gray-600">Today</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                                    <span className="text-[10px] sm:text-xs font-bold text-gray-600">5-7 Due Dates</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                                    <span className="text-[10px] sm:text-xs font-bold text-gray-600">8+ Due Dates</span>
-                                </div>
-                            </div>
-                            <div className="border-t border-gray-200 pt-3">
-                                <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-                                    {Object.entries(TYPE_CONFIG).map(([key, conf]) => (
-                                        <div key={key} className="flex items-center gap-1.5">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: conf.hex }} />
-                                            <span className="text-[10px] sm:text-xs font-bold text-gray-600 uppercase tracking-widest">{conf.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
                     </div>
-
-                    {/* ── Schedule Panel ──
-                        sticky so it stays in view while scrolling the page,
-                        fixed height = viewport minus top offset,
-                        flex-col so header/filter are shrink-0 and list takes remaining space with overflow-y-auto
-                    */}
                     <div className={`
                         xl:block bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100
-                        flex flex-col
+                        flex flex-col h-full
                         ${showSchedule ? 'block' : 'hidden xl:flex'}
-
-
                     `}>
 
-                        {/* Header */}
                         <div className="shrink-0 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-7 pb-3">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
@@ -446,15 +471,14 @@ const AdAppointment = () => {
                             </div>
                         </div>
 
-                        {/* Filter navbar — only shows when 2+ types on this date */}
                         {typesOnSelectedDate.length > 1 && (
                             <div className="shrink-0 px-4 sm:px-6 lg:px-8 pb-3 border-b border-gray-100">
                                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                                     <button
                                         onClick={() => setActiveFilter('all')}
                                         className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider transition-all border-none cursor-pointer ${activeFilter === 'all'
-                                                ? 'bg-gray-800 text-white shadow-sm'
-                                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                            ? 'bg-gray-800 text-white shadow-sm'
+                                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                             }`}
                                     >
                                         All {selectedAppointments.length}
@@ -474,7 +498,6 @@ const AdAppointment = () => {
                                                     color: isActive ? '#fff' : conf.hex,
                                                 }}
                                             >
-                                                <TypeIcon size={11} />
                                                 {conf.label} {count}
                                             </button>
                                         );
@@ -483,39 +506,43 @@ const AdAppointment = () => {
                             </div>
                         )}
 
-                        {/* Scrollable list — takes all remaining height inside the panel */}
-                        <div className="overflow-y-auto p-4 sm:p-6 lg:p-8 pt-4 space-y-3 sm:space-y-4 max-h-[60vh]">
+                        <div className="overflow-y-auto p-3 sm:px-4 lg:px-6 pt-3 space-y-2 sm:space-y-2.5 max-h-[540px] custom-scrollbar">
                             {filteredAppointments.length > 0 ? (
-                                filteredAppointments.map(app => {
-                                    const TypeIcon = TYPE_CONFIG[app.type].icon;
-                                    const statusBadge = STATUS_CONFIG[app.status] || STATUS_CONFIG['pending'];
-                                    return (
-                                        <div
-                                            key={app.id}
-                                            onClick={() => setSelectedBooking(app)}
-                                            className="bg-[#F8FAFC] border border-gray-100 p-4 sm:p-5 rounded-2xl hover:border-blue-200 hover:shadow-md transition-all cursor-pointer active:bg-blue-50"
-                                        >
-                                            <div className="flex justify-between items-start mb-3">
-                                                <span className="text-xs font-bold text-gray-400 tracking-wider">{app.time}</span>
-                                                <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full tracking-wider ${statusBadge.color}`}>
-                                                    {app.status}
-                                                </span>
-                                            </div>
-                                            <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-800 mb-1.5 leading-snug">{app.customer}</h4>
-                                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-500 font-medium">
-                                                <div className="flex items-center gap-1.5">
-                                                    <TypeIcon style={{ color: TYPE_CONFIG[app.type].hex }} size={14} />
-                                                    <span className="truncate max-w-[100px] sm:max-w-[120px]">{app.service}</span>
+                                <>
+                                    {filteredAppointments.map(app => {
+                                        const statusBadge = STATUS_CONFIG[app.status] || STATUS_CONFIG['pending'];
+                                        return (
+                                            <div
+                                                key={app.id}
+                                                onClick={() => navigate(`/admin/orders/${app.id}`)}
+                                                className="bg-[#F8FAFC] border border-gray-100 p-2.5 sm:p-3.5 rounded-xl hover:border-blue-200 hover:shadow-md transition-all cursor-pointer active:bg-blue-50"
+                                            >
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <span className="text-xs font-bold text-gray-400 tracking-wider">{app.time}</span>
+                                                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full tracking-wider ${statusBadge.color}`}>
+                                                        {app.status}
+                                                    </span>
                                                 </div>
-                                                <span className="text-gray-300">|</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <User size={14} className="text-blue-400" />
-                                                    <span className="truncate">{app.staff}</span>
+                                                <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-800 mb-1.5 leading-snug">{app.customer}</h4>
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-500 font-medium">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_CONFIG[app.type].hex }} />
+                                                        <span className="truncate max-w-[100px] sm:max-w-[120px]">{app.service}</span>
+                                                    </div>
+                                                    <span className="text-gray-300">|</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="truncate">{app.staff}</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        );
+                                    })}
+                                    {filteredAppointments.length > 0 && filteredAppointments.length < 5 && (
+                                        <div className="py-10 rounded-2xl flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-slate-300 tracking-[0.2em]">Nothing here</span>
                                         </div>
-                                    );
-                                })
+                                    )}
+                                </>
                             ) : (
                                 <div className="flex flex-col items-center justify-center text-center py-10 sm:py-16 px-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                                     <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 text-gray-400">
@@ -525,6 +552,36 @@ const AdAppointment = () => {
                                     <p className="text-xs text-gray-400 mt-1.5 max-w-[180px]">No scheduled events for this date.</p>
                                 </div>
                             )}
+                        </div>
+                        <div className="shrink-0 px-4 py-3 sm:px-6 bg-slate-50 border-t border-gray-200 shadow-sm">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Service Types</h4>
+                                    <div className="space-y-2">
+                                        {Object.entries(TYPE_CONFIG).map(([key, conf]) => (
+                                            <div key={key} className="flex items-center gap-2.5 bg-white p-2 rounded-xl border border-slate-200/50 shadow-xs">
+                                                <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: conf.hex }} />
+                                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">{conf.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Workload & Status</h4>
+                                    <div className="space-y-2">
+                                        {[
+                                            { color: 'bg-blue-600', ring: 'ring-blue-50', label: '1-3 Low' },
+                                            { color: 'bg-amber-400', ring: 'ring-amber-50', label: '4-6 Med' },
+                                            { color: 'bg-red-500', ring: 'ring-red-50', label: '7+ Full' },
+                                        ].map((item) => (
+                                            <div key={item.label} className="flex items-center gap-2.5 bg-white p-2 rounded-xl border border-slate-200/50 shadow-xs">
+                                                <div className={`w-2 h-2 rounded-full shadow-sm ring-2 ${item.ring} ${item.color}`} />
+                                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">{item.label}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

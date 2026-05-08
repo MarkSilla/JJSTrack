@@ -238,22 +238,23 @@ function StockBar({ item }) {
 function StatCard({ label, value, sub, icon: Icon, accent, bgAccent }) {
   return (
     <div
-      className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+      className="bg-white rounded-2xl py-2 px-3 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
     >
       <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1.5 sm:mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-            <Icon size={16} color={accent} strokeWidth={2.2} />
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
+            <Icon size={14} color={accent} strokeWidth={2.2} className="sm:hidden" />
+            <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
           </div>
-          <span className="text-[12px] font-semibold text-gray-500">{label}</span>
+          <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
         </div>
       </div>
-      <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+      <div className="mt-[-10px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-0 sm:pl-[45px] text-center sm:text-left">
         {value}
       </div>
-      <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+      <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
     </div>
   );
 }
@@ -279,67 +280,108 @@ function ActivityItem({ item }) {
   );
 }
 
+function FilterSelect({ value, options, onChange, isOpen, onToggle }) {
+  const selectedLabel = options.find(o => (typeof o === 'object' ? o.value : o) === value);
+  const displayLabel = typeof selectedLabel === 'object' ? selectedLabel.label : selectedLabel;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden transition-all shadow-sm">
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        className="w-full px-3 py-2 text-xs font-medium text-slate-700 flex justify-between items-center transition-colors hover:bg-slate-50"
+      >
+        <span className="truncate">{displayLabel || value}</span>
+        <ChevronDown size={12} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-slate-100 bg-slate-50 py-1 max-h-48 overflow-y-auto">
+          {options.map((opt) => {
+            const val = typeof opt === 'object' ? opt.value : opt;
+            const label = typeof opt === 'object' ? opt.label : opt;
+            const isSelected = value === val;
+
+            return (
+              <button
+                key={val}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(val);
+                }}
+                className={`w-full text-left px-4 py-2 text-xs font-medium transition-colors border-none ${isSelected ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
   const status = getStatus(item);
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="font-bold text-gray-900 text-sm">{item.name}</p>
-          <span className="inline-flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-            <Tag size={10} /> {item.category}
-          </span>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}
-            {getOldestBatch(item) ? ` • oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : ""}
-          </p>
+    <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm">
+      <div className="flex items-start justify-between gap-3 mb-2.5">
+        <div className="min-w-0">
+          <p className="font-bold text-gray-900 text-sm truncate">{item.name}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+              <Tag size={10} /> {item.category}
+            </span>
+            <span className="text-[10px] text-slate-400">• {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}</span>
+          </div>
         </div>
         <StatusBadge status={status} />
       </div>
 
-      <div className="mb-3">
-        <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+      <div className="mb-2.5 bg-slate-50/50 rounded-lg p-2 border border-slate-100/50">
+        <div className="flex justify-between text-[10px] text-slate-500 mb-1">
           <span>Stock Level</span>
-          <span className="font-semibold text-gray-800 tabular-nums">{formatQty(item.stock)}/{formatQty(getMaxStock(item))} {item.unit}</span>
+          <span className="font-bold text-gray-800 tabular-nums">{formatQty(item.stock)} <span className="font-normal text-slate-400">{item.unit}</span></span>
         </div>
         <StockBar item={item} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="rounded-lg bg-slate-50 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-slate-400">Avg Cost</p>
-          <p className="text-sm font-bold text-slate-800">{fmt(getAverageUnitCost(item))}</p>
+      <div className="grid grid-cols-2 gap-2 mb-2.5">
+        <div className="rounded-lg bg-slate-50/50 border border-slate-100/50 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-slate-400">Avg Cost</p>
+          <p className="text-xs font-bold text-slate-800">{fmt(getAverageUnitCost(item))}</p>
         </div>
-        <div className="rounded-lg bg-slate-50 px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wide text-slate-400">Current Value</p>
-          <p className="text-sm font-bold text-slate-800">{fmt(getCurrentValue(item))}</p>
+        <div className="rounded-lg bg-slate-50/50 border border-slate-100/50 px-2.5 py-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-slate-400">Value</p>
+          <p className="text-xs font-bold text-emerald-600">{fmt(getCurrentValue(item))}</p>
         </div>
       </div>
 
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-1.5">
         {!isArchived ? (
           <>
             <button onClick={() => onAdjust(item, "increase")}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
-              <ArrowUpCircle size={13} /> Receive Batch
+              className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-2 rounded-lg bg-blue-600 text-white shadow-sm transition-all active:scale-95">
+              <Plus size={12} /> Receive
             </button>
             <button onClick={() => onAdjust(item, "decrease")}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
-              <ArrowDownCircle size={13} /> Use FIFO
+              className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-2 rounded-lg bg-white border border-slate-200 text-slate-600 transition-all active:scale-95">
+              <ArrowDownCircle size={12} /> Use FIFO
             </button>
-            <button onClick={() => onUpdate(item)}
-              className="flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
-              <Pencil size={13} />
-            </button>
-            <button onClick={() => onArchive(item._id, false)}
-              className="flex items-center justify-center px-3 py-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Archive">
-              <Archive size={13} />
-            </button>
+            <div className="flex gap-1.5">
+              <button onClick={() => onUpdate(item)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-500 border border-slate-200" title="Edit">
+                <Pencil size={12} />
+              </button>
+              <button onClick={() => onArchive(item._id, false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 text-amber-600 border border-slate-200" title="Archive">
+                <Archive size={12} />
+              </button>
+            </div>
           </>
         ) : (
           <button onClick={() => onArchive(item._id, true)}
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
-            <RotateCcw size={13} /> Restore
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 transition-all active:scale-95">
+            <RotateCcw size={13} /> Restore Item
           </button>
         )}
       </div>
@@ -391,8 +433,7 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
   return (
     <>
       <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
-        <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+        <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-md rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="text-lg font-black text-gray-900">Update Item</h3>
@@ -659,8 +700,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
+      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-xl rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
 
         <div className="flex items-start justify-between mb-1">
           <div>
@@ -987,9 +1027,8 @@ function AddItemModal({ settings, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-        <div className="flex items-center justify-between mb-5">
+      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-md rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-10">
           <div>
             <h3 className="text-lg font-black text-gray-900">Add Item / Receive Batch</h3>
             <p className="text-xs text-slate-400">Create a new item or add a new FIFO batch to an existing one</p>
@@ -1290,9 +1329,8 @@ function InventorySystemContent() {
   const [catFilter, setCatFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
   const [sortBy, setSortBy] = useState('newest');
-  const [showSort, setShowSort] = useState(false);
-  const [showCategory, setShowCategory] = useState(false);
-  const [showStatus, setShowStatus] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null); // 'category', 'status', 'sort', 'actions'
+  const [activeFilterMenu, setActiveFilterMenu] = useState(null); // 'category', 'status', 'sort'
   const [settingsModal, setSettingsModal] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [adjModal, setAdjModal] = useState(null);
@@ -1371,6 +1409,9 @@ function InventorySystemContent() {
 
   useEffect(() => {
     void refreshInventoryPage({ showLoader: true });
+    const handleClickOutside = () => setActiveDropdown(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -1669,135 +1710,49 @@ function InventorySystemContent() {
     <div className="min-h-screen bg-slate-50 font-inter overflow-x-hidden">
       <div className="px-4 lg:px-6 py-2 top-0 z-100 overflow-visible">
         {/* STAT */}
-        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 mb-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-2 sm:gap-3 mb-3">
           {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent }, index) => (
             <div
               key={label}
-              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${
-                index === 4
-                  ? 'col-span-2 lg:col-span-1 order-last lg:order-none'
-                  : 'col-span-1 order-none'
-              }`}
+              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${index === 4
+                ? 'col-span-2 lg:col-span-3 xl:col-span-1 order-last xl:order-none'
+                : 'col-span-1 order-none'
+                }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
-              <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+              <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
               <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
                 <div className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`} style={{ background: bgAccent }}>
                   <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
                   <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                 </div>
-                <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
+                <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-none'}`}>{label}</span>
               </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
                 }`}>{value}</div>
-              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{sub}</div>
             </div>
           ))}
         </div>
 
+
         <div className="flex flex-col lg:flex-row items-center gap-3 mb-3">
-          {/* Search Input - Expands to fill space */}
-          <div className="relative flex-1 w-full lg:w-auto">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search items…"
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors" />
-          </div>
-
-          {/* Filters and Actions */}
-          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto">
-            {/* Category Filter */}
-            <div className="relative min-w-[110px] flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowCategory(v => !v)}
-                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
-              >
-                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <span className="truncate">{catFilter === "All" ? "Category" : catFilter}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? 'rotate-180' : ''}`} />
-              </button>
-              {showCategory && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[140px] max-h-48 overflow-y-auto">
-                  {CATEGORIES.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => {
-                        setCatFilter(c);
-                        setShowCategory(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${catFilter === c ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
+          <div className="flex items-center gap-2 w-full lg:flex-1">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search items..."
+                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors" />
             </div>
 
-            {/* Status Filter */}
-            <div className="relative min-w-[110px] flex-1 lg:flex-none">
+            {/* Actions Group - Standard Icons for Mobile, Labels for Desktop */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
-                onClick={() => setShowStatus(v => !v)}
-                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
-              >
-                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <span className="truncate">{statFilter === "All" ? "Status" : statFilter}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showStatus ? 'rotate-180' : ''}`} />
-              </button>
-              {showStatus && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[120px] max-h-48 overflow-y-auto">
-                  {STATUS_OPTIONS.map(s => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setStatFilter(s);
-                        setShowStatus(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${statFilter === s ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600'}`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Sort Filter */}
-            <div className="relative flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowSort(v => !v)}
-                className="flex items-center justify-between gap-1.5 px-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
-              >
-                <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
-                <span className="truncate">Sort</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? 'rotate-180 scale-110' : ''}`} />
-              </button>
-              {showSort && (
-                <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
-                  {SORT_INVENTORY_OPTIONS.map(o => (
-                    <button
-                      key={o.value}
-                      onClick={() => {
-                        setSortBy(o.value);
-                        setShowSort(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === o.value ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons Group */}
-            <div className="flex items-center gap-1.5 w-full lg:w-auto">
-              <button
-                onClick={() => void refreshInventoryPage()}
+                onClick={() => void refreshInventoryPage({ showLoader: true })}
                 className="w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all"
                 title="Sync Now"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={16} />
                 <span className="hidden lg:inline text-sm font-semibold">Sync</span>
               </button>
 
@@ -1806,57 +1761,96 @@ function InventorySystemContent() {
                 className="w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all"
                 title="Low Stock Settings"
               >
-                <Settings size={14} />
+                <Settings size={16} />
                 <span className="hidden lg:inline text-sm font-semibold">Settings</span>
               </button>
 
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'filters' ? null : 'filters'); }}
+                  className={`w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 transition-all rounded-xl ${activeDropdown === 'filters' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                  title="Filters"
+                >
+                  <Filter size={16} />
+                  <span className="hidden lg:inline text-sm font-semibold">Filter</span>
+                  <ChevronDown size={14} className={`hidden lg:block transition-transform ${activeDropdown === 'filters' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {activeDropdown === 'filters' && (
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Category</label>
+                        <FilterSelect
+                          value={catFilter}
+                          isOpen={activeFilterMenu === 'category'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'category' ? null : 'category')}
+                          onChange={(val) => { setCatFilter(val); setActiveFilterMenu(null); }}
+                          options={CATEGORIES}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Status</label>
+                        <FilterSelect
+                          value={statFilter}
+                          isOpen={activeFilterMenu === 'status'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'status' ? null : 'status')}
+                          onChange={(val) => { setStatFilter(val); setActiveFilterMenu(null); }}
+                          options={STATUS_OPTIONS}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Sort By</label>
+                        <FilterSelect
+                          value={sortBy}
+                          isOpen={activeFilterMenu === 'sort'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'sort' ? null : 'sort')}
+                          onChange={(val) => { setSortBy(val); setActiveFilterMenu(null); }}
+                          options={SORT_INVENTORY_OPTIONS}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setAddModal(true)}
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap shadow-sm"
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-all active:scale-95"
+                title="Add Stock"
               >
-                <Plus size={15} />
-                <span>Add Stock</span>
+                <Plus size={20} />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 mb-3">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Settings size={15} className="text-blue-600" />
-                Low Stock Thresholds
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                Alerts trigger based on the selected unit settings below.
-              </p>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-3 py-2 sm:px-4 sm:py-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <Settings size={14} className="text-blue-600 shrink-0" />
+              <div>
+                <p className="text-[11px] sm:text-sm font-bold text-gray-900 leading-none">Low Stock Thresholds</p>
+                <p className="hidden sm:block text-xs text-slate-400 mt-1">Alerts trigger based on units.</p>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {LOW_STOCK_SETTING_UNITS.map((unit) => (
-                <span
-                  key={unit.key}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold"
-                >
-                  {unit.label}
-                  <span className="text-blue-600">
-                    {getUnitMinStock(normalizedInventorySettings, unit.key)}
-                  </span>
+                <span key={unit.key} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-slate-600 text-[10px] sm:text-xs font-semibold">
+                  {unit.label} <span className="text-blue-600 font-bold">{getUnitMinStock(normalizedInventorySettings, unit.key)}</span>
                 </span>
               ))}
             </div>
           </div>
         </div>
         {!alertDismissed && alertCount > 0 && (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 rounded-xl p-4 mb-6">
-            <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
-            <p className="text-sm font-medium text-amber-800 flex-1">
-              <strong>{alertCount} item{alertCount > 1 ? "s" : ""}</strong> need{alertCount === 1 ? "s" : ""} attention —{" "}
-              {lowCount > 0 && `${lowCount} low stock`}{lowCount > 0 && outCount > 0 && ", "}
-              {outCount > 0 && `${outCount} out of stock`}.
+          <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 rounded-xl p-3 sm:p-4 mb-4">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+            <p className="text-[11px] sm:text-sm font-medium text-amber-800 flex-1">
+              <strong>{alertCount} item{alertCount > 1 ? "s" : ""}</strong> need attention — {lowCount > 0 && `${lowCount} low`}{lowCount > 0 && outCount > 0 && ", "}{outCount > 0 && `${outCount} out`}.
             </p>
-            <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 transition-colors flex-shrink-0">
-              <X size={15} />
+            <button onClick={() => setAlertDismissed(true)} className="text-amber-400 hover:text-amber-600 transition-colors shrink-0 p-1">
+              <X size={14} />
             </button>
           </div>
         )}

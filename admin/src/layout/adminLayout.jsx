@@ -66,6 +66,11 @@ const PAGE_META = [
         title: 'Reports',
         subtitle: 'Generate and view detailed business reports.'
     },
+    {
+        match: /^\/admin\/archives$/,
+        title: 'Archives',
+        subtitle: 'Manage and restore deleted or old records.'
+    },
 ]
 
 const DEFAULT_PAGE_META = {
@@ -93,7 +98,7 @@ const AdminLayout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="min-h-screen bg-gray-50 flex overflow-hidden">
             <HomeSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
@@ -101,14 +106,14 @@ const AdminLayout = () => {
                 setIsMobileExpanded={setIsMobileExpanded}
             />
 
-            <div className={`flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`flex-1 min-w-0 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
                     <AdminNav
                         onToggleSidebar={handleBurgerClick}
                         pageTitle={pageMeta.title}
                         pageSubtitle={pageMeta.subtitle}
                     />
-                    <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-4">
+                    <main className="flex-1 min-w-0 w-full overflow-y-auto p-0 pt-2 md:p-3 lg:p-1">
                         <Outlet />
                     </main>
                 </div>

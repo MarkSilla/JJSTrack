@@ -303,7 +303,24 @@ export default function AdOrder() {
         else if (filterStatus === 'For Approval') result = result.filter(o => getDerivedStatus(o) === 'For Approval');
         else if (filterStatus === 'Completed') result = result.filter(o => getDerivedStatus(o) === 'Completed');
         else if (filterStatus === 'Cancelled') result = result.filter(o => getDerivedStatus(o) === 'Cancelled');
-        else if (filterStatus === 'All') result = result.filter(o => getDerivedStatus(o) !== 'Cancelled');
+        else if (filterStatus === 'Pending') result = result.filter(o => getDerivedStatus(o) === 'Pending');
+        else if (filterStatus === 'All') result = result.filter(o => !['Cancelled', 'Released'].includes(getDerivedStatus(o)));
+
+        if (sortOption === 'date-today-appointment') {
+            const todayStr = new Date().toDateString();
+            result = result.filter(o => {
+                const dropStep = Array.isArray(o.steps)
+                    ? o.steps.find(s => String(s.label || s.step || "").toLowerCase().includes("drop") && s.date)
+                    : null;
+                return dropStep && new Date(dropStep.date).toDateString() === todayStr;
+            });
+        } else if (sortOption === 'date-today-due') {
+            const todayStr = new Date().toDateString();
+            result = result.filter(o => {
+                const dueDate = o.invoice?.dueDate || o.estimatedCompletion;
+                return dueDate && new Date(dueDate).toDateString() === todayStr;
+            });
+        }
 
         if (serviceTypeFilter !== 'all') {
             result = result.filter(o => getServiceTypeKey(o) === serviceTypeFilter);
@@ -317,11 +334,11 @@ export default function AdOrder() {
     }, [searchQuery, filterStatus, orders, serviceTypeFilter, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'For Approval': 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
+        const c = { All: 0, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
         orders.forEach(o => {
             const s = getDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
-            if (s !== 'Cancelled') c.All++;
+            if (s !== 'Cancelled' && s !== 'Released') c.All++;
         });
         return c;
     }, [orders]);

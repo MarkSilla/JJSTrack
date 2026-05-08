@@ -38,23 +38,25 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 
     return (
         <div
-            className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)' }}
         >
-            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: palette.accent }} />
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: palette.bgAccent }}>
-                        <Icon size={16} color={palette.accent} strokeWidth={2.2} />
+            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: palette.accent }} />
+            <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: palette.bgAccent }}>
+                        <Icon size={13} color={palette.accent} strokeWidth={2.5} className="sm:hidden" />
+                        <Icon size={16} color={palette.accent} strokeWidth={2.2} className="hidden sm:block" />
                     </div>
-                    <span className="text-[12px] font-semibold text-gray-500">{label}</span>
+                    <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
                 </div>
             </div>
-            <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">{value}</div>
-            <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">{value}</div>
+            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
         </div>
     );
 }
+
 
 function StatusBadge({ status }) {
     if (status === 'Cancelled') {
@@ -260,7 +262,7 @@ export default function ArchivedItems() {
 
     return (
         <div className="font-[inter] flex flex-col overflow-x-hidden">
-            <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4 border-b border-slate-200 shadow-sm space-y-4">
+            <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     <StatCard icon={FolderArchive} label="Total Archived" value={archivedItems.length} sub="historical records" color="amber" />
                     <StatCard icon={CheckCircle2} label="Released" value={releasedCount} sub="archived releases" color="blue" />
@@ -288,20 +290,10 @@ export default function ArchivedItems() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[11px] sm:text-xs font-bold text-gray-700 uppercase tracking-tight">Archived Records</span>
-                                    <span className="bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200">
-                                        {filteredItems.length} shown
-                                    </span>
                                 </div>
-                                <button
-                                    onClick={handleRefresh}
-                                    disabled={isRefreshing}
-                                    className="sm:hidden flex items-center justify-center w-8 h-8 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg transition-all cursor-pointer border-none shadow-sm"
-                                >
-                                    <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-                                </button>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
                                     <input
@@ -309,24 +301,24 @@ export default function ArchivedItems() {
                                         placeholder="Search ID, customer, service..."
                                         value={searchQuery}
                                         onChange={(event) => setSearchQuery(event.target.value)}
-                                        className="bg-white border border-slate-200 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/5 rounded-xl py-2.5 sm:py-1.5 pl-10 sm:pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full"
+                                        className="bg-white border border-slate-200 focus:border-amber-300 focus:ring-4 focus:ring-amber-500/5 rounded-xl py-2.5 sm:py-1.5 pl-10 sm:pl-9 pr-3 text-xs font-medium text-gray-700 placeholder:text-gray-400 outline-none transition-all w-full h-[38px] sm:h-auto"
                                     />
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <div className="relative flex-1 sm:flex-none">
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className="relative">
                                         <button
                                             onClick={() => setShowSort((value) => !value)}
-                                            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
+                                            className="flex items-center justify-center sm:justify-start gap-1.5 w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-all cursor-pointer"
                                         >
                                             <div className="flex items-center gap-1.5">
-                                                <SlidersHorizontal size={12} className="text-amber-500" />
-                                                <span className="truncate max-w-[100px]">{currentSortLabel}</span>
+                                                <SlidersHorizontal size={14} className="text-amber-500 sm:w-3 sm:h-3" />
+                                                <span className="hidden sm:inline truncate max-w-[100px]">{currentSortLabel}</span>
                                             </div>
-                                            <ChevronDown size={11} className={`text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
+                                            <ChevronDown size={11} className={`hidden sm:block text-gray-400 transition-transform ${showSort ? 'rotate-180' : ''}`} />
                                         </button>
                                         {showSort && (
-                                            <div className="absolute left-0 sm:right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48 sm:w-44">
+                                            <div className="absolute right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden w-48 sm:w-44">
                                                 {SORT_OPTIONS.map((option) => (
                                                     <button
                                                         key={option.value}
@@ -346,10 +338,10 @@ export default function ArchivedItems() {
                                     <button
                                         onClick={handleRefresh}
                                         disabled={isRefreshing}
-                                        className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-amber-200"
+                                        className="flex items-center justify-center gap-1.5 w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-semibold rounded-xl sm:rounded-lg transition-all cursor-pointer border-none shadow-sm shadow-amber-200"
                                     >
-                                        <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-                                        <span>Refresh</span>
+                                        <RefreshCw size={14} className={`${isRefreshing ? 'animate-spin' : ''} sm:w-3 sm:h-3`} />
+                                        <span className="hidden sm:inline">Refresh</span>
                                     </button>
                                 </div>
                             </div>

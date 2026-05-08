@@ -17,14 +17,15 @@ const NOTIFICATION_REFRESH_DEBOUNCE_MS = 200
 
 // ← DAGDAG ITO
 const PAGE_TITLES = {
-    '/admin/dashboard':   { title: 'Dashboard',      subtitle: 'Overview of your system' },
-    '/admin/appointment': { title: 'Appointments',   subtitle: 'Manage appointments' },
-    '/admin/orders':      { title: 'Orders',          subtitle: 'All customer orders' },
-    '/admin/released':    { title: 'Released Items',  subtitle: 'Released orders' },
-    '/admin/inventory':   { title: 'Inventory',       subtitle: 'Manage your stocks' },
-    '/admin/staff':       { title: 'Staff',            subtitle: 'Manage staff members' },
-    '/admin/report':      { title: 'Reports',          subtitle: 'Analytics & insights' },
-    '/admin/qr-scanner':  { title: 'QR Scanner',      subtitle: 'Scan QR codes' },
+    '/admin/dashboard': { title: 'Dashboard', subtitle: 'Overview of your system' },
+    '/admin/appointment': { title: 'Appointments', subtitle: 'Manage appointments' },
+    '/admin/orders': { title: 'Orders', subtitle: 'All customer orders' },
+    '/admin/released': { title: 'Released Items', subtitle: 'Released orders' },
+    '/admin/archives': { title: 'Archives', subtitle: 'Manage archives' },
+    '/admin/inventory': { title: 'Inventory', subtitle: 'Manage your stocks' },
+    '/admin/staff': { title: 'Staff', subtitle: 'Manage staff members' },
+    '/admin/report': { title: 'Reports', subtitle: 'Analytics & insights' },
+    '/admin/qr-scanner': { title: 'QR Scanner', subtitle: 'Scan QR codes' },
 }
 
 const formatNotificationTime = (createdAt) => {
@@ -429,7 +430,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
             className={`${isMobileViewport
                 ? 'fixed inset-x-3 top-20 bottom-3 z-[10001] flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'
                 : 'absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] sm:w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl'
-            } animate-in fade-in zoom-in duration-200`}
+                } animate-in fade-in zoom-in duration-200`}
         >
             <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100">
                 <div className="min-w-0">

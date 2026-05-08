@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
+  Activity,
   Archive,
   ArrowDownCircle,
   ArrowUpCircle,
@@ -163,18 +164,19 @@ function getUsageTarget(activity) {
 function StatCard({ label, value, sub, icon: Icon, accent, bgAccent }) {
   return (
     <div
-      className="bg-white rounded-2xl py-2.5 px-3 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+      className="bg-white rounded-2xl py-2 px-3 sm:py-2.5 sm:px-3 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
     >
       <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-          <Icon size={15} color={accent} strokeWidth={2.2} />
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
+          <Icon size={13} color={accent} strokeWidth={2.2} className="sm:hidden" />
+          <Icon size={15} color={accent} strokeWidth={2.2} className="hidden sm:block" />
         </div>
-        <span className="text-[11px] font-semibold text-gray-500">{label}</span>
+        <span className="text-[8px] sm:text-[11px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
       </div>
-      <div className="mt-[-4px] text-[14px] font-extrabold text-gray-900 leading-none tracking-tight pl-[40px]">{value}</div>
-      <div className="text-[10px] text-gray-400 mt-0.5 pl-[40px]">{sub}</div>
+      <div className="mt-[-4px] text-[12px] sm:text-[14px] font-extrabold text-gray-900 leading-none tracking-tight pl-0 sm:pl-[40px] text-center sm:text-left">{value}</div>
+      <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[40px]">{sub}</div>
     </div>
   )
 }
@@ -248,14 +250,54 @@ function MobileHistoryCard({ item, onView }) {
   )
 }
 
+function FilterSelect({ value, options, onChange, isOpen, onToggle }) {
+  const selectedLabel = options.find(o => (typeof o === 'object' ? o.value : o) === value);
+  const displayLabel = typeof selectedLabel === 'object' ? selectedLabel.label : selectedLabel;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden transition-all shadow-sm">
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        className="w-full px-3 py-2 text-xs font-medium text-slate-700 flex justify-between items-center transition-colors hover:bg-slate-50"
+      >
+        <span className="truncate">{displayLabel || value}</span>
+        <ChevronDown size={12} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="border-t border-slate-100 bg-slate-50 py-1 max-h-48 overflow-y-auto">
+          {options.map((opt) => {
+            const val = typeof opt === 'object' ? opt.value : opt;
+            const label = typeof opt === 'object' ? opt.label : opt;
+            const isSelected = value === val;
+            
+            return (
+              <button
+                key={val}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  onChange(val); 
+                }}
+                className={`w-full text-left px-4 py-2 text-xs font-medium transition-colors border-none ${isSelected ? 'text-blue-700 bg-blue-50 font-semibold' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900'}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DetailModal({ item, onClose }) {
   const { label, Icon, badge, soft } = getActionConfig(item.actionType)
   const batchBreakdown = Array.isArray(item.batchBreakdown) ? item.batchBreakdown : []
 
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl max-h-[92vh] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-[120] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center sm:p-4">
+      <div className="w-full h-full sm:h-auto sm:max-w-5xl sm:max-h-[92vh] bg-white sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-4 py-4 sm:px-5 sm:py-4 border-b border-slate-100 flex items-start justify-between gap-4 shrink-0">
           <div className="min-w-0">
             <div className="flex items-center gap-3 mb-2">
               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${soft}`}>
@@ -281,14 +323,14 @@ function DetailModal({ item, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-xl text-slate-500 hover:text-red-600 transition-colors flex items-center justify-center shrink-0"
             aria-label="Close movement details"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(92vh-81px)]">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-5 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -406,9 +448,8 @@ export default function AdInventoryHistory() {
   const [categoryFilter, setCategoryFilter] = useState("All")
   const [actionFilter, setActionFilter] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
-  const [showCategory, setShowCategory] = useState(false)
-  const [showAction, setShowAction] = useState(false)
-  const [showSort, setShowSort] = useState(false)
+  const [activeDropdown, setActiveDropdown] = useState(null) // 'category', 'action', 'sort'
+  const [activeFilterMenu, setActiveFilterMenu] = useState(null) // 'category', 'action', 'sort'
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -445,6 +486,10 @@ export default function AdInventoryHistory() {
 
   useEffect(() => {
     void refreshHistoryPage({ showLoader: true })
+
+    const handleClickOutside = () => setActiveDropdown(null)
+    window.addEventListener("click", handleClickOutside)
+    return () => window.removeEventListener("click", handleClickOutside)
   }, [])
 
   useEffect(() => {
@@ -628,142 +673,104 @@ export default function AdInventoryHistory() {
   return (
     <div className="min-h-screen bg-slate-50 font-inter overflow-x-hidden">
       <div className="px-4 lg:px-6 py-2 top-0 z-100 overflow-visible">
-        <div className="grid grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3 mb-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-2 sm:gap-3 mb-3">
           {statCards.map(({ icon: Icon, label, value, sub, accent, bgAccent }, index) => (
             <div
               key={label}
-              className={`bg-white rounded-2xl p-2.5 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${
-                index === 4 
-                  ? 'col-span-2 lg:col-span-1 order-last lg:order-none' 
-                  : 'col-span-1 order-none'
-              }`}
+              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${index === 4
+                ? 'col-span-2 lg:col-span-3 xl:col-span-1 order-last xl:order-none'
+                : 'col-span-1 order-none'
+                }`}
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
             >
-              <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
+              <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
               <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
                 <div className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`} style={{ background: bgAccent }}>
                   <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
                   <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
                 </div>
-                <span className={`text-[9px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-[45px] sm:max-w-none'}`}>{label}</span>
+                <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-none'}`}>{label}</span>
               </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[34px] sm:pl-[45px]'
+              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
                 }`}>{value}</div>
-              <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
+              <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{sub}</div>
             </div>
           ))}
         </div>
 
+
         <div className="flex flex-col lg:flex-row items-center gap-3 mb-3">
-          {/* Search Input - Expands to fill space */}
-          <div className="relative flex-1 w-full lg:w-auto">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search item, SKU, actor, or note..."
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
-            />
-          </div>
-
-          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto">
-            {/* Category Filter */}
-            <div className="relative min-w-[110px] flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowCategory((value) => !value)}
-                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
-              >
-                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <span className="truncate">{categoryFilter === "All" ? "Category" : categoryFilter}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? "rotate-180" : ""}`} />
-              </button>
-
-              {showCategory && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[150px] max-h-52 overflow-y-auto">
-                  {categoryOptions.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => {
-                        setCategoryFilter(category)
-                        setShowCategory(false)
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${categoryFilter === category ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                    >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-              )}
+          <div className="flex items-center gap-2 w-full lg:flex-1">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search item, SKU, actor, or note..."
+                className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
+              />
             </div>
 
-            {/* Action Filter */}
-            <div className="relative min-w-[110px] flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowAction((value) => !value)}
-                className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer"
-              >
-                <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <span className="truncate">{actionFilter === "All" ? "Action" : ACTION_OPTIONS.find((option) => option.value === actionFilter)?.label}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showAction ? "rotate-180" : ""}`} />
-              </button>
-
-              {showAction && (
-                <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[150px] max-h-52 overflow-y-auto">
-                  {ACTION_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setActionFilter(option.value)
-                        setShowAction(false)
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${actionFilter === option.value ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Sort Filter */}
-            <div className="relative flex-1 lg:flex-none">
-              <button
-                onClick={() => setShowSort((value) => !value)}
-                className="flex items-center justify-between gap-1.5 px-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer group"
-              >
-                <SlidersHorizontal size={13} className="text-blue-400 group-hover:scale-110 transition-transform duration-200" />
-                <span className="truncate">Sort</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform duration-200 ${showSort ? "rotate-180 scale-110" : ""}`} />
-              </button>
-
-              {showSort && (
-                <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-44 max-h-48 overflow-y-auto ring-1 ring-black/5">
-                  {SORT_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setSortBy(option.value)
-                        setShowSort(false)
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${sortBy === option.value ? "bg-blue-50 text-blue-600 font-semibold shadow-sm" : "text-slate-600 hover:text-slate-800"}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons Group */}
-            <div className="flex items-center gap-1.5 w-full lg:w-auto">
+            {/* Actions Group - Standard Icons for Mobile, Labels for Desktop */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => void refreshHistoryPage({ showLoader: true })}
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all whitespace-nowrap"
+                className="w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-xl transition-all"
+                title="Sync Now"
               >
-                <RefreshCw size={14} />
-                Sync Now
+                <RefreshCw size={16} />
+                <span className="hidden lg:inline text-sm font-semibold">Sync</span>
               </button>
+
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === 'filters' ? null : 'filters'); }}
+                  className={`w-10 h-10 lg:w-auto lg:px-4 flex items-center justify-center gap-2 border border-slate-200 transition-all rounded-xl ${activeDropdown === 'filters' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                  title="Filters"
+                >
+                  <Filter size={16} />
+                  <span className="hidden lg:inline text-sm font-semibold">Filter</span>
+                  <ChevronDown size={14} className={`hidden lg:block transition-transform ${activeDropdown === 'filters' ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {activeDropdown === 'filters' && (
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] p-4 w-64 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Category</label>
+                        <FilterSelect
+                          value={categoryFilter}
+                          isOpen={activeFilterMenu === 'category'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'category' ? null : 'category')}
+                          onChange={(val) => { setCategoryFilter(val); setActiveFilterMenu(null); }}
+                          options={categoryOptions}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Action</label>
+                        <FilterSelect
+                          value={actionFilter}
+                          isOpen={activeFilterMenu === 'action'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'action' ? null : 'action')}
+                          onChange={(val) => { setActionFilter(val); setActiveFilterMenu(null); }}
+                          options={ACTION_OPTIONS}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-widest">Sort By</label>
+                        <FilterSelect
+                          value={sortBy}
+                          isOpen={activeFilterMenu === 'sort'}
+                          onToggle={() => setActiveFilterMenu(activeFilterMenu === 'sort' ? null : 'sort')}
+                          onChange={(val) => { setSortBy(val); setActiveFilterMenu(null); }}
+                          options={SORT_OPTIONS}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
