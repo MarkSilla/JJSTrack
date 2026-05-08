@@ -68,7 +68,7 @@ export default function RBAC() {
                 style={{ backgroundImage: `url(${image.jjsb})` }}
             />
             <div className="absolute inset-0 z-10 bg-[#020617] opacity-80" />
-            <div className="relative z-20 w-full max-w-5xl bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[1rem] md:rounded-[2rem] p-4 md:p-16 shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000">
+            <div className="relative z-20 w-full max-w-6xl bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[1rem] p-6 md:p-10 shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000">
                 <header className="w-full mb-2 md:mb-10 flex flex-col items-center">
                     <div className="mb-2 md:mb-8 p-1 rounded-full bg-white/5 border border-white/10 shadow-inner">
                         <img src={image.JJS} alt="JJSTrack Logo" className="w-14 h-14 md:w-32 md:h-32 object-contain drop-shadow-lg" />
@@ -86,10 +86,10 @@ export default function RBAC() {
                     </div>
 
 
-                    <div className="flex flex-col md:flex-row items-stretch justify-center gap-3  md:gap-4 lg:gap-10 w-full max-w-5xl">
+                    <div className="flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-8 w-full max-w-5xl">
                         <button
                             onClick={() => navigate('/admin/login')}
-                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[1.25rem] md:rounded-[2.5rem] p-4 md:p-9 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
+                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[0.5rem] p-6 md:p-10 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
                         >
                             <div className="w-8 h-8 md:w-16 md:h-16 bg-[#000821]/5 text-[#000821] rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-6 shadow-sm group-hover:bg-[#000821] group-hover:text-white transition-colors duration-500">
                                 <Shield size={18} className="md:w-8 md:h-8" strokeWidth={1.5} />
@@ -104,7 +104,7 @@ export default function RBAC() {
                         </button>
                         <button
                             onClick={() => navigate('/staff/login')}
-                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[1.25rem] md:rounded-[2.5rem] p-4 md:p-9 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
+                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[0.5rem] p-6 md:p-10 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
                         >
                             <div className="w-8 h-8 md:w-16 md:h-16 bg-blue-50 text-blue-600 rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-6 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-500">
                                 <Users size={18} className="md:w-8 md:h-8" strokeWidth={1.5} />
@@ -121,14 +121,6 @@ export default function RBAC() {
                 </div>
             </div>
 
-            <div className="absolute bottom-14 md:bottom-24 w-full h-2 md:h-4 overflow-hidden pointer-events-none opacity-20 z-10 flex items-center">
-                <div className="w-[200%] flex-shrink-0 flex items-center">
-                    <img src={image.ruler} className="h-full w-auto object-contain" alt="" />
-                    <img src={image.ruler} className="h-full w-auto object-contain" alt="" />
-                    <img src={image.ruler} className="h-full w-auto object-contain" alt="" />
-                    <img src={image.ruler} className="h-full w-auto object-contain" alt="" />
-                </div>
-            </div>
 
             <footer className="absolute bottom-0 w-full py-3 md:py-8 px-4 md:px-12 flex flex-col md:flex-row items-center justify-between text-[11px] md:text-[13px] text-white/70 font-bold z-20 gap-2">
                 <div className="flex-1 hidden md:flex items-center gap-2">

@@ -72,7 +72,7 @@ function Login() {
 
     return (
         <div className="flex min-h-screen w-full font-inter bg-slate-50 overflow-hidden">
-            <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
+            <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-2 md:p-12 text-white relative overflow-hidden">
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     <img
                         src={image.Staffjjs}
@@ -111,13 +111,12 @@ function Login() {
                     <ArrowLeft size={16} />
                     Access Portal
                 </button>
-                <div className="w-full max-w-xs md:max-w-md">
+                <div className="w-full max-w-md px-4">
                     <div className="rounded-2xl md:rounded-3xl p-3 md:p-8 relative">
-                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+                        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-13 h-13" />
                         </div>
-
-                        <div className="text-start mt-6 md:mt-4 mb-6 md:mb-6">
+                        <div className="text-start mt-14 mb-8">
                             <h2 className="text-light text-2xl md:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
                             <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access your staff portal</p>
                         </div>

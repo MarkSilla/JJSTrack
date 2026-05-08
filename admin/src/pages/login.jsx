@@ -154,7 +154,7 @@ function Login() {
                             <img src={image.JJS} alt="Logo" className="w-30 h-30" />
                         </div>
 
-                        <div className="text-start mt-6 mb-5 xl:mb-10">
+                        <div className="text-start mt-14 mb-8 xl:mb-10">
                             <h2 className="text-black text-2xl lg:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
                             <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access the admin panel</p>
                         </div>
@@ -240,7 +240,7 @@ function Login() {
                         </form>
 
                         <div className="text-center mt-8 pt-6 border-t border-slate-800/50">
-                            <p className="text-slate-500 text-xs tracking-wider uppercase">Admin Panel</p>
+                            <p className="text-slate-500 text-xs tracking-wider uppercase">Admin Portal</p>
                         </div>
                     </div>
                 </div>

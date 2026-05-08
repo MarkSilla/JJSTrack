@@ -375,7 +375,8 @@ const AdStaff = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingEmp, setEditingEmp] = useState(null);
     const [selected, setSelected] = useState(null);
-    const [openDropdown, setOpenDropdown] = useState(null); // 'type', 'status', 'sort'
+    const [openDropdown, setOpenDropdown] = useState(null); // 'type', 'status', 'sort', 'mobile-filter'
+    const [openMobileSub, setOpenMobileSub] = useState(null); // 'type', 'status', 'sort'
 
     useEffect(() => {
         const handleClose = () => setOpenDropdown(null);
@@ -691,9 +692,101 @@ const AdStaff = () => {
                                 />
                             </div>
                             <div className="flex lg:hidden items-center gap-1.5 shrink-0">
-                                <Dropdown options={EMP_TYPES} value={typeFilter} onChange={setTypeFilter} icon={Filter} isOpen={openDropdown === 'type'} onToggle={() => setOpenDropdown(prev => prev === 'type' ? null : 'type')} />
-                                <Dropdown options={STATUSES} value={statusFilter} onChange={setStatusFilter} icon={Activity} isOpen={openDropdown === 'status'} onToggle={() => setOpenDropdown(prev => prev === 'status' ? null : 'status')} />
-                                <Dropdown options={SORT_OPTS} value={sortBy} onChange={setSortBy} icon={ArrowDownUp} align="right" isOpen={openDropdown === 'sort'} onToggle={() => setOpenDropdown(prev => prev === 'sort' ? null : 'sort')} />
+                                <div className="relative">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOpenDropdown(prev => prev === 'mobile-filter' ? null : 'mobile-filter');
+                                            setOpenMobileSub(null);
+                                        }}
+                                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border shadow-sm cursor-pointer
+                                            ${openDropdown === 'mobile-filter' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+                                    >
+                                        <Filter size={18} />
+                                    </button>
+
+                                    {openDropdown === 'mobile-filter' && (
+                                        <div 
+                                            className="absolute right-0 mt-2 w-[240px] bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200"
+                                            onClick={e => e.stopPropagation()}
+                                        >
+                                            {/* Employment Type */}
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Employment Type</label>
+                                                <div className="relative">
+                                                    <button 
+                                                        onClick={() => setOpenMobileSub(prev => prev === 'type' ? null : 'type')}
+                                                        className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] text-slate-600 font-medium hover:border-slate-300 transition-all"
+                                                    >
+                                                        <span className="truncate">{typeFilter}</span>
+                                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${openMobileSub === 'type' ? 'rotate-180' : ''}`} />
+                                                    </button>
+                                                    {openMobileSub === 'type' && (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-10 overflow-hidden py-1">
+                                                            {EMP_TYPES.map(opt => (
+                                                                <button key={opt} onClick={() => { setTypeFilter(opt); setOpenMobileSub(null); }}
+                                                                    className={`w-full text-left px-3.5 py-2 text-[12px] transition-colors
+                                                                        ${typeFilter === opt ? "bg-blue-50 text-blue-700 font-bold" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                                                                    {opt}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Account Status */}
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Account Status</label>
+                                                <div className="relative">
+                                                    <button 
+                                                        onClick={() => setOpenMobileSub(prev => prev === 'status' ? null : 'status')}
+                                                        className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] text-slate-600 font-medium hover:border-slate-300 transition-all"
+                                                    >
+                                                        <span className="truncate">{statusFilter}</span>
+                                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${openMobileSub === 'status' ? 'rotate-180' : ''}`} />
+                                                    </button>
+                                                    {openMobileSub === 'status' && (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-10 overflow-hidden py-1">
+                                                            {STATUSES.map(opt => (
+                                                                <button key={opt} onClick={() => { setStatusFilter(opt); setOpenMobileSub(null); }}
+                                                                    className={`w-full text-left px-3.5 py-2 text-[12px] transition-colors
+                                                                        ${statusFilter === opt ? "bg-blue-50 text-blue-700 font-bold" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                                                                    {opt}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Sort Order */}
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Sort Order</label>
+                                                <div className="relative">
+                                                    <button 
+                                                        onClick={() => setOpenMobileSub(prev => prev === 'sort' ? null : 'sort')}
+                                                        className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] text-slate-600 font-medium hover:border-slate-300 transition-all"
+                                                    >
+                                                        <span className="truncate">{sortBy}</span>
+                                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${openMobileSub === 'sort' ? 'rotate-180' : ''}`} />
+                                                    </button>
+                                                    {openMobileSub === 'sort' && (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-xl shadow-xl z-10 overflow-hidden py-1">
+                                                            {SORT_OPTS.map(opt => (
+                                                                <button key={opt} onClick={() => { setSortBy(opt); setOpenMobileSub(null); }}
+                                                                    className={`w-full text-left px-3.5 py-2 text-[12px] transition-colors
+                                                                        ${sortBy === opt ? "bg-blue-50 text-blue-700 font-bold" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                                                                    {opt}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={() => { setEditingEmp(null); setShowModal(true); }}
                                     className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-md border-none cursor-pointer active:scale-95 shrink-0"

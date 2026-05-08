@@ -144,13 +144,7 @@ export default function OrderList({
 
     return (
         <div className={`${containerWidth} flex flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-visible h-[calc(100vh-64px)]`}>
-            {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="p-4 sm:p-5 border-b border-gray-100 shrink-0 bg-white">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-black text-gray-900 tracking-tight">Orders</h2>
-                </div>
-
-                {/* Search + Filter */}
                 <div className="flex flex-row items-center gap-2 lg:gap-3 relative z-10">
                     <div className="relative flex-1">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -163,7 +157,6 @@ export default function OrderList({
                         />
                     </div>
 
-                    {/* Mobile Unified Filter Button */}
                     <div className="relative lg:hidden shrink-0">
                         <button
                             onClick={() => { setMobileFilterOpen(!mobileFilterOpen); setActiveMobileMenu(null); }}
