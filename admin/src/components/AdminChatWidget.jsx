@@ -5,9 +5,34 @@ import {
 } from "lucide-react";
 import img from "../assets/img";
 import { chatApi } from "../services/chatApi";
+import { staffApi } from "../services/staffApi";
 import { requestWebNotificationPermission, showWebNotification } from "../utils/webNotification";
 
 const CHAT_SUMMARY_REFRESH_MS = 5000;
+const CHAT_SIZE = "md:w-[960px] md:h-[680px]";
+const CHAT_POSITION = "md:bottom-6 md:right-8";
+
+const getMessageDayKey = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
+const getMessageDayLabel = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (targetStart.getTime() === todayStart.getTime()) return "Today";
+  if (targetStart.getTime() === yesterdayStart.getTime()) return "Yesterday";
+
+  return date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+};
 
 const fileToDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -31,13 +56,41 @@ const mapConversation = (conversation) => {
   const fullName = conversation?.user?.fullName || "Unknown User";
   return {
     id: conversation?.id || conversation?._id,
+    userId: conversation?.user?.id || conversation?.user?._id || "",
+    scope: conversation?.scope || "support",
     name: fullName,
     avatar: getInitials(fullName),
     unreadCount: Number(conversation?.unreadCount || 0),
     status: "online",
-    lastOrder: conversation?.user?.email || "",
+    subjectLabel: conversation?.subjectLabel || "",
+    subjectTitle: conversation?.subjectTitle || "",
+    assignedStaffName: conversation?.assignedStaffName || "",
+    assignedStaffRole: conversation?.assignedStaffRole || "",
+    lastOrder: conversation?.subjectLabel || conversation?.subjectTitle || "",
     lastMessagePreview: conversation?.lastMessagePreview || "",
     lastMessageAt: conversation?.lastMessageAt || null,
+  };
+};
+
+const mapStaffRosterItem = (staff, index = 0) => {
+  const fullName = staff?.fullName || `${staff?.firstName || ""} ${staff?.lastName || ""}`.replace(/\s+/g, " ").trim() || "Staff";
+  const employeeId = String(staff?.employeeId || `EMP-${String(index + 1).padStart(3, "0")}`).trim();
+  return {
+    id: `staff-${staff?._id || employeeId}`,
+    userId: staff?._id || "",
+    scope: "support",
+    name: fullName,
+    avatar: getInitials(fullName),
+    unreadCount: 0,
+    status: "online",
+    subjectLabel: employeeId ? `# ${employeeId}` : "",
+    subjectTitle: "",
+    assignedStaffName: "",
+    assignedStaffRole: staff?.position || "",
+    lastOrder: "",
+    lastMessagePreview: "No messages yet",
+    lastMessageAt: null,
+    conversationId: null,
   };
 };
 
@@ -45,7 +98,7 @@ const mapMessage = (message) => {
   const senderRole = String(message?.senderRole || "").toLowerCase();
   return {
     id: message?.id || message?._id || Date.now(),
-    sender: senderRole === "user" ? "client" : "admin",
+    sender: senderRole === "admin" ? "admin" : "client",
     senderId: message?.senderId || "",
     message: message?.message || "",
     timestamp: message?.timestamp || message?.createdAt || new Date().toISOString(),
@@ -55,6 +108,7 @@ const mapMessage = (message) => {
     isEdited: Boolean(message?.isEdited),
     isDeleted: Boolean(message?.isDeleted),
     senderRole,
+    seenBy: message?.seenBy || [],
   };
 };
 
@@ -136,8 +190,39 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
   );
 };
 
-const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, clientAvatar, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
-  const timeString = new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const ImageModal = ({ imageUrl, onClose }) => {
+  if (!imageUrl) return null;
+  return (
+    <div 
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <button 
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
+        type="button"
+      >
+        <X className="w-8 h-8" />
+      </button>
+      <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <img 
+          src={imageUrl} 
+          alt="Full view" 
+          className="max-w-full max-h-[90vh] object-contain rounded-lg"
+        />
+      </div>
+    </div>
+  );
+};
+
+const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, clientAvatar, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => {
+  const tooltipTimeString = new Date(timestamp).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const isAdmin = sender === "admin";
   const isOwn = isAdmin && String(senderId) === String(currentUserId);
   const isSystem = senderRole === "system";
@@ -160,19 +245,22 @@ const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, image
   };
 
   const bubbleClasses = isDeleted
-    ? (isAdmin ? "bg-stone-100/80 text-stone-500 border border-stone-200 rounded-br-sm" : "bg-white text-stone-500 border border-stone-200 rounded-bl-sm")
-    : (isAdmin ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-700 text-white border border-gray-800 rounded-bl-sm");
+    ? (isAdmin ? "bg-stone-50 text-stone-400 border border-stone-100 rounded-2xl rounded-br-none" : "bg-white text-stone-400 border border-stone-100 rounded-2xl rounded-bl-none")
+    : (isAdmin ? "bg-blue-600 text-white rounded-2xl rounded-br-none shadow-sm" : "bg-white text-stone-800 border border-stone-100 shadow-sm rounded-2xl rounded-bl-none");
 
   return (
-    <div className={`mb-4 flex w-full ${isAdmin ? "justify-end" : "justify-start"} items-end gap-1.5`}>
+    <div className={`mb-4 flex w-full ${isAdmin ? "justify-end" : "justify-start"} items-end gap-2.5`}>
       {!isAdmin && (
-        <div className="shrink-0 mb-[1px]">
-          <div className="w-6 h-6 rounded-full bg-stone-200 flex items-center justify-center text-[8px] font-bold text-stone-600 shadow-sm border border-stone-300/50 uppercase overflow-hidden">
+        <div className="shrink-0 mb-1">
+          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-600 shadow-sm border border-stone-200 uppercase overflow-hidden">
             {clientAvatar}
           </div>
         </div>
       )}
       <div className="relative group max-w-[80%]">
+        <div className={`pointer-events-none absolute -top-9 z-20 rounded-lg bg-stone-900 px-2.5 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 ${isAdmin ? "right-0" : "left-0"}`}>
+          {tooltipTimeString}
+        </div>
         <div className={`absolute -top-1 ${isAdmin ? "-left-6" : "-right-6"} flex items-start opacity-0 group-hover:opacity-100 transition-opacity z-10`}>
           <button
             onClick={() => setMenuOpen((v) => !v)}
@@ -194,23 +282,27 @@ const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, image
           )}
         </div>
 
-        <div className={`relative px-4 py-2.5 shadow-sm rounded-2xl ${bubbleClasses}`}>
+        <div className={`px-4 py-3 rounded-2xl text-[14px] leading-relaxed shadow-sm ${bubbleClasses}`}>
           {type === "image" && imageUrl && !isDeleted ? (
-            <div className="mb-2">
-              <img src={imageUrl} alt="Chat attachment" className="max-h-48 rounded-lg border border-black/10 object-cover" />
+            <div className="mb-2 cursor-zoom-in group/img relative" onClick={() => onImageClick(imageUrl)}>
+              <img src={imageUrl} alt="Chat attachment" className="max-h-60 rounded-xl border border-black/10 object-cover transition-opacity group-hover:opacity-90" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-black/40 rounded-full p-2 text-white backdrop-blur-sm">
+                  <Maximize2 className="w-5 h-5" />
+                </div>
+              </div>
             </div>
           ) : null}
 
           {editing ? (
             <InlineEditInput initialValue={message} onSave={handleSaveEdit} onCancel={() => setEditing(false)} />
           ) : (
-            message && <p className={`whitespace-pre-wrap text-sm leading-relaxed ${isDeleted ? "italic opacity-80" : ""}`}>{message}</p>
+            message && <p className={`whitespace-pre-wrap ${isDeleted ? "italic opacity-80" : ""}`}>{message}</p>
           )}
 
           {!editing && (
-            <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isAdmin && !isDeleted ? "text-blue-200" : "text-slate-400"}`}>
+            <div className={`mt-1.5 flex items-center justify-end gap-1 text-[10px] ${isAdmin && !isDeleted ? "text-blue-100" : "text-stone-400"}`}>
               {isEdited && !isDeleted && <span className="italic opacity-70 mr-1">edited</span>}
-              {timeString}
               {isAdmin && status === "read" && !isDeleted && <CheckCheck className="h-3 w-3" />}
               {isAdmin && status === "sent" && !isDeleted && <Check className="h-3 w-3" />}
             </div>
@@ -222,35 +314,38 @@ const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, image
 };
 
 const ClientListItem = ({ client, isActive, onClick }) => {
+  const metaLabel = client.scope === "order"
+    ? [client.assignedStaffRole, client.assignedStaffName].filter(Boolean).join(" • ")
+    : "Support conversation";
+
   return (
     <div
       onClick={onClick}
-      className={`flex cursor-pointer border-b border-stone-100 transition-all items-center gap-3 px-4 py-3 ${isActive ? 'bg-blue-200' : 'bg-stone-50 hover:bg-blue-100'
-        }`}
+      className={`flex cursor-pointer transition-all items-center gap-3 px-6 py-4 ${isActive ? "bg-blue-50/80" : "bg-white hover:bg-stone-50"}`}
     >
       <div className="relative shrink-0">
-        <div className={`flex items-center justify-center overflow-hidden rounded-full font-bold text-white shadow-sm uppercase h-10 w-10 text-sm bg-blue-600`}>
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full font-bold text-blue-600 shadow-sm uppercase bg-stone-100 text-sm border border-stone-200">
           {client.avatar}
         </div>
-        <div className="absolute bottom-0 right-0 rounded-full bg-green-500 h-3 w-3" />
+        <div className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-1">
-          <h4 className={`truncate text-sm font-semibold ${client.unreadCount > 0 ? "text-blue-900" : "text-stone-800"}`}>
+        <div className="mb-0.5 flex items-center justify-between gap-1">
+          <h4 className={`truncate text-[15px] font-bold ${client.unreadCount > 0 ? "text-stone-900" : "text-stone-800"}`}>
             {client.name}
           </h4>
           {client.lastMessageAt && (
-            <span className="shrink-0 text-[10px] text-stone-400">
-              {new Date(client.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            <span className="shrink-0 text-[11px] text-stone-400 font-medium">
+              {new Date(client.lastMessageAt).toLocaleDateString([], { month: "short", day: "numeric" })}
             </span>
           )}
         </div>
-        <div className="flex items-center justify-between gap-2 overflow-hidden">
-          <p className={`truncate text-[11px] ${client.unreadCount > 0 ? "font-medium text-blue-600" : "text-stone-500"}`}>
+        <div className="flex items-center justify-between gap-2">
+          <p className={`truncate text-[13px] ${client.unreadCount > 0 ? "font-semibold text-stone-600" : "text-stone-500"}`}>
             {client.lastMessagePreview || "No messages"}
           </p>
           {client.unreadCount > 0 && (
-            <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold text-white">
+            <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-blue-600 px-1 text-center text-[10px] font-bold text-white">
               {client.unreadCount}
             </span>
           )}
@@ -260,46 +355,78 @@ const ClientListItem = ({ client, isActive, onClick }) => {
   );
 };
 
-const ClientList = ({ clients, activeClientId, onSelect, searchQuery, setSearchQuery, filter, setFilter }) => {
+const ClientList = ({ sections, activeClientId, onSelect, searchQuery, setSearchQuery, scopeFilter, setScopeFilter, onClose, customerUnreadCount, staffUnreadCount }) => {
   return (
-    <div className={`flex w-full sm:w-[280px] shrink-0 flex-col border-r border-stone-100 bg-white transition-all duration-300 ${activeClientId ? 'hidden sm:flex' : 'flex'}`}>
-      <div className="shrink-0 border-b border-stone-100 px-4 py-4">
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+    <div className={`flex w-full shrink-0 flex-col bg-white border-r border-stone-100 md:w-[320px] ${activeClientId ? 'hidden md:flex' : 'flex'}`}>
+      <div className="shrink-0 px-6 py-6 border-b border-gray-50">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-[25px] font-black text-stone-900 font-inter  tracking-tight">Messages</h1>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 transition-colors" type="button">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="relative group mb-3">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-stone-400 group-focus-within:text-blue-500 transition-colors" />
+          </div>
           <input
             type="text"
-            placeholder="Search customer.."
-            className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-9 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Search messages..."
+            className="block w-full pl-11 pr-4 py-3 bg-stone-50 border-none rounded-2xl text-[14px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:bg-white focus:shadow-md transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
         <div className="flex gap-2">
-          {["all", "unread"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`flex-1 rounded-md py-1 text-[11px] font-semibold capitalize transition-colors ${filter === f ? "bg-blue-600 text-white shadow-sm" : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                }`}
-              type="button"
-            >
-              {f}
-            </button>
-          ))}
+          {["customer", "staff"].map((f) => {
+            const count = f === "customer" ? customerUnreadCount : staffUnreadCount;
+            return (
+              <button
+                key={f}
+                onClick={() => setScopeFilter(f)}
+                className={`flex-1 relative rounded-xl py-2 text-[11px] font-semibold capitalize transition-colors ${scopeFilter === f ? "bg-blue-600 text-white shadow-sm" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
+                type="button"
+              >
+                {f}
+                {count > 0 && (
+                  <span className={`absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border border-white px-1 text-[9px] font-bold text-white shadow-sm ${scopeFilter === f ? "bg-red-500" : "bg-blue-600"}`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto pt-2">
-        {clients.length > 0 ? (
-          clients.map((client) => (
-            <ClientListItem
-              key={client.id}
-              client={client}
-              isActive={activeClientId === client.id}
-              onClick={() => onSelect(client.id)}
-            />
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+        {sections.some((section) => section.items.length > 0) ? (
+          sections.map((section) => (
+            section.items.length > 0 ? (
+              <div key={section.id} className="py-2">
+                <div className="px-6 py-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+                  {section.label}
+                </div>
+                {section.items.map((client) => (
+                  <ClientListItem
+                    key={client.id}
+                    client={client}
+                    isActive={activeClientId === client.id}
+                    onClick={() => onSelect(client.id)}
+                  />
+                ))}
+              </div>
+            ) : null
           ))
         ) : (
-          <div className="p-6 text-center text-xs text-stone-400 font-medium">No conversations</div>
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <MessageCircle className="w-8 h-8 text-stone-200" />
+            </div>
+            <p className="text-sm font-medium text-stone-400">No conversations found</p>
+          </div>
         )}
       </div>
     </div>
@@ -391,16 +518,38 @@ const InputArea = ({ onSendMessage, disabled }) => {
   );
 };
 
-const ActiveConversation = ({ client, messages, onSendMessage, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
+const ActiveConversation = ({ client, messages, onSendMessage, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, isFullScreen, toggleFullScreen, onBack, onImageClick }) => {
   const endOfMessagesRef = useRef(null);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages.length, client?.id]);
 
+  const messageHistory = messages.reduce((items, message, index) => {
+    const previousMessage = messages[index - 1];
+    const currentDayKey = getMessageDayKey(message.timestamp);
+    const previousDayKey = previousMessage ? getMessageDayKey(previousMessage.timestamp) : null;
+
+    if (currentDayKey !== previousDayKey) {
+      items.push({
+        type: "divider",
+        key: `divider-${currentDayKey}-${index}`,
+        label: getMessageDayLabel(message.timestamp),
+      });
+    }
+
+    items.push({
+      type: "message",
+      key: message.id || `message-${index}`,
+      message,
+    });
+
+    return items;
+  }, []);
+
   if (!client) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-stone-50 p-8 text-center animate-in fade-in duration-500">
+      <div className="font-inter flex flex-1 flex-col items-center justify-center bg-stone-50 p-8 text-center animate-in fade-in duration-500">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white text-stone-300 shadow-inner">
           <MessageCircle className="h-10 w-10 opacity-50" />
         </div>
@@ -412,7 +561,41 @@ const ActiveConversation = ({ client, messages, onSendMessage, isLoading, errorT
 
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
-      <div className="flex flex-1 flex-col overflow-y-auto p-4 bg-stone-50/30">
+      <div className="flex shrink-0 items-center justify-between border-b border-stone-50 px-6 h-[88px] bg-white z-10">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="p-2 -ml-2 text-stone-400 hover:text-stone-800 hover:bg-stone-50 rounded-full transition-all sm:hidden"
+            type="button"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-[52px] h-[52px] rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-stone-100">
+              {typeof client.avatar === 'string' && client.avatar.length <= 2 ? (
+                <span className="text-blue-600 font-bold text-lg">{client.avatar}</span>
+              ) : (
+                client.avatar
+              )}
+            </div>
+            <div>
+              <h3 className="font-bold text-[16px] text-stone-900 leading-tight tracking-tight">{client.name}</h3>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] font-inter font-bold text-emerald-500">Active now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={toggleFullScreen}
+          className="p-2.5 text-stone-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all hidden sm:flex items-center justify-center"
+          type="button"
+          title={isFullScreen ? "Minimize" : "Maximize"}
+        >
+          {isFullScreen ? <Maximize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+        </button>
+      </div>
+      <div className="flex flex-1 flex-col overflow-y-auto bg-white p-6 custom-scrollbar">
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center text-sm text-stone-400 font-medium">
             <div className="flex flex-col items-center gap-2">
@@ -423,16 +606,25 @@ const ActiveConversation = ({ client, messages, onSendMessage, isLoading, errorT
         ) : messages.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-sm text-stone-400 font-medium italic">No message history yet.</div>
         ) : (
-          messages.map((message) => (
-            <AdminChatBubble
-              key={message.id}
-              {...message}
-              currentUserId={currentUserId}
-              clientAvatar={client.avatar}
-              onEdit={onEdit}
-              onDeleteForEveryone={onDeleteForEveryone}
-              onDeleteForMe={onDeleteForMe}
-            />
+          messageHistory.map((item) => (
+            item.type === "divider" ? (
+              <div key={item.key} className="mb-5 flex justify-center">
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-4 py-1 text-[11px] font-semibold text-blue-500 shadow-sm">
+                  {item.label}
+                </span>
+              </div>
+            ) : (
+              <AdminChatBubble
+                key={item.key}
+                {...item.message}
+                currentUserId={currentUserId}
+                clientAvatar={client.avatar}
+                onEdit={onEdit}
+                onDeleteForEveryone={onDeleteForEveryone}
+                onDeleteForMe={onDeleteForMe}
+                onImageClick={onImageClick}
+              />
+            )
           ))
         )}
         {errorText ? <div className="mt-4 mx-auto p-2 px-4 bg-red-50 text-red-600 rounded-lg text-xs font-semibold border border-red-100 shadow-sm">{errorText}</div> : null}
@@ -445,13 +637,15 @@ const ActiveConversation = ({ client, messages, onSendMessage, isLoading, errorT
 
 const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChange }) => {
   const [clients, setClients] = useState([]);
+  const [staffRoster, setStaffRoster] = useState([]);
   const [activeClientId, setActiveClientId] = useState(null);
   const [messagesByConversation, setMessagesByConversation] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [scopeFilter, setScopeFilter] = useState("customer");
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [fullScreenImage, setFullScreenImage] = useState(null);
   const clientSummaryRef = useRef(new Map());
   const hasLoadedClientSummaryRef = useRef(false);
   const activeClientIdRef = useRef(activeClientId);
@@ -464,11 +658,22 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     [clients]
   );
 
+  const customerUnreadCount = useMemo(() => {
+    return clients
+      .filter((c) => !staffRoster.some((s) => String(s.userId || "") === String(c.userId || "")))
+      .reduce((sum, c) => sum + Number(c.unreadCount || 0), 0);
+  }, [clients, staffRoster]);
+
+  const staffUnreadCount = useMemo(() => {
+    return clients
+      .filter((c) => staffRoster.some((s) => String(s.userId || "") === String(c.userId || "")))
+      .reduce((sum, c) => sum + Number(c.unreadCount || 0), 0);
+  }, [clients, staffRoster]);
+
   const filteredClients = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return clients
       .filter((client) => {
-        if (filter === "unread" && Number(client.unreadCount || 0) <= 0) return false;
         if (!q) return true;
         return (
           String(client.name || "").toLowerCase().includes(q) ||
@@ -481,11 +686,56 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
         const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
         return bTime - aTime;
       });
-  }, [clients, filter, searchQuery]);
+  }, [clients, searchQuery]);
+
+  const conversationSections = useMemo(() => ([
+    {
+      id: "customers",
+      label: "Customers",
+      items: scopeFilter === "customer"
+        ? filteredClients.filter((client) => !staffRoster.some((staff) => String(staff.userId || "") === String(client.userId || "")))
+        : [],
+    },
+    {
+      id: "staff",
+      label: "Staff",
+      items: scopeFilter === "staff"
+        ? staffRoster.map((staff, index) => {
+          const existingConversation = filteredClients.find((client) => String(client.userId || "") === String(staff.userId || ""));
+          if (existingConversation) return existingConversation;
+          return {
+            ...staff,
+            lastMessagePreview: "No messages yet",
+            lastMessageAt: null,
+            unreadCount: 0,
+          };
+        })
+        : [],
+    },
+  ]), [filteredClients, scopeFilter, staffRoster]);
 
   useEffect(() => {
     activeClientIdRef.current = activeClientId;
   }, [activeClientId]);
+
+  useEffect(() => {
+    setActiveClientId(null);
+  }, [scopeFilter]);
+
+  const loadStaffRoster = useCallback(async () => {
+    try {
+      const response = await staffApi.getAllStaff();
+      const rawStaff = Array.isArray(response?.staff)
+        ? response.staff
+        : Array.isArray(response?.data)
+          ? response.data
+          : [];
+
+      setStaffRoster(rawStaff.map((staff, index) => mapStaffRosterItem(staff, index)));
+    } catch {
+      setStaffRoster([]);
+    }
+  }, []);
 
   const showAdminChatNotification = useCallback((client) => {
     const conversationId = String(client?.id || "");
@@ -543,7 +793,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     if (!localStorage.getItem('adminToken')) return;
     try {
       if (!silent) setIsLoadingClients(true);
-      const response = await chatApi.getConversations();
+      const response = await chatApi.getConversations({ scope: "support" });
       const nextClients = Array.isArray(response?.conversations)
         ? response.conversations.map(mapConversation)
         : [];
@@ -560,7 +810,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     } finally {
       if (!silent) setIsLoadingClients(false);
     }
-  }, [activeClientId, notifyNewUnreadClients, onUnreadChange]);
+  }, [activeClientId, notifyNewUnreadClients, onUnreadChange, scopeFilter]);
 
   const loadMessages = useCallback(async (conversationId, silent = false) => {
     if (!conversationId || !localStorage.getItem('adminToken')) return;
@@ -569,6 +819,10 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
       const response = await chatApi.getMessages({ conversationId });
       const nextMessages = Array.isArray(response?.messages) ? response.messages.map(mapMessage) : [];
       setMessagesByConversation((prev) => ({ ...prev, [conversationId]: nextMessages }));
+
+      if (nextMessages.some(m => m.senderRole !== 'admin' && !m.seenBy?.includes(localStorage.getItem('adminId')))) {
+        await chatApi.markConversationRead({ conversationId });
+      }
       setErrorText("");
     } catch (error) {
       setErrorText(error?.response?.data?.message || "Failed to load history");
@@ -577,18 +831,44 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     }
   }, []);
 
-  const handleSelectClient = useCallback((conversationId) => {
-    setActiveClientId(conversationId);
+  const handleSelectClient = useCallback(async (conversationId) => {
+    const selectedClient = clients.find((client) => client.id === conversationId) ||
+      staffRoster.find((staff) => staff.id === conversationId);
+    if (!selectedClient) return;
+
+    let nextConversationId = conversationId;
+
+    if (!clients.some((client) => client.id === conversationId) && selectedClient.userId) {
+      try {
+        const response = await chatApi.openSupportConversation(selectedClient.userId);
+        const openedConversation = mapConversation(response?.conversation || {});
+        setClients((prev) => {
+          const withoutSameUser = prev.filter((client) => String(client.userId || "") !== String(openedConversation.userId || ""));
+          return [openedConversation, ...withoutSameUser];
+        });
+        nextConversationId = openedConversation.id;
+      } catch (error) {
+        setErrorText(error?.response?.data?.message || "Failed to open support chat");
+        return;
+      }
+    }
+
+    setActiveClientId(nextConversationId);
     setClients((prev) => prev.map((client) => (
-      client.id === conversationId ? { ...client, unreadCount: 0 } : client
+      client.id === nextConversationId ? { ...client, unreadCount: 0 } : client
     )));
-    loadMessages(conversationId);
-  }, [loadMessages]);
+    loadMessages(nextConversationId);
+    try {
+      await chatApi.markConversationRead({ conversationId: nextConversationId });
+    } catch {
+      // Ignore
+    }
+  }, [clients, loadMessages, staffRoster]);
 
   const handleSendMessage = useCallback(async (msgObj) => {
     if (!activeClientId) return;
-    const tempId = `temp-${Date.now()}`;
-    const optimistic = { id: tempId, sender: "admin", senderId: "admin", message: msgObj.message || "", timestamp: new Date().toISOString(), type: msgObj.type || "text", imageUrl: msgObj.imageUrl || null, status: "sent", isEdited: false, senderRole: "admin" };
+    const adminId = localStorage.getItem('adminId') || "admin";
+    const optimistic = { id: tempId, sender: "admin", senderId: adminId, message: msgObj.message || "", timestamp: new Date().toISOString(), type: msgObj.type || "text", imageUrl: msgObj.imageUrl || null, status: "sent", isEdited: false, senderRole: "admin" };
     setMessagesByConversation((prev) => ({ ...prev, [activeClientId]: [...(prev[activeClientId] || []), optimistic] }));
 
     try {
@@ -655,9 +935,10 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
   useEffect(() => {
     if (!localStorage.getItem('adminToken')) return;
     loadConversations();
+    loadStaffRoster();
     const inv = setInterval(() => loadConversations(true), CHAT_SUMMARY_REFRESH_MS);
     return () => clearInterval(inv);
-  }, [loadConversations]);
+  }, [loadConversations, loadStaffRoster]);
 
   useEffect(() => {
     if (!activeClientId) return;
@@ -674,109 +955,41 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
   return (
     <div
       className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-500 ${isFullScreen
-        ? "inset-0 md:inset-4 md:rounded-2xl"
-        : "inset-0 md:inset-auto md:bottom-24 md:right-8 md:w-[720px] md:h-[650px] md:rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.35)]"
+        ? "inset-0 md:inset-4 md:rounded-[32px]"
+        : `inset-0 md:inset-auto ${CHAT_POSITION} ${CHAT_SIZE} md:rounded-[32px] shadow-[0_30px_100px_rgba(0,0,0,0.25)]`
         }`}
     >
-      <div className="flex shrink-0 z-20 shadow-sm border-b border-stone-100 overflow-hidden">
-        <div
-          className={`bg-white flex items-center px-6 h-[72px] w-full md:w-[280px] shrink-0 ${activeClientId ? "hidden md:flex" : "flex"} border-r border-stone-100`}
-        >
-          <div className="flex items-center justify-between w-full">
-            <h3 className="font-sans font-extrabold text-2xl text-stone-800">Chats</h3>
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('close-admin-chat'))}
-              className="md:hidden p-1.5 -mr-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-md transition-colors"
-              type="button"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={`flex-1 bg-blue-600 text-white px-4 h-[72px] flex items-center justify-between shadow-lg ${!activeClientId ? "hidden md:flex" : "flex"
-            }`}
-        >
-          <div className="flex items-center gap-3">
-            {activeClientId && (
-              <button
-                onClick={() => setActiveClientId(null)}
-                className="sm:hidden p-2 -ml-1 text-white hover:bg-white/10 rounded-full transition-all active:scale-95"
-                type="button"
-                aria-label="Back to chats"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            {activeClient ? (
-              <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                <div className="w-10 h-10 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-sm shadow-md overflow-hidden">
-                  {activeClient.avatar}
-                </div>
-                <div>
-                  <h3 className="font-bold text-base leading-tight drop-shadow-sm">{activeClient.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                    <span className="text-[10px] font-bold text-blue-100/90 tracking-widest uppercase">Active</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
-                  <img src={img.JJS} alt="JJS" className="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold leading-tight tracking-wide drop-shadow-sm text-white">JJS Admin</h3>
-                  <p className="text-[10px] font-bold text-blue-100/70 uppercase ">Admin Inbox</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleFullScreen}
-              className="p-1.5 text-blue-100 hover:text-white hover:bg-white/10 rounded-md transition-all hidden sm:flex items-center justify-center"
-              type="button"
-              title={isFullScreen ? "Minimize" : "Maximize"}
-            >
-              {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl transition-all shadow-inner group active:scale-95"
-              type="button"
-              title="Close Chat"
-            >
-              <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            </button>
-          </div>
-        </div>
-      </div>
 
       <div className="relative flex flex-1 overflow-hidden w-full">
         <ClientList
-          clients={filteredClients}
+          sections={conversationSections}
           activeClientId={activeClientId}
           onSelect={handleSelectClient}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          filter={filter}
-          setFilter={setFilter}
+          scopeFilter={scopeFilter}
+          setScopeFilter={setScopeFilter}
+          onClose={onClose}
+          customerUnreadCount={customerUnreadCount}
+          staffUnreadCount={staffUnreadCount}
         />
-        <div className={`flex flex-1 flex-col z-0 border-l border-stone-100 ${!activeClientId ? 'hidden sm:flex' : 'flex'}`}>
+        <div className={`flex flex-1 flex-col z-0 border-l border-stone-100 ${!activeClientId ? 'hidden md:flex' : 'flex'}`}>
           <ActiveConversation
             client={activeClient}
             messages={activeMessages}
             onSendMessage={handleSendMessage}
             isLoading={isLoadingMessages}
             errorText={errorText}
-            currentUserId="admin"
+            currentUserId={localStorage.getItem('adminId') || "admin"}
             onEdit={handleEdit}
             onDeleteForEveryone={handleDeleteForEveryone}
             onDeleteForMe={handleDeleteForMe}
+            isFullScreen={isFullScreen}
+            toggleFullScreen={toggleFullScreen}
+            onBack={() => setActiveClientId(null)}
+            onImageClick={(url) => setFullScreenImage(url)}
           />
+          <ImageModal imageUrl={fullScreenImage} onClose={() => setFullScreenImage(null)} />
         </div>
       </div>
     </div>
@@ -879,7 +1092,7 @@ export default function AdminChatWidget() {
             void requestWebNotificationPermission();
             setIsOpen(true);
           }}
-          className="fixed bottom-6 right-8 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
+          className="fixed bottom-6 right-8 md:bottom-6 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
         >
           <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
           {totalUnread > 0 && (

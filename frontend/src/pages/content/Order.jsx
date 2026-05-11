@@ -7,14 +7,14 @@ import {
 import {
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
     Inbox, Monitor, Printer, Scissors, Truck,
-    Package2
+    Package2, ArrowLeft, ChevronRight, Users
 } from 'lucide-react'
 import { GiSewingMachine } from 'react-icons/gi'
 import { toast } from 'sonner'
 import { orderApi } from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate, useParams } from 'react-router-dom'
-import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
+
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import {
     getTrackingReferenceCode,
@@ -326,7 +326,7 @@ const StatusBadge = ({ status }) => {
 }
 
 // ─── Details Modal ────────────────────────────
-const DetailsModal = ({ order, onClose, onOpenChat }) => {
+const DetailsModal = ({ order, onClose }) => {
     const navigate = useNavigate()
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
@@ -345,12 +345,13 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         normalizedStatus === 'released'
     )
     const displayName = getTrackingDisplayName(order)
-    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
+
 
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
     const [activeTab, setActiveTab] = useState('items')
     const [copied, setCopied] = useState(false)
+
 
     // Prevent body scroll when drawer is open
     useEffect(() => {
@@ -430,7 +431,13 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         { label: 'Email', value: order.contact?.email || order.email },
         { label: 'Address', value: order.contact?.address || order.address },
         ...(!isBooking ? [
-            { label: 'Assigned Tailor', value: order.assignedTailor },
+            {
+                label: 'Staff Assigned',
+                value: [...new Set([
+                    order.staffAssignments?.layoutArtist || order.layoutArtist,
+                    order.staffAssignments?.tailor || order.assignedTailor
+                ].filter(Boolean))].join(' - ') || 'Not assigned'
+            },
             { label: 'Notes', value: order.notes },
         ] : []),
     ].filter(f => f.value)
@@ -624,16 +631,8 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 </div>
 
                 {/* Footer */}
-                {(canViewInvoice || canMessageTailor) && (
+                {canViewInvoice && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
-                        {canMessageTailor && (
-                            <button
-                                onClick={onOpenChat}
-                                className="w-full text-[12px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5 bg-white border border-emerald-200 rounded-xl shadow-sm"
-                            >
-                                <MessageCircle size={14} /> Message Tailor
-                            </button>
-                        )}
                         {canViewInvoice && (
                             <button
                                 onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
@@ -645,15 +644,17 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                     </div>
                 )}
             </div>
+
         </>
     )
 }
+
+
 
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const navigate = useNavigate()
     const [showModal, setShowModal] = useState(false)
-    const [showChatModal, setShowChatModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
@@ -661,7 +662,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const referenceCode = getTrackingReferenceCode(order)
     const displayName = getTrackingDisplayName(order)
     const steps = order.steps || []
-    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
+
     const canCancel = !isClosedTrackingStatus(order.status) && !hasReachedDropOffStep(steps)
 
     const loadQRCode = async () => {
@@ -751,26 +752,18 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 {/* ── Footer ── */}
                 <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-1.5 min-w-0 w-full sm:w-auto">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                            {order.assignedTailor ? 'Tailor:' : 'Status:'}
+                        <span className="text-[12px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
+                            Staff Assigned:
                         </span>
-                        <span className="text-[11px] font-black text-gray-700 truncate">
-                            {order.assignedTailor || 'is not assigned'}
+                        <span className="text-[12px] font-semibold text-slate-500 truncate">
+                            {[...new Set([
+                                order.staffAssignments?.layoutArtist || order.layoutArtist,
+                                order.staffAssignments?.tailor || order.assignedTailor
+                            ].filter(Boolean))].join(' - ') || 'is not assigned'}
                         </span>
                     </div>
                     <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
-                        {canMessageTailor && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    setShowChatModal(true)
-                                }}
-                                className="min-w-0 bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
-                            >
-                                <MessageCircle size={12} />
-                                <span className="truncate">Message Tailor</span>
-                            </button>
-                        )}
+
                         {canCancel && (
                             <button
                                 onClick={(e) => {
@@ -782,6 +775,19 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                                 Cancel
                             </button>
                         )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
+                                navigate('/home')
+                            }}
+                            className="min-w-0 bg-white border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-green-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                            title="Message the team"
+                        >
+                            <MessageCircle size={12} />
+                            <span className="hidden sm:inline">Message Team</span>
+                            <span className="sm:hidden">Chat</span>
+                        </button>
                         {order.status !== 'Cancelled' && (
                             <button
                                 onClick={(e) => {
@@ -816,13 +822,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 <DetailsModal
                     order={order}
                     onClose={() => setShowModal(false)}
-                    onOpenChat={() => {
-                        setShowModal(false)
-                        setShowChatModal(true)
-                    }}
                 />
             )}
-            {showChatModal && <OrderTailorChatModal order={order} onClose={() => setShowChatModal(false)} />}
         </>
     )
 }
@@ -901,7 +902,6 @@ const Order = () => {
     const [showCombinedDropdown, setShowCombinedDropdown] = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
-    const [activeChatOrder, setActiveChatOrder] = useState(null)
 
     const statusDropdownRef = useRef(null)
     const sortDropdownRef = useRef(null)
@@ -1387,18 +1387,9 @@ const Order = () => {
                 <DetailsModal
                     order={selectedOrder}
                     onClose={() => navigate('/order')}
-                    onOpenChat={() => {
-                        setActiveChatOrder(selectedOrder)
-                        navigate('/order')
-                    }}
                 />
             )}
-            {activeChatOrder && (
-                <OrderTailorChatModal
-                    order={activeChatOrder}
-                    onClose={() => setActiveChatOrder(null)}
-                />
-            )}
+
         </main>
     )
 }

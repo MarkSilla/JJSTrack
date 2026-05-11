@@ -129,7 +129,10 @@ const Design = () => {
 
   return (
     <div className="min-h-screen bg-[#020617] font-inter text-slate-200 pb-24 overflow-x-hidden">
-      <nav className={`h-20 flex items-center justify-between px-6 md:px-12  w-full top-0 z-[100] lg:bg-transparent bg-white/5 backdrop-blur-sm  `}>
+      <nav className={`fixed top-0 left-0 w-full z-[100] flex items-center justify-between px-6 md:px-12 transition-all duration-500 ${scrolled
+        ? 'h-16 bg-[#020617]/80 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-blue-500/10'
+        : 'h-16  lg:bg-transparent bg-white/5 backdrop-blur-sm'
+        }`}>
         <button
           onClick={handleBack}
           className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors cursor-pointer group">
@@ -352,7 +355,7 @@ const Design = () => {
           <div className="relative w-[95%] max-w-7xl h-[85vh] md:h-[85vh] rounded-[1.5rem] shadow-[0_0_80px_-20px_rgba(59,130,246,0.3)] flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 fade-in duration-700 border border-white/10 bg-[#020617]/50">
             <button
               onClick={() => setIsPreviewOpen(false)}
-              className="absolute top-6 right-6 z-[100] w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 backdrop-blur-md group"
+              className="absolute top-6 right-6 z-[100] w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-gray-600     md:text-white rounded-full transition-all border border-white/10 backdrop-blur-md group"
             >
               <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
             </button>

@@ -26,6 +26,7 @@ import {
   maybeCreateStaffAssignmentNotification,
   maybeCreateWorkflowStepReadyNotification,
 } from '../utils/staffNotificationEvents.js';
+import { syncSubjectChatConversations } from '../utils/chatConversationSync.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
@@ -294,6 +295,7 @@ export const updateOrderStatus = async (req, res) => {
     if (nextStatus) order.status = nextStatus;
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     emitOrderTrackingUpdate(order);
     await maybeCreateStaffAssignmentNotification({
       req,
@@ -381,6 +383,7 @@ export const updateOrderSteps = async (req, res) => {
     if (players) order.players = players;
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     emitOrderTrackingUpdate(order);
     await maybeCreateWorkflowStepReadyNotification({
       req,

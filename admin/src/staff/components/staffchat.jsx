@@ -8,6 +8,31 @@ import { chatApi } from '../services/chatApi';
 import { requestWebNotificationPermission, showWebNotification } from '../../utils/webNotification';
 
 const CHAT_SUMMARY_REFRESH_MS = 5000;
+const CHAT_SIZE = 'md:w-[960px] md:h-[680px]';
+const CHAT_POSITION = 'md:bottom-6 md:right-8';
+const RECENT_WINDOW_MS = 1000 * 60 * 60 * 24 * 7;
+
+const getMessageDayKey = (timestamp) => {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return 'unknown';
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
+const getMessageDayLabel = (timestamp) => {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return 'Unknown date';
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(todayStart.getDate() - 1);
+    const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (targetStart.getTime() === todayStart.getTime()) return 'Today';
+    if (targetStart.getTime() === yesterdayStart.getTime()) return 'Yesterday';
+
+    return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+};
 
 const fileToDataUrl = (file) =>
     new Promise((resolve, reject) => {
@@ -28,19 +53,21 @@ const getInitials = (name) => {
 };
 
 const mapConversation = (conversation) => {
-    const fullName = conversation?.user?.fullName || 'Unknown User';
+    const isAdminSupport = String(conversation?.scope || '') === 'support';
+    const fullName = isAdminSupport ? 'JJS Admin' : (conversation?.user?.fullName || 'Unknown User');
     return {
         id: conversation?.id || conversation?._id,
+        scope: conversation?.scope || 'order',
         name: fullName,
-        avatar: fullName.toLowerCase() === 'admin' ? (
+        avatar: isAdminSupport ? (
             <img src={img.JJS} alt="Admin" className="w-full h-full object-contain p-0.5" />
         ) : getInitials(fullName),
         unreadCount: Number(conversation?.unreadCount || 0),
         status: 'online',
-        subjectLabel: conversation?.subjectLabel || '',
+        subjectLabel: conversation?.subjectLabel || (isAdminSupport ? 'Admin Support' : ''),
         subjectTitle: conversation?.subjectTitle || '',
         assignedStaffName: conversation?.assignedStaffName || '',
-        lastOrder: conversation?.subjectLabel || conversation?.subjectTitle || conversation?.user?.email || '',
+        lastOrder: conversation?.subjectLabel || conversation?.subjectTitle || (isAdminSupport ? 'Admin Support' : ''),
         lastMessagePreview: conversation?.lastMessagePreview || '',
         lastMessageAt: conversation?.lastMessageAt || null,
     };
@@ -142,8 +169,39 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
     );
 };
 
-const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, clientAvatar, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
-    const timeString = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const ImageModal = ({ imageUrl, onClose }) => {
+    if (!imageUrl) return null;
+    return (
+        <div 
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={onClose}
+        >
+            <button 
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
+                type="button"
+            >
+                <X className="w-8 h-8" />
+            </button>
+            <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                <img 
+                    src={imageUrl} 
+                    alt="Full view" 
+                    className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                />
+            </div>
+        </div>
+    );
+};
+
+const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, clientAvatar, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => {
+    const tooltipTimeString = new Date(timestamp).toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
     const isSystem = senderRole === 'system';
     const isStaff = sender === 'staff';
     const isOwn = isStaff && String(senderId) === String(currentUserId);
@@ -166,14 +224,14 @@ const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp,
     };
 
     const bubbleClasses = isDeleted
-        ? (isStaff ? 'bg-stone-100/80 text-stone-500 border border-stone-200 rounded-br-sm' : 'bg-white text-stone-500 border border-stone-200 rounded-bl-sm')
-        : (isStaff ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-700 text-white border border-gray-800 rounded-bl-sm');
+        ? (isStaff ? 'bg-stone-50 text-stone-400 border border-stone-100 rounded-2xl rounded-br-none' : 'bg-white text-stone-400 border border-stone-100 rounded-2xl rounded-bl-none')
+        : (isStaff ? 'bg-blue-600 text-white rounded-2xl rounded-br-none shadow-sm' : 'bg-white text-stone-800 border border-stone-100 shadow-sm rounded-2xl rounded-bl-none');
 
     return (
-        <div className={`mb-4 flex w-full ${isStaff ? 'justify-end' : 'justify-start'} items-end gap-1.5`}>
+        <div className={`mb-4 flex w-full ${isStaff ? 'justify-end' : 'justify-start'} items-end gap-2.5`}>
             {!isStaff && (
                 <div className="shrink-0 mb-[1px]">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold shadow-sm border uppercase overflow-hidden ${senderRole === 'admin' ? 'bg-black text-white border-slate-300/50' : 'bg-stone-200 text-stone-600 border-stone-300/50'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border uppercase overflow-hidden ${senderRole === 'admin' ? 'bg-black text-white border-slate-300/50' : 'bg-stone-100 text-stone-600 border-stone-200'}`}>
                         {senderRole === 'admin' ? (
                             <img src={img.JJS} alt="JJS" className="w-full h-full object-contain p-0.5" />
                         ) : (
@@ -183,6 +241,9 @@ const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp,
                 </div>
             )}
             <div className="relative group max-w-[80%]">
+                <div className={`pointer-events-none absolute -top-9 z-20 rounded-lg bg-stone-900 px-2.5 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 ${isStaff ? 'right-0' : 'left-0'}`}>
+                    {tooltipTimeString}
+                </div>
                 <div className={`absolute -top-1 ${isStaff ? '-left-6' : '-right-6'} flex items-start opacity-0 group-hover:opacity-100 transition-opacity z-10`}>
                     <button
                         onClick={() => setMenuOpen((v) => !v)}
@@ -204,23 +265,27 @@ const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp,
                     )}
                 </div>
 
-                <div className={`relative px-4 py-2.5 shadow-sm rounded-2xl ${bubbleClasses}`}>
+                <div className={`px-4 py-3 rounded-2xl text-[14px] leading-relaxed shadow-sm ${bubbleClasses}`}>
                     {type === 'image' && imageUrl && !isDeleted ? (
-                        <div className="mb-2">
-                            <img src={imageUrl} alt="Chat attachment" className="max-h-48 rounded-lg border border-black/10 object-cover" />
+                        <div className="mb-2 cursor-zoom-in group/img relative" onClick={() => onImageClick(imageUrl)}>
+                            <img src={imageUrl} alt="Chat attachment" className="max-h-60 rounded-xl border border-black/10 object-cover transition-opacity group-hover:opacity-90" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="bg-black/40 rounded-full p-2 text-white backdrop-blur-sm">
+                                    <Maximize2 className="w-5 h-5" />
+                                </div>
+                            </div>
                         </div>
                     ) : null}
 
                     {editing ? (
                         <InlineEditInput initialValue={message} onSave={handleSaveEdit} onCancel={() => setEditing(false)} />
                     ) : (
-                        message && <p className={`whitespace-pre-wrap text-sm leading-relaxed ${isDeleted ? 'italic opacity-80' : ''}`}>{message}</p>
+                        message && <p className={`whitespace-pre-wrap ${isDeleted ? 'italic opacity-80' : ''}`}>{message}</p>
                     )}
 
                     {!editing && (
-                        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isStaff && !isDeleted ? 'text-blue-200' : 'text-slate-400'}`}>
+                        <div className={`mt-1.5 flex items-center justify-end gap-1 text-[10px] ${isStaff && !isDeleted ? 'text-blue-100' : 'text-stone-400'}`}>
                             {isEdited && !isDeleted && <span className="italic opacity-70 mr-1">edited</span>}
-                            {timeString}
                             {isStaff && status === 'read' && !isDeleted && <CheckCheck className="h-3 w-3" />}
                             {isStaff && status === 'sent' && !isDeleted && <Check className="h-3 w-3" />}
                         </div>
@@ -235,32 +300,31 @@ const ConversationListItem = ({ conversation, isActive, onClick }) => {
     return (
         <div
             onClick={onClick}
-            className={`flex cursor-pointer border-b border-stone-100 transition-all items-center gap-3 px-4 py-3 ${isActive ? 'bg-blue-200' : 'bg-stone-50 hover:bg-blue-100'
-                }`}
+            className={`flex cursor-pointer transition-all items-center gap-3 px-6 py-4 ${isActive ? 'bg-blue-50/80' : 'bg-white hover:bg-stone-50'}`}
         >
             <div className="relative shrink-0">
-                <div className={`flex items-center justify-center overflow-hidden rounded-full font-bold text-white shadow-sm uppercase h-10 w-10 text-sm ${conversation.name.toLowerCase() === 'admin' ? 'bg-black' : 'bg-blue-600'}`}>
+                <div className={`flex items-center justify-center overflow-hidden rounded-full font-bold text-blue-600 shadow-sm uppercase h-12 w-12 text-sm ${conversation.name.toLowerCase() === 'admin' ? 'bg-black' : 'bg-stone-100 text-blue-600 border border-stone-200'}`}>
                     {conversation.avatar}
                 </div>
-                <div className="absolute bottom-0 right-0 rounded-full border-2 border-white bg-green-500 h-3 w-3" />
+                <div className="absolute bottom-0.5 right-0.5 rounded-full border-2 border-white bg-green-500 h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                    <h4 className={`truncate text-sm font-semibold ${conversation.unreadCount > 0 ? 'text-blue-900' : 'text-stone-800'}`}>
+                <div className="mb-0.5 flex items-center justify-between gap-1">
+                    <h4 className={`truncate text-[15px] font-bold ${conversation.unreadCount > 0 ? 'text-stone-900' : 'text-stone-800'}`}>
                         {conversation.name}
                     </h4>
                     {conversation.lastMessageAt && (
-                        <span className="shrink-0 text-[10px] text-stone-400">
-                            {new Date(conversation.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <span className="shrink-0 text-[11px] text-stone-400 font-medium">
+                            {new Date(conversation.lastMessageAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </span>
                     )}
                 </div>
-                <div className="flex items-center justify-between gap-2 overflow-hidden">
-                    <p className={`truncate text-[11px] ${conversation.unreadCount > 0 ? 'font-medium text-blue-600' : 'text-stone-500'}`}>
+                <div className="flex items-center justify-between gap-2">
+                    <p className={`truncate text-[13px] ${conversation.unreadCount > 0 ? 'font-semibold text-stone-600' : 'text-stone-500'}`}>
                         {conversation.lastMessagePreview || 'No messages'}
                     </p>
                     {conversation.unreadCount > 0 && (
-                        <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold text-white">
+                        <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-blue-600 px-1 text-center text-[10px] font-bold text-white">
                             {conversation.unreadCount}
                         </span>
                     )}
@@ -270,46 +334,56 @@ const ConversationListItem = ({ conversation, isActive, onClick }) => {
     );
 };
 
-const ConversationList = ({ conversations, activeConversationId, onSelect, searchQuery, setSearchQuery, filter, setFilter }) => {
+const ConversationList = ({ sections, activeConversationId, onSelect, searchQuery, setSearchQuery, onClose }) => {
     return (
-        <div className={`flex w-full md:w-[280px] shrink-0 flex-col border-r border-stone-100 bg-white transition-all duration-300 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
-            <div className="shrink-0 border-b border-stone-100 px-4 py-4">
-                <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+        <div className={`flex w-full shrink-0 flex-col bg-white border-r border-stone-100 md:w-[320px] ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+            <div className="shrink-0 px-6 py-6 border-b border-gray-50">
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-[26px] font-inter font-black tracking-tight">Messages</h1>
+                    <button onClick={onClose} className="text-stone-400 hover:text-stone-600 transition-colors" type="button">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                <div className="relative group mb-3">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-stone-400 group-focus-within:text-blue-500 transition-colors" />
+                    </div>
                     <input
                         type="text"
-                        placeholder="Search customer or order.."
-                        className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-9 pr-3 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="Search messages..."
+                        className="block w-full pl-11 pr-4 py-3 bg-stone-50 border-none rounded-2xl text-[14px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:bg-white focus:shadow-md transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
-                <div className="flex gap-2">
-                    {['all', 'unread'].map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`flex-1 rounded-md py-1 text-[11px] font-semibold capitalize transition-colors ${filter === f ? 'bg-blue-600 text-white shadow-sm' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                                }`}
-                            type="button"
-                        >
-                            {f}
-                        </button>
-                    ))}
-                </div>
             </div>
-            <div className="flex-1 overflow-y-auto pt-2">
-                {conversations.length > 0 ? (
-                    conversations.map((conv) => (
-                        <ConversationListItem
-                            key={conv.id}
-                            conversation={conv}
-                            isActive={activeConversationId === conv.id}
-                            onClick={() => onSelect(conv.id)}
-                        />
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+                {sections.some((section) => section.items.length > 0) ? (
+                    sections.map((section) => (
+                        section.items.length > 0 ? (
+                            <div key={section.id} className="py-2">
+                                <div className="px-6 py-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+                                    {section.label}
+                                </div>
+                                {section.items.map((conv) => (
+                                    <ConversationListItem
+                                        key={conv.id}
+                                        conversation={conv}
+                                        isActive={activeConversationId === conv.id}
+                                        onClick={() => onSelect(conv.id)}
+                                    />
+                                ))}
+                            </div>
+                        ) : null
                     ))
                 ) : (
-                    <div className="p-6 text-center text-xs text-stone-400 font-medium">No assigned conversations</div>
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                            <MessageCircle className="w-8 h-8 text-stone-200" />
+                        </div>
+                        <p className="text-sm font-medium text-stone-400">No assigned conversations</p>
+                    </div>
                 )}
             </div>
         </div>
@@ -405,12 +479,34 @@ const InputArea = ({ onSendMessage, disabled }) => {
     );
 };
 
-const ActiveConversation = ({ conversation, messages, onSendMessage, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
+const ActiveConversation = ({ conversation, messages, onSendMessage, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, isFullScreen, toggleFullScreen, onBack, onImageClick }) => {
     const endOfMessagesRef = useRef(null);
 
     useEffect(() => {
         endOfMessagesRef.current?.scrollIntoView({ behavior: 'auto' });
     }, [messages.length, conversation?.id]);
+
+    const messageHistory = messages.reduce((items, message, index) => {
+        const previousMessage = messages[index - 1];
+        const currentDayKey = getMessageDayKey(message.timestamp);
+        const previousDayKey = previousMessage ? getMessageDayKey(previousMessage.timestamp) : null;
+
+        if (currentDayKey !== previousDayKey) {
+            items.push({
+                type: 'divider',
+                key: `divider-${currentDayKey}-${index}`,
+                label: getMessageDayLabel(message.timestamp),
+            });
+        }
+
+        items.push({
+            type: 'message',
+            key: message.id || `message-${index}`,
+            message,
+        });
+
+        return items;
+    }, []);
 
     if (!conversation) {
         return (
@@ -426,7 +522,45 @@ const ActiveConversation = ({ conversation, messages, onSendMessage, isLoading, 
 
     return (
         <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
-            <div className="flex flex-1 flex-col overflow-y-auto p-4 bg-stone-50/30">
+            <div className="flex shrink-0 items-center justify-between border-b border-stone-50 px-6 h-[88px] bg-white z-10">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={onBack}
+                        className="p-2 -ml-2 text-stone-400 hover:text-stone-800 hover:bg-stone-50 rounded-full transition-all md:hidden"
+                        type="button"
+                    >
+                        <ArrowLeft className="w-6 h-6" />
+                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="w-[52px] h-[52px] rounded-full bg-white flex items-center justify-center shadow-lg overflow-hidden border-2 border-stone-100">
+                            {conversation.name.toLowerCase() === 'admin' ? (
+                                <img src={img.JJS} alt="Admin" className="w-8 h-8 object-contain" />
+                            ) : (
+                                typeof conversation.avatar === 'string' && conversation.avatar.length <= 2 ? (
+                                    <span className="text-blue-600 font-bold text-lg">{conversation.avatar}</span>
+                                ) : (
+                                    conversation.avatar
+                                )
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-[16px] text-stone-900 leading-tight tracking-tight">{conversation.name}</h3>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px] font-bold font-inter text-emerald-500">Active now</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button
+                    onClick={toggleFullScreen}
+                    className="p-2.5 text-stone-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all hidden md:flex items-center justify-center"
+                    type="button"
+                    title={isFullScreen ? "Minimize" : "Maximize"}
+                >
+                    {isFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                </button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-y-auto bg-white p-6 custom-scrollbar">
                 {isLoading ? (
                     <div className="flex flex-1 items-center justify-center text-sm text-stone-400 font-medium">
                         <div className="flex flex-col items-center gap-2">
@@ -437,16 +571,25 @@ const ActiveConversation = ({ conversation, messages, onSendMessage, isLoading, 
                 ) : messages.length === 0 ? (
                     <div className="flex flex-1 items-center justify-center text-sm text-stone-400 font-medium italic">No message history yet.</div>
                 ) : (
-                    messages.map((message) => (
-                        <StaffChatBubble
-                            key={message.id}
-                            {...message}
-                            currentUserId={currentUserId}
-                            clientAvatar={conversation.avatar}
-                            onEdit={onEdit}
-                            onDeleteForEveryone={onDeleteForEveryone}
-                            onDeleteForMe={onDeleteForMe}
-                        />
+                    messageHistory.map((item) => (
+                        item.type === 'divider' ? (
+                            <div key={item.key} className="mb-5 flex justify-center">
+                                <span className="rounded-full border border-blue-100 bg-blue-50 px-4 py-1 text-[11px] font-semibold text-blue-500 shadow-sm">
+                                    {item.label}
+                                </span>
+                            </div>
+                        ) : (
+                            <StaffChatBubble
+                                key={item.key}
+                                {...item.message}
+                                currentUserId={currentUserId}
+                                clientAvatar={conversation.avatar}
+                                onEdit={onEdit}
+                                onDeleteForEveryone={onDeleteForEveryone}
+                                onDeleteForMe={onDeleteForMe}
+                                onImageClick={onImageClick}
+                            />
+                        )
                     ))
                 )}
 
@@ -465,10 +608,10 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     const [currentUserId, setCurrentUserId] = useState('');
     const [currentUserName, setCurrentUserName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [filter, setFilter] = useState('all');
     const [isLoadingConversations, setIsLoadingConversations] = useState(false);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [errorText, setErrorText] = useState('');
+    const [fullScreenImage, setFullScreenImage] = useState(null);
     const conversationSummaryRef = useRef(new Map());
     const hasLoadedConversationSummaryRef = useRef(false);
     const activeConversationIdRef = useRef(activeConversationId);
@@ -485,7 +628,6 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
         const query = searchQuery.trim().toLowerCase();
         return conversations
             .filter((conversation) => {
-                if (filter === 'unread' && Number(conversation.unreadCount || 0) <= 0) return false;
                 if (!query) return true;
 
                 return [
@@ -503,7 +645,37 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
                 const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
                 return bTime - aTime;
             });
-    }, [conversations, filter, searchQuery]);
+    }, [conversations, searchQuery]);
+
+    const conversationSections = useMemo(() => {
+        const now = Date.now();
+        const adminConversations = filteredConversations.filter((conversation) => conversation.scope === 'support');
+        const orderConversations = filteredConversations.filter((conversation) => conversation.scope !== 'support');
+
+        return [
+            {
+                id: 'admin',
+                label: 'Admin',
+                items: adminConversations,
+            },
+            {
+                id: 'recent',
+                label: 'Recent',
+                items: orderConversations.filter((conversation) => {
+                    const conversationTime = conversation.lastMessageAt ? new Date(conversation.lastMessageAt).getTime() : 0;
+                    return conversationTime && now - conversationTime <= RECENT_WINDOW_MS;
+                }),
+            },
+            {
+                id: 'older',
+                label: 'Older',
+                items: orderConversations.filter((conversation) => {
+                    const conversationTime = conversation.lastMessageAt ? new Date(conversation.lastMessageAt).getTime() : 0;
+                    return !conversationTime || now - conversationTime > RECENT_WINDOW_MS;
+                }),
+            },
+        ];
+    }, [filteredConversations]);
 
     useEffect(() => {
         activeConversationIdRef.current = activeConversationId;
@@ -575,7 +747,7 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     const loadConversations = useCallback(async (silent = false) => {
         try {
             if (!silent) setIsLoadingConversations(true);
-            const response = await chatApi.getConversations({ scope: 'order' });
+            const response = await chatApi.getConversations();
             const nextConversations = Array.isArray(response?.conversations)
                 ? response.conversations.map(mapConversation)
                 : [];
@@ -753,104 +925,18 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     return (
         <div
             className={`fixed z-[9999] flex flex-col bg-white shadow-2xl overflow-hidden transition-all duration-500 ${isFullScreen
-                ? 'inset-0 md:inset-4 md:rounded-2xl'
-                : 'inset-0 md:inset-auto md:bottom-24 md:right-8 md:w-[720px] md:h-[650px] md:rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.35)]'
+                ? 'inset-0 md:inset-4 md:rounded-[32px]'
+                : `inset-0 md:inset-auto ${CHAT_POSITION} ${CHAT_SIZE} md:rounded-[32px] shadow-[0_30px_100px_rgba(0,0,0,0.25)]`
                 }`}
         >
-            <div className="flex shrink-0 z-20 shadow-sm border-b border-stone-100 overflow-hidden">
-                <div
-                    className={`bg-white flex items-center px-6 h-[72px] w-full md:w-[280px] shrink-0 ${activeConversationId ? "hidden md:flex" : "flex"} border-r border-stone-100`}
-                >
-                    <div className="flex items-center justify-between w-full">
-                        <h3 className="font-extrabold text-2xl text-stone-800 tracking-tight">Chats</h3>
-                        <button
-                            onClick={() => window.dispatchEvent(new CustomEvent('close-staff-chat'))}
-                            className="md:hidden p-1.5 -mr-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-md transition-colors"
-                            type="button"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-
-                <div
-                    className={`flex-1 bg-blue-600 text-white px-4 h-[72px] flex items-center justify-between shadow-lg ${!activeConversationId ? "hidden md:flex" : "flex"
-                        }`}
-                >
-                    <div className="flex items-center gap-3">
-                        {activeConversationId && (
-                            <button
-                                onClick={() => setActiveConversationId(null)}
-                                className="md:hidden p-2 -ml-1 text-white hover:bg-white/10 rounded-full transition-all active:scale-95"
-                                type="button"
-                                aria-label="Back to chats"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </button>
-                        )}
-
-                        {activeConversation ? (
-                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                                <div className="w-10 h-10 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-sm shadow-md border-2 border-white/20 overflow-hidden">
-                                    {activeConversation.avatar}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-base leading-tight drop-shadow-sm">{activeConversation.name}</h3>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-400 border border-white/20 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                                        <span className="text-[10px] font-bold text-blue-100/90 tracking-widest uppercase">Active</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-blue-600 shadow-md uppercase text-xs border-2 border-white/20">
-                                    {getInitials(currentUserName)}
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold leading-tight tracking-wide drop-shadow-sm text-white">{currentUserName || 'JJS-Staff'}</h3>
-                                    <p className="text-[10px] font-bold text-blue-100/70 uppercase tracking-tighter">Staff Inbox</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {totalUnread > 0 && !activeConversationId && (
-                            <span className="hidden lg:flex items-center gap-1.5 bg-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full border border-white/20 uppercase tracking-widest mr-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
-                                {totalUnread} Unread
-                            </span>
-                        )}
-                        <button
-                            onClick={toggleFullScreen}
-                            className="p-1.5 text-blue-100 hover:text-white hover:bg-white/10 rounded-md transition-all hidden md:flex items-center justify-center"
-                            type="button"
-                            title={isFullScreen ? "Minimize" : "Maximize"}
-                        >
-                            {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="p-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl transition-all shadow-inner group active:scale-95"
-                            type="button"
-                            title="Close Chat"
-                        >
-                            <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div className="relative flex flex-1 overflow-hidden w-full">
                 <ConversationList
-                    conversations={filteredConversations}
+                    sections={conversationSections}
                     activeConversationId={activeConversationId}
                     onSelect={handleSelectConversation}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
-                    filter={filter}
-                    setFilter={setFilter}
+                    onClose={onClose}
                 />
 
                 <div className={`flex flex-1 flex-col z-0 border-l border-stone-100 ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
@@ -864,7 +950,12 @@ const StaffChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
                         onEdit={handleEdit}
                         onDeleteForEveryone={handleDeleteForEveryone}
                         onDeleteForMe={handleDeleteForMe}
+                        isFullScreen={isFullScreen}
+                        toggleFullScreen={toggleFullScreen}
+                        onBack={() => setActiveConversationId(null)}
+                        onImageClick={(url) => setFullScreenImage(url)}
                     />
+                    <ImageModal imageUrl={fullScreenImage} onClose={() => setFullScreenImage(null)} />
                 </div>
             </div>
         </div>
@@ -936,7 +1027,7 @@ export default function StaffChatWidget() {
         }
 
         try {
-            const response = await chatApi.getConversations({ scope: 'order' });
+            const response = await chatApi.getConversations();
             const nextConversations = Array.isArray(response?.conversations)
                 ? response.conversations.map(mapConversation)
                 : [];
@@ -974,7 +1065,7 @@ export default function StaffChatWidget() {
                         void requestWebNotificationPermission();
                         setIsOpen(true);
                     }}
-                    className="fixed bottom-6 right-8 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
+                    className="fixed bottom-6 right-8 md:bottom-6 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
                 >
                     <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
                     {totalUnread > 0 && (

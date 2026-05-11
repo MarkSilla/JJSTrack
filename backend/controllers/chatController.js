@@ -51,7 +51,7 @@ const mapMessageForClient = (messageDoc, requesterId) => {
   };
 };
 
-const mapConversationForClient = (conversationDoc, userInfo, unreadCount = 0) => ({
+const mapConversationForClient = (conversationDoc, userInfo, unreadCount = 0, staffRole = '') => ({
   id: conversationDoc._id,
   _id: conversationDoc._id,
   scope: conversationDoc.scope || SUPPORT_SCOPE,
@@ -61,6 +61,7 @@ const mapConversationForClient = (conversationDoc, userInfo, unreadCount = 0) =>
   subjectTitle: conversationDoc.subjectTitle || '',
   assignedStaffId: conversationDoc.assignedStaffId || null,
   assignedStaffName: conversationDoc.assignedStaffName || '',
+  assignedStaffRole: staffRole || conversationDoc.assignedStaffRole || '',
   user: userInfo
     ? {
       id: userInfo._id || userInfo.id,
@@ -236,12 +237,25 @@ const syncConversationMetadata = async (conversation, metadata) => {
 
   const nextAssignedStaffId = metadata.assignedStaffId || null;
   const nextAssignedStaffName = metadata.assignedStaffName || metadata.assignedTailor || '';
+  const nextAssignedStaffRole = metadata.assignedStaffRole || '';
   const nextSubjectLabel = metadata.subjectLabel || '';
   const nextSubjectTitle = metadata.subjectTitle || '';
   let shouldSave = false;
 
   if ((conversation.scope || SUPPORT_SCOPE) !== metadata.scope) {
     conversation.scope = metadata.scope;
+    shouldSave = true;
+  }
+  if (String(conversation.assignedStaffId || '') !== String(nextAssignedStaffId || '')) {
+    conversation.assignedStaffId = nextAssignedStaffId;
+    shouldSave = true;
+  }
+  if ((conversation.assignedStaffName || '') !== nextAssignedStaffName) {
+    conversation.assignedStaffName = nextAssignedStaffName;
+    shouldSave = true;
+  }
+  if ((conversation.assignedStaffRole || '') !== nextAssignedStaffRole) {
+    conversation.assignedStaffRole = nextAssignedStaffRole;
     shouldSave = true;
   }
   if ((conversation.subjectType || null) !== (metadata.subjectType || null)) {
@@ -260,12 +274,8 @@ const syncConversationMetadata = async (conversation, metadata) => {
     conversation.subjectTitle = nextSubjectTitle;
     shouldSave = true;
   }
-  if (String(conversation.assignedStaffId || '') !== String(nextAssignedStaffId || '')) {
-    conversation.assignedStaffId = nextAssignedStaffId;
-    shouldSave = true;
-  }
-  if ((conversation.assignedStaffName || '') !== nextAssignedStaffName) {
-    conversation.assignedStaffName = nextAssignedStaffName;
+  if (conversation.isClosed) {
+    conversation.isClosed = false;
     shouldSave = true;
   }
 
@@ -318,17 +328,28 @@ const getOrCreateOrderConversation = async (subjectDetails, staffUser) => {
     subjectTitle: subjectDetails.subjectTitle,
     assignedStaffId: staffUser?._id?.toString() || null,
     assignedStaffName: staffUser ? getDisplayName(staffUser) : normalizeText(subjectDetails.assignedTailor),
+    assignedStaffRole: 'Tailor',
     assignedTailor: subjectDetails.assignedTailor,
   };
 
   let conversation = await chatConversationModel.findOne({
     userId: subjectDetails.userId,
     scope: ORDER_SCOPE,
-    subjectType: subjectDetails.subjectType,
-    subjectId: subjectDetails.subjectId,
+    assignedStaffId: metadata.assignedStaffId,
   });
 
   if (conversation) {
+    if (String(conversation.subjectId || '') !== String(metadata.subjectId || '')) {
+      await chatMessageModel.create({
+        conversationId: conversation._id,
+        senderId: 'system',
+        senderRole: 'system',
+        senderName: 'JJS Track',
+        type: 'system',
+        message: `This chat is now also linked to ${metadata.subjectLabel} (${metadata.subjectTitle}).`,
+        seenBy: [String(subjectDetails.userId), metadata.assignedStaffId, ADMIN_ID].filter(Boolean),
+      });
+    }
     return syncConversationMetadata(conversation, metadata);
   }
 
@@ -336,20 +357,22 @@ const getOrCreateOrderConversation = async (subjectDetails, staffUser) => {
     conversation = await chatConversationModel.create({
       userId: subjectDetails.userId,
       scope: ORDER_SCOPE,
-      subjectType: subjectDetails.subjectType,
-      subjectId: subjectDetails.subjectId,
+      subjectType: metadata.subjectType,
+      subjectId: metadata.subjectId,
       subjectLabel: metadata.subjectLabel,
       subjectTitle: metadata.subjectTitle,
       assignedStaffId: metadata.assignedStaffId,
       assignedStaffName: metadata.assignedStaffName,
+      assignedStaffRole: metadata.assignedStaffRole,
     });
   } catch (error) {
     if (error?.code !== 11000) throw error;
     conversation = await chatConversationModel.findOne({
       userId: subjectDetails.userId,
       scope: ORDER_SCOPE,
-      subjectType: subjectDetails.subjectType,
-      subjectId: subjectDetails.subjectId,
+      subjectType: metadata.subjectType,
+      subjectId: metadata.subjectId,
+      assignedStaffId: metadata.assignedStaffId,
     });
   }
 
@@ -365,7 +388,7 @@ const getOrCreateOrderConversation = async (subjectDetails, staffUser) => {
       senderRole: 'system',
       senderName: 'JJS Track',
       type: 'system',
-      message: `This chat is linked to ${metadata.subjectTitle} (${metadata.subjectLabel}) with ${metadata.assignedStaffName || 'your assigned tailor'}.`,
+      message: `This is the start of your conversation with ${metadata.assignedStaffName || 'your assigned team member'}.`,
       seenBy: [String(subjectDetails.userId), metadata.assignedStaffId, ADMIN_ID].filter(Boolean),
     });
   }
@@ -376,10 +399,13 @@ const getOrCreateOrderConversation = async (subjectDetails, staffUser) => {
 const canAccessConversation = (ctx, conversation) => {
   if (!conversation) return false;
   if (ctx.role === 'admin') {
-    return (conversation.scope || SUPPORT_SCOPE) === SUPPORT_SCOPE;
+    return true;
   }
 
   if (ctx.role === 'staff') {
+    if ((conversation.scope || SUPPORT_SCOPE) === SUPPORT_SCOPE) {
+      return String(conversation.userId?._id || conversation.userId) === String(ctx.userObjectId);
+    }
     if ((conversation.scope || SUPPORT_SCOPE) !== ORDER_SCOPE) return false;
     if (String(conversation.assignedStaffId || '') === String(ctx.id)) return true;
     return normalizeKey(conversation.assignedStaffName) === normalizeKey(ctx.displayName);
@@ -443,21 +469,24 @@ export const getOrCreateOrderConversationForSubject = async (req, res) => {
     const subjectDetails = await getSubjectDetails(subjectType, subjectId, res);
     if (!subjectDetails) return;
 
-    const staffUser = await findAssignedStaffUser(subjectDetails.assignedTailor);
-    if (!subjectDetails.assignedTailor || !staffUser) {
+    const targetStaffName = req.body.targetStaffName || subjectDetails.assignedTailor;
+    const staffUser = await findAssignedStaffUser(targetStaffName);
+    if (!targetStaffName || !staffUser) {
       res.status(400).json({
         success: false,
-        message: 'This order does not have an assigned tailor yet.',
+        message: 'This order does not have this staff member assigned yet.',
       });
       return;
     }
 
-    if (!canAccessSubjectConversation(ctx, subjectDetails, staffUser)) {
+    const effectiveSubjectDetails = { ...subjectDetails, assignedTailor: targetStaffName };
+
+    if (!canAccessSubjectConversation(ctx, effectiveSubjectDetails, staffUser)) {
       res.status(403).json({ success: false, message: 'Access denied' });
       return;
     }
 
-    const conversation = await getOrCreateOrderConversation(subjectDetails, staffUser);
+    const conversation = await getOrCreateOrderConversation(effectiveSubjectDetails, staffUser);
     if (!conversation) {
       res.status(500).json({ success: false, message: 'Failed to open order conversation' });
       return;
@@ -468,14 +497,57 @@ export const getOrCreateOrderConversationForSubject = async (req, res) => {
       .populate('userId', 'fullName firstName lastName email');
 
     const conversationUserInfo = ctx.role === 'user' ? ctx.userDoc : populatedConversation.userId;
+    const staffUserForRole = await findAssignedStaffUser(populatedConversation.assignedStaffId || populatedConversation.assignedStaffName);
 
     res.json({
       success: true,
-      conversation: mapConversationForClient(populatedConversation, conversationUserInfo, 0),
+      conversation: mapConversationForClient(populatedConversation, conversationUserInfo, 0, staffUserForRole?.position || ''),
     });
   } catch (error) {
     console.error('Get Or Create Order Conversation Error:', error);
     res.status(500).json({ success: false, message: 'Failed to open order conversation' });
+  }
+};
+
+export const getOrCreateSupportConversationForTargetUser = async (req, res) => {
+  try {
+    const ctx = await getRequesterContext(req, res);
+    if (!ctx) return;
+
+    if (ctx.role !== 'admin') {
+      res.status(403).json({ success: false, message: 'Only admin can open support conversations for other users.' });
+      return;
+    }
+
+    const targetUserId = req.body.targetUserId || req.query.targetUserId;
+    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+      res.status(400).json({ success: false, message: 'Invalid targetUserId' });
+      return;
+    }
+
+    const targetUser = await userModel.findById(targetUserId);
+    if (!targetUser) {
+      res.status(404).json({ success: false, message: 'Target user not found' });
+      return;
+    }
+
+    const conversation = await getOrCreateSupportConversation(targetUser._id);
+    if (!conversation) {
+      res.status(500).json({ success: false, message: 'Failed to open conversation' });
+      return;
+    }
+
+    const populatedConversation = await chatConversationModel
+      .findById(conversation._id)
+      .populate('userId', 'fullName firstName lastName email role employeeId');
+
+    res.json({
+      success: true,
+      conversation: mapConversationForClient(populatedConversation, populatedConversation.userId, 0),
+    });
+  } catch (error) {
+    console.error('Get Or Create Support Conversation Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to open support conversation' });
   }
 };
 
@@ -490,9 +562,12 @@ export const listConversations = async (req, res) => {
     const requestedScope = String(req.query.scope || '').trim().toLowerCase();
 
     if (ctx.role === 'admin') {
-      const query = {
-        $or: [{ scope: SUPPORT_SCOPE }, { scope: { $exists: false } }],
-      };
+      const query = {};
+      if (requestedScope === SUPPORT_SCOPE) {
+        query.$or = [{ scope: SUPPORT_SCOPE }, { scope: { $exists: false } }];
+      } else if (requestedScope === ORDER_SCOPE) {
+        query.scope = ORDER_SCOPE;
+      }
 
       const rawConversations = await chatConversationModel
         .find(query)
@@ -500,11 +575,13 @@ export const listConversations = async (req, res) => {
         .sort({ lastMessageAt: -1, updatedAt: -1 })
         .lean();
 
-      const mapped = await Promise.all(
+      const finalConvs = [];
+      const seenKeys = new Set();
+      await Promise.all(
         rawConversations.map(async (conversation) => {
           const unreadCount = await chatMessageModel.countDocuments({
             conversationId: conversation._id,
-            senderRole: 'user',
+            senderRole: { $ne: 'admin' },
             seenBy: { $ne: ctx.id },
           });
 
@@ -514,43 +591,114 @@ export const listConversations = async (req, res) => {
           if (search && !searchable.includes(search)) return null;
           if (unreadOnly && unreadCount <= 0) return null;
 
-          return mapConversationForClient(conversation, userInfo, unreadCount);
+          const convObj = mapConversationForClient(conversation, userInfo, unreadCount);
+          const key = `${convObj.scope}-${convObj.user?.id}-${convObj.assignedStaffId || 'none'}`;
+
+          if (seenKeys.has(key)) {
+            const existing = finalConvs.find(c => `${c.scope}-${c.user?.id}-${c.assignedStaffId || 'none'}` === key);
+            if (existing) {
+              existing.unreadCount += convObj.unreadCount;
+              if (new Date(convObj.lastMessageAt) > new Date(existing.lastMessageAt)) {
+                existing.lastMessageAt = convObj.lastMessageAt;
+                existing.lastMessagePreview = convObj.lastMessagePreview;
+                existing.id = convObj.id;
+                existing._id = convObj._id;
+              }
+            }
+            return;
+          }
+
+          seenKeys.add(key);
+          finalConvs.push(convObj);
         })
       );
 
-      res.json({ success: true, conversations: mapped.filter(Boolean) });
+      res.json({ success: true, conversations: finalConvs });
       return;
     }
 
     if (ctx.role === 'staff') {
-      const rawConversations = await chatConversationModel
-        .find({
-          scope: ORDER_SCOPE,
-          assignedStaffId: ctx.id,
-        })
-        .populate('userId', 'fullName firstName lastName email')
-        .sort({ lastMessageAt: -1, updatedAt: -1 })
-        .lean();
+      const conversations = [];
 
-      const mapped = await Promise.all(
-        rawConversations.map(async (conversation) => {
+      if (requestedScope !== ORDER_SCOPE) {
+        const supportConversation = await getOrCreateSupportConversation(ctx.userObjectId);
+        if (supportConversation) {
           const unreadCount = await chatMessageModel.countDocuments({
-            conversationId: conversation._id,
-            senderRole: 'user',
+            conversationId: supportConversation._id,
+            senderRole: 'admin',
             seenBy: { $ne: ctx.id },
           });
 
-          const userInfo = conversation.userId;
-          const searchable = getConversationSearchBlob(conversation, userInfo);
+          const searchable = getConversationSearchBlob(supportConversation, ctx.userDoc);
+          if ((!search || searchable.includes(search)) && (!unreadOnly || unreadCount > 0)) {
+            conversations.push(mapConversationForClient(supportConversation, ctx.userDoc, unreadCount));
+          }
+        }
+      }
 
-          if (search && !searchable.includes(search)) return null;
-          if (unreadOnly && unreadCount <= 0) return null;
+      if (requestedScope !== SUPPORT_SCOPE) {
+        const rawConversations = await chatConversationModel
+          .find({
+            scope: ORDER_SCOPE,
+            assignedStaffId: ctx.id,
+          })
+          .populate('userId', 'fullName firstName lastName email')
+          .sort({ lastMessageAt: -1, updatedAt: -1 })
+          .lean();
 
-          return mapConversationForClient(conversation, userInfo, unreadCount);
-        })
-      );
+        const finalOrderConvs = [];
+        const seenOrderKeys = new Set();
+        const mapped = await Promise.all(
+          rawConversations.map(async (conversation) => {
+            const unreadCount = await chatMessageModel.countDocuments({
+              conversationId: conversation._id,
+              senderRole: 'user',
+              seenBy: { $ne: ctx.id },
+            });
 
-      res.json({ success: true, conversations: mapped.filter(Boolean) });
+            const userInfo = conversation.userId;
+            const searchable = getConversationSearchBlob(conversation, userInfo);
+
+            if (search && !searchable.includes(search)) return null;
+            if (unreadOnly && unreadCount <= 0) return null;
+
+            const convObj = mapConversationForClient(conversation, userInfo, unreadCount);
+            const key = `order-${convObj.user?.id}-${convObj.assignedStaffId || 'none'}`;
+
+            if (seenOrderKeys.has(key)) {
+              const existing = finalOrderConvs.find(c => `order-${c.user?.id}-${c.assignedStaffId || 'none'}` === key);
+              if (existing) {
+                existing.unreadCount += convObj.unreadCount;
+                if (new Date(convObj.lastMessageAt) > new Date(existing.lastMessageAt)) {
+                  existing.lastMessageAt = convObj.lastMessageAt;
+                  existing.lastMessagePreview = convObj.lastMessagePreview;
+                  existing.id = convObj.id;
+                  existing._id = convObj._id;
+                }
+              }
+              return null;
+            }
+
+            seenOrderKeys.add(key);
+            finalOrderConvs.push(convObj);
+            return convObj;
+          })
+        );
+
+        conversations.push(...finalOrderConvs);
+      }
+
+      conversations.sort((first, second) => {
+        if ((first.scope || SUPPORT_SCOPE) !== (second.scope || SUPPORT_SCOPE)) {
+          return (first.scope || SUPPORT_SCOPE) === SUPPORT_SCOPE ? -1 : 1;
+        }
+
+        const firstTime = new Date(first?.lastMessageAt || 0).getTime();
+        const secondTime = new Date(second?.lastMessageAt || 0).getTime();
+        return secondTime - firstTime;
+      });
+
+      res.json({ success: true, conversations });
       return;
     }
 
@@ -586,7 +734,9 @@ export const listConversations = async (req, res) => {
         .sort({ lastMessageAt: -1, updatedAt: -1 })
         .lean();
 
-      const mapped = await Promise.all(
+      const finalOrderConvs = [];
+      const seenOrderKeys = new Set();
+      await Promise.all(
         rawConversations.map(async (conversation) => {
           const unreadCount = await chatMessageModel.countDocuments({
             conversationId: conversation._id,
@@ -594,15 +744,34 @@ export const listConversations = async (req, res) => {
             seenBy: { $ne: ctx.id },
           });
 
+          const staffUser = await findAssignedStaffUser(conversation.assignedStaffId || conversation.assignedStaffName);
           const searchable = getConversationSearchBlob(conversation, ctx.userDoc);
           if (search && !searchable.includes(search)) return null;
           if (unreadOnly && unreadCount <= 0) return null;
 
-          return mapConversationForClient(conversation, ctx.userDoc, unreadCount);
+          const convObj = mapConversationForClient(conversation, ctx.userDoc, unreadCount, staffUser?.position || '');
+          const key = `order-${convObj.user?.id}-${convObj.assignedStaffId || 'none'}`;
+
+          if (seenOrderKeys.has(key)) {
+            const existing = finalOrderConvs.find(c => `order-${c.user?.id}-${c.assignedStaffId || 'none'}` === key);
+            if (existing) {
+              existing.unreadCount += convObj.unreadCount;
+              if (new Date(convObj.lastMessageAt) > new Date(existing.lastMessageAt)) {
+                existing.lastMessageAt = convObj.lastMessageAt;
+                existing.lastMessagePreview = convObj.lastMessagePreview;
+                existing.id = convObj.id;
+                existing._id = convObj._id;
+              }
+            }
+            return;
+          }
+
+          seenOrderKeys.add(key);
+          finalOrderConvs.push(convObj);
         })
       );
 
-      conversations.push(...mapped.filter(Boolean));
+      conversations.push(...finalOrderConvs);
     }
 
     conversations.sort((first, second) => {
@@ -651,10 +820,11 @@ export const getMessages = async (req, res) => {
       .map((messageDoc) => mapMessageForClient(messageDoc, ctx.id));
 
     const conversationUserInfo = isAdminOrStaff(ctx) ? conversation.userId : ctx.userDoc;
+    const staffUserForRole = await findAssignedStaffUser(conversation.assignedStaffId || conversation.assignedStaffName);
 
     res.json({
       success: true,
-      conversation: mapConversationForClient(conversation, conversationUserInfo, 0),
+      conversation: mapConversationForClient(conversation, conversationUserInfo, 0, staffUserForRole?.position || ''),
       messages,
     });
   } catch (error) {

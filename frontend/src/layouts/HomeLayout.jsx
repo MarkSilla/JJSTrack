@@ -4,6 +4,7 @@ import HomeSidebar from '../components/HomeSidebar'
 import HomeNavbar from '../components/HomeNavbar'
 import GoogleProfileModal from '../components/GoogleProfileModal'
 import ChatWidget from '../components/ChatWidget'
+import { ChatProvider } from '../context/ChatContext'
 
 const HomeLayout = () => {
   const [collapsed, setCollapsed] = useState(true)
@@ -49,21 +50,23 @@ const HomeLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HomeSidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
-      <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
-        <HomeNavbar collapsed={collapsed} setCollapsed={handleBurgerClick} />
-        <main>
-          <Outlet />
-        </main>
+    <ChatProvider>
+      <div className="min-h-screen bg-gray-50">
+        <HomeSidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
+        <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+          <HomeNavbar collapsed={collapsed} setCollapsed={handleBurgerClick} />
+          <main>
+            <Outlet />
+          </main>
+        </div>
+        <GoogleProfileModal 
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          onSuccess={handleProfileSuccess}
+        />
+        <ChatWidget />
       </div>
-      <GoogleProfileModal 
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        onSuccess={handleProfileSuccess}
-      />
-      <ChatWidget />
-    </div>
+    </ChatProvider>
   )
 }
 

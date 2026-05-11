@@ -40,11 +40,10 @@ const MessageBubble = ({ message }) => {
   return (
     <div className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[82%] sm:px-4 sm:py-3 ${
-          isClient
+        className={`max-w-[88%] break-words rounded-2xl px-3.5 py-2.5 shadow-sm sm:max-w-[82%] sm:px-4 sm:py-3 ${isClient
             ? 'rounded-br-sm bg-blue-600 text-white'
             : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700'
-        }`}
+          }`}
       >
         {!isClient && senderLabel ? (
           <p className="mb-1 text-[11px] font-semibold text-slate-400">{senderLabel}</p>
@@ -144,7 +143,7 @@ const InputBar = ({ disabled, onSend }) => {
   );
 };
 
-export default function OrderTailorChatModal({ order, onClose }) {
+export default function OrderTailorChatModal({ order, onClose, targetStaffName }) {
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,7 +152,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
 
   const subjectType = order?.bookingType ? 'booking' : 'order';
   const subjectId = order?._id;
-  const assignedTailor = order?.assignedTailor || '';
+  const targetStaff = targetStaffName || order?.assignedTailor || '';
 
   const loadMessages = useCallback(
     async (conversationId, silent = false) => {
@@ -186,7 +185,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
 
     try {
       setLoading(true);
-      const response = await chatApi.openOrderConversation({ subjectType, subjectId });
+      const response = await chatApi.openOrderConversation({ subjectType, subjectId, targetStaffName: targetStaff });
       const nextConversation = response?.conversation || null;
       setConversation(nextConversation);
 
@@ -203,7 +202,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
     }
 
     setLoading(false);
-  }, [loadMessages, subjectId, subjectType]);
+  }, [loadMessages, subjectId, subjectType, targetStaff]);
 
   useEffect(() => {
     bootstrapConversation();
@@ -296,10 +295,8 @@ export default function OrderTailorChatModal({ order, onClose }) {
             <UserRound size={18} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-sm font-bold text-slate-900">{assignedTailor || conversation?.assignedStaffName || 'Assigned Tailor'}</h2>
-            <p className="truncate text-[11px] text-slate-400">
-              {modalTitle} • {modalRefCode}
-            </p>
+            <h2 className="truncate text-sm font-bold text-slate-900">{targetStaff || conversation?.assignedStaffName || 'Assigned Staff'}</h2>
+
           </div>
           <button
             type="button"
@@ -316,7 +313,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-500">
                 <MessageCircle size={28} />
               </div>
-              <p className="text-sm font-semibold text-slate-700">Loading tailor chat...</p>
+              <p className="text-sm font-semibold text-slate-700">Loading chat...</p>
             </div>
           ) : errorText && messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
@@ -331,7 +328,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
                 <MessageCircle size={28} />
               </div>
               <p className="text-sm font-semibold text-slate-700">No messages yet</p>
-              <p className="mt-1 text-xs text-slate-400">Ask your assigned tailor about this specific order here.</p>
+              <p className="mt-1 text-xs text-slate-400">This is the start of your conversation with your assigned staff.</p>
             </div>
           ) : (
             messages.map((message) => <MessageBubble key={message.id || message._id} message={message} />)
@@ -343,7 +340,7 @@ export default function OrderTailorChatModal({ order, onClose }) {
           <div ref={endRef} />
         </div>
 
-        <InputBar disabled={!assignedTailor || loading} onSend={handleSendMessage} />
+        <InputBar disabled={!targetStaff || loading} onSend={handleSendMessage} />
       </div>
     </>
   );

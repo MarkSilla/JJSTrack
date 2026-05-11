@@ -29,6 +29,7 @@ import {
   maybeCreateStaffAssignmentNotification,
   maybeCreateWorkflowStepReadyNotification,
 } from '../utils/staffNotificationEvents.js';
+import { syncSubjectChatConversations } from '../utils/chatConversationSync.js';
 
 const isEnvAdminRequest = (req) => req.userId === 'admin';
 
@@ -1150,6 +1151,7 @@ export const updateBooking = async (req, res) => {
     console.log('💾 Saving booking with status:', booking.status, 'steps:', booking.steps);
     booking.steps = booking.steps || [];
     await booking.save();
+    await syncSubjectChatConversations({ subjectType: 'booking', subjectDoc: booking });
     emitBookingTrackingUpdate(booking);
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
@@ -1344,6 +1346,7 @@ export const convertBookingToOrder = async (req, res) => {
     });
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     // Only broadcast tracking update if no staff notification being created
     // (to avoid duplicate notifications from both notification socket and feed refresh)
     const shouldBroadcastTracking = !assignedTailor || assignedTailor === booking.assignedTailor;
