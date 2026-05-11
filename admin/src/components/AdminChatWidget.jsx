@@ -193,11 +193,11 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
 const ImageModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
         type="button"
@@ -205,9 +205,9 @@ const ImageModal = ({ imageUrl, onClose }) => {
         <X className="w-8 h-8" />
       </button>
       <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <img 
-          src={imageUrl} 
-          alt="Full view" 
+        <img
+          src={imageUrl}
+          alt="Full view"
           className="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
       </div>
@@ -252,7 +252,7 @@ const AdminChatBubble = ({ id, sender, senderId, message, timestamp, type, image
     <div className={`mb-4 flex w-full ${isAdmin ? "justify-end" : "justify-start"} items-end gap-2.5`}>
       {!isAdmin && (
         <div className="shrink-0 mb-1">
-          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-600 shadow-sm border border-stone-200 uppercase overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold text-blue-600 shadow-sm border border-stone-200 uppercase overflow-hidden">
             {clientAvatar}
           </div>
         </div>

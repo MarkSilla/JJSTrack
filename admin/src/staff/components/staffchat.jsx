@@ -172,11 +172,11 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
 const ImageModal = ({ imageUrl, onClose }) => {
     if (!imageUrl) return null;
     return (
-        <div 
+        <div
             className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={onClose}
         >
-            <button 
+            <button
                 onClick={(e) => { e.stopPropagation(); onClose(); }}
                 className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
                 type="button"
@@ -184,9 +184,9 @@ const ImageModal = ({ imageUrl, onClose }) => {
                 <X className="w-8 h-8" />
             </button>
             <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-                <img 
-                    src={imageUrl} 
-                    alt="Full view" 
+                <img
+                    src={imageUrl}
+                    alt="Full view"
                     className="max-w-full max-h-[90vh] object-contain rounded-lg"
                 />
             </div>
@@ -231,7 +231,7 @@ const StaffChatBubble = ({ id, sender, senderId, senderName, message, timestamp,
         <div className={`mb-4 flex w-full ${isStaff ? 'justify-end' : 'justify-start'} items-end gap-2.5`}>
             {!isStaff && (
                 <div className="shrink-0 mb-[1px]">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border uppercase overflow-hidden ${senderRole === 'admin' ? 'bg-black text-white border-slate-300/50' : 'bg-stone-100 text-stone-600 border-stone-200'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border uppercase overflow-hidden ${senderRole === 'admin' ? 'bg-black text-white border-slate-300/50' : 'bg-stone-100 text-blue-600 border-stone-200'}`}>
                         {senderRole === 'admin' ? (
                             <img src={img.JJS} alt="JJS" className="w-full h-full object-contain p-0.5" />
                         ) : (
