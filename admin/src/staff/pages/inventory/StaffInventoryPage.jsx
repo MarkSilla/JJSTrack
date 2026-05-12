@@ -15,6 +15,7 @@ import {
   Tag,
   X,
   XCircle,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -127,21 +128,21 @@ function UseItemModal({
 
   const usageContext = selectedOrder
     ? {
-        orderId: selectedOrder.orderId,
-        orderDisplayId: selectedOrder.displayId,
-        orderLabel: selectedOrder.label,
-        customerName: selectedOrder.customerName,
-        serviceType: selectedOrder.serviceType,
-        source: selectedOrder.source,
-      }
+      orderId: selectedOrder.orderId,
+      orderDisplayId: selectedOrder.displayId,
+      orderLabel: selectedOrder.label,
+      customerName: selectedOrder.customerName,
+      serviceType: selectedOrder.serviceType,
+      source: selectedOrder.source,
+    }
     : {
-        orderId: "",
-        orderDisplayId: manualOrder.trim(),
-        orderLabel: manualOrder.trim(),
-        customerName: "",
-        serviceType: "",
-        source: "manual",
-      };
+      orderId: "",
+      orderDisplayId: manualOrder.trim(),
+      orderLabel: manualOrder.trim(),
+      customerName: "",
+      serviceType: "",
+      source: "manual",
+    };
   const selectedOrderLabel = selectedOrder
     ? `${selectedOrder.displayId} - ${selectedOrder.label}`
     : orderChoice === "__manual__" && manualOrder.trim()
@@ -199,9 +200,8 @@ function UseItemModal({
           <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">Available Stock</span>
             <span
-              className={`text-xl font-black tabular-nums ${
-                stock === 0 ? "text-red-500" : "text-gray-900"
-              }`}
+              className={`text-xl font-black tabular-nums ${stock === 0 ? "text-red-500" : "text-gray-900"
+                }`}
             >
               {stock}{" "}
               <span className="text-sm font-normal text-slate-400">
@@ -292,9 +292,8 @@ function UseItemModal({
                           type="button"
                           key={`${order.source}-${order.id}`}
                           onClick={() => handleSelectOrder(order.id)}
-                          className={`w-full px-4 py-2.5 text-left transition-colors hover:bg-slate-50 ${
-                            orderChoice === order.id ? "bg-blue-50" : "bg-white"
-                          }`}
+                          className={`w-full px-4 py-2.5 text-left transition-colors hover:bg-slate-50 ${orderChoice === order.id ? "bg-blue-50" : "bg-white"
+                            }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -317,9 +316,8 @@ function UseItemModal({
                   <button
                     type="button"
                     onClick={() => handleSelectOrder("__manual__")}
-                    className={`w-full border-t border-slate-100 px-4 py-2.5 text-left text-xs font-bold transition-colors hover:bg-blue-50 ${
-                      orderChoice === "__manual__" ? "bg-blue-50 text-blue-700" : "text-slate-600"
-                    }`}
+                    className={`w-full border-t border-slate-100 px-4 py-2.5 text-left text-xs font-bold transition-colors hover:bg-blue-50 ${orderChoice === "__manual__" ? "bg-blue-50 text-blue-700" : "text-slate-600"
+                      }`}
                   >
                     Manual / other order reference
                   </button>
@@ -386,11 +384,10 @@ function UseItemModal({
                 })
               }
               disabled={!canSubmit}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                canSubmit
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
-              }`}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${canSubmit
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                }`}
             >
               {submitting ? "Saving..." : "Confirm Use"}
             </button>
@@ -524,12 +521,11 @@ export default function StaffInventoryPage() {
     }
   })();
 
-  const usageStorageKey = `staff_usage_${
-    parsedStaffUser?.id ||
+  const usageStorageKey = `staff_usage_${parsedStaffUser?.id ||
     parsedStaffUser?._id ||
     parsedStaffUser?.email ||
     "staff"
-  }`;
+    }`;
 
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -706,7 +702,7 @@ export default function StaffInventoryPage() {
         className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
         style={{ background: accent }}
       />
-      <div className="flex items-center gap-3 relative z-10">
+      <div className="font-inter flex items-center gap-3 relative z-10">
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
           style={{
@@ -720,10 +716,10 @@ export default function StaffInventoryPage() {
           <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">
             {label}
           </div>
-          <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">
+          <div className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1">
             {value}
           </div>
-          <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">
+          <div className="text-[10px] text-gray-400 font-medium truncate leading-none uppercase tracking-tighter opacity-80">
             {sub}
           </div>
         </div>
@@ -732,7 +728,7 @@ export default function StaffInventoryPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="font-inter space-y-4">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
@@ -742,13 +738,6 @@ export default function StaffInventoryPage() {
             View live supplies from the admin inventory and log usage
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadInventory}
-          className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          Refresh
-        </button>
       </div>
 
       {error && (
@@ -781,59 +770,66 @@ export default function StaffInventoryPage() {
         />
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-5">
         <div className="relative flex-1">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-          />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search items..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
+            className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
-        <div className="relative">
+
+        <button
+          type="button"
+          onClick={loadInventory}
+          className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+          title="Refresh"
+        >
+          <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+        </button>
+
+        <div className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setShowCatDropdown((value) => !value)}
-            className="flex items-center gap-1.5 pl-7 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer min-w-[110px]"
+            onClick={() => setShowCatDropdown(!showCatDropdown)}
+            className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all ${catFilter !== 'All' || showCatDropdown ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white border-slate-200 text-slate-600'}`}
           >
-            <Filter
-              size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-            />
-            <span className="truncate">
-              {catFilter === "All" ? "Category" : catFilter}
-            </span>
-            <ChevronDown
-              size={12}
-              className={`text-slate-400 transition-transform ${
-                showCatDropdown ? "rotate-180" : ""
-              }`}
-            />
+            <Filter size={15} />
           </button>
+
           {showCatDropdown && (
-            <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-[160px]">
-              {categories.map((category) => (
-                <button
-                  type="button"
-                  key={category}
-                  onClick={() => {
-                    setCatFilter(category);
-                    setShowCatDropdown(false);
-                  }}
-                  className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors cursor-pointer border-none hover:bg-slate-50 ${
-                    catFilter === category
-                      ? "bg-blue-50 text-blue-600 font-semibold"
-                      : "text-slate-600"
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl z-[1000] py-1 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-4 py-1.5 flex items-center justify-between border-b border-slate-50 mb-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</span>
+                {catFilter !== "All" && (
+                  <button onClick={() => { setCatFilter("All"); setShowCatDropdown(false); }} className="text-[9px] font-bold text-blue-600 hover:underline">Reset</button>
+                )}
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => {
+                      setCatFilter(category);
+                      setShowCatDropdown(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 ${catFilter === category ? "text-blue-600 bg-blue-50" : "text-slate-600"}`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -915,11 +911,10 @@ export default function StaffInventoryPage() {
                         type="button"
                         onClick={() => stock > 0 && setUseModal(item)}
                         disabled={stock === 0}
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all ${
-                          stock === 0
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
-                        }`}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-all ${stock === 0
+                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
+                          }`}
                       >
                         <ArrowDownCircle size={13} /> Use Item
                       </button>
@@ -981,11 +976,10 @@ export default function StaffInventoryPage() {
                   type="button"
                   onClick={() => stock > 0 && setUseModal(item)}
                   disabled={stock === 0}
-                  className={`w-full flex items-center justify-center gap-1.5 text-sm font-semibold py-2.5 rounded-xl transition-all ${
-                    stock === 0
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
-                  }`}
+                  className={`w-full flex items-center justify-center gap-1.5 text-sm font-semibold py-2.5 rounded-xl transition-all ${stock === 0
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
+                    }`}
                 >
                   <ArrowDownCircle size={14} />{" "}
                   {stock === 0 ? "Out of Stock" : "Use Item"}

@@ -3,7 +3,7 @@ import {
     Archive, Search, CheckCircle2, Package, Users, Wrench,
     Calendar, ChevronDown, X, Eye, Filter, Shirt, ChevronRight,
     ArrowLeft, ArrowRight, User, Phone, CheckCheck, Scissors,
-    FileText, Image as ImageIcon, RotateCcw, XCircle
+    FileText, Image as ImageIcon, RotateCcw, XCircle, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { bookingApi } from '../services/bookingApi';
@@ -81,7 +81,7 @@ const fmtDate = (str) => {
 const TYPE_CONFIG = {
     TEAM_JERSEY: { label: 'Team Jersey', text: 'text-blue-600' },
     ORGANIZATIONAL: { label: 'Organizational', text: 'text-indigo-600' },
-    REPAIR: { label: 'Repair', text: 'text-violet-600' },
+    REPAIR: { label: 'Repair', text: 'text-blue-600' },
 };
 
 const Pill = ({ bg, text, border, children, className = '' }) => (
@@ -681,9 +681,6 @@ const ArchiveCard = ({ order, onClick, onRestore, isRestoring }) => {
                     <h3 className="text-[15px] font-black text-slate-800 leading-none">
                         {order.teamName || order.customerName}
                     </h3>
-                    <span className="shrink-0 text-[9px] font-black text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100 uppercase tracking-tighter">
-                        {order.serviceTitle}
-                    </span>
                 </div>
                 <div className="text-[11px] font-bold text-slate-400 mt-1">{order.customerName}</div>
                 {order.archivedBy && (
@@ -730,6 +727,7 @@ const ArchivesPage = () => {
     const [loading, setLoading] = useState(true);
     const [restoreTarget, setRestoreTarget] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     const fetchArchivedOrders = async () => {
         try {
@@ -856,7 +854,7 @@ const ArchivesPage = () => {
     ];
 
     return (
-        <div className="font-sans flex flex-col gap-4 md:gap-5 w-full max-w-full overflow-x-hidden">
+        <div className="font-inter flex flex-col gap-4 md:gap-5 w-full max-w-full overflow-x-hidden">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
                     <div>
@@ -883,9 +881,9 @@ const ArchivesPage = () => {
                                     <k.icon size={20} color={accent} strokeWidth={2.2} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">{k.label}</div>
-                                    <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">{k.value}</div>
-                                    <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">{k.sub}</div>
+                                    <div className="text-[11px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">{k.label}</div>
+                                    <div className="text-xl  font-black text-slate-800 tracking-tighter leading-none mb-1">{k.value}</div>
+                                    <div className="text-[10px] text-gray-400 font-me truncate leading-none uppercase tracking-tighter opacity-80">{k.sub}</div>
                                 </div>
                             </div>
                         </button>
@@ -893,61 +891,122 @@ const ArchivesPage = () => {
                 })}
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 md:p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3 shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
                 <div className="relative flex-1">
                     <Search size={14} className="text-slate-300 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="Search by name, team, or order ID…"
+                        placeholder="Search archives..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-8 pr-8 py-2.5 text-[13px] font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-lg outline-none transition-all focus:border-blue-300 focus:ring-[3px] focus:ring-blue-50 box-border"
+                        className="w-full pl-9 pr-9 py-2.5 text-sm font-medium text-slate-800 bg-white border border-slate-200 rounded-xl outline-none transition-all focus:border-blue-500 box-border"
                     />
-                    {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer bg-transparent border-none"><X size={13} /></button>}
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 p-0.5"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
-                    <div className="relative">
-                        <select
-                            value={typeFilter}
-                            onChange={e => setTypeFilter(e.target.value)}
-                            className="w-full sm:w-[140px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
-                        >
-                            <option value="All">All Types</option>
-                            <option value="TEAM_JERSEY">Team Jersey</option>
-                            <option value="ORGANIZATIONAL">Organizational</option>
-                            <option value="REPAIR">Repair</option>
-                        </select>
-                        <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
+                <button
+                    onClick={fetchArchivedOrders}
+                    disabled={loading}
+                    className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all shrink-0"
+                    title="Refresh Archives"
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                </button>
 
-                    <div className="relative">
-                        <select
-                            value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
-                            className="w-full sm:w-[140px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
-                        >
-                            <option value="All">All Status</option>
-                            <option value="Archived">Archived</option>
-                            <option value="Released">Released</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
-                        <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                </div>
-
-                <div className="hidden sm:block w-px h-6 bg-slate-200 shrink-0" />
-
-                <div className="relative">
-                    <select
-                        value={sortOrder}
-                        onChange={e => setSortOrder(e.target.value)}
-                        className="w-full sm:w-[130px] appearance-none pl-3 pr-8 py-2.5 text-xs font-bold tracking-wide bg-slate-50 text-slate-700 border border-slate-200 rounded-lg outline-none cursor-pointer hover:bg-slate-100 focus:border-blue-300 focus:ring focus:ring-blue-50 transition-all"
+                <div className="relative shrink-0">
+                    <button
+                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                        className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all relative ${isFilterOpen || typeFilter !== 'All' || statusFilter !== 'All' || sortOrder !== 'newest'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        title="Filters & Sorting"
                     >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                    </select>
-                    <ChevronDown size={12} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Filter size={18} />
+                        {(typeFilter !== 'All' || statusFilter !== 'All' || sortOrder !== 'newest') && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full" />
+                        )}
+                    </button>
+
+                    {isFilterOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-100 shadow-2xl rounded-2xl p-5 z-[1000] animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Filter & Sort</h3>
+                                {(typeFilter !== 'All' || statusFilter !== 'All' || sortOrder !== 'newest') && (
+                                    <button
+                                        onClick={() => {
+                                            setTypeFilter('All');
+                                            setStatusFilter('All');
+                                            setSortOrder('newest');
+                                        }}
+                                        className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-tight"
+                                    >
+                                        Clear All
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Sort Section */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Sort By</label>
+                                    <div className="relative">
+                                        <select
+                                            value={sortOrder}
+                                            onChange={(e) => setSortOrder(e.target.value)}
+                                            className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-200 transition-all cursor-pointer"
+                                        >
+                                            <option value="newest">Newest First</option>
+                                            <option value="oldest">Oldest First</option>
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Type Section */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Archive Type</label>
+                                    <div className="relative">
+                                        <select
+                                            value={typeFilter}
+                                            onChange={(e) => setTypeFilter(e.target.value)}
+                                            className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-200 transition-all cursor-pointer"
+                                        >
+                                            <option value="All">All Types</option>
+                                            <option value="TEAM_JERSEY">Team Jersey</option>
+                                            <option value="ORGANIZATIONAL">Organizational</option>
+                                            <option value="REPAIR">Repair</option>
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Status Section */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Status</label>
+                                    <div className="relative">
+                                        <select
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                            className="w-full appearance-none bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-700 outline-none focus:border-blue-200 transition-all cursor-pointer"
+                                        >
+                                            <option value="All">All Status</option>
+                                            <option value="Archived">Archived</option>
+                                            <option value="Released">Released</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

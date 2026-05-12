@@ -12,6 +12,7 @@ import {
   Tag,
   User,
   X,
+  ArrowUpDown
 } from "lucide-react";
 import { inventoryApi } from "../../services/inventoryApi";
 import { getStoredStaffUser } from "../../utils/staffSession";
@@ -72,7 +73,7 @@ function getUsageTarget(activity) {
 function StatCard({ label, value, sub, icon: Icon, accent }) {
   return (
     <div
-      className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden border border-slate-200/60"
+      className="font-inter bg-white rounded-2xl py-4 px-5 relative overflow-hidden border border-slate-200/60"
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
     >
       <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.08]" style={{ background: accent }} />
@@ -81,9 +82,9 @@ function StatCard({ label, value, sub, icon: Icon, accent }) {
           <Icon size={20} color={accent} strokeWidth={2.2} />
         </div>
         <div className="min-w-0">
-          <div className="text-[11px] font-black tracking-widest uppercase text-slate-400">{label}</div>
-          <div className="text-2xl font-black text-slate-900 leading-none mt-1">{value}</div>
-          <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tight">{sub}</div>
+          <div className="text-[11px] font-bold tracking-widest uppercase text-slate-400">{label}</div>
+          <div className="text-xl font-black text-slate-900 leading-none mt-1">{value}</div>
+          <div className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-tight">{sub}</div>
         </div>
       </div>
     </div>
@@ -98,7 +99,7 @@ function DetailModal({ activity, onClose }) {
     : [];
 
   return (
-    <div className="fixed inset-0 z-[10020] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="font-inter fixed inset-0 z-[10020] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-3xl max-h-[92vh] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
@@ -183,6 +184,7 @@ export default function StaffInventoryHistoryPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [showCategory, setShowCategory] = useState(false);
   const [showSort, setShowSort] = useState(false);
+  const [showFiltersMenu, setShowFiltersMenu] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -202,11 +204,11 @@ export default function StaffInventoryHistoryPage() {
 
       const mine = Array.isArray(activityData)
         ? activityData.filter((activity) => {
-            if (activity.actionType !== "decrease") return false;
-            if (staffIds.length && staffIds.includes(String(activity.performedById || ""))) return true;
-            if (staffNames.length && staffNames.includes(String(activity.performedByName || "").trim().toLowerCase())) return true;
-            return activity.performedByRole === "staff" && staffIds.length === 0 && staffNames.length === 0;
-          })
+          if (activity.actionType !== "decrease") return false;
+          if (staffIds.length && staffIds.includes(String(activity.performedById || ""))) return true;
+          if (staffNames.length && staffNames.includes(String(activity.performedByName || "").trim().toLowerCase())) return true;
+          return activity.performedByRole === "staff" && staffIds.length === 0 && staffNames.length === 0;
+        })
         : [];
 
       setActivities(mine);
@@ -256,6 +258,8 @@ export default function StaffInventoryHistoryPage() {
     return nextActivities;
   }, [activities, categoryFilter, search, sortBy]);
 
+  const hasActiveFilters = categoryFilter !== "All" || sortBy !== "newest";
+
   const stats = useMemo(() => {
     const stockOut = activities.reduce((sum, activity) => sum + Math.abs(Math.min(0, getStockDelta(activity))), 0);
     const usedOrders = new Set(activities.map(getUsageTarget).filter((target) => target !== "No order reference")).size;
@@ -270,20 +274,12 @@ export default function StaffInventoryHistoryPage() {
   }, [activities]);
 
   return (
-    <div className="space-y-4">
+    <div className="font-inter space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Inventory Usage History</h1>
           <p className="text-sm text-slate-500 mt-0.5">Track your stock-outs and linked order notes.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => loadHistory({ showLoader: true })}
-          className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
-        >
-          <RefreshCw size={14} />
-          Sync
-        </button>
       </div>
 
       {error && (
@@ -292,77 +288,114 @@ export default function StaffInventoryHistoryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Total Logs" value={stats.totalLogs} sub="Recorded usage" icon={BarChart3} accent="#2563EB" />
         <StatCard label="Stock Out" value={formatQty(stats.stockOut)} sub="Units consumed" icon={ArrowDownCircle} accent="#DC2626" />
         <StatCard label="Linked Orders" value={stats.usedOrders} sub="Recorded in notes" icon={Package} accent="#7C3AED" />
         <StatCard label="Items Touched" value={stats.touchedItems} sub="Unique supplies" icon={Tag} accent="#059669" />
       </div>
 
-      <div className="flex flex-col lg:flex-row items-center gap-3">
-        <div className="relative flex-1 w-full">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search item, order, customer, or note..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
-          />
-        </div>
-        <div className="flex items-center gap-2 w-full lg:w-auto">
-          <div className="relative flex-1 lg:flex-none">
-            <button
-              type="button"
-              onClick={() => setShowCategory((value) => !value)}
-              className="flex items-center justify-between gap-1.5 pl-7 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all"
-            >
-              <Filter size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <span className="truncate">{categoryFilter === "All" ? "Category" : categoryFilter}</span>
-              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategory ? "rotate-180" : ""}`} />
-            </button>
-            {showCategory && (
-              <div className="absolute left-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-[150px] max-h-52 overflow-y-auto">
-                {categoryOptions.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => {
-                      setCategoryFilter(category);
-                      setShowCategory(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors hover:bg-slate-50 ${categoryFilter === category ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-1 w-full">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search item, order, customer, or note..."
+              className="w-full pl-9 pr-10 py-2.5 text-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 bg-white transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
             )}
           </div>
-          <div className="relative flex-1 lg:flex-none">
+
+          <button
+            type="button"
+            onClick={() => loadHistory({ showLoader: true })}
+            className="flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors shrink-0"
+            title="Sync Records"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+
+          <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => setShowSort((value) => !value)}
-              className="flex items-center justify-between gap-1.5 px-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all"
+              onClick={() => setShowFiltersMenu(!showFiltersMenu)}
+              className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all ${showFiltersMenu || hasActiveFilters ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white border-slate-200 text-slate-600'}`}
             >
-              <span className="truncate">{SORT_OPTIONS.find((option) => option.value === sortBy)?.label || "Sort"}</span>
-              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showSort ? "rotate-180" : ""}`} />
+              <Filter size={16} />
             </button>
-            {showSort && (
-              <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] py-1 w-full sm:w-44 max-h-48 overflow-y-auto">
-                {SORT_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      setSortBy(option.value);
-                      setShowSort(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors hover:bg-slate-50 ${sortBy === option.value ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600"}`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+
+            {showFiltersMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[1000] py-2 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</span>
+                  {categoryFilter !== "All" && (
+                    <button onClick={() => setCategoryFilter("All")} className="text-[9px] font-bold text-blue-600 hover:underline">Reset</button>
+                  )}
+                </div>
+                <div className="max-h-40 overflow-y-auto mb-2">
+                  {categoryOptions.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => {
+                        setCategoryFilter(category);
+                        setShowFiltersMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 ${categoryFilter === category ? "text-blue-600 bg-blue-50" : "text-slate-600"}`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-slate-100 my-1" />
+
+                <div className="px-4 py-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sort By</span>
+                  {sortBy !== "newest" && (
+                    <button onClick={() => setSortBy("newest")} className="text-[9px] font-bold text-blue-600 hover:underline">Reset</button>
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  {SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setSortBy(option.value);
+                        setShowFiltersMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 ${sortBy === option.value ? "text-blue-600 bg-blue-50" : "text-slate-600"}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(hasActiveFilters) && (
+                  <>
+                    <div className="border-t border-slate-100 my-1" />
+                    <button
+                      onClick={() => {
+                        setCategoryFilter("All");
+                        setSortBy("newest");
+                        setShowFiltersMenu(false);
+                      }}
+                      className="w-full px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 text-center uppercase tracking-widest"
+                    >
+                      Clear All Filters
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
