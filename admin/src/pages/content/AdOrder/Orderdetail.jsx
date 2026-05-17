@@ -372,11 +372,11 @@ export default function OrderDetail({
             )}
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
-                <div className="space-y-5">
+            <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
+                <div className="min-w-0 space-y-5">
                     {/* Top Row: Workflow & Quick Actions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-5">
-                        <div className="lg:col-span-8">
+                    <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-5">
+                        <div className="min-w-0 lg:col-span-8">
                             <WorkflowProgress
                                 activeOrderSteps={activeOrderSteps}
                                 currentStepIdx={currentStepIdx}
@@ -386,7 +386,7 @@ export default function OrderDetail({
                                 hasSchedule={hasSchedule}
                             />
                         </div>
-                        <div className="lg:col-span-4">
+                        <div className="min-w-0 lg:col-span-4">
                             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm h-full flex flex-col">
                                 <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Quick Actions</h4>
                                 <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 h-full">
@@ -429,8 +429,8 @@ export default function OrderDetail({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
-                        <div className="col-span-2 flex flex-col gap-5">
+                    <div className="grid min-w-0 grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+                        <div className="min-w-0 md:col-span-2 flex flex-col gap-5">
                             <AssignedTailorPanel
                                 activeOrder={activeOrder}
                                 staffAssignments={staffAssignments}
@@ -448,7 +448,7 @@ export default function OrderDetail({
                                 hasSchedule={hasSchedule}
                             />
                         </div>
-                        <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
+                        <div className="min-w-0 md:col-span-1 flex flex-col gap-4 lg:gap-5">
                             {(imageUrls.length > 0 || activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
                                 <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
                                     <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
@@ -519,7 +519,7 @@ export default function OrderDetail({
                         </div>
                     </div>
                     {/* Team Roster Section moved to bottom of unified details view */}
-                    <div className="mt-5">
+                    <div className="mt-5 w-full max-w-full min-w-0">
                         <TeamRoster
                             players={rosterPlayers}
                             invoiceItems={rosterInvoiceItems}

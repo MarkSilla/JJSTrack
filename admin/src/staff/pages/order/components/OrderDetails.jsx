@@ -62,8 +62,27 @@ const getOrgShirtType = (member) => {
     return ORG_PRODUCT_TYPES[productType] || productType || 'N/A';
 };
 
-const summarizeItemsAndAddons = (items, teamRoster = []) => {
+const summarizeItemsAndAddons = (items, teamRoster = [], isOrg = false) => {
     const summary = {};
+
+    // For organizational orders, categorize by shirt type from roster
+    if (isOrg && teamRoster.length > 0) {
+        const typeCounts = {};
+        teamRoster.forEach(member => {
+            const rawType = String(member.productType || '').toLowerCase();
+            const label = rawType === 'tshirt' || rawType === 't-shirt' ? 'T-Shirt'
+                : rawType === 'polo' || rawType === 'polo shirt' ? 'Polo Shirt'
+                    : rawType ? rawType.charAt(0).toUpperCase() + rawType.slice(1)
+                        : 'Uniform';
+            typeCounts[label] = (typeCounts[label] || 0) + 1;
+        });
+
+        Object.entries(typeCounts).forEach(([label, count]) => {
+            summary[label] = { name: label, qty: count, total: null, isBase: true };
+        });
+
+        return Object.values(summary);
+    }
 
     items.forEach(item => {
         let name = (item.name || item.description || 'Unknown Item').trim();
@@ -425,9 +444,10 @@ const OrderDetails = ({ orderId, onBack }) => {
 
     const customerName = order.customerName || order.customer;
     const items = order.items || order.invoice?.items || [];
-    const teamRoster = order.teamRoster || order.players || order.members || [];
+    const teamRoster = (order.teamRoster?.length ? order.teamRoster : order.players?.length ? order.players : order.members) || [];
     const totalQty = items.reduce((sum, item) => sum + (item.qty || 0), 0);
-    const isOrg = String(order.serviceType || order.bookingType || '').toLowerCase().includes('organization');
+    const isOrg = String(order.serviceType || order.bookingType || '').toLowerCase().includes('organization') ||
+        String(order.item || '').toLowerCase().includes('organizational');
 
     const handleDownloadPDF = () => {
         try {
@@ -656,16 +676,12 @@ const OrderDetails = ({ orderId, onBack }) => {
                 onStepClick={handleStepClick}
             />
 
-            <div className="flex flex-col lg:flex-row gap-6 items-start w-full overflow-hidden">
-                <div className="w-full lg:w-[60%] flex flex-col gap-4 min-w-0">
+            <div className="flex flex-col lg:flex-row gap-6 items-start w-full max-w-full min-w-0 overflow-hidden">
+                <div className="w-full lg:w-[90%] flex flex-col gap-4 min-w-0">
                     {teamRoster.length > 0 && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm w-full max-w-full min-w-0">
                             <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <Users size={15} className="text-indigo-500 shrink-0" />
-                                <span className="text-[13px] font-bold text-slate-800">{isOrg ? 'Organization Roster' : 'Team Roster'}</span>
-                                <span className="text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full tracking-wide">
-                                    {teamRoster.length} {isOrg ? 'members' : 'players'}
-                                </span>
+                                <span className="text-[13px] font-bold text-slate-800">{isOrg ? 'Company List' : 'Team Lineup'}</span>
                                 <button
                                     onClick={handleDownloadPDF}
                                     className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
@@ -675,52 +691,52 @@ const OrderDetails = ({ orderId, onBack }) => {
                                 </button>
                             </div>
 
-                            <div className="p-6">
+                            <div className="p-4 sm:p-6 min-w-0">
                                 {/* Premium Grid Header */}
-                                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-5 mb-5">
+                                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-4 sm:p-5 mb-5 min-w-0">
                                     <div className="text-center mb-5">
                                         <h2 className="text-xl font-black tracking-tight text-gray-900">JJS SPORTSWEAR</h2>
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Contact: 0908 997 2332</p>
                                         <p className="text-[10px] text-gray-400 mt-0.5">Purok 3B National Highway, Calapacuan, Subic, Zambales</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="flex items-end gap-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                                        <div className="flex items-end gap-2 min-w-0">
                                             <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-wider mb-1">{isOrg ? 'ORGANIZATION:' : 'TEAM NAME:'}</span>
-                                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 uppercase truncate">
+                                            <span className="min-w-0 flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 uppercase truncate">
                                                 {order.teamName || order.team || order.category || 'N/A'}
                                             </span>
                                         </div>
-                                        <div className="flex items-end gap-2">
+                                        <div className="flex items-end gap-2 min-w-0">
                                             <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-wider mb-1">Customer:</span>
-                                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 truncate">
+                                            <span className="min-w-0 flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 truncate">
                                                 {customerName || 'N/A'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="max-w-full overflow-x-auto overflow-y-auto flex-1">
-                                    <table className="w-full min-w-[560px] border-collapse relative">
+                                <div className="w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto flex-1">
+                                    <table className={`w-full ${isOrg ? 'min-w-[640px]' : 'min-w-[760px]'} border-collapse relative`}>
                                         <thead>
-                                        {isOrg ? (
-                                            <tr className="bg-gray-50/80">
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Name</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Shirt Type</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Sizes</th>
-                                            </tr>
-                                        ) : (
-                                            <tr className="bg-gray-50/80">
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Surname</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Add-ons</th>
-                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Pockets</th>
-                                            </tr>
-                                        )}
+                                            {isOrg ? (
+                                                <tr className="bg-gray-50/80">
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-14">No.</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[160px]">Name</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Number</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[120px]">Shirt Type</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[150px]">Sizes</th>
+                                                </tr>
+                                            ) : (
+                                                <tr className="bg-gray-50/80">
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-14">No.</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[140px]">Surname</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Number</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[105px]">Jersey Size</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[105px]">Short Size</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[170px]">Add-ons</th>
+                                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Pockets</th>
+                                                </tr>
+                                            )}
                                         </thead>
                                         <tbody>
                                             {paginatedRoster.map((player, idx) => {
@@ -730,16 +746,16 @@ const OrderDetails = ({ orderId, onBack }) => {
                                                     return (
                                                         <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                                                             <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{startIndex + idx + 1}.</td>
-                                                            <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">
+                                                            <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase break-words">
                                                                 {[player.firstName, player.surname].filter(Boolean).join(' ') || player.name || '—'}
                                                             </td>
-                                                            <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600 break-words">
                                                                 {player.number !== undefined ? `${player.number}` : <span className="text-gray-300">—</span>}
                                                             </td>
-                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30 break-words">
                                                                 {getOrgShirtType(player)}
                                                             </td>
-                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 break-words">
                                                                 {getOrgSizeText(player)}
                                                             </td>
                                                         </tr>
@@ -749,20 +765,20 @@ const OrderDetails = ({ orderId, onBack }) => {
                                                 return (
                                                     <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                                                         <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{startIndex + idx + 1}.</td>
-                                                        <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">
+                                                        <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase break-words">
                                                             {[player.firstName, player.surname].filter(Boolean).join(' ') || player.name || '—'}
                                                         </td>
-                                                        <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600 break-words">
                                                             {player.number !== undefined ? `${player.number}` : <span className="text-gray-300">—</span>}
                                                         </td>
-                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30 break-words">
                                                             {getJerseySizeText(player)}
                                                         </td>
-                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 break-words">
                                                             {getShortSizeText(player)}
                                                         </td>
-                                                        <td className="border border-gray-200 p-3">
-                                                            <div className="flex flex-wrap gap-1">
+                                                        <td className="border border-gray-200 p-3 min-w-0">
+                                                            <div className="flex min-w-0 flex-wrap gap-1">
                                                                 {player.addOns && player.addOns.length > 0 ? (
                                                                     player.addOns.map((addon, ai) => {
                                                                         const addonId = String(addon).toLowerCase();
@@ -770,7 +786,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                                                             : addonId === 'hoodie' ? 'T-shirt Hoodie'
                                                                                 : addon;
                                                                         return (
-                                                                            <span key={ai} className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
+                                                                            <span key={ai} className="max-w-full break-words text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
                                                                                 {label}
                                                                             </span>
                                                                         )
@@ -808,7 +824,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                     </table>
                                 </div>
 
-                                <div className="px-4 sm:px-5 py-3 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-[999] shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
+                                <div className="px-4 sm:px-5 py-3 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-0 z-[10] shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
                                     <div className="flex items-center gap-1.5">
                                         <button
                                             onClick={() => setRosterPage(p => Math.max(0, p - 1))}
@@ -903,76 +919,11 @@ const OrderDetails = ({ orderId, onBack }) => {
                         </div>
                     )}
 
-                    {(order.type === 'ORGANIZATION' || order.type === 'ORGANIZATIONAL' || order.serviceType === 'Organization') && (
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                                <Shirt size={15} className="text-teal-500 shrink-0" />
-                                <span className="text-[13px] font-bold text-slate-800">Organizational Shirt</span>
-                                <span className="text-[10px] font-black text-teal-600 bg-teal-50 border border-teal-100 px-2.5 py-0.5 rounded-full tracking-wide">
-                                    {orgImageIdx + 1} / {orgImages.length}
-                                </span>
-                                {teamRoster.length > 0 && (
-                                    <button
-                                        onClick={handleDownloadPDF}
-                                        className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-teal-600 hover:border-teal-200 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
-                                    >
-                                        <Download size={13} />
-                                        Download PDF
-                                    </button>
-                                )}
-                            </div>
-
-                            <div className="p-4 bg-slate-50/50">
-                                <div className="relative group rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center aspect-square md:aspect-[16/10]">
-                                    <div className="w-full h-full cursor-pointer overflow-hidden flex items-center justify-center relative" onClick={() => setZoomType('ORG')}>
-                                        <img
-                                            src={orgImages[orgImageIdx] || img.sample}
-                                            alt={`Lineup ${orgImageIdx + 1}`}
-                                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
-                                            onError={e => { e.currentTarget.src = img.sample; }}
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
-                                            <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
-                                                <Eye size={13} /> Click to expand
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {orgImages.length > 1 && (
-                                        <>
-                                            <button
-                                                onClick={() => setOrgImageIdx((prev) => (prev - 1 + orgImages.length) % orgImages.length)}
-                                                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
-                                            >
-                                                <ChevronRight size={18} className="rotate-180" />
-                                            </button>
-                                            <button
-                                                onClick={() => setOrgImageIdx((prev) => (prev + 1) % orgImages.length)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-teal-600"
-                                            >
-                                                <ChevronRight size={18} />
-                                            </button>
-
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/30 backdrop-blur-md">
-                                                {orgImages.map((_, i) => (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => setOrgImageIdx(i)}
-                                                        className={`w-1.5 h-1.5 rounded-full transition-all ${i === orgImageIdx ? 'bg-white w-3' : 'bg-white/50 hover:bg-white/80'}`}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                 </div>
 
                 {/* Right Column (40%) - Sticky Summary & References */}
-                <div className="w-full lg:w-[40%] flex flex-col gap-4 lg:sticky lg:top-4">
+                <div className="w-full min-w-0 lg:w-[40%] flex flex-col gap-4 lg:sticky lg:top-4">
                     {/* Design & References Section (Top - New Split Layout) */}
                     {(imageUrls.length > 0 || order?.driveLink) && (
                         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
@@ -1047,42 +998,71 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
                         </div>
                     )}
-                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm mt-[-15px] w-full min-w-0"
                         style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
+                        <div className="px-5 py-5 border-b border-gray-300 flex items-center gap-2 bg-gray-50/60">
                             <Package size={15} className="text-gray-400 shrink-0" />
-                            <h2 className="text-xs font-black text-gray-500 uppercase tracking-widest">Order Items Summary</h2>
+                            <h2 className="text-xs font-black text-gray-500 uppercase tracking-widest">Order Items</h2>
                         </div>
 
-                        <div className="divide-y divide-slate-50">
-                            <div className="grid grid-cols-[1fr_auto] items-center px-5 py-2 bg-slate-50/40">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item</span>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right w-12">Qty</span>
+                        <div className="p-4 pb-2 bg-white min-w-0">
+                            <div className="grid min-w-0 grid-cols-12 gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2 mb-3 px-1">
+                                <div className="col-span-5">Surname</div>
+                                <div className="col-span-5">Item</div>
+                                <div className="col-span-2 text-center">Qty</div>
                             </div>
+                            <div className="space-y-0 mb-4 max-h-[380px] overflow-y-auto pr-1">
+                                {teamRoster.length > 0 ? teamRoster.map((player, idx) => {
+                                    const surname = player.surname || player.name || `Player ${idx + 1}`;
+                                    let itemType;
+                                    if (isOrg) {
+                                        itemType = getOrgShirtType(player);
+                                    } else {
+                                        itemType = 'Full Set';
+                                    }
+                                    const addOnEntries = Array.isArray(player.addOns) ? player.addOns : [];
+                                    const hasPocket = Boolean(player.pockets || player.hasPocketShorts);
+                                    const addOnsText = addOnEntries.length > 0
+                                        ? addOnEntries.map(id => id === 'warmer' ? 'Long Sleeve Warmer' : id === 'hoodie' ? 'Hoodie T-shirt' : id).join(', ')
+                                        : 'None';
 
-                            {summarizeItemsAndAddons(items, teamRoster).map((summaryItem, idx) => (
-                                <div key={idx} className="grid grid-cols-[1fr_auto] items-center gap-3 px-5 py-3 transition-colors hover:bg-slate-50/60">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <span className="text-[13px] font-bold text-slate-800 leading-tight truncate">
-                                            {summaryItem.name}
-                                            {summaryItem.isAddon && (
-                                                <span className="ml-2 text-[8px] font-black uppercase text-indigo-500 bg-indigo-50 px-1 rounded border border-indigo-100">
-                                                    Add
-                                                </span>
+                                    return (
+                                        <div key={idx} className="border-b border-gray-50 pb-3 last:border-0 last:pb-0 px-1 pt-2.5">
+                                            <div className="grid min-w-0 grid-cols-12 gap-2 items-center text-[12px]">
+                                                <div className="col-span-5 min-w-0 font-extrabold text-blue-900 truncate">{surname}</div>
+                                                <div className="col-span-5 min-w-0 font-semibold text-gray-700 truncate" title={itemType}>{itemType}</div>
+                                                <div className="col-span-2 font-bold text-gray-500 text-center">1</div>
+                                            </div>
+                                            {!isOrg && (
+                                                <div className="mt-2 flex min-w-0 flex-wrap gap-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                                                    <span className="max-w-full break-words whitespace-normal bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">Add-ons: {addOnsText}</span>
+                                                    <span className="max-w-full break-words whitespace-normal bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">Pocket: {hasPocket ? 'Yes' : 'No'}</span>
+                                                </div>
                                             )}
-                                        </span>
+                                        </div>
+                                    );
+                                }) : items.map((item, idx) => (
+                                    <div key={idx} className="border-b border-gray-50 pb-3 last:border-0 last:pb-0 px-1 pt-2.5">
+                                        <div className="grid min-w-0 grid-cols-12 gap-2 items-center text-[12px]">
+                                            <div className="col-span-10 min-w-0 font-extrabold text-gray-800 truncate">{item.name || item.description}</div>
+                                            <div className="col-span-2 font-bold text-gray-500 text-center">{item.qty || 1}</div>
+                                        </div>
                                     </div>
-                                    <span className="text-[11px] font-black tabular-nums text-right w-12 text-slate-700">
-                                        {summaryItem.qty}
-                                    </span>
+                                ))}
+                                {teamRoster.length === 0 && items.length === 0 && (
+                                    <div className="text-center py-8 text-gray-300 text-xs font-bold uppercase tracking-widest">
+                                        No items recorded
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-2 pt-3 border-t-2 border-dashed border-gray-100 flex justify-between items-center px-1 pb-2">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grand Total</p>
+                                    <p className="text-[11px] text-gray-500 font-medium mt-0.5">Total quantity</p>
                                 </div>
-                            ))}
-
-                            <div className="flex items-center justify-between px-5 py-4 bg-slate-50/80 border-t border-slate-200">
-                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Grand Total</span>
-                                <span className="text-[16px] font-black text-blue-600 tabular-nums">
-                                    {totalQty}
-                                </span>
+                                <p className="text-2xl font-black text-blue-600 tracking-tight tabular-nums">
+                                    {teamRoster.length > 0 ? teamRoster.length : totalQty}
+                                </p>
                             </div>
                         </div>
                     </div>

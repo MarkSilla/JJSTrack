@@ -21,7 +21,7 @@ const StaffLayout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="min-h-screen bg-gray-50 flex w-full overflow-x-hidden">
             <StaffSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
@@ -29,12 +29,12 @@ const StaffLayout = () => {
                 setIsMobileExpanded={setIsMobileExpanded}
             />
 
-            <div className={`flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
-                <div className="flex flex-col h-screen">
+            <div className={`min-w-0 flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+                <div className="flex flex-col h-screen min-w-0">
                     <StaffNav
                         onToggleSidebar={handleBurgerClick}
                     />
-                    <main className="flex-1 overflow-y-auto p-2 md:p-6 lg:p-4">
+                    <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-2 md:p-6 lg:p-4">
                         <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
                         <StaffChatWidget />
                     </main>

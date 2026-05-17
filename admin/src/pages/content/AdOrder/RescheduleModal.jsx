@@ -2,7 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, X, Scissors, Briefcase, CheckCircle2 } from 'lucide-react';
 import { bookingApi } from '../../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../../utils/pickupSlot.js';
-import { TIME_SLOTS } from '../../repairForm/constants.js';
+
+const TIME_SLOTS = [
+    { id: 'morning', label: 'Morning', range: '08:00 AM - 12:00 PM' },
+    { id: 'afternoon', label: 'Afternoon', range: '01:00 PM - 05:00 PM' },
+    { id: 'evening', label: 'Evening', range: '05:00 PM - 08:00 PM' },
+];
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },

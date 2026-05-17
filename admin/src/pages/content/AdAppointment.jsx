@@ -9,11 +9,9 @@ import {
     Clock,
     Scissors,
     Briefcase,
-    Plus,
     X,
     Package
 } from 'lucide-react';
-import BookingModal from './Bookingforms.jsx';
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
 
@@ -117,7 +115,6 @@ const BookingDetailsModal = ({ booking, onClose }) => {
 const AdAppointment = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const [showBooking, setShowBooking] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showSchedule, setShowSchedule] = useState(false);
     const [activeFilter, setActiveFilter] = useState('all');
@@ -393,31 +390,6 @@ const AdAppointment = () => {
                                 {monthNames[month]} {year}
                             </h2>
                             <div className="flex items-center gap-2 ml-auto">
-                                <button
-                                    onClick={() => setShowBooking(true)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-0 hover:gap-2 shrink-0 overflow-hidden group"
-                                    style={{
-                                        padding: '10px',
-                                        width: '40px',
-                                        transition: 'width 280ms cubic-bezier(0.4,0,0.2,1), padding 280ms cubic-bezier(0.4,0,0.2,1), gap 280ms cubic-bezier(0.4,0,0.2,1)',
-                                    }}
-                                    onMouseEnter={e => {
-                                        e.currentTarget.style.width = '122px';
-                                        e.currentTarget.style.padding = '10px 16px';
-                                    }}
-                                    onMouseLeave={e => {
-                                        e.currentTarget.style.width = '40px';
-                                        e.currentTarget.style.padding = '10px';
-                                    }}
-                                >
-                                    <Plus size={18} className="shrink-0" />
-                                    <span
-                                        className="overflow-hidden whitespace-nowrap opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[80px]"
-                                        style={{ transition: 'max-width 280ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease' }}
-                                    >
-                                        Add new
-                                    </span>
-                                </button>
                                 <div className="flex items-center gap-1 bg-gray-50 rounded-full p-1 border border-gray-100">
                                     <button onClick={prevMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
                                         <ChevronLeft size={18} />
@@ -602,7 +574,6 @@ const AdAppointment = () => {
                 )}
             </div>
 
-            <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} />
             <BookingDetailsModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
         </div>
     );

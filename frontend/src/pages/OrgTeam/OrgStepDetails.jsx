@@ -99,23 +99,23 @@ const getSizeText = (member) => (
 )
 
 const LineupMembers = ({ orgName, contact, members, onEdit, onRemove }) => (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-4 border-b border-gray-200">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden w-full max-w-full min-w-0">
+        <div className="px-4 py-4 border-b border-gray-200 min-w-0">
             <h3 className="text-center text-xl font-extrabold tracking-wide text-gray-900">JJS SPORTSWEAR</h3>
             <p className="text-center text-[11px] text-gray-500 mt-1">CONTACT: 0908 997 2332</p>
             <p className="text-center text-[11px] text-gray-500">Purok 3B National Highway, Calapacuan, Subic, Zambales</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
-                <div className="flex items-end gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm min-w-0">
+                <div className="flex items-end gap-2 min-w-0">
                     <span className="font-bold shrink-0">ORGANIZATION:</span>
-                    <span className="border-b border-gray-300 flex-1 px-2 py-0.5 uppercase">{orgName || 'N/A'}</span>
+                    <span className="border-b border-gray-300 min-w-0 flex-1 px-2 py-0.5 uppercase truncate">{orgName || 'N/A'}</span>
                 </div>
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-2 min-w-0">
                     <span className="font-bold shrink-0">CONTACT:</span>
-                    <span className="border-b border-gray-300 flex-1 px-2 py-0.5">{contact?.phone || contact?.phoneNumber || contact?.fullName || 'N/A'}</span>
+                    <span className="border-b border-gray-300 min-w-0 flex-1 px-2 py-0.5 truncate">{contact?.phone || contact?.phoneNumber || contact?.fullName || 'N/A'}</span>
                 </div>
             </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full min-w-0 overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-[12px] text-gray-900">
                 <thead>
                     <tr className="bg-gray-50">

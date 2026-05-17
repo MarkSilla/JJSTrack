@@ -59,7 +59,7 @@ const OrderPage = () => {
 
     if (selectedOrderId) {
         return (
-            <div className="min-h-screen">
+            <div className="min-h-screen w-full max-w-full min-w-0 overflow-x-hidden">
                 <OrderDetails orderId={selectedOrderId} onBack={handleBack} />
             </div>
         );

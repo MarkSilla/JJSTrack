@@ -209,9 +209,9 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
 
     /* ── Render ────────────────────────────────────────────── */
     return (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden font-inter">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden font-inter w-full max-w-full min-w-0">
             {/* Premium Header */}
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-4 sm:p-6 border-b border-gray-100 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-2">
                         <h3 className="text-[12px] font-black text-gray-300 uppercase tracking-wider">Lineup Details</h3>
@@ -225,23 +225,23 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                     </button>
                 </div>
 
-                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-2">
+                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-4 sm:p-5 min-w-0">
                     <div className="text-center mb-5">
                         <h2 className="text-xl font-black tracking-tight text-gray-900">JJS SPORTSWEAR</h2>
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Contact: 0908 997 2332</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">Purok 3B National Highway, Calapacuan, Subic, Zambales</p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="flex items-end gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                        <div className="flex items-end gap-2 min-w-0">
                             <span className="text-[10px] font-black text-blue-600/70 uppercase  mb-1">{isOrg ? 'Organization:' : 'Team Name:'}</span>
-                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 uppercase truncate">
+                            <span className="min-w-0 flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 uppercase truncate">
                                 {teamName}
                             </span>
                         </div>
-                        <div className="flex items-end gap-2">
+                        <div className="flex items-end gap-2 min-w-0">
                             <span className="text-[10px] font-black text-blue-600/70 uppercase mb-1">Contact Info:</span>
-                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 truncate">
+                            <span className="min-w-0 flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 truncate">
                                 {customerContact}
                             </span>
                         </div>
@@ -249,28 +249,28 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                 </div>
             </div>
 
-            <div className="p-6 pt-2">
-                <div className="overflow-x-auto min-h-[400px]">
-                    <table className="w-full text-left border-collapse border border-gray-200">
+            <div className="p-4 sm:p-6 pt-2 min-w-0">
+                <div className="w-full max-w-full min-w-0 overflow-x-auto min-h-[400px]">
+                    <table className={`w-full ${isOrg ? 'min-w-[640px]' : 'min-w-[760px]'} text-left border-collapse border border-gray-200`}>
                         <thead>
                             {isOrg ? (
                                 /* ── Organization table header ── */
                                 <tr className="bg-gray-50/80">
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Shirt Type</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Sizes</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-14">No.</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[160px]">Name</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Number</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[120px]">Shirt Type</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[150px]">Sizes</th>
                                 </tr>
                             ) : (
                                 /* ── Team Jersey table header ── */
                                 <tr className="bg-gray-50/80">
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Full Name</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
-                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Add-ons</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-14">No.</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[140px]">Full Name</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Number</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[105px]">Jersey Size</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center min-w-[105px]">Short Size</th>
+                                    <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider min-w-[170px]">Add-ons</th>
                                     <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Pockets</th>
                                 </tr>
                             )}
@@ -284,10 +284,10 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                                     return (
                                         <tr key={`${getPlayerName(player, idx)}-${player?.number || idx}`} className="hover:bg-blue-50/30 transition-colors">
                                             <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{realIdx + 1}.</td>
-                                            <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">{getPlayerName(player, realIdx)}</td>
+                                            <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase break-words">{getPlayerName(player, realIdx)}</td>
                                             <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">{player?.number || '—'}</td>
-                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">{getOrgShirtType(player)}</td>
-                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">{getOrgSizeText(player)}</td>
+                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30 break-words">{getOrgShirtType(player)}</td>
+                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 break-words">{getOrgSizeText(player)}</td>
                                         </tr>
                                     );
                                 }
@@ -305,15 +305,15 @@ export default function TeamRoster({ players, invoiceItems = [], teamName = 'N/A
                                 return (
                                     <tr key={`${getPlayerName(player, idx)}-${player?.number || idx}`} className="hover:bg-blue-50/30 transition-colors">
                                         <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{realIdx + 1}.</td>
-                                        <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">{getPlayerName(player, realIdx)}</td>
+                                        <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase break-words">{getPlayerName(player, realIdx)}</td>
                                         <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">{player?.number || '—'}</td>
-                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">{getJerseySizeText(player)}</td>
-                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">{getShortSizeText(player)}</td>
+                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30 break-words">{getJerseySizeText(player)}</td>
+                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 break-words">{getShortSizeText(player)}</td>
                                         <td className="border border-gray-200 p-3">
                                             {addOnEntries.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1">
+                                                <div className="flex min-w-0 flex-wrap gap-1">
                                                     {addOnEntries.map((addOn) => (
-                                                        <span key={`${player?.number || idx}-${addOn.id}`} className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
+                                                        <span key={`${player?.number || idx}-${addOn.id}`} className="max-w-full break-words text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
                                                             {addOn.label}
                                                         </span>
                                                     ))}

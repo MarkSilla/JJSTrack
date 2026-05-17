@@ -113,7 +113,7 @@ const AdminLayout = () => {
                         pageTitle={pageMeta.title}
                         pageSubtitle={pageMeta.subtitle}
                     />
-                    <main className="flex-1 min-w-0 w-full overflow-y-auto p-0 pt-2 md:p-3 lg:p-1">
+                    <main className="flex-1 min-w-0 w-full overflow-x-hidden overflow-y-auto p-0 pt-2 md:p-3 lg:p-1">
                         <Outlet />
                     </main>
                 </div>
