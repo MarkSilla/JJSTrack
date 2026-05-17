@@ -17,8 +17,8 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                     </div>
                 )
             }
-            <div className="relative pl-3 space-y-3">
-                <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-gray-50" />
+            <div className="relative pl-3 flex flex-col space-y-11">
+                <div className="absolute left-[11px] top-3 bottom-0 w-0.5 bg-gray-50" />
                 {activeOrderSteps.map((step, idx) => {
                     const isCompleted = idx < currentStepIdx || step.done;
                     const isCurrent = idx === currentStepIdx;
@@ -26,7 +26,7 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                     return (
                         <div
                             key={idx}
-                            className="relative flex items-start gap-3 cursor-pointer group"
+                            className="relative flex items-start gap-2 cursor-pointer group"
                             onClick={() => onStepClick(orderId, idx)}
                         >
                             <div className="relative z-10 bg-white py-0.5">
@@ -40,7 +40,7 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                                     <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-200 bg-white -ml-0.5" />
                                 )}
                             </div>
-                            <div className="flex-1 -mt-0.5 pb-2">
+                            <div className="flex-1 -mt-0.5 pb-1.5">
                                 <div className={`text-[13px] font-black tracking-tight transition-colors flex items-center justify-between ${(isCompleted || isCurrent) ? 'text-gray-900' : 'text-gray-400'}`}>
                                     <span>{typeof label === 'string' ? label : String(label)}</span>
                                     {(isCompleted || isCurrent) && step.worker && (
@@ -50,7 +50,7 @@ export default function ProductionTimeline({ activeOrderSteps, currentStepIdx, o
                                     )}
                                 </div>
                                 {(step?.time || step?.date) && (isCompleted || isCurrent) && (
-                                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-gray-600 bg-gray-50/50 px-3 py-2 rounded-lg border border-gray-100">
+                                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-medium text-gray-500">
                                         {step.date && (
                                             <div><span className="font-bold text-gray-400 uppercase text-[9px] mr-1.5">Date:</span> {step.date}</div>
                                         )}

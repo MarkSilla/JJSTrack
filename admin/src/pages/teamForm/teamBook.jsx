@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ArrowLeft, ArrowRight, Send } from 'lucide-react'
 import { toast } from 'sonner'
@@ -11,9 +11,17 @@ import { bookingApi } from '../../services/bookingApi.js'
 
 const STEP_LABELS = ['Team & Players', 'Design', 'Contact', 'Confirm']
 
+const buildContactFromUser = (user) => ({
+    fullName: user?.fullName || '',
+    phone: user?.phoneNumber || user?.phone || '',
+    email: user?.email || '',
+    facebook: user?.facebook || '',
+    address: user?.address || '',
+})
+
 //Stepper
-const Stepper = ({ currentStep }) => (
-    <nav className="w-full max-w-2xl mx-auto" aria-label="Progress">
+const Stepper = ({ currentStep, expanded = false }) => (
+    <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
         <ol className="hidden sm:flex items-center">
             {STEP_LABELS.map((label, i) => {
                 const num = i + 1
@@ -99,6 +107,17 @@ const TeamBook = () => {
     const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
     const [loading, setLoading] = useState(false)
     const [nextError, setNextError] = useState('')
+    const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
+
+    useEffect(() => {
+        try {
+            const userStr = localStorage.getItem('user')
+            const user = userStr ? JSON.parse(userStr) : null
+            if (user) setContact(buildContactFromUser(user))
+        } catch (err) {
+            console.error('Error parsing stored user data:', err)
+        }
+    }, [])
 
     const canNext = () => {
         console.log('canNext check - step:', step, 'players:', players.length)
@@ -109,6 +128,7 @@ const TeamBook = () => {
     const handleNext = () => {
         if (canNext()) {
             setNextError('')
+            setSizeGuideOpen(false)
             const newStep = step + 1
             setStep(newStep)
             console.log('Navigated to step:', newStep)
@@ -147,7 +167,7 @@ const TeamBook = () => {
                 driveLink,
                 contact,
                 items: players.map(p => ({
-                    description: `Jersey (${p.name || p.firstName + ' ' + p.surname} #${p.number})`,
+                    description: `Jersey (${p.nickname ? `${p.surname} (${p.nickname})` : (p.surname || p.firstName || 'Player')} #${p.number})`,
                     qty: 1,
                     unitPrice: 650, // base price
                     size: p.size || p.jerseySize
@@ -173,7 +193,7 @@ const TeamBook = () => {
 
     const renderStep = () => {
         switch (step) {
-            case 1: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} />
+            case 1: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} />
             case 2: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
             case 3: return <TeamStepContact contact={contact} setContact={setContact} />
             case 4: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} />
@@ -192,10 +212,10 @@ const TeamBook = () => {
                 </p>
             </header>
             <div className="px-6 pt-8 pb-2">
-                <Stepper currentStep={step} />
+                <Stepper currentStep={step} expanded={step === 1 && sizeGuideOpen} />
             </div>
             <div className="flex-1 flex items-start justify-center px-4 sm:px-6 py-6">
-                <div className="w-full max-w-2xl relative">
+                <div className={`w-full ${step === 1 && sizeGuideOpen ? 'max-w-6xl' : 'max-w-2xl'} relative transition-all duration-300`}>
                     <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
 
                     <div className="bg-[#0F1729]/90 border border-gray-700/40 rounded-2xl p-7 md:p-10 backdrop-blur-sm shadow-2xl shadow-black/30">

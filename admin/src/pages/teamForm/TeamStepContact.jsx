@@ -1,3 +1,5 @@
+import PhilippinesAddressFields from '../../components/PhilippinesAddressFields'
+
 const Field = ({ label, ...props }) => (
     <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">{label}</label>
@@ -25,16 +27,7 @@ const TeamStepContact = ({ contact, setContact }) => {
                     <Field label="Email Address" type="email" placeholder="juan@example.com" value={contact.email} onChange={(e) => set('email', e.target.value)} />
                 </div>
                 <Field label="Facebook/Messenger" placeholder="Fb Name/Link" value={contact.facebook} onChange={(e) => set('facebook', e.target.value)} />
-                <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">Full Address</label>
-                    <textarea
-                        value={contact.address}
-                        onChange={(e) => set('address', e.target.value)}
-                        placeholder="123 Rizal St, Barangay San Jose, Manila"
-                        rows={3}
-                        className="bg-[#F8FAFC] border border-gray-200 rounded-xl px-4 py-3.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all duration-200 resize-none"
-                    />
-                </div>
+                <PhilippinesAddressFields value={contact} onChange={(nextContact) => setContact((prev) => ({ ...prev, ...nextContact }))} />
             </div>
         </section>
     )

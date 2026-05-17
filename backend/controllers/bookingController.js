@@ -176,12 +176,18 @@ const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
   return fullName || String(participant.name || fallback).trim() || fallback;
 };
 
+const ORG_PRODUCT_PRICES = {
+  tshirt: 500,
+  polo: 650,
+};
+
 const buildParticipantInvoiceItems = ({
   participants = [],
   itemLabel = 'Jersey',
   basePrice = 0,
   pocketPrice = 0,
   sizeSelector,
+  priceSelector,
 }) => {
   const participantList = Array.isArray(participants) ? participants : [];
 
@@ -192,12 +198,15 @@ const buildParticipantInvoiceItems = ({
     const selectedSize = typeof sizeSelector === 'function'
       ? sizeSelector(participant)
       : participant?.jerseySize || participant?.size || '';
+    const resolvedPrice = typeof priceSelector === 'function'
+      ? priceSelector(participant)
+      : basePrice;
 
     const baseItem = {
       description: `${itemLabel} (${participantName}${itemSuffix})`,
       type: 'Custom',
       qty: 1,
-      unitPrice: basePrice,
+      unitPrice: resolvedPrice,
       size: selectedSize,
       addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
       addOnPrice: hasPocket ? pocketPrice : 0,
@@ -805,6 +814,7 @@ export const createBooking = async (req, res) => {
         basePrice: orgPrice,
         pocketPrice: orgPocketPrice,
         sizeSelector: (member) => member?.size || member?.jerseySize || '',
+        priceSelector: (member) => ORG_PRODUCT_PRICES[member?.productType] || orgPrice,
       });
     }
 
@@ -837,6 +847,7 @@ export const createBooking = async (req, res) => {
         basePrice: orgPrice,
         pocketPrice: orgPocketPrice,
         sizeSelector: (member) => member?.size || member?.jerseySize || '',
+        priceSelector: (member) => ORG_PRODUCT_PRICES[member?.productType] || orgPrice,
       });
       totalPrice = fallbackItems.reduce((sum, item) => {
         return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));

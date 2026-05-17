@@ -140,7 +140,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
           <button
             onClick={toggleDesktop}
             style={{ left: isDesktopCollapsed ? '70px' : '246px', top: '24px' }}
-            className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-[60] group"
+            className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-40 group"
             aria-label={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
             {isDesktopCollapsed ? (

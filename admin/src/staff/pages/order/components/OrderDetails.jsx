@@ -28,6 +28,40 @@ const getStaffArchiveActor = () => {
     return staffUser?.fullName || staffUser?.name || staffUser?.email || 'Staff';
 };
 
+const getJerseySizeText = (player) => {
+    if (player?.useManualjerseySize) {
+        return `${player.jerseyLength || '-'}" x ${player.jerseyBody || '-'}"`;
+    }
+    if (player?.useManualSize) {
+        return `${player.manualBody || '-'}" x ${player.manualLength || '-'}" x ${player.manualSleeveLength || '-'}"`;
+    }
+    return player?.jerseySize || player?.size || 'N/A';
+};
+
+const getShortSizeText = (player) => {
+    if (player?.useManualsShortSize) {
+        return `${player.shortHips || '-'}" x ${player.shortLength || '-'}"`;
+    }
+    return player?.shortSize || 'N/A';
+};
+
+const ORG_PRODUCT_TYPES = {
+    tshirt: 'T-Shirt',
+    polo: 'Polo Shirt',
+};
+
+const getOrgSizeText = (member) => {
+    if (member?.useManualSize) {
+        return `${member.manualBody || '-'}" x ${member.manualLength || '-'}" x ${member.manualSleeveLength || '-'}"`;
+    }
+    return member?.size || member?.jerseySize || 'N/A';
+};
+
+const getOrgShirtType = (member) => {
+    const productType = member?.productType || '';
+    return ORG_PRODUCT_TYPES[productType] || productType || 'N/A';
+};
+
 const summarizeItemsAndAddons = (items, teamRoster = []) => {
     const summary = {};
 
@@ -393,6 +427,7 @@ const OrderDetails = ({ orderId, onBack }) => {
     const items = order.items || order.invoice?.items || [];
     const teamRoster = order.teamRoster || order.players || order.members || [];
     const totalQty = items.reduce((sum, item) => sum + (item.qty || 0), 0);
+    const isOrg = String(order.serviceType || order.bookingType || '').toLowerCase().includes('organization');
 
     const handleDownloadPDF = () => {
         try {
@@ -430,30 +465,52 @@ const OrderDetails = ({ orderId, onBack }) => {
             doc.line(155, 49, 196, 49);
 
             // --- TABLE SECTION ---
-            const tableColumn = [
-                { header: "NO.", dataKey: "no" },
-                { header: "FULL NAME", dataKey: "name" },
-                { header: "NUMBER", dataKey: "number" },
-                { header: "JERSEY SIZE", dataKey: "jSize" },
-                { header: "SHORT SIZE", dataKey: "sSize" },
-                { header: "ADD-ONS", dataKey: "addons" }
-            ];
+            let tableColumn, tableRows;
 
-            const tableRows = teamRoster.map((player, idx) => {
-                const addOnText = player.addOns && player.addOns.length > 0 ? player.addOns.join(", ") : "None";
-                const jerseySize = player.jerseySize || player.size || 'N/A';
-                const shortSize = player.shortSize || 'N/A';
-                const fullName = [player.firstName, player.surname].filter(Boolean).join(' ').trim() || player.name || 'N/A';
+            if (isOrg) {
+                tableColumn = [
+                    { header: "NO.", dataKey: "no" },
+                    { header: "NAME", dataKey: "name" },
+                    { header: "NUMBER", dataKey: "number" },
+                    { header: "SHIRT TYPE", dataKey: "shirtType" },
+                    { header: "SIZE", dataKey: "size" },
+                ];
+                tableRows = teamRoster.map((member, idx) => {
+                    const fullName = [member.firstName, member.surname].filter(Boolean).join(' ').trim() || member.name || 'N/A';
+                    return {
+                        no: `${idx + 1}.`,
+                        name: fullName.toUpperCase(),
+                        number: member.number !== undefined ? `${member.number}` : '—',
+                        shirtType: getOrgShirtType(member),
+                        size: getOrgSizeText(member),
+                    };
+                });
+            } else {
+                tableColumn = [
+                    { header: "NO.", dataKey: "no" },
+                    { header: "FULL NAME", dataKey: "name" },
+                    { header: "NUMBER", dataKey: "number" },
+                    { header: "JERSEY SIZE", dataKey: "jSize" },
+                    { header: "SHORT SIZE", dataKey: "sSize" },
+                    { header: "ADD-ONS", dataKey: "addons" }
+                ];
+                tableRows = teamRoster.map((player, idx) => {
+                    const addOnText = player.addOns && player.addOns.length > 0 ? player.addOns.join(", ") : "None";
+                    const jerseySize = getJerseySizeText(player);
+                    const shortSize = getShortSizeText(player);
+                    const fullName = [player.firstName, player.surname].filter(Boolean).join(' ').trim() || player.name || 'N/A';
+                    return {
+                        no: `${idx + 1}.`,
+                        name: fullName.toUpperCase(),
+                        number: player.number !== undefined ? `#${player.number}` : 'N/A',
+                        jSize: jerseySize,
+                        sSize: shortSize,
+                        addons: addOnText
+                    };
+                });
+            }
 
-                return {
-                    no: `${idx + 1}.`,
-                    name: fullName.toUpperCase(),
-                    number: player.number !== undefined ? `#${player.number}` : 'N/A',
-                    jSize: jerseySize,
-                    sSize: shortSize,
-                    addons: addOnText
-                };
-            });
+
 
             autoTable(doc, {
                 columns: tableColumn,
@@ -474,12 +531,19 @@ const OrderDetails = ({ orderId, onBack }) => {
                     lineWidth: 0.2,
                     fontSize: 9
                 },
-                columnStyles: {
-                    no: { halign: 'center', cellWidth: 12 },
-                    number: { halign: 'center', cellWidth: 20 },
-                    jSize: { halign: 'center', cellWidth: 25 },
-                    sSize: { halign: 'center', cellWidth: 25 }
-                },
+                columnStyles: isOrg
+                    ? {
+                        no: { halign: 'center', cellWidth: 12 },
+                        number: { halign: 'center', cellWidth: 20 },
+                        shirtType: { halign: 'center', cellWidth: 30 },
+                        size: { halign: 'center', cellWidth: 35 },
+                    }
+                    : {
+                        no: { halign: 'center', cellWidth: 12 },
+                        number: { halign: 'center', cellWidth: 20 },
+                        jSize: { halign: 'center', cellWidth: 25 },
+                        sSize: { halign: 'center', cellWidth: 25 }
+                    },
                 margin: { left: 14, right: 14 }
             });
 
@@ -598,9 +662,9 @@ const OrderDetails = ({ orderId, onBack }) => {
                         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                             <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
                                 <Users size={15} className="text-indigo-500 shrink-0" />
-                                <span className="text-[13px] font-bold text-slate-800">Team Roster</span>
+                                <span className="text-[13px] font-bold text-slate-800">{isOrg ? 'Organization Roster' : 'Team Roster'}</span>
                                 <span className="text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full tracking-wide">
-                                    {teamRoster.length} players
+                                    {teamRoster.length} {isOrg ? 'members' : 'players'}
                                 </span>
                                 <button
                                     onClick={handleDownloadPDF}
@@ -611,52 +675,125 @@ const OrderDetails = ({ orderId, onBack }) => {
                                 </button>
                             </div>
 
-                            <div className="max-h-[500px] flex flex-col">
+                            <div className="p-6">
+                                {/* Premium Grid Header */}
+                                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-5 mb-5">
+                                    <div className="text-center mb-5">
+                                        <h2 className="text-xl font-black tracking-tight text-gray-900">JJS SPORTSWEAR</h2>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Contact: 0908 997 2332</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">Purok 3B National Highway, Calapacuan, Subic, Zambales</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="flex items-end gap-2">
+                                            <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-wider mb-1">{isOrg ? 'ORGANIZATION:' : 'TEAM NAME:'}</span>
+                                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 uppercase truncate">
+                                                {order.teamName || order.team || order.category || 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-end gap-2">
+                                            <span className="text-[10px] font-black text-blue-600/70 uppercase tracking-wider mb-1">Customer:</span>
+                                            <span className="flex-1 border-b-2 border-gray-200 px-2 py-0.5 text-sm font-extrabold text-gray-800 truncate">
+                                                {customerName || 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="max-w-full overflow-x-auto overflow-y-auto flex-1">
                                     <table className="w-full min-w-[560px] border-collapse relative">
                                         <thead>
-                                            <tr className="bg-slate-50 border-b border-slate-100">
-                                                {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                                    <th
-                                                        key={col}
-                                                        className={`sticky top-0 z-10 bg-slate-50 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-b border-slate-100
-                                                            ${ci === 0 ? 'pl-5 pr-3 text-left' : 'px-3 text-center'}`}
-                                                    >
-                                                        {col}
-                                                    </th>
-                                                ))}
+                                        {isOrg ? (
+                                            <tr className="bg-gray-50/80">
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Name</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Shirt Type</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Sizes</th>
                                             </tr>
+                                        ) : (
+                                            <tr className="bg-gray-50/80">
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Surname</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Add-ons</th>
+                                                <th className="border border-gray-200 p-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-24">Pockets</th>
+                                            </tr>
+                                        )}
                                         </thead>
                                         <tbody>
                                             {paginatedRoster.map((player, idx) => {
-                                                const addOnsText = player.addOns?.join(', ') || '—';
+                                                const hasPocket = Boolean(player?.pockets || player?.hasPocketShorts);
+
+                                                if (isOrg) {
+                                                    return (
+                                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{startIndex + idx + 1}.</td>
+                                                            <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">
+                                                                {[player.firstName, player.surname].filter(Boolean).join(' ') || player.name || '—'}
+                                                            </td>
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">
+                                                                {player.number !== undefined ? `${player.number}` : <span className="text-gray-300">—</span>}
+                                                            </td>
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">
+                                                                {getOrgShirtType(player)}
+                                                            </td>
+                                                            <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">
+                                                                {getOrgSizeText(player)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+
                                                 return (
-                                                    <tr
-                                                        key={idx}
-                                                        className={`h-[52px] border-b border-slate-100 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
-                                                    >
-                                                        <td className="pl-5 pr-3 text-[13px] font-black text-slate-900 leading-none">
-                                                            {player.surname || player.name || '—'}
+                                                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-400">{startIndex + idx + 1}.</td>
+                                                        <td className="border border-gray-200 p-3 text-xs font-extrabold text-gray-900 uppercase">
+                                                            {[player.firstName, player.surname].filter(Boolean).join(' ') || player.name || '—'}
                                                         </td>
-                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
-                                                            {player.number !== undefined ? `#${player.number}` : <span className="text-slate-300">—</span>}
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-black text-blue-600">
+                                                            {player.number !== undefined ? `${player.number}` : <span className="text-gray-300">—</span>}
                                                         </td>
-                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
-                                                            {player.jerseySize || <span className="text-slate-300">—</span>}
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700 bg-gray-50/30">
+                                                            {getJerseySizeText(player)}
                                                         </td>
-                                                        <td className="px-3 text-center text-[13px] font-black text-slate-900">
-                                                            {player.shortSize && player.shortSize !== '-' ? player.shortSize : <span className="text-slate-300">—</span>}
+                                                        <td className="border border-gray-200 p-3 text-center text-xs font-bold text-gray-700">
+                                                            {getShortSizeText(player)}
                                                         </td>
-                                                        <td className="px-3 pr-5 text-center text-[11px] font-medium text-slate-400 capitalize">
-                                                            {addOnsText}
+                                                        <td className="border border-gray-200 p-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {player.addOns && player.addOns.length > 0 ? (
+                                                                    player.addOns.map((addon, ai) => {
+                                                                        const addonId = String(addon).toLowerCase();
+                                                                        const label = addonId === 'warmer' ? 'Long Sleeve Warmer'
+                                                                            : addonId === 'hoodie' ? 'T-shirt Hoodie'
+                                                                                : addon;
+                                                                        return (
+                                                                            <span key={ai} className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
+                                                                                {label}
+                                                                            </span>
+                                                                        )
+                                                                    })
+                                                                ) : (
+                                                                    <span className="text-[10px] text-gray-300 italic">None</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-gray-200 p-3 text-center">
+                                                            {hasPocket ? (
+                                                                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100 uppercase">Yes</span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-bold text-gray-400">No</span>
+                                                            )}
                                                         </td>
                                                     </tr>
-                                                );
+                                                )
                                             })}
 
                                             {rosterPage === totalPages - 1 && (
                                                 <tr key="end-divider" className="h-[52px] border-b border-slate-100">
-                                                    <td colSpan="5" className="px-5">
+                                                    <td colSpan={isOrg ? 5 : 7} className="px-5">
                                                         <div className="flex items-center gap-4">
                                                             <div className="h-px flex-1 bg-slate-100" />
                                                             <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">
@@ -701,7 +838,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                         </button>
                                     </div>
                                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span> players
+                                        Showing <span className="text-slate-900">{startIndex + 1}-{Math.min(startIndex + ROWS_PER_PAGE, teamRoster.length)}</span> of <span className="text-slate-900">{teamRoster.length}</span> {isOrg ? 'members' : 'players'}
                                     </div>
                                 </div>
                             </div>
@@ -844,14 +981,22 @@ const OrderDetails = ({ orderId, onBack }) => {
                                 {/* Left Side: Uploaded Images */}
                                 <div className="p-5 flex flex-col gap-4">
                                     <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Uploaded Images</h3>
-                                    <div className="relative group rounded-xl border border-gray-100 bg-gray-50 overflow-hidden aspect-square shadow-inner">
+                                    <div className="relative group rounded-xl border border-gray-100 bg-gray-50 overflow-hidden aspect-square shadow-inner cursor-pointer"
+                                        onClick={() => { setZoomType('UPLOAD'); setOrgImageIdx(0); }}>
                                         {imageUrls.length > 0 ? (
-                                            <img
-                                                src={imageUrls[0]}
-                                                alt="Design"
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                onError={(e) => { e.currentTarget.src = img.sample; }}
-                                            />
+                                            <>
+                                                <img
+                                                    src={imageUrls[0]}
+                                                    alt="Design"
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    onError={(e) => { e.currentTarget.src = img.sample; }}
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center z-10">
+                                                    <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                        <Eye size={13} /> View Large
+                                                    </div>
+                                                </div>
+                                            </>
                                         ) : (
                                             <div className="w-full h-full flex flex-col items-center justify-center text-gray-200 gap-2">
                                                 <ImageIcon size={32} strokeWidth={1} />
@@ -862,8 +1007,10 @@ const OrderDetails = ({ orderId, onBack }) => {
                                     {imageUrls.length > 1 && (
                                         <div className="flex gap-2 overflow-x-auto pb-1">
                                             {imageUrls.slice(1, 4).map((src, i) => (
-                                                <div key={i} className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 shadow-sm">
-                                                    <img src={src} className="w-full h-full object-cover" />
+                                                <div key={i}
+                                                    className="relative group w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 shadow-sm cursor-pointer"
+                                                    onClick={() => { setZoomType('UPLOAD'); setOrgImageIdx(i + 1); }}>
+                                                    <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                                 </div>
                                             ))}
                                         </div>
@@ -900,8 +1047,6 @@ const OrderDetails = ({ orderId, onBack }) => {
                             </div>
                         </div>
                     )}
-
-                    {/* Order Items Summary (Bottom) */}
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm"
                         style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/60">
@@ -918,7 +1063,6 @@ const OrderDetails = ({ orderId, onBack }) => {
                             {summarizeItemsAndAddons(items, teamRoster).map((summaryItem, idx) => (
                                 <div key={idx} className="grid grid-cols-[1fr_auto] items-center gap-3 px-5 py-3 transition-colors hover:bg-slate-50/60">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <ItemIcon name={summaryItem.name} />
                                         <span className="text-[13px] font-bold text-slate-800 leading-tight truncate">
                                             {summaryItem.name}
                                             {summaryItem.isAddon && (
@@ -990,15 +1134,15 @@ const OrderDetails = ({ orderId, onBack }) => {
                             <X size={24} />
                         </button>
                         <img
-                            src={zoomType === 'REPAIR' ? order.repairImage : (orgImages[orgImageIdx] || img.sample)}
+                            src={zoomType === 'REPAIR' ? order.repairImage : zoomType === 'UPLOAD' ? imageUrls[orgImageIdx] : (orgImages[orgImageIdx] || img.sample)}
                             alt="Zoomed"
                             className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 cursor-auto"
                             onClick={(e) => e.stopPropagation()}
                             onError={e => { e.currentTarget.src = img.sample; }}
                         />
-                        {zoomType === 'ORG' && orgImages.length > 1 && (
+                        {(zoomType === 'ORG' && orgImages.length > 1) || (zoomType === 'UPLOAD' && imageUrls.length > 1) ? (
                             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20">
-                                {orgImages.map((_, i) => (
+                                {(zoomType === 'UPLOAD' ? imageUrls : orgImages).map((_, i) => (
                                     <button
                                         key={i}
                                         onClick={(e) => { e.stopPropagation(); setOrgImageIdx(i); }}
@@ -1006,7 +1150,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                     />
                                 ))}
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 )}
             </div>

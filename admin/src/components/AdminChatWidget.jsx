@@ -812,6 +812,28 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     }
   }, [activeClientId, notifyNewUnreadClients, onUnreadChange, scopeFilter]);
 
+  const clearClientUnread = useCallback((conversationId) => {
+    if (!conversationId) return;
+
+    setClients((prev) => {
+      let changed = false;
+      const next = prev.map((client) => {
+        if (String(client.id || "") !== String(conversationId) || Number(client.unreadCount || 0) <= 0) {
+          return client;
+        }
+
+        changed = true;
+        return { ...client, unreadCount: 0 };
+      });
+
+      if (changed) {
+        onUnreadChange?.(next.reduce((sum, client) => sum + Number(client.unreadCount || 0), 0));
+      }
+
+      return changed ? next : prev;
+    });
+  }, [onUnreadChange]);
+
   const loadMessages = useCallback(async (conversationId, silent = false) => {
     if (!conversationId || !localStorage.getItem('adminToken')) return;
     try {
@@ -819,6 +841,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
       const response = await chatApi.getMessages({ conversationId });
       const nextMessages = Array.isArray(response?.messages) ? response.messages.map(mapMessage) : [];
       setMessagesByConversation((prev) => ({ ...prev, [conversationId]: nextMessages }));
+      clearClientUnread(conversationId);
 
       if (nextMessages.some(m => m.senderRole !== 'admin' && !m.seenBy?.includes(localStorage.getItem('adminId')))) {
         await chatApi.markConversationRead({ conversationId });
@@ -829,7 +852,7 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     } finally {
       if (!silent) setIsLoadingMessages(false);
     }
-  }, []);
+  }, [clearClientUnread]);
 
   const handleSelectClient = useCallback(async (conversationId) => {
     const selectedClient = clients.find((client) => client.id === conversationId) ||
@@ -854,20 +877,19 @@ const AdminChatShell = ({ onClose, isFullScreen, toggleFullScreen, onUnreadChang
     }
 
     setActiveClientId(nextConversationId);
-    setClients((prev) => prev.map((client) => (
-      client.id === nextConversationId ? { ...client, unreadCount: 0 } : client
-    )));
+    clearClientUnread(nextConversationId);
     loadMessages(nextConversationId);
     try {
       await chatApi.markConversationRead({ conversationId: nextConversationId });
     } catch {
       // Ignore
     }
-  }, [clients, loadMessages, staffRoster]);
+  }, [clearClientUnread, clients, loadMessages, staffRoster]);
 
   const handleSendMessage = useCallback(async (msgObj) => {
     if (!activeClientId) return;
     const adminId = localStorage.getItem('adminId') || "admin";
+    const tempId = `temp-${Date.now()}`;
     const optimistic = { id: tempId, sender: "admin", senderId: adminId, message: msgObj.message || "", timestamp: new Date().toISOString(), type: msgObj.type || "text", imageUrl: msgObj.imageUrl || null, status: "sent", isEdited: false, senderRole: "admin" };
     setMessagesByConversation((prev) => ({ ...prev, [activeClientId]: [...(prev[activeClientId] || []), optimistic] }));
 
@@ -1060,7 +1082,7 @@ export default function AdminChatWidget() {
     }
 
     try {
-      const response = await chatApi.getConversations();
+      const response = await chatApi.getConversations({ scope: "support" });
       const nextClients = Array.isArray(response?.conversations)
         ? response.conversations.map(mapConversation)
         : [];

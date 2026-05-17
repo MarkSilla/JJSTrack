@@ -6,6 +6,7 @@ const playerSchema = new mongoose.Schema({
   surname: String,
   firstName: String,
   number: String,
+  size: String,
   jerseySize: String,
   shortSize: String,
   pockets: {
@@ -21,6 +22,16 @@ const playerSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  useManualjerseySize: { type: Boolean, default: false },
+  jerseyLength: String,
+  jerseyBody: String,
+  useManualsShortSize: { type: Boolean, default: false },
+  shortHips: String,
+  shortLength: String,
+  useManualSize: { type: Boolean, default: false },
+  manualBody: String,
+  manualLength: String,
+  manualSleeveLength: String,
 });
 
 const bookingItemSchema = new mongoose.Schema({
@@ -149,6 +160,15 @@ const bookingSchema = new mongoose.Schema({
     email: String,
     facebook: String,
     address: String,
+    street: String,
+    regionCode: String,
+    regionName: String,
+    provinceCode: String,
+    provinceName: String,
+    cityCode: String,
+    cityName: String,
+    brgyCode: String,
+    brgyName: String,
     city: String,
   },
 

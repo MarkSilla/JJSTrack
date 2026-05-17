@@ -14,6 +14,8 @@ import manikin from './maniq.jpg'
 import scbot from './SCBOT.png'
 import sctop1 from './SCTOP1.png'
 import front from './shop1.png'
+import mtshirt from './mtshirt.png'
+import wtshirt from './wtshirt.png'
 import w_fd1 from './jersey/whitebg/FD1.png'
 import w_fd2 from './jersey/whitebg/FD 2.png'
 import w_fd3 from './jersey/whitebg/FD3.png'
@@ -121,6 +123,8 @@ const img = {
     scbot,
     sctop1,
     front,
+    mtshirt,
+    wtshirt,
     desi,
     fit,
     jerseys: {

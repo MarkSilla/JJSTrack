@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
     MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
     MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag, MdSort,
@@ -349,7 +349,7 @@ const DetailsModal = ({ order, onClose }) => {
 
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
-    const [activeTab, setActiveTab] = useState('items')
+    const [activeTab, setActiveTab] = useState('list')
     const [copied, setCopied] = useState(false)
 
 
@@ -446,6 +446,15 @@ const DetailsModal = ({ order, onClose }) => {
     const steps = order.steps || []
     const hasItems = items.length > 0
 
+    const grandTotal = useMemo(() => {
+        if (order.totalAmount || order.totalPrice) {
+            return Number(order.totalAmount || order.totalPrice || 0);
+        }
+        return items.reduce((sum, item) => {
+            return sum + (item.qty * (item.unitPrice || 0)) + (item.addOnPrice || 0)
+        }, 0)
+    }, [order.totalAmount, order.totalPrice, items])
+
     return (
         <>
             {/* Backdrop */}
@@ -465,7 +474,7 @@ const DetailsModal = ({ order, onClose }) => {
                             <Package2 size={16} className="text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
+                            <h2 className="text-[15px] font-extrabold text-gray-900 truncate">Your Order</h2>
                         </div>
                     </div>
                     <button
@@ -479,15 +488,26 @@ const DetailsModal = ({ order, onClose }) => {
                 {/* Tab Navigation */}
                 <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
                     <button
-                        onClick={() => setActiveTab('items')}
+                        onClick={() => setActiveTab('details')}
                         className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
-                        ${activeTab === 'items'
+                        ${activeTab === 'details'
+                                ? 'text-blue-600 border-b-blue-600'
+                                : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                            }`}
+                    >
+                        <MdInfo size={14} />
+                        Order Details
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('list')}
+                        className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                        ${activeTab === 'list'
                                 ? 'text-blue-600 border-b-blue-600'
                                 : 'text-gray-400 border-b-transparent hover:text-gray-600'
                             }`}
                     >
                         <Package size={14} />
-                        Ordered Items
+                        Order List
                     </button>
                     {order.status !== 'Cancelled' && (
                         <button
@@ -504,8 +524,8 @@ const DetailsModal = ({ order, onClose }) => {
                     )}
                 </div>
                 <div className="overflow-y-auto p-5 pb-10 flex-1 space-y-5 font-inter">
-                    {activeTab === 'items' ? (
-                        <>
+                    {activeTab === 'details' ? (
+                        <div>
                             <div>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
                                 <div className="grid grid-cols-2 gap-3">
@@ -524,10 +544,18 @@ const DetailsModal = ({ order, onClose }) => {
                                     })}
                                 </div>
                             </div>
-
+                            {steps.length > 0 && (
+                                <div className="border-t border-gray-100 pt-5 md:hidden mt-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Order Progress</p>
+                                    <OrderTimelineVertical steps={steps} />
+                                </div>
+                            )}
+                        </div>
+                    ) : activeTab === 'list' ? (
+                        <div className="space-y-5">
                             {/* Items Section */}
                             {hasItems && (
-                                <div className="border-t border-gray-100 pt-5">
+                                <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
                                     <div className="space-y-2.5 mb-8">
                                         {items.map((item, idx) => (
@@ -560,15 +588,19 @@ const DetailsModal = ({ order, onClose }) => {
                                             </div>
                                         ))}
                                     </div>
-                                    {steps.length > 0 && (
-                                        <div className="border-t border-gray-100 pt-5 md:hidden">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Order Progress</p>
-                                            <OrderTimelineVertical steps={steps} />
+                                    {/* Grand Total Section */}
+                                    <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-100 flex justify-between items-center px-1">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grand Total</p>
+                                            <p className="text-[11px] text-gray-500 font-medium mt-1">Total amount to pay</p>
                                         </div>
-                                    )}
+                                        <div className="text-right">
+                                            <p className="text-2xl font-black text-blue-600 tracking-tight">₱{grandTotal.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                     ) : (
                         // QR Code Tab
                         <div className="space-y-4">

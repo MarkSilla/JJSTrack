@@ -44,7 +44,16 @@ const buildRepairDetailsFromUser = (user) => ({
     email: user?.email || '',
     phone: user?.phoneNumber || '',
     address: user?.address || '',
-    city: '',
+    street: user?.street || '',
+    regionCode: user?.regionCode || '',
+    regionName: user?.regionName || '',
+    provinceCode: user?.provinceCode || '',
+    provinceName: user?.provinceName || '',
+    cityCode: user?.cityCode || '',
+    cityName: user?.cityName || '',
+    brgyCode: user?.brgyCode || '',
+    brgyName: user?.brgyName || '',
+    city: user?.cityName || '',
 })
 
 const buildContactFromUser = (user) => ({
@@ -53,11 +62,20 @@ const buildContactFromUser = (user) => ({
     email: user?.email || '',
     facebook: '',
     address: user?.address || '',
+    street: user?.street || '',
+    regionCode: user?.regionCode || '',
+    regionName: user?.regionName || '',
+    provinceCode: user?.provinceCode || '',
+    provinceName: user?.provinceName || '',
+    cityCode: user?.cityCode || '',
+    cityName: user?.cityName || '',
+    brgyCode: user?.brgyCode || '',
+    brgyName: user?.brgyName || '',
 })
 
 // Stepper
-const Stepper = ({ currentStep, labels }) => (
-    <nav className="w-full max-w-2xl mx-auto" aria-label="Progress">
+const Stepper = ({ currentStep, labels, expanded = false }) => (
+    <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
         <ol className="hidden sm:flex items-center">
             {labels.map((label, i) => {
                 const num = i + 1
@@ -135,6 +153,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [nextError, setNextError] = useState('')
+    const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -177,6 +196,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         setService('')
         setLoading(false)
         setError('')
+        setSizeGuideOpen(false)
 
         // Reset repair state
         setSelectedOptions([])
@@ -216,6 +236,8 @@ const BookingModal = ({ isOpen, onClose }) => {
     const isOrg = service === 'organizational'
     const labels = isJersey ? TEAM_LABELS : isOrg ? ORG_LABELS : REPAIR_LABELS
     const totalSteps = labels.length
+    const isRosterEntryStep = (isJersey || isOrg) && step === 2
+    const isExpandedEntryStep = isRosterEntryStep && sizeGuideOpen
 
     const toggleOption = (id) => setSelectedOptions((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
@@ -240,14 +262,14 @@ const BookingModal = ({ isOpen, onClose }) => {
         if (isJersey) {
             if (step === 2) return players.length > 0
             if (step === 3) return true // Design is optional, can skip or add
-            if (step === 4) return [contact.fullName, contact.phone, contact.email].every((field) => field && field.trim().length > 0)
+            if (step === 4) return [contact.fullName, contact.phone, contact.email, contact.address].every((field) => field && field.trim().length > 0)
             return true
         }
 
         if (isOrg) {
             if (step === 2) return members.length > 0
             if (step === 3) return true // Design is optional, can skip or add
-            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email].every((field) => field && field.trim().length > 0)
+            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email, orgContact.address].every((field) => field && field.trim().length > 0)
             return true
         }
 
@@ -272,6 +294,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const handleNext = () => {
         if (canNext()) {
             setNextError('')
+            setSizeGuideOpen(false)
             setStep((s) => s + 1)
             return
         }
@@ -319,7 +342,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                     email: details.email,
                     phone: details.phone,
                     address: details.address,
-                    city: details.city,
+                    street: details.street,
+                    regionCode: details.regionCode,
+                    regionName: details.regionName,
+                    provinceCode: details.provinceCode,
+                    provinceName: details.provinceName,
+                    cityCode: details.cityCode,
+                    cityName: details.cityName,
+                    brgyCode: details.brgyCode,
+                    brgyName: details.brgyName,
+                    city: details.cityName || details.city,
                 }
             } else if (isOrg) {
                 contactToUse = orgContact
@@ -484,7 +516,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isJersey) {
             switch (step) {
-                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} />
+                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
                 case 4: return <TeamStepContact contact={contact} setContact={setContact} readOnly />
                 case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly />
@@ -494,7 +526,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isOrg) {
             switch (step) {
-                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} />
+                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
                 case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} readOnly />
                 case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly />
@@ -511,7 +543,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-2 sm:p-4">
-            <div className="relative w-full max-w-2xl max-h-[96vh] flex flex-col">
+            <div className={`relative w-full ${isExpandedEntryStep ? 'max-w-6xl' : 'max-w-2xl'} max-h-[96vh] flex flex-col transition-all duration-300`}>
                 <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
                     <button
                         onClick={handleClose}
@@ -530,7 +562,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
                     {/* Stepper */}
                     <div className="px-4 pb-1 shrink-0">
-                        <Stepper currentStep={step} labels={labels} />
+                        <Stepper currentStep={step} labels={labels} expanded={isExpandedEntryStep} />
                     </div>
 
                     {/* Main scrollable content area */}

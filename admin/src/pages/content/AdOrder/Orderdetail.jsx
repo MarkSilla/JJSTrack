@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText, ChevronLeft, ClipboardList } from 'lucide-react';
+import { MoreHorizontal, AlertCircle, User, Phone, CalendarClock, XCircle, X, ExternalLink, Link as LinkIcon, Archive, FileText, ChevronLeft, ClipboardList, Eye, QrCode, Package } from 'lucide-react';
+import { MdInfo } from 'react-icons/md';
 import { toast } from 'sonner';
 import WorkflowProgress from './Workflowprogress';
 import ProductionTimeline from './Productiontimeline';
@@ -35,6 +36,8 @@ export default function OrderDetail({
     const [archiveLoading, setArchiveLoading] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [bookingExtras, setBookingExtras] = useState(null);
+    const [showZoomModal, setShowZoomModal] = useState(false);
+    const [zoomImageIdx, setZoomImageIdx] = useState(0);
 
     const derivedStatus = useMemo(() => getDerivedStatus(activeOrder), [activeOrder]);
     const isForApproval = useMemo(() => derivedStatus === 'For Approval', [derivedStatus]);
@@ -81,6 +84,8 @@ export default function OrderDetail({
             isMounted = false;
         };
     }, [activeOrder]);
+
+
 
     const hasSchedule = useMemo(() =>
         Boolean(
@@ -368,142 +373,159 @@ export default function OrderDetail({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar relative" onClick={() => setIsMenuOpen(false)}>
-                {/* Top Row: Workflow & Quick Actions */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-5">
-                    <div className="lg:col-span-8">
-                        <WorkflowProgress
-                            activeOrderSteps={activeOrderSteps}
-                            currentStepIdx={currentStepIdx}
-                            onStepClick={handleStepClick}
-                            orderId={activeOrder.id}
-                            isForApproval={isForApproval}
-                            hasSchedule={hasSchedule}
-                        />
-                    </div>
-                    <div className="lg:col-span-4">
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm h-full flex flex-col">
-                            <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Quick Actions</h4>
-                            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 h-full">
-                                <button
-                                    onClick={() => {
-                                        if (isRescheduleDisabled) return;
-                                        setApprovalMode(false);
-                                        setShowRescheduleModal(true);
-                                    }}
-                                    disabled={isRescheduleDisabled}
-                                    className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
-                                >
-                                    <CalendarClock size={16} /> Reschedule
-                                </button>
-                                {activeOrder.status !== 'Cancelled' && (
+                <div className="space-y-5">
+                    {/* Top Row: Workflow & Quick Actions */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 mb-5">
+                        <div className="lg:col-span-8">
+                            <WorkflowProgress
+                                activeOrderSteps={activeOrderSteps}
+                                currentStepIdx={currentStepIdx}
+                                onStepClick={handleStepClick}
+                                orderId={activeOrder.id}
+                                isForApproval={isForApproval}
+                                hasSchedule={hasSchedule}
+                            />
+                        </div>
+                        <div className="lg:col-span-4">
+                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm h-full flex flex-col">
+                                <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Quick Actions</h4>
+                                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 h-full">
                                     <button
-                                        onClick={() => setShowCancelConfirm(true)}
-                                        className="flex-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
+                                        onClick={() => {
+                                            if (isRescheduleDisabled) return;
+                                            setApprovalMode(false);
+                                            setShowRescheduleModal(true);
+                                            setIsMenuOpen(false);
+                                        }}
+                                        disabled={isRescheduleDisabled}
+                                        className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 disabled:bg-gray-50 disabled:border-gray-200 disabled:text-gray-300 disabled:cursor-not-allowed text-gray-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
                                     >
-                                        <XCircle size={16} /> Cancel
+                                        <CalendarClock size={16} /> Reschedule
                                     </button>
-                                )}
-                                {canArchive && (
-                                    <button
-                                        onClick={() => setShowArchiveConfirm(true)}
-                                        className="flex-1 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <Archive size={16} /> Archive
-                                    </button>
-                                )}
+                                    {activeOrder.status !== 'Cancelled' && (
+                                        <button
+                                            onClick={() => {
+                                                setShowCancelConfirm(true);
+                                                setIsMenuOpen(false);
+                                            }}
+                                            className="flex-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2 border"
+                                        >
+                                            <XCircle size={16} /> Cancel
+                                        </button>
+                                    )}
+                                    {canArchive && (
+                                        <button
+                                            onClick={() => {
+                                                setShowArchiveConfirm(true);
+                                                setIsMenuOpen(false);
+                                            }}
+                                            className="flex-1 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-700 font-bold py-2 px-3 rounded-xl text-[13px] transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Archive size={16} /> Archive
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
-                    <div className="col-span-2 flex flex-col gap-5">
-                        <AssignedTailorPanel
-                            activeOrder={activeOrder}
-                            staffAssignments={staffAssignments}
-                            earningsPreview={earningsPreview}
-                            onManageAssignments={handleManageAssignments}
-                            isCancelled={isCancelled}
-                            isAssignmentLocked={isAssignmentLocked}
-                        />
-                        <ProductionTimeline
-                            activeOrderSteps={activeOrderSteps}
-                            currentStepIdx={currentStepIdx}
-                            onStepClick={handleStepClick}
-                            orderId={activeOrder.id}
-                            isForApproval={isForApproval}
-                            hasSchedule={hasSchedule}
-                        />
-                        <TeamRoster 
-                            players={rosterPlayers} 
-                            invoiceItems={rosterInvoiceItems} 
-                            teamName={bookingExtras?.teamName || activeOrder?.item || 'N/A'}
-                            customerContact={activeOrder?.invoice?.billTo?.phone || activeOrder?.phone || activeOrder?.contact?.phone || 'N/A'}
-                        />
-                    </div>
-                    <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
-                        {(imageUrls.length > 0 || activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
-                            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                                    {/* Left Side: Images */}
-                                    <div className="p-4 flex flex-col">
-                                        <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Uploaded Images</h4>
-                                        {imageUrls.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
-                                                {imageUrls.map((src, index) => (
-                                                    <a
-                                                        key={`${src}-${index}`}
-                                                        href={src}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="block rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm hover:ring-2 hover:ring-blue-100 transition-all"
-                                                    >
-                                                        <img
-                                                            src={src}
-                                                            alt={`Uploaded image ${index + 1}`}
-                                                            className="w-38 h-38 object-cover"
-                                                        />
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
-                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No images</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="p-4 flex flex-col">
-                                        <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg inline-flex items-center self-start gap-1.5">
-                                            <ExternalLink size={12} /> Design References
-                                        </h4>
-                                        {(activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) ? (
-                                            <a
-                                                href={activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="flex-1 flex flex-col items-center justify-center p-4 text-center hover:bg-indigo-50/30 transition-all rounded-xl group border border-gray-50 hover:border-indigo-100"
-                                            >
-                                                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all border border-gray-50 overflow-hidden">
-                                                    <img src={GDriveLogo} alt="Google Drive" className="w-12 h-12 object-contain" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+                        <div className="col-span-2 flex flex-col gap-5">
+                            <AssignedTailorPanel
+                                activeOrder={activeOrder}
+                                staffAssignments={staffAssignments}
+                                earningsPreview={earningsPreview}
+                                onManageAssignments={handleManageAssignments}
+                                isCancelled={isCancelled}
+                                isAssignmentLocked={isAssignmentLocked}
+                            />
+                            <ProductionTimeline
+                                activeOrderSteps={activeOrderSteps}
+                                currentStepIdx={currentStepIdx}
+                                onStepClick={handleStepClick}
+                                orderId={activeOrder.id}
+                                isForApproval={isForApproval}
+                                hasSchedule={hasSchedule}
+                            />
+                        </div>
+                        <div className="col-span-1 flex flex-col gap-4 lg:gap-5">
+                            {(imageUrls.length > 0 || activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) && (
+                                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                                        {/* Left Side: Images */}
+                                        <div className="p-4 flex flex-col">
+                                            <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-gray-400">Uploaded Images</h4>
+                                            {imageUrls.length > 0 ? (
+                                                <div className="grid grid-cols-1 gap-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                                                    {imageUrls.map((src, index) => (
+                                                        <button
+                                                            key={`${src}-${index}`}
+                                                            onClick={() => { setZoomImageIdx(index); setShowZoomModal(true); }}
+                                                            className="block w-full rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm hover:ring-2 hover:ring-blue-100 transition-all cursor-pointer p-0 relative group"
+                                                        >
+                                                            <img
+                                                                src={src}
+                                                                alt={`Uploaded image ${index + 1}`}
+                                                                className="w-full h-38 object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center transition-colors">
+                                                                <div className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md transition-opacity">
+                                                                    <Eye size={12} /> View Fullscreen
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                <span className="text-[10px] text-indigo-600 font-black uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full group-hover:bg-indigo-100 transition-colors">
-                                                    Open Link →
-                                                </span>
-                                            </a>
-                                        ) : (
-                                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
-                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No link set</span>
-                                            </div>
-                                        )}
+                                            ) : (
+                                                <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
+                                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No images</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-4 flex flex-col">
+                                            <h4 className="text-[11px] font-black tracking-wider uppercase mb-3 text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg inline-flex items-center self-start gap-1.5">
+                                                <ExternalLink size={12} /> Design References
+                                            </h4>
+                                            {(activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink) ? (
+                                                <a
+                                                    href={activeOrder.driveLink || bookingExtras?.driveLink || activeOrder.orgDriveLink || bookingExtras?.orgDriveLink}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="flex-1 flex flex-col items-center justify-center p-4 text-center hover:bg-indigo-50/30 transition-all rounded-xl group border border-gray-50 hover:border-indigo-100"
+                                                >
+                                                    <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all border border-gray-50 overflow-hidden">
+                                                        <img src={GDriveLogo} alt="Google Drive" className="w-12 h-12 object-contain" />
+                                                    </div>
+                                                    <span className="text-[10px] text-indigo-600 font-black uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-full group-hover:bg-indigo-100 transition-colors">
+                                                        Open Link →
+                                                    </span>
+                                                </a>
+                                            ) : (
+                                                <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-50 rounded-xl py-8">
+                                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No link set</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                        <OrderSummary
-                            activeOrder={activeOrder}
-                            earningsPreview={earningsPreview}
-                            participants={rosterPlayers}
-                            bookingExtras={bookingExtras}
+                            )}
+                            <OrderSummary
+                                activeOrder={activeOrder}
+                                earningsPreview={earningsPreview}
+                                participants={rosterPlayers}
+                                bookingExtras={bookingExtras}
+                                serviceType={activeOrder?.serviceType}
+                            />
+                        </div>
+                    </div>
+                    {/* Team Roster Section moved to bottom of unified details view */}
+                    <div className="mt-5">
+                        <TeamRoster
+                            players={rosterPlayers}
+                            invoiceItems={rosterInvoiceItems}
+                            teamName={bookingExtras?.teamName || bookingExtras?.orgName || activeOrder?.item || 'N/A'}
+                            customerContact={activeOrder?.invoice?.billTo?.phone || activeOrder?.phone || activeOrder?.contact?.phone || 'N/A'}
+                            serviceType={activeOrder?.serviceType}
                         />
                     </div>
                 </div>
@@ -609,6 +631,38 @@ export default function OrderDetail({
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Image Zoom Modal */}
+            {showZoomModal && imageUrls.length > 0 && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/95 backdrop-blur-sm p-4 sm:p-8 animate-in fade-in"
+                    onClick={() => setShowZoomModal(false)}
+                >
+                    <button
+                        className="absolute top-6 right-6 lg:top-8 lg:right-8 w-11 h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all shadow-lg hover:scale-110 z-50 text-xl cursor-pointer ring-1 ring-white/20 border-none"
+                        onClick={() => setShowZoomModal(false)}
+                    >
+                        <X size={24} />
+                    </button>
+                    <img
+                        src={imageUrls[zoomImageIdx]}
+                        alt="Zoomed Upload"
+                        className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 cursor-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    {imageUrls.length > 1 && (
+                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20">
+                            {imageUrls.map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={(e) => { e.stopPropagation(); setZoomImageIdx(i); }}
+                                    className={`w-2 h-2 rounded-full transition-all border-none ${i === zoomImageIdx ? 'bg-white w-5' : 'bg-white/40 hover:bg-white/80'}`}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

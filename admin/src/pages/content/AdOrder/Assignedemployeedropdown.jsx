@@ -30,8 +30,6 @@ export default function AssignEmployeeDropdown({ currentId, onAssign }) {
     useEffect(() => {
         fetchMyStaff();
     }, [fetchMyStaff]);
-
-    // Calculate fixed position from button's bounding rect
     const handleOpen = () => {
         if (!open && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();

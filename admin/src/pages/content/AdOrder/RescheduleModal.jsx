@@ -7,7 +7,7 @@ import { TIME_SLOTS } from '../../repairForm/constants.js';
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
     jersey: { label: 'Jersey', hex: '#0400ff', icon: Briefcase },
-    org:    { label: 'Org',    hex: '#F59E0B', icon: Calendar },
+    org: { label: 'Org', hex: '#F59E0B', icon: Calendar },
 };
 
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -28,7 +28,7 @@ const AVAILABLE_TIMES = [
 ];
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 // Step indicator
 const STEPS = ['date', 'time', 'confirm'];
@@ -104,7 +104,7 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
     const selectedAppointments = useMemo(() =>
         appointments.filter(a => a.date === selectedDateStr)
             .sort((a, b) => getPickupSlotSortValue(a.time, '09:00 AM') - getPickupSlotSortValue(b.time, '09:00 AM'))
-    , [appointments, selectedDateStr]);
+        , [appointments, selectedDateStr]);
 
     const bookedTimes = useMemo(() => {
         if (!isRepairSchedule) {
@@ -198,7 +198,7 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                 year: 'numeric',
             }),
         };
-        }, [appointments, pendingDateSelection]);
+    }, [appointments, pendingDateSelection]);
 
     const pendingTimeSummary = useMemo(() => {
         if (!pendingTimeSelection) return null;
@@ -247,20 +247,20 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                     className={`
                         relative transition-all duration-200 border rounded-lg aspect-square flex flex-col items-center justify-center gap-0.5 p-1
                         ${isPastDate ? 'opacity-40 cursor-not-allowed bg-gray-50 border-gray-100'
-                        : isSelected ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-sm cursor-pointer'
-                        : totalCount >= 8 ? 'bg-red-50 border-red-200 cursor-pointer'
-                        : totalCount >= 5 ? 'bg-yellow-50 border-yellow-200 cursor-pointer'
-                        : isToday ? 'bg-blue-50 border-blue-200 cursor-pointer'
-                        : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 cursor-pointer'}
+                            : isSelected ? 'bg-blue-50 ring-2 ring-blue-500 border-transparent shadow-sm cursor-pointer'
+                                : totalCount >= 8 ? 'bg-red-50 border-red-200 cursor-pointer'
+                                    : totalCount >= 5 ? 'bg-yellow-50 border-yellow-200 cursor-pointer'
+                                        : isToday ? 'bg-blue-50 border-blue-200 cursor-pointer'
+                                            : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50 cursor-pointer'}
                     `}
                 >
                     <div className={`w-5 h-5 flex items-center justify-center rounded-full font-bold text-[10px]
                         ${isPastDate ? 'bg-gray-300 text-gray-500'
-                        : isSelected ? 'bg-blue-600 text-white'
-                        : totalCount >= 8 ? 'bg-red-500 text-white'
-                        : totalCount >= 5 ? 'bg-yellow-400 text-gray-800'
-                        : isToday ? 'bg-blue-600 text-white'
-                        : 'text-gray-700'}`}
+                            : isSelected ? 'bg-blue-600 text-white'
+                                : totalCount >= 8 ? 'bg-red-500 text-white'
+                                    : totalCount >= 5 ? 'bg-yellow-400 text-gray-800'
+                                        : isToday ? 'bg-blue-600 text-white'
+                                            : 'text-gray-700'}`}
                     >
                         {d}
                     </div>
@@ -313,8 +313,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                                 <div className="flex items-center gap-1.5">
                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold transition-all
                                         ${i < currentStepIndex ? 'bg-blue-600 text-white'
-                                        : i === currentStepIndex ? 'bg-blue-600 text-white ring-2 ring-blue-200'
-                                        : 'bg-gray-100 text-gray-400'}`}
+                                            : i === currentStepIndex ? 'bg-blue-600 text-white ring-2 ring-blue-200'
+                                                : 'bg-gray-100 text-gray-400'}`}
                                     >
                                         {i < currentStepIndex ? '✓' : i + 1}
                                     </div>
@@ -431,8 +431,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                                             className={`
                                                 py-2 px-3 rounded-lg font-bold text-[11px] transition-all border
                                                 ${isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                : isBooked ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-pointer'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 cursor-pointer'}
+                                                    : isBooked ? 'bg-amber-50 text-amber-700 border-amber-200 cursor-pointer'
+                                                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 cursor-pointer'}
                                             `}
                                         >
                                             <span className="block">{option.title}</span>
@@ -460,8 +460,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                                     {mode === 'approve' ? 'Confirm Schedule?' : 'Confirm Reschedule?'}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-1 text-center">
-                                    {mode === 'approve' 
-                                        ? 'Please review the schedule below before confirming.' 
+                                    {mode === 'approve'
+                                        ? 'Please review the schedule below before confirming.'
                                         : 'Please review the new schedule below before confirming.'}
                                 </p>
                             </div>
@@ -497,8 +497,8 @@ export default function RescheduleModal({ isOpen, onClose, onConfirm, mode = 're
                             </div>
 
                             <p className="text-[11px] text-gray-400 text-center">
-                                {mode === 'approve' 
-                                    ? 'This will set the delivery schedule. The customer will be notified.' 
+                                {mode === 'approve'
+                                    ? 'This will set the delivery schedule. The customer will be notified.'
                                     : 'This will update the delivery schedule. The customer will be notified.'}
                             </p>
                         </div>

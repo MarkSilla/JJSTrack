@@ -1,3 +1,5 @@
+import PhilippinesAddressFields from '../../components/PhilippinesAddressFields'
+
 const baseInputClassName = 'border rounded-xl px-4 py-3.5 text-sm transition-all duration-200'
 
 const Field = ({ label, readOnly = false, ...props }) => (
@@ -35,12 +37,13 @@ const StepDetails = ({ details, setDetail, readOnly = false }) => (
                 <Field label="Email Address" type="email" placeholder="juan@example.com" value={details.email} onChange={(e) => setDetail('email', e.target.value)} readOnly={readOnly} />
                 <Field label="Phone Number" type="tel" placeholder="+63 9XX XXX XXXX" value={details.phone} onChange={(e) => setDetail('phone', e.target.value)} readOnly={readOnly} />
             </div>
-            <Field label="Full Address" placeholder="123 Rizal St, Barangay San Jose, Manila" value={details.address} onChange={(e) => setDetail('address', e.target.value)} readOnly={readOnly} />
-            {!readOnly && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <Field label="City" placeholder="Manila" value={details.city} onChange={(e) => setDetail('city', e.target.value)} />
-                </div>
-            )}
+            <PhilippinesAddressFields
+                value={details}
+                onChange={(nextDetails) => {
+                    Object.entries(nextDetails).forEach(([key, value]) => setDetail(key, value))
+                }}
+                readOnly={readOnly}
+            />
         </div>
     </section>
 )
