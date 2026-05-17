@@ -8,8 +8,9 @@ const JERSEY_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 const SHORT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL']
 
 const BASE_PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: false },
-    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
+    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
+    { id: 'short', label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
 ]
 
 const OPTIONAL_PRODUCT_TYPES = [
@@ -33,7 +34,7 @@ const getPlayerPrice = (player) => {
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
     
     // Add optional add-ons pricing
-    if (player.addOns && Array.isArray(player.addOns)) {
+    if (product.needsJerseySize && player.addOns && Array.isArray(player.addOns)) {
         player.addOns.forEach(addOnId => {
             const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
             if (addOn) total += addOn.price
@@ -212,10 +213,11 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
     }
 
     const selectedProduct = BASE_PRODUCT_TYPES.find((p) => p.id === form.productType)
+    const needsJerseySize = selectedProduct?.needsJerseySize !== false
     const needsShortSize = selectedProduct?.needsShortSize || false
 
     // Check if jersey size is valid (either preset or manual)
-    const jerseyValid = form.useManualjerseySize ? (form.jerseyLength && form.jerseyBody) : form.jerseySize
+    const jerseyValid = !needsJerseySize ? true : (form.useManualjerseySize ? (form.jerseyLength && form.jerseyBody) : form.jerseySize)
     // Check if short size is valid (either preset or manual, if needed)
     const shortValid = !needsShortSize ? true : (form.useManualsShortSize ? (form.shortHips && form.shortLength) : form.shortSize)
 
@@ -226,8 +228,15 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
 
         const nextPlayer = {
             ...form,
-            addOns: Array.isArray(form.addOns) ? form.addOns : [],
+            addOns: needsJerseySize && Array.isArray(form.addOns) ? form.addOns : [],
+            jerseySize: needsJerseySize ? form.jerseySize : '',
+            useManualjerseySize: needsJerseySize ? form.useManualjerseySize : false,
+            jerseyLength: needsJerseySize ? form.jerseyLength : '',
+            jerseyBody: needsJerseySize ? form.jerseyBody : '',
             shortSize: needsShortSize ? form.shortSize : '',
+            useManualsShortSize: needsShortSize ? form.useManualsShortSize : false,
+            shortHips: needsShortSize ? form.shortHips : '',
+            shortLength: needsShortSize ? form.shortLength : '',
             pockets: needsShortSize ? form.pockets : false,
         }
 
@@ -325,7 +334,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                         <div>
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 mb-2 block">Product Type <span className="text-red-400">*</span></label>
                             <p className="text-xs text-gray-500 mb-2">Choose one main package:</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {BASE_PRODUCT_TYPES.map((pt) => {
                                     const selected = form.productType === pt.id
                                     return (
@@ -334,8 +343,18 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                                             type="button"
                                             onClick={() => {
                                                 set('productType', pt.id)
+                                                if (pt.needsJerseySize === false) {
+                                                    set('jerseySize', '')
+                                                    set('useManualjerseySize', false)
+                                                    set('jerseyLength', '')
+                                                    set('jerseyBody', '')
+                                                    set('addOns', [])
+                                                }
                                                 if (!pt.needsShortSize) {
                                                     set('shortSize', '')
+                                                    set('useManualsShortSize', false)
+                                                    set('shortHips', '')
+                                                    set('shortLength', '')
                                                     set('pockets', false)
                                                 }
                                             }}
@@ -352,6 +371,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                             </div>
                         </div>
 
+                        {needsJerseySize && (
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Optional add-ons</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -381,6 +401,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                             </div>
                             <p className="text-xs text-gray-500 mt-2">You can select none, one, or both add-ons.</p>
                         </div>
+                        )}
                     </div>
 
                     <div>
@@ -395,6 +416,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                     </div>
 
                     {/* Jersey Size Options */}
+                    {needsJerseySize && (
                     <div className="flex flex-col gap-3 pt-1">
                         <div className="flex items-center gap-3">
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Jersey Size <span className="text-red-400">*</span></label>
@@ -441,6 +463,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                             </select>
                         )}
                     </div>
+                    )}
 
                     {/* Short Size Options */}
                     {needsShortSize && (

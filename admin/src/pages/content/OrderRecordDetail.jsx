@@ -102,7 +102,7 @@ const ADD_ON_CONFIG = {
 const JERSEY_PRODUCT_TYPES = {
     jersey: { label: 'Jersey Only', price: 550 },
     fullset: { label: 'Full Set (Jersey + Shorts)', price: 850 },
-    short: { label: 'Short Only', price: 300 },
+    short: { label: 'Short Only', price: 400 },
 };
 
 const formatCurrency = (value) => `${PESO_SYMBOL}${Number(value || 0).toLocaleString()}`;

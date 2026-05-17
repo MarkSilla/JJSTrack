@@ -44,6 +44,23 @@ const getOrgShirtType = (member) => {
     return 'Uniform';
 };
 
+const JERSEY_PRODUCT_TYPES = {
+    jersey: 'Jersey Only',
+    fullset: 'Full Set',
+    short: 'Short Only',
+};
+
+const getJerseyProductType = (player = {}, item = {}) => {
+    const rawType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[rawType]) return JERSEY_PRODUCT_TYPES[rawType];
+
+    const source = String(player?.classification || item?.description || item?.name || '').toLowerCase();
+    if (source.includes('jersey only')) return JERSEY_PRODUCT_TYPES.jersey;
+    if (source.includes('short only')) return JERSEY_PRODUCT_TYPES.short;
+    if (source.includes('full set') || source.includes('fullset')) return JERSEY_PRODUCT_TYPES.fullset;
+    return 'Team Jersey';
+};
+
 const getDerivedOrderStatus = (order) => {
     if (order?.status === "Cancelled") return "Cancelled";
     if (order?.status === "Released") return "Released";
@@ -615,7 +632,7 @@ const ArchiveDetail = ({ order, onBack }) => {
                                                 : rawType ? rawType.charAt(0).toUpperCase() + rawType.slice(1)
                                                     : 'Uniform';
                                     } else {
-                                        itemType = 'Full Set';
+                                        itemType = getJerseyProductType(player, items[idx]);
                                     }
                                     const addOnEntries = Array.isArray(player.addOns) ? player.addOns : [];
                                     const hasPocket = Boolean(player.pockets || player.hasPocketShorts);

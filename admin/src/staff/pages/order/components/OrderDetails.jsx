@@ -50,6 +50,23 @@ const ORG_PRODUCT_TYPES = {
     polo: 'Polo Shirt',
 };
 
+const JERSEY_PRODUCT_TYPES = {
+    jersey: 'Jersey Only',
+    fullset: 'Full Set',
+    short: 'Short Only',
+};
+
+const getJerseyProductType = (player = {}, item = {}) => {
+    const rawType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[rawType]) return JERSEY_PRODUCT_TYPES[rawType];
+
+    const source = String(player?.classification || item?.description || item?.name || '').toLowerCase();
+    if (source.includes('jersey only')) return JERSEY_PRODUCT_TYPES.jersey;
+    if (source.includes('short only')) return JERSEY_PRODUCT_TYPES.short;
+    if (source.includes('full set') || source.includes('fullset')) return JERSEY_PRODUCT_TYPES.fullset;
+    return 'Team Jersey';
+};
+
 const getOrgSizeText = (member) => {
     if (member?.useManualSize) {
         return `${member.manualBody || '-'}" x ${member.manualLength || '-'}" x ${member.manualSleeveLength || '-'}"`;
@@ -1018,7 +1035,7 @@ const OrderDetails = ({ orderId, onBack }) => {
                                     if (isOrg) {
                                         itemType = getOrgShirtType(player);
                                     } else {
-                                        itemType = 'Full Set';
+                                        itemType = getJerseyProductType(player, items[idx]);
                                     }
                                     const addOnEntries = Array.isArray(player.addOns) ? player.addOns : [];
                                     const hasPocket = Boolean(player.pockets || player.hasPocketShorts);

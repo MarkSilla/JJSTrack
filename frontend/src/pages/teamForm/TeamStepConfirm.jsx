@@ -2,8 +2,9 @@ import React from 'react'
 import { MdEdit, MdLink, MdImage } from 'react-icons/md'
 
 const BASE_PRODUCT_TYPES = [
-    { id: 'jersey', label: 'Jersey Only', price: 550, needsShortSize: false },
-    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+    { id: 'jersey', label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
+    { id: 'fullset', label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
+    { id: 'short', label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
 ]
 
 const OPTIONAL_PRODUCT_TYPES = [
@@ -20,7 +21,7 @@ const getPlayerPrice = (player) => {
     let total = product.price
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
 
-    if (player.addOns && Array.isArray(player.addOns)) {
+    if (product.needsJerseySize && player.addOns && Array.isArray(player.addOns)) {
         player.addOns.forEach((addOnId) => {
             const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
             if (addOn) total += addOn.price
@@ -83,6 +84,7 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                     <tr className="border-b-2 border-gray-200">
                                         <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">No.</th>
                                         <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Full Name</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Product</th>
                                         <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Number</th>
                                         <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
                                         <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
@@ -94,6 +96,7 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                 <tbody className="divide-y divide-gray-100">
                                     {players.map((pl, i) => {
                                         const price = getPlayerPrice(pl)
+                                        const product = BASE_PRODUCT_TYPES.find((p) => p.id === pl.productType)
                                         const jerseySizeText = pl.useManualjerseySize || (pl.jerseyLength && pl.jerseyBody) ? `${pl.jerseyLength || '-'}"×${pl.jerseyBody || '-'}"` : (pl.jerseySize || '-')
                                         const shortSizeText = pl.useManualsShortSize || (pl.shortHips && pl.shortLength) ? `${pl.shortHips || '-'}"×${pl.shortLength || '-'}"` : (pl.shortSize || '-')
                                         const addOnText = getAddOnLabels(pl).join(', ') || 'None'
@@ -102,6 +105,7 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                             <tr key={i} className="hover:bg-blue-50/30 transition-colors">
                                                 <td className="py-2.5 text-xs font-medium text-gray-500">{i + 1}.</td>
                                                 <td className="py-2.5 text-xs font-semibold text-gray-800 uppercase">{getPlayerDisplayName(pl, i)}</td>
+                                                <td className="py-2.5 text-xs font-semibold text-gray-600">{product?.label || '-'}</td>
                                                 <td className="py-2.5 text-xs font-bold text-gray-600 text-center">{pl.number || '-'}</td>
                                                 <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{jerseySizeText}</td>
                                                 <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{shortSizeText}</td>

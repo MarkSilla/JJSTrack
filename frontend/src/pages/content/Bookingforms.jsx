@@ -409,15 +409,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.players = players
                 bookingData.items = players.map((player, index) => {
                     const baseProductCatalog = {
-                        jersey: { label: 'Jersey Only', price: 550, needsShortSize: false },
-                        fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsShortSize: true },
+                        jersey: { label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
+                        fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
+                        short: { label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
                     }
                     const addOnCatalog = {
                         warmer: { label: 'Long Sleeve Warmer', price: 750 },
                         hoodie: { label: 'Hoodie T-shirt', price: 700 },
                     }
                     const baseProduct = baseProductCatalog[player.productType] || baseProductCatalog.jersey
-                    const selectedAddOns = (Array.isArray(player.addOns) ? player.addOns : [])
+                    const selectedAddOns = (baseProduct.needsJerseySize && Array.isArray(player.addOns) ? player.addOns : [])
                         .map((id) => addOnCatalog[id])
                         .filter(Boolean)
                     const hasPockets = Boolean(player.pockets && baseProduct.needsShortSize)
@@ -431,7 +432,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                         type: 'Custom',
                         qty: 1,
                         unitPrice: baseProduct.price,
-                        size: player.jerseySize,
+                        size: baseProduct.needsJerseySize ? player.jerseySize : player.shortSize,
                         addOn: addOnLabels.length > 0 ? addOnLabels.join(', ') : 'None',
                         addOnPrice,
                         notes: '',

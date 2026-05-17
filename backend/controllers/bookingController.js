@@ -181,6 +181,22 @@ const ORG_PRODUCT_PRICES = {
   polo: 650,
 };
 
+const JERSEY_PRODUCT_CONFIG = {
+  jersey: { label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
+  fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
+  short: { label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
+};
+
+const getJerseyProductConfig = (participant = {}, fallbackPrice = 0) => {
+  const productType = String(participant?.productType || '').toLowerCase();
+  return JERSEY_PRODUCT_CONFIG[productType] || {
+    label: 'Jersey',
+    price: fallbackPrice,
+    needsJerseySize: true,
+    needsShortSize: false,
+  };
+};
+
 const buildParticipantInvoiceItems = ({
   participants = [],
   itemLabel = 'Jersey',
@@ -188,6 +204,7 @@ const buildParticipantInvoiceItems = ({
   pocketPrice = 0,
   sizeSelector,
   priceSelector,
+  labelSelector,
 }) => {
   const participantList = Array.isArray(participants) ? participants : [];
 
@@ -201,9 +218,12 @@ const buildParticipantInvoiceItems = ({
     const resolvedPrice = typeof priceSelector === 'function'
       ? priceSelector(participant)
       : basePrice;
+    const resolvedLabel = typeof labelSelector === 'function'
+      ? labelSelector(participant)
+      : itemLabel;
 
     const baseItem = {
-      description: `${itemLabel} (${participantName}${itemSuffix})`,
+      description: `${resolvedLabel} (${participantName}${itemSuffix})`,
       type: 'Custom',
       qty: 1,
       unitPrice: resolvedPrice,
@@ -805,7 +825,12 @@ export const createBooking = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice).price,
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
     } else if (normalizedItems.length === 0 && bookingType === 'organizational' && members) {
       normalizedItems = buildParticipantInvoiceItems({
@@ -835,7 +860,12 @@ export const createBooking = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice).price,
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
       totalPrice = fallbackItems.reduce((sum, item) => {
         return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));
@@ -1414,7 +1444,12 @@ export const convertBookingToOrder = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice).price,
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
       const derivedAddOnItems = derivedItems.filter((item) => item.addOn === 'Add-on');
       const hasAddOnItems = items.some((item) => item?.addOn === 'Add-on');

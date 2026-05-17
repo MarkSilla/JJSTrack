@@ -14,6 +14,12 @@ const ORG_PRODUCT_TYPES = {
     polo: { label: 'Polo Shirt', price: 650 },
 };
 
+const JERSEY_PRODUCT_TYPES = {
+    jersey: { label: 'Jersey Only', price: 550 },
+    fullset: { label: 'Full Set (Jersey + Shorts)', price: 850 },
+    short: { label: 'Short Only', price: 400 },
+};
+
 const formatCurrency = (value) => `${PESO_SYMBOL}${Number(value || 0).toLocaleString()}`;
 
 const getAddOnMeta = (addOnId) =>
@@ -25,6 +31,17 @@ const getAddOnMeta = (addOnId) =>
 const getParticipantName = (participant, index) => {
     const fullName = [participant?.firstName, participant?.surname].filter(Boolean).join(' ').trim();
     return fullName || participant?.name || `Player ${index + 1}`;
+};
+
+const getJerseyProductLabel = (player = {}, item = {}) => {
+    const productType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[productType]) return JERSEY_PRODUCT_TYPES[productType].label;
+
+    const source = String(player?.classification || item?.description || item?.type || '').toLowerCase();
+    if (source.includes('jersey only')) return JERSEY_PRODUCT_TYPES.jersey.label;
+    if (source.includes('short only')) return JERSEY_PRODUCT_TYPES.short.label;
+    if (source.includes('full set') || source.includes('fullset')) return JERSEY_PRODUCT_TYPES.fullset.label;
+    return 'Team Jersey';
 };
 
 const DEFAULT_POCKET_PRICE = 100;
@@ -81,12 +98,7 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
                 const orgProduct = ORG_PRODUCT_TYPES[player.productType];
                 itemType = orgProduct?.label || player.productType || 'Org Item';
             } else {
-                // Team Jersey: use classification field
-                const classif = player.classification || '';
-                if (classif.toLowerCase().includes('jersey only')) itemType = 'Jersey Only';
-                else if (classif.toLowerCase().includes('short only')) itemType = 'Short Only';
-                else if (classif.toLowerCase() === 'full set') itemType = 'Full Set (Jersey + Shorts)';
-                else itemType = classif || 'Full Set';
+                itemType = getJerseyProductLabel(player, item);
             }
 
             const surname = player.surname || player.name || `Player ${index + 1}`;
@@ -99,7 +111,7 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
             // For org orders, use per-product pricing from roster data instead of the flat backend price
             const correctedUnitPrice = isOrg
                 ? (ORG_PRODUCT_TYPES[player.productType]?.price || item.unitPrice || 0)
-                : item.unitPrice;
+                : (item.unitPrice || JERSEY_PRODUCT_TYPES[String(player.productType || '').toLowerCase()]?.price || 0);
 
             return {
                 ...item,
