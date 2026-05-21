@@ -20,23 +20,33 @@ const OPTIONAL_PRODUCT_TYPES = [
 
 const POCKET_PRICE = 100
 
+const buildProductTypes = (pricing = {}) => BASE_PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.jerseyProducts?.[product.id] ?? product.price),
+}))
+
+const buildOptionalProductTypes = (pricing = {}) => OPTIONAL_PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.jerseyAddOns?.[product.id] ?? product.price),
+}))
+
 const emptyPlayer = { surname: '', nickname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false, addOns: [],
     // Manual sizing fields
     useManualjerseySize: false, useManualsShortSize: false,
     jerseyLength: '', jerseyBody: '', shortHips: '', shortLength: ''
 }
 
-const getPlayerPrice = (player) => {
-    const product = BASE_PRODUCT_TYPES.find((p) => p.id === player.productType)
+const getPlayerPrice = (player, productTypes = BASE_PRODUCT_TYPES, optionalProductTypes = OPTIONAL_PRODUCT_TYPES, pocketPrice = POCKET_PRICE) => {
+    const product = productTypes.find((p) => p.id === player.productType)
     if (!product) return 0
 
     let total = product.price
-    if (player.pockets && product.needsShortSize) total += POCKET_PRICE
+    if (player.pockets && product.needsShortSize) total += pocketPrice
     
     // Add optional add-ons pricing
     if (product.needsJerseySize && player.addOns && Array.isArray(player.addOns)) {
         player.addOns.forEach(addOnId => {
-            const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
+            const addOn = optionalProductTypes.find((p) => p.id === addOnId)
             if (addOn) total += addOn.price
         })
     }
@@ -44,8 +54,8 @@ const getPlayerPrice = (player) => {
     return total
 }
 
-const getAddOnLabels = (player) =>
-    OPTIONAL_PRODUCT_TYPES
+const getAddOnLabels = (player, optionalProductTypes = OPTIONAL_PRODUCT_TYPES) =>
+    optionalProductTypes
         .filter((p) => (Array.isArray(player.addOns) ? player.addOns.includes(p.id) : false))
         .map((p) => p.label)
 
@@ -192,11 +202,14 @@ const LineupRoster = ({ teamName, contact, players, onEdit, onRemove }) => (
     </div>
 )
 
-const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact = {}, onSizeGuideChange }) => {
+const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact = {}, onSizeGuideChange, pricing = {} }) => {
     const [form, setForm] = useState({ ...emptyPlayer })
     const [editIdx, setEditIdx] = useState(null)
     const [showSizeGuide, setShowSizeGuide] = useState(false)
     const [rosterView, setRosterView] = useState('list')
+    const productTypes = buildProductTypes(pricing)
+    const optionalProductTypes = buildOptionalProductTypes(pricing)
+    const pocketPrice = Number(pricing?.pocketPrice ?? POCKET_PRICE)
 
     const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
     
@@ -212,7 +225,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
         })
     }
 
-    const selectedProduct = BASE_PRODUCT_TYPES.find((p) => p.id === form.productType)
+    const selectedProduct = productTypes.find((p) => p.id === form.productType)
     const needsJerseySize = selectedProduct?.needsJerseySize !== false
     const needsShortSize = selectedProduct?.needsShortSize || false
 
@@ -271,7 +284,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
         }
     }
 
-    const grandTotal = players.reduce((sum, pl) => sum + getPlayerPrice(pl), 0)
+    const grandTotal = players.reduce((sum, pl) => sum + getPlayerPrice(pl, productTypes, optionalProductTypes, pocketPrice), 0)
     const contentWidthClass = showSizeGuide ? 'max-w-7xl' : 'max-w-xl'
 
     useEffect(() => {
@@ -335,7 +348,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                             <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 mb-2 block">Product Type <span className="text-red-400">*</span></label>
                             <p className="text-xs text-gray-500 mb-2">Choose one main package:</p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {BASE_PRODUCT_TYPES.map((pt) => {
+                                {productTypes.map((pt) => {
                                     const selected = form.productType === pt.id
                                     return (
                                         <button
@@ -375,7 +388,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Optional add-ons</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {OPTIONAL_PRODUCT_TYPES.map((pt) => {
+                                {optionalProductTypes.map((pt) => {
                                     const selected = form.addOns && form.addOns.includes(pt.id)
                                     return (
                                         <button
@@ -522,7 +535,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                                 {form.pockets && <MdCheck size={13} className="text-white" />}
                             </span>
                             <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors">
-                                Shorts with Pockets <span className="text-blue-500 font-semibold">(+₱{POCKET_PRICE})</span>
+                                Shorts with Pockets <span className="text-blue-500 font-semibold">(+₱{pocketPrice})</span>
                             </span>
                             <input type="checkbox" className="hidden" checked={form.pockets} onChange={(e) => set('pockets', e.target.checked)} />
                         </label>
@@ -531,7 +544,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                     {form.productType && (
                         <div className="flex items-center justify-between rounded-lg bg-white border border-gray-200 px-4 py-3 mt-1">
                             <span className="text-xs text-gray-500 font-medium">Player Price</span>
-                            <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{getPlayerPrice(form)}</span>
+                            <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{getPlayerPrice(form, productTypes, optionalProductTypes, pocketPrice)}</span>
                         </div>
                     )}
 
@@ -579,9 +592,9 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                     ) : (
                     <div className="space-y-2">
                         {players.map((pl, i) => {
-                            const product = BASE_PRODUCT_TYPES.find((p) => p.id === pl.productType)
-                            const addOnLabels = getAddOnLabels(pl)
-                            const price = getPlayerPrice(pl)
+                            const product = productTypes.find((p) => p.id === pl.productType)
+                            const addOnLabels = getAddOnLabels(pl, optionalProductTypes)
+                            const price = getPlayerPrice(pl, productTypes, optionalProductTypes, pocketPrice)
                             return (
                                 <div key={i} className="bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-gray-300 transition-colors">
                                     <div className="flex items-center justify-between gap-4">
@@ -599,7 +612,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                                                     {addOnLabels.length > 0 && ` · ${addOnLabels.join(', ')}`}
                                                     {pl.pockets && ' · Pockets'}
                                                     {pl.addOns && pl.addOns.length > 0 && ` · ${pl.addOns.map(id => {
-                                                        const addon = OPTIONAL_PRODUCT_TYPES.find(p => p.id === id)
+                                                        const addon = optionalProductTypes.find(p => p.id === id)
                                                         return addon?.label
                                                     }).join(', ')}`}
                                                 </p>
@@ -646,7 +659,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                                 <span className="text-gray-500">Number of Players</span>
                                 <span className="text-gray-800 font-semibold">{players.length}</span>
                             </div>
-                            {BASE_PRODUCT_TYPES.map((pt) => {
+                            {productTypes.map((pt) => {
                                 const count = players.filter((p) => p.productType === pt.id).length
                                 if (count === 0) return null
                                 return (
@@ -656,7 +669,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                                     </div>
                                 )
                             })}
-                            {OPTIONAL_PRODUCT_TYPES.map((pt) => {
+                            {optionalProductTypes.map((pt) => {
                                 const count = players.filter((p) => Array.isArray(p.addOns) && p.addOns.includes(pt.id)).length
                                 if (count === 0) return null
                                 return (
@@ -669,10 +682,10 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                             {players.some((p) => p.pockets) && (
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-500">Pockets Add-on × {players.filter((p) => p.pockets).length}</span>
-                                    <span className="text-gray-700 font-medium tabular-nums">₱{POCKET_PRICE * players.filter((p) => p.pockets).length}</span>
+                                    <span className="text-gray-700 font-medium tabular-nums">₱{pocketPrice * players.filter((p) => p.pockets).length}</span>
                                 </div>
                             )}
-                            {OPTIONAL_PRODUCT_TYPES.map((pt) => {
+                            {optionalProductTypes.map((pt) => {
                                 const count = players.reduce((sum, p) => sum + (p.addOns && p.addOns.includes(pt.id) ? 1 : 0), 0)
                                 if (count === 0) return null
                                 return (

@@ -14,16 +14,26 @@ const OPTIONAL_PRODUCT_TYPES = [
 
 const POCKET_PRICE = 100
 
-const getPlayerPrice = (player) => {
-    const product = BASE_PRODUCT_TYPES.find((p) => p.id === player.productType)
+const buildProductTypes = (pricing = {}) => BASE_PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.jerseyProducts?.[product.id] ?? product.price),
+}))
+
+const buildOptionalProductTypes = (pricing = {}) => OPTIONAL_PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.jerseyAddOns?.[product.id] ?? product.price),
+}))
+
+const getPlayerPrice = (player, productTypes = BASE_PRODUCT_TYPES, optionalProductTypes = OPTIONAL_PRODUCT_TYPES, pocketPrice = POCKET_PRICE) => {
+    const product = productTypes.find((p) => p.id === player.productType)
     if (!product) return 0
 
     let total = product.price
-    if (player.pockets && product.needsShortSize) total += POCKET_PRICE
+    if (player.pockets && product.needsShortSize) total += pocketPrice
 
     if (product.needsJerseySize && player.addOns && Array.isArray(player.addOns)) {
         player.addOns.forEach((addOnId) => {
-            const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
+            const addOn = optionalProductTypes.find((p) => p.id === addOnId)
             if (addOn) total += addOn.price
         })
     }
@@ -31,8 +41,8 @@ const getPlayerPrice = (player) => {
     return total
 }
 
-const getAddOnLabels = (player) =>
-    OPTIONAL_PRODUCT_TYPES
+const getAddOnLabels = (player, optionalProductTypes = OPTIONAL_PRODUCT_TYPES) =>
+    optionalProductTypes
         .filter((p) => (Array.isArray(player.addOns) ? player.addOns.map(id => String(id).toLowerCase()).includes(p.id.toLowerCase()) : false))
         .map((p) => p.label)
 
@@ -57,8 +67,11 @@ const ReviewBlock = ({ title, onEdit, children }) => (
     </div>
 )
 
-const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, goToStep, contactReadOnly = false }) => {
-    const grandTotal = players.reduce((sum, pl) => sum + getPlayerPrice(pl), 0)
+const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, goToStep, contactReadOnly = false, pricing = {} }) => {
+    const productTypes = buildProductTypes(pricing)
+    const optionalProductTypes = buildOptionalProductTypes(pricing)
+    const pocketPrice = Number(pricing?.pocketPrice ?? POCKET_PRICE)
+    const grandTotal = players.reduce((sum, pl) => sum + getPlayerPrice(pl, productTypes, optionalProductTypes, pocketPrice), 0)
     const contactRows = [
         ['Name', contact.fullName],
         ['Phone', contact.phone],
@@ -95,11 +108,11 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {players.map((pl, i) => {
-                                        const price = getPlayerPrice(pl)
-                                        const product = BASE_PRODUCT_TYPES.find((p) => p.id === pl.productType)
+                                        const price = getPlayerPrice(pl, productTypes, optionalProductTypes, pocketPrice)
+                                        const product = productTypes.find((p) => p.id === pl.productType)
                                         const jerseySizeText = pl.useManualjerseySize || (pl.jerseyLength && pl.jerseyBody) ? `${pl.jerseyLength || '-'}"×${pl.jerseyBody || '-'}"` : (pl.jerseySize || '-')
                                         const shortSizeText = pl.useManualsShortSize || (pl.shortHips && pl.shortLength) ? `${pl.shortHips || '-'}"×${pl.shortLength || '-'}"` : (pl.shortSize || '-')
-                                        const addOnText = getAddOnLabels(pl).join(', ') || 'None'
+                                        const addOnText = getAddOnLabels(pl, optionalProductTypes).join(', ') || 'None'
 
                                         return (
                                             <tr key={i} className="hover:bg-blue-50/30 transition-colors">

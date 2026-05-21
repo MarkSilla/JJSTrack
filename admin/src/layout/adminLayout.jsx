@@ -47,6 +47,11 @@ const PAGE_META = [
         subtitle: 'Manage team members, roles, and workload.'
     },
     {
+        match: /^\/admin\/services-pricing$/,
+        title: 'Services Pricing',
+        subtitle: 'Manage service rates shown on customer booking forms.'
+    },
+    {
         match: /^\/admin\/inventory$/,
         title: 'Inventory',
         subtitle: 'Monitor stock levels, adjustments, and item records.'

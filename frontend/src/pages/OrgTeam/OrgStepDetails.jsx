@@ -11,14 +11,19 @@ const PRODUCT_TYPES = [
     { id: 'polo', label: 'Polo Shirt', price: 650 },
 ]
 
+const buildProductTypes = (pricing = {}) => PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.organizationalProducts?.[product.id] ?? product.price),
+}))
+
 const emptyMember = {
     firstName: '', surname: '', number: '', productType: '', size: '',
     useManualSize: false,
     manualBody: '', manualLength: '', manualSleeveLength: ''
 }
 
-const getMemberPrice = (member) => {
-    const product = PRODUCT_TYPES.find((p) => p.id === member.productType)
+const getMemberPrice = (member, productTypes = PRODUCT_TYPES) => {
+    const product = productTypes.find((p) => p.id === member.productType)
     return product ? product.price : 0
 }
 
@@ -153,11 +158,12 @@ const LineupMembers = ({ orgName, contact, members, onEdit, onRemove }) => (
     </div>
 )
 
-const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}, onSizeGuideChange }) => {
+const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}, onSizeGuideChange, pricing = {} }) => {
     const [form, setForm] = useState({ ...emptyMember })
     const [editIdx, setEditIdx] = useState(null)
     const [showSizeGuide, setShowSizeGuide] = useState(false)
     const [memberView, setMemberView] = useState('list')
+    const productTypes = buildProductTypes(pricing)
 
     const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
 
@@ -190,7 +196,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}
         if (editIdx === i) { setEditIdx(null); setForm({ ...emptyMember }) }
     }
 
-    const grandTotal = members.reduce((sum, m) => sum + getMemberPrice(m), 0)
+    const grandTotal = members.reduce((sum, m) => sum + getMemberPrice(m, productTypes), 0)
     const contentWidthClass = showSizeGuide ? 'max-w-6xl' : 'max-w-xl'
 
     useEffect(() => {
@@ -258,7 +264,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}
                     <div className="flex flex-col gap-2">
                         <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Product Type <span className="text-red-400">*</span></label>
                         <div className="grid grid-cols-2 gap-3">
-                            {PRODUCT_TYPES.map((pt) => {
+                            {productTypes.map((pt) => {
                                 const selected = form.productType === pt.id
                                 return (
                                     <button
@@ -342,7 +348,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}
                     {form.productType && (
                         <div className="flex items-center justify-between rounded-lg bg-white border border-gray-200 px-4 py-3 mt-1">
                             <span className="text-xs text-gray-500 font-medium">Individual Price</span>
-                            <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{getMemberPrice(form)}</span>
+                            <span className="text-blue-600 font-extrabold text-lg tabular-nums">₱{getMemberPrice(form, productTypes)}</span>
                         </div>
                     )}
 
@@ -392,8 +398,8 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}
                     ) : (
                     <div className="space-y-2">
                         {members.map((m, i) => {
-                            const product = PRODUCT_TYPES.find((p) => p.id === m.productType)
-                            const price = getMemberPrice(m)
+                            const product = productTypes.find((p) => p.id === m.productType)
+                            const price = getMemberPrice(m, productTypes)
                             return (
                                 <div key={i} className="bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-gray-300 transition-colors">
                                     <div className="flex items-center justify-between gap-4">
@@ -456,7 +462,7 @@ const OrgStepDetails = ({ orgName, setOrgName, members, setMembers, contact = {}
                                 <span className="text-gray-500">Number of Orders</span>
                                 <span className="text-gray-800 font-semibold">{members.length}</span>
                             </div>
-                            {PRODUCT_TYPES.map((pt) => {
+                            {productTypes.map((pt) => {
                                 const count = members.filter((m) => m.productType === pt.id).length
                                 if (count === 0) return null
                                 return (

@@ -6,8 +6,13 @@ const PRODUCT_TYPES = [
     { id: 'polo', label: 'Polo Shirt', price: 650 },
 ]
 
-const getMemberPrice = (member) => {
-    const product = PRODUCT_TYPES.find((p) => p.id === member.productType)
+const buildProductTypes = (pricing = {}) => PRODUCT_TYPES.map((product) => ({
+    ...product,
+    price: Number(pricing?.organizationalProducts?.[product.id] ?? product.price),
+}))
+
+const getMemberPrice = (member, productTypes = PRODUCT_TYPES) => {
+    const product = productTypes.find((p) => p.id === member.productType)
     return product ? product.price : 0
 }
 
@@ -28,8 +33,9 @@ const ReviewBlock = ({ title, onEdit, children }) => (
     </div>
 )
 
-const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goToStep, contactReadOnly = false }) => {
-    const grandTotal = members.reduce((sum, m) => sum + getMemberPrice(m), 0)
+const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goToStep, contactReadOnly = false, pricing = {} }) => {
+    const productTypes = buildProductTypes(pricing)
+    const grandTotal = members.reduce((sum, m) => sum + getMemberPrice(m, productTypes), 0)
     const contactRows = [
         ['Name', contact.fullName],
         ['Phone', contact.phone],
@@ -63,8 +69,8 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {members.map((m, i) => {
-                                        const product = PRODUCT_TYPES.find((p) => p.id === m.productType)
-                                        const price = getMemberPrice(m)
+                                        const product = productTypes.find((p) => p.id === m.productType)
+                                        const price = getMemberPrice(m, productTypes)
                                         const sizeText = m.useManualSize || (m.manualBody && m.manualLength && m.manualSleeveLength) 
                                             ? `${m.manualBody || '-'}"×${m.manualLength || '-'}"×${m.manualSleeveLength || '-'}"` 
                                             : (m.size || '-')

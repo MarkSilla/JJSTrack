@@ -29,12 +29,13 @@ const StepReview = ({
     driveLink,
     contact,
     notes,
+    repairOptions = REPAIR_OPTIONS,
 }) => {
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
     const isOrg = service === 'organizational'
 
-    const chosen = isRepair ? REPAIR_OPTIONS.filter((o) => (selectedOptions || []).includes(o.id)) : []
+    const chosen = isRepair ? repairOptions.filter((o) => (selectedOptions || []).includes(o.id)) : []
     const total = isRepair ? chosen.reduce((s, o) => s + o.price * (quantities?.[o.id] || 1), 0) : 0
     const slot = isRepair ? TIME_SLOTS.find((s) => s.id === selectedSlot || s.range === selectedSlot) : null
 

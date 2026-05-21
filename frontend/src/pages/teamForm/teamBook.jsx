@@ -4,6 +4,8 @@ import { MdCheck, MdArrowBack, MdArrowForward, MdSend } from 'react-icons/md'
 import { toast } from 'sonner'
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js'
 import { bookingApi } from '../../../services/bookingApi'
+import { pricingApi } from '../../../services/pricingApi'
+import { mergeServicePricing } from '../../utils/servicePricing'
 import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
 import TeamStepContact from './TeamStepContact'
@@ -131,6 +133,7 @@ const TeamBook = () => {
         brgyName: '',
     })
     const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
+    const [servicePricing, setServicePricing] = useState(() => mergeServicePricing())
 
     useEffect(() => {
         try {
@@ -140,6 +143,12 @@ const TeamBook = () => {
         } catch (err) {
             console.error('Error parsing stored user data:', err)
         }
+    }, [])
+
+    useEffect(() => {
+        pricingApi.getAllPricing()
+            .then((response) => setServicePricing(mergeServicePricing(response.data || response.pricing)))
+            .catch((err) => console.error('Error loading service pricing:', err))
     }, [])
 
     const canNext = () => {
@@ -190,10 +199,10 @@ const TeamBook = () => {
 
     const renderStep = () => {
         switch (step) {
-            case 1: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} />
+            case 1: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.jersey} />
             case 2: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
             case 3: return <TeamStepContact contact={contact} setContact={setContact} />
-            case 4: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} />
+            case 4: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} pricing={servicePricing.jersey} />
             default: return null
         }
     }

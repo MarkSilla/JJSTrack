@@ -3,7 +3,9 @@ import { MdCheck, MdArrowBack, MdArrowForward, MdSend, MdClose } from 'react-ico
 import { toast } from 'sonner'
 import img from '../../assets/img.js'
 import { bookingApi } from '../../../services/bookingApi.js'
+import { pricingApi } from '../../../services/pricingApi.js'
 import { uploadImageToCloudinary, uploadFilesToCloudinary } from '../../utils/cloudinary.js'
+import { mergeServicePricing } from '../../utils/servicePricing.js'
 
 // Repair steps
 import StepService from '../repairForm/StepService.jsx'
@@ -154,6 +156,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [error, setError] = useState('')
     const [nextError, setNextError] = useState('')
     const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
+    const [servicePricing, setServicePricing] = useState(() => mergeServicePricing())
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -179,6 +182,10 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState(() => buildContactFromUser(getStoredUser()))
+    const repairOptions = REPAIR_OPTIONS.map((option) => ({
+        ...option,
+        price: Number(servicePricing.repair?.repairOptions?.[option.id] ?? option.price),
+    }))
 
     // Rehydrate locked account details whenever the booking modal opens.
     useEffect(() => {
@@ -188,6 +195,10 @@ const BookingModal = ({ isOpen, onClose }) => {
         setDetails(buildRepairDetailsFromUser(user))
         setContact(buildContactFromUser(user))
         setOrgContact(buildContactFromUser(user))
+
+        pricingApi.getAllPricing()
+            .then((response) => setServicePricing(mergeServicePricing(response.data || response.pricing)))
+            .catch((err) => console.error('Error loading service pricing:', err))
     }, [isOpen])
 
     // Reset form function
@@ -371,7 +382,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             if (isRepair) {
                 // Repair booking
                 const optionsArray = selectedOptions.map(optId => {
-                    const repairOption = REPAIR_OPTIONS.find(option => option.id === optId)
+                    const repairOption = repairOptions.find(option => option.id === optId)
                     const quantity = quantities[optId] || 1
                     const displayName = optId === 'others'
                         ? (repairDescription.trim() || repairOption?.label || 'Other Repair')
@@ -409,13 +420,13 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.players = players
                 bookingData.items = players.map((player, index) => {
                     const baseProductCatalog = {
-                        jersey: { label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
-                        fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
-                        short: { label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
+                        jersey: { label: 'Jersey Only', price: Number(servicePricing.jersey?.jerseyProducts?.jersey ?? 550), needsJerseySize: true, needsShortSize: false },
+                        fullset: { label: 'Full Set (Jersey + Shorts)', price: Number(servicePricing.jersey?.jerseyProducts?.fullset ?? 850), needsJerseySize: true, needsShortSize: true },
+                        short: { label: 'Short Only', price: Number(servicePricing.jersey?.jerseyProducts?.short ?? 400), needsJerseySize: false, needsShortSize: true },
                     }
                     const addOnCatalog = {
-                        warmer: { label: 'Long Sleeve Warmer', price: 750 },
-                        hoodie: { label: 'Hoodie T-shirt', price: 700 },
+                        warmer: { label: 'Long Sleeve Warmer', price: Number(servicePricing.jersey?.jerseyAddOns?.warmer ?? 750) },
+                        hoodie: { label: 'Hoodie T-shirt', price: Number(servicePricing.jersey?.jerseyAddOns?.hoodie ?? 700) },
                     }
                     const baseProduct = baseProductCatalog[player.productType] || baseProductCatalog.jersey
                     const selectedAddOns = (baseProduct.needsJerseySize && Array.isArray(player.addOns) ? player.addOns : [])
@@ -423,8 +434,9 @@ const BookingModal = ({ isOpen, onClose }) => {
                         .filter(Boolean)
                     const hasPockets = Boolean(player.pockets && baseProduct.needsShortSize)
                     const addOnLabels = selectedAddOns.map((addOn) => `${addOn.label} (+${addOn.price})`)
-                    if (hasPockets) addOnLabels.push('Pocket Short (+100)')
-                    const addOnPrice = selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0) + (hasPockets ? 100 : 0)
+                    const pocketPrice = Number(servicePricing.jersey?.pocketPrice ?? 100)
+                    if (hasPockets) addOnLabels.push(`Pocket Short (+${pocketPrice})`)
+                    const addOnPrice = selectedAddOns.reduce((sum, addOn) => sum + addOn.price, 0) + (hasPockets ? pocketPrice : 0)
                     const playerLabel = [player.nickname, player.firstName, player.surname].filter(Boolean).join(' ').trim() || `Player ${index + 1}`
 
                     return {
@@ -506,31 +518,31 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isRepair) {
             switch (step) {
-                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} repairNotes={repairNotes} setRepairNote={setRepairNote} notes={notes} setNotes={setNotes} />
+                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} repairNotes={repairNotes} setRepairNote={setRepairNote} notes={notes} setNotes={setNotes} repairOptions={repairOptions} />
                 case 3: return <StepPhoto photos={photos} setPhotos={setPhotos} skipPhoto={() => setStep(4)} />
                 case 4: return <StepDetails details={details} setDetail={setDetail} readOnly />
                 case 5: return <StepPickup selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedSlot={selectedSlot} setSelectedSlot={setSelectedSlot} />
-                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} repairNotes={repairNotes} notes={notes} />
+                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} repairNotes={repairNotes} notes={notes} repairOptions={repairOptions} />
                 default: return null
             }
         }
 
         if (isJersey) {
             switch (step) {
-                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} />
+                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.jersey} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
                 case 4: return <TeamStepContact contact={contact} setContact={setContact} readOnly />
-                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly />
+                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly pricing={servicePricing.jersey} />
                 default: return null
             }
         }
 
         if (isOrg) {
             switch (step) {
-                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} />
+                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.organizational} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
                 case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} readOnly />
-                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly />
+                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly pricing={servicePricing.organizational} />
                 default: return null
             }
         }

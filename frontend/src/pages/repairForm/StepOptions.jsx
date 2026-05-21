@@ -12,8 +12,9 @@ const StepOptions = ({
     setRepairNote = () => {},
     notes,
     setNotes,
+    repairOptions = REPAIR_OPTIONS,
 }) => {
-    const total = REPAIR_OPTIONS
+    const total = repairOptions
         .filter((o) => selectedOptions.includes(o.id))
         .reduce((s, o) => s + o.price * (quantities[o.id] || 1), 0)
 
@@ -25,7 +26,7 @@ const StepOptions = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto items-start font-inter">
-                {REPAIR_OPTIONS.map((opt) => {
+                {repairOptions.map((opt) => {
                     const checked = selectedOptions.includes(opt.id)
                     const qty = quantities[opt.id] || 1
                     return (
@@ -40,7 +41,7 @@ const StepOptions = ({
                                     </span>
                                     <span className={`font-medium transition-colors ${checked ? 'text-gray-800' : 'text-gray-600'}`}>{opt.label}</span>
                                 </div>
-                                {opt.price !== '' && <span className={`font-bold tabular-nums ${checked ? 'text-blue-600' : 'text-gray-400'}`}>₱{opt.price}</span>}
+                                <span className={`font-bold tabular-nums ${checked ? 'text-blue-600' : 'text-gray-400'}`}>₱{opt.price}</span>
                                 <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleOption(opt.id)} />
                             </label>
 
