@@ -8,7 +8,7 @@ import { chatApi } from '../services/chatApi';
 import { requestWebNotificationPermission, showWebNotification } from '../../utils/webNotification';
 
 const CHAT_SUMMARY_REFRESH_MS = 5000;
-const CHAT_SIZE = 'md:w-[960px] md:h-[680px]';
+const CHAT_SIZE = 'md:w-[960px] md:h-[550px]';
 const CHAT_POSITION = 'md:bottom-6 md:right-8';
 const RECENT_WINDOW_MS = 1000 * 60 * 60 * 24 * 7;
 

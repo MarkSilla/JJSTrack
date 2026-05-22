@@ -49,7 +49,7 @@ const getConversationDisplayName = (conversation) => {
 const getConversationInitial = (conversation) =>
   getInitials(getConversationDisplayName(conversation));
 
-const CHAT_SIZE = "md:w-[960px] md:h-[680px]";
+const CHAT_SIZE = "md:w-[960px] md:h-[550px]";
 const CHAT_POSITION = "md:bottom-6 md:right-8";
 const CHAT_SUMMARY_REFRESH_MS = 5000;
 
