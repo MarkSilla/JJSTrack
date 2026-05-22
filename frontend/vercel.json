@@ -20,6 +20,10 @@
     }
   ],
   "rewrites": [
+   {
+      "source": "/(sitemap.xml|robots.txt|googlee3d7e712635c1732.html)",
+      "destination": "/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/"
