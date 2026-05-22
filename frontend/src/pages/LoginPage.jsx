@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -19,7 +20,6 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [googleUser, setGoogleUser] = useState(null);
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
@@ -72,7 +72,6 @@ const LoginPage = () => {
 
       if (response.success && response.token) {
         login(response.user, response.token);
-        setGoogleUser(response.user);
 
         // Navigate to home first, then show modal from there
         navigate('/home', { replace: true });
@@ -87,7 +86,7 @@ const LoginPage = () => {
     }
   };
 
-  const handleProfileSuccess = (updatedUser) => {
+  const handleProfileSuccess = () => {
     toast.success('Profile completed successfully!');
     navigate('/home', { replace: true });
   };
@@ -190,9 +189,7 @@ const LoginPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    {showPassword ? 'visibility' : 'visibility_off'}
-                  </span>
+                  {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
               </div>
             </div>

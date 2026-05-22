@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -362,7 +363,7 @@ const SignupPage = () => {
                       onChange={handleChange} placeholder="Min 8 characters" disabled={loading} className={inputCls} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility' : 'visibility_off'}</span>
+                      {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                   </div>
                 </div>
@@ -375,7 +376,7 @@ const SignupPage = () => {
                       placeholder="Confirm password" disabled={loading} className={inputCls} />
                     <button type="button" onClick={() => setConfirmedPassword(!showConfirmedPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      <span className="material-symbols-outlined text-xl">{showConfirmedPassword ? 'visibility' : 'visibility_off'}</span>
+                      {showConfirmedPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                   </div>
                 </div>

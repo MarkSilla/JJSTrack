@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
-import { Search, Maximize2, X, Sparkles, Info, MessageSquare, ArrowLeft, Phone, Mail, ShoppingBag, CheckCircle2, ChevronRight, Filter, Shirt, Wind, Shield, Cloud, Ruler, Zap, Feather, Waves, Image as ImageIcon } from 'lucide-react';
+import { Search, Maximize2, X, MessageSquare, ArrowLeft, Phone, Mail, Shirt, Wind, Shield, Ruler, Zap, Feather, Waves } from 'lucide-react';
 import img from '../assets/img';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/Context';
@@ -44,9 +44,19 @@ const Design = () => {
   }, [isPreviewOpen]);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    let frameId = null;
+    const handleScroll = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 50);
+        frameId = null;
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const processedDesigns = useMemo(() => {
@@ -149,9 +159,26 @@ const Design = () => {
       </nav>
       <section className="relative h-full md:h-[100vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <video autoPlay loop muted playsInline className="w-full h-full object-cover scale-105">
-            <source src={img.clip} type="video/mp4" />
-          </video>
+          <div className="absolute inset-0 grid grid-cols-2 opacity-70 md:grid-cols-3">
+            {img.designHero.map((heroImg, index) => (
+              <img
+                key={heroImg}
+                src={heroImg}
+                alt=""
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchPriority={index === 0 ? 'high' : 'auto'}
+                decoding="async"
+                className={`h-full w-full object-cover ${index === 1 ? 'hidden md:block' : ''}`}
+              />
+            ))}
+          </div>
+          <img
+            src={img.jerseys.nba[0]}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute right-0 top-1/2 hidden h-[80vh] -translate-y-1/2 object-contain opacity-30 blur-[1px] lg:block"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/80 to-transparent z-10" />
           <div className="absolute inset-0 backdrop-blur-[2px] z-10" />
         </div>
@@ -190,6 +217,10 @@ const Design = () => {
             <img
               src={img.jerseys.vintage[6]}
               alt="Featured Jersey"
+              width="900"
+              height="1200"
+              fetchPriority="high"
+              decoding="async"
               className="h-[40vh] md:h-[70vh] object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] md:transform md:translate-x-[-80px] z-10 scale-125 md:scale-100"
             />
           </div>
@@ -205,7 +236,7 @@ const Design = () => {
                 className="flex items-center gap-4 mb-14 group cursor-pointer"
                 onClick={handleBack}
               >
-                <img src={img.jjslogo1} alt="Logo" className="w-14 h-14 object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-3" />
+                <img src={img.jjslogo1} alt="Logo" loading="lazy" decoding="async" className="w-14 h-14 object-contain transition-all duration-500 group-hover:scale-110 group-hover:rotate-3" />
                 <div className="flex flex-col">
                   <span className="font-black text-2xl uppercase tracking-tighter italic text-white leading-none">JJSTRACK</span>
                   <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em] mt-1">Design Collections</span>
@@ -235,7 +266,7 @@ const Design = () => {
                 </div>
                 <div className="p-8 px-6 min-h-[280px] rounded-[2rem] bg-gradient-to-br from-blue-200/20 to-blue-900/10 backdrop-blur-md border border-white/5 text-white relative overflow-hidden group shadow-2xl overflow-hidden">
                   <div className="absolute -right-20 -top-1 w-80 h-80 opacity-40 group-hover:opacity-60 group-hover:scale-105 transition-all duration-700 pointer-events-none">
-                    <img src={img.lbj} alt="lebron" className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+                    <img src={img.lbj} alt="lebron" loading="lazy" decoding="async" className="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
                   </div>
                   <div className="relative z-10 pt-24">
                     <h3 className="text-3xl font-black italic uppercase leading-[0.8] mb-4">BUILT <br />FOR <span className="text-blue-400">ELITE</span> <br />BALLERS</h3>
@@ -252,13 +283,13 @@ const Design = () => {
                 <div className="space-y-2">
                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Jersey Guide</span>
                   <div className="group relative aspect-[14/13] bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-blue-500/30 transition-all flex items-center justify-center">
-                    <img src={img.sctop1} alt="Jersey Size Chart" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
+                    <img src={img.sctop1} alt="Jersey Size Chart" loading="lazy" decoding="async" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Shorts Guide</span>
                   <div className="group relative aspect-[14/13] bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-blue-500/30 transition-all flex items-center justify-center">
-                    <img src={img.scbot} alt="Shorts Size Chart" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
+                    <img src={img.scbot} alt="Shorts Size Chart" loading="lazy" decoding="async" className="w-[40vh] h-[40vh] object-contain p-0 mt-5" />
                   </div>
                 </div>
               </div>
@@ -276,7 +307,7 @@ const Design = () => {
               </button>
             </div>
             <div className="absolute -right-4 bottom-6 opacity-60 transition-transform duration-700">
-              <img src={img.jjslogo1} alt="jjs logo" className="h-40" />
+              <img src={img.jjslogo1} alt="jjs logo" loading="lazy" decoding="async" className="h-40" />
             </div>
           </div>
         </aside>
@@ -320,7 +351,7 @@ const Design = () => {
               >
                 <div className="aspect-[5/4] relative overflow-hidden flex items-center justify-center p-12">
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                  <img src={design.src} alt={design.name} className="max-w-full max-h-[90vh] object-cover relative transition-all duration-500 drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]" />
+                  <img src={design.src} alt={design.name} loading="lazy" decoding="async" className="max-w-full max-h-[90vh] object-cover relative transition-all duration-500 drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]" />
                   <div className="absolute inset-0 z-999 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-100">
                     <div className="bg-white/10 backdrop-blur-md text-white w-14 h-14 rounded-full flex items-center justify-center border border-white/20 transform scale-50 group-hover:scale-100 transition-all duration-500 z-999">
                       <Maximize2 size={22} />
@@ -374,6 +405,7 @@ const Design = () => {
                 <img
                   src={selectedDesign.src}
                   alt={selectedDesign.name}
+                  decoding="async"
                   className="max-w-full h-full object-contain drop-shadow-[0_60px_100px_rgba(0,0,0,0.15)] scale-110 md:scale-100 hover:scale-105 transition-transform duration-700"
                 />
               </div>

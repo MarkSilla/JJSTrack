@@ -1,6 +1,5 @@
 
-import logo from "../assets/jjs.png";
-import qrcodeImg from "../assets/qrcode.png";
+import img from "../assets/img.js";
 
 export function exportInvoiceToPDF(invoice) {
     const fmt = (n) => "₱" + Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -92,7 +91,7 @@ export function exportInvoiceToPDF(invoice) {
         
         <div class="header">
             <div class="brand">
-                <img src="${logo}" alt="Logo"/>
+                <img src="${img.jjslogo1}" alt="Logo"/>
                 <div class="brand-info">
                     <h1>JJS Track</h1>
                     <p>Jennoel-Jennyl SportsweaR</p>
@@ -123,7 +122,7 @@ export function exportInvoiceToPDF(invoice) {
                 <div class="bill-detail contact-email">${invoice.billTo.email}</div>
             </div>
             <div class="qr-box">
-                <img src="${qrcodeImg}" class="qr-img" alt="QR"/>
+                <img src="${img.qrcode}" class="qr-img" alt="QR"/>
                 <div class="qr-ref">${invoice.referenceId}</div>
             </div>
         </div>

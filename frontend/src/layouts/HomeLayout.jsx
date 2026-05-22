@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { Suspense, lazy, useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import HomeSidebar from '../components/HomeSidebar'
 import HomeNavbar from '../components/HomeNavbar'
-import GoogleProfileModal from '../components/GoogleProfileModal'
-import ChatWidget from '../components/ChatWidget'
 import { ChatProvider } from '../context/ChatContext'
+
+const GoogleProfileModal = lazy(() => import('../components/GoogleProfileModal'))
+const ChatWidget = lazy(() => import('../components/ChatWidget'))
 
 const HomeLayout = () => {
   const [collapsed, setCollapsed] = useState(true)
@@ -59,12 +60,16 @@ const HomeLayout = () => {
             <Outlet />
           </main>
         </div>
-        <GoogleProfileModal 
-          isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          onSuccess={handleProfileSuccess}
-        />
-        <ChatWidget />
+        <Suspense fallback={null}>
+          {showProfileModal && (
+            <GoogleProfileModal
+              isOpen={showProfileModal}
+              onClose={() => setShowProfileModal(false)}
+              onSuccess={handleProfileSuccess}
+            />
+          )}
+          <ChatWidget />
+        </Suspense>
       </div>
     </ChatProvider>
   )

@@ -1,7 +1,4 @@
 import React, { createContext, useCallback, useEffect, useState } from 'react'
-import { signOut } from 'firebase/auth'
-import { auth } from '../../config/firebase.js'
-import { userApi } from '../../services/userApi.js'
 
 export const AuthContext = createContext()
 
@@ -94,12 +91,17 @@ const Context = ({ children }) => {
 
   const logout = async () => {
     try {
+      const { userApi } = await import('../../services/userApi.js')
       await userApi.logout()
     } catch (error) {
       console.error('Logout error:', error)
     }
 
     try {
+      const [{ signOut }, { auth }] = await Promise.all([
+        import('firebase/auth'),
+        import('../../config/firebase.js'),
+      ])
       await signOut(auth)
     } catch (error) {
       console.error('Firebase sign out error:', error)

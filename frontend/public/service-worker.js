@@ -1,5 +1,12 @@
-const CACHE_NAME = 'jjstrack-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/pwa-icon.png'];
+const CACHE_NAME = 'jjstrack-v2';
+const APP_SHELL = [
+  '/',
+  '/manifest.webmanifest',
+  '/favicon.ico',
+  '/favicon-32x32.png',
+  '/favicon-192x192.png',
+  '/favicon-512x512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

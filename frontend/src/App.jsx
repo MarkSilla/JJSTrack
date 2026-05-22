@@ -1,51 +1,61 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Context from './context/Context'
-import LandingPage from './pages/LandingPage'
-import LoginPage from './pages/LoginPage'
-import SignupPage from './pages/SignupPage'
-import Dashboard from './pages/content/Dashboard'
-import Appointment from './pages/content/Appointment'
-import Invoices from './pages/content/Invoices'
-import Order from './pages/content/Order'
-import BookingForms from './pages/content/Bookingforms'
-import Profile from './pages/content/Profile'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
-import HomeLayout from './layouts/HomeLayout'
-import TermsOfUse from './pages/TermsOfUse'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import Design from './pages/Design'
+import LandingPage from './pages/LandingPage'
+
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const SignupPage = lazy(() => import('./pages/SignupPage'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const TermsOfUse = lazy(() => import('./pages/TermsOfUse'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const Design = lazy(() => import('./pages/Design'))
+
+const HomeLayout = lazy(() => import('./layouts/HomeLayout'))
+const Dashboard = lazy(() => import('./pages/content/Dashboard'))
+const Appointment = lazy(() => import('./pages/content/Appointment'))
+const Invoices = lazy(() => import('./pages/content/Invoices'))
+const Order = lazy(() => import('./pages/content/Order'))
+const BookingForms = lazy(() => import('./pages/content/Bookingforms'))
+const Profile = lazy(() => import('./pages/content/Profile'))
+
+const PageFallback = () => (
+  <div className="min-h-screen bg-slate-950" aria-label="Loading page" />
+)
+
+const withSuspense = (element) => (
+  <Suspense fallback={<PageFallback />}>
+    {element}
+  </Suspense>
+)
 
 const App = () => {
   return (
     <Context>
       <Router>
         <Routes>
-          {/* Public routes — walang sidebar */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/terms-of-use" element={<TermsOfUse />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/designs" element={<Design />} />
+          <Route path="/" element={withSuspense(<LandingPage />)} />
+          <Route path="/login" element={withSuspense(<PublicRoute><LoginPage /></PublicRoute>)} />
+          <Route path="/signup" element={withSuspense(<PublicRoute><SignupPage /></PublicRoute>)} />
+          <Route path="/verify-email" element={withSuspense(<VerifyEmailPage />)} />
+          <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
+          <Route path="/reset-password" element={withSuspense(<ResetPasswordPage />)} />
+          <Route path="/terms-of-use" element={withSuspense(<TermsOfUse />)} />
+          <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicy />)} />
+          <Route path="/designs" element={withSuspense(<Design />)} />
 
-          {/* Private routes — may sidebar + navbar */}
-          <Route element={<HomeLayout />}>
-            <Route path="/home" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/appointment" element={<ProtectedRoute><Appointment /></ProtectedRoute>} />
-            <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-            <Route path="/invoices/:id" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-            <Route path="/repair-booking" element={<ProtectedRoute><BookingForms /></ProtectedRoute>} />
-            <Route path="/order" element={<ProtectedRoute><Order /></ProtectedRoute>} />
-            <Route path="/order/:orderId" element={<ProtectedRoute><Order /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route element={withSuspense(<HomeLayout />)}>
+            <Route path="/home" element={withSuspense(<ProtectedRoute><Dashboard /></ProtectedRoute>)} />
+            <Route path="/appointment" element={withSuspense(<ProtectedRoute><Appointment /></ProtectedRoute>)} />
+            <Route path="/invoices" element={withSuspense(<ProtectedRoute><Invoices /></ProtectedRoute>)} />
+            <Route path="/invoices/:id" element={withSuspense(<ProtectedRoute><Invoices /></ProtectedRoute>)} />
+            <Route path="/repair-booking" element={withSuspense(<ProtectedRoute><BookingForms /></ProtectedRoute>)} />
+            <Route path="/order" element={withSuspense(<ProtectedRoute><Order /></ProtectedRoute>)} />
+            <Route path="/order/:orderId" element={withSuspense(<ProtectedRoute><Order /></ProtectedRoute>)} />
+            <Route path="/profile" element={withSuspense(<ProtectedRoute><Profile /></ProtectedRoute>)} />
           </Route>
         </Routes>
       </Router>
