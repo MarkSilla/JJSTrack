@@ -36,20 +36,6 @@ const LoginPage = () => {
     }
   }, [location.search]);
 
-  // Auto-dismiss logout banner after 3 seconds
-  useEffect(() => {
-    if (!loggedOut) return;
-    const timer = setTimeout(() => setLoggedOut(false), 3000);
-    return () => clearTimeout(timer);
-  }, [loggedOut]);
-
-  // Auto-dismiss session expired banner after 5 seconds
-  useEffect(() => {
-    if (!sessionExpired) return;
-    const timer = setTimeout(() => setSessionExpired(false), 5000);
-    return () => clearTimeout(timer);
-  }, [sessionExpired]);
-
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
     setFormData((prev) => ({
@@ -186,8 +172,6 @@ const LoginPage = () => {
 
           <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Welcome back</h2>
           <p className="text-md xl:text-sm text-slate-400 mb-7">Access your account to manage your appointment schedule.</p>
-
-          {/* Logged Out Successfully Banner */}
           {loggedOut && (
             <div className="mb-5 p-4 bg-green-50 border border-green-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
               <span className="text-green-500 text-lg mt-0.5">✓</span>
@@ -206,8 +190,6 @@ const LoginPage = () => {
               </button>
             </div>
           )}
-
-          {/* Session Expired Banner */}
           {sessionExpired && (
             <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
               <div className="flex-1">

@@ -159,25 +159,13 @@ const Design = () => {
       </nav>
       <section className="relative h-full md:h-[100vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 grid grid-cols-2 opacity-70 md:grid-cols-3">
-            {img.designHero.map((heroImg, index) => (
-              <img
-                key={heroImg}
-                src={heroImg}
-                alt=""
-                loading={index === 0 ? 'eager' : 'lazy'}
-                fetchPriority={index === 0 ? 'high' : 'auto'}
-                decoding="async"
-                className={`h-full w-full object-cover ${index === 1 ? 'hidden md:block' : ''}`}
-              />
-            ))}
-          </div>
           <img
-            src={img.jerseys.nba[0]}
+            src={img.panorama}
             alt=""
-            loading="lazy"
+            loading="eager"
+            fetchPriority="high"
             decoding="async"
-            className="absolute right-0 top-1/2 hidden h-[80vh] -translate-y-1/2 object-contain opacity-30 blur-[1px] lg:block"
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/80 to-transparent z-10" />
           <div className="absolute inset-0 backdrop-blur-[2px] z-10" />
