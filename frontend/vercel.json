@@ -20,13 +20,17 @@
     }
   ],
   "rewrites": [
-   {
-      "source": "/(sitemap.xml|robots.txt|googlee3d7e712635c1732.html)",
-      "destination": "/$1"
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
     },
     {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/index.html"
     }
   ]
 }

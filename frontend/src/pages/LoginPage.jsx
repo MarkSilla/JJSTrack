@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
 import GoogleProfileModal from '../components/GoogleProfileModal.jsx';
-import { useContext } from 'react';
 import { AuthContext } from '../context/Context.jsx';
 
 const LoginPage = () => {
@@ -18,10 +17,38 @@ const LoginPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [loggedOut, setLoggedOut] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useContext(AuthContext);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === '1') {
+      setSessionExpired(true);
+      window.history.replaceState({}, '', '/login');
+    } else if (params.get('logged_out') === '1') {
+      setLoggedOut(true);
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [location.search]);
+
+  // Auto-dismiss logout banner after 3 seconds
+  useEffect(() => {
+    if (!loggedOut) return;
+    const timer = setTimeout(() => setLoggedOut(false), 3000);
+    return () => clearTimeout(timer);
+  }, [loggedOut]);
+
+  // Auto-dismiss session expired banner after 5 seconds
+  useEffect(() => {
+    if (!sessionExpired) return;
+    const timer = setTimeout(() => setSessionExpired(false), 5000);
+    return () => clearTimeout(timer);
+  }, [sessionExpired]);
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
@@ -108,6 +135,14 @@ const LoginPage = () => {
         .animate-slide-in {
           animation: slideInFromLeft 0.4s ease-out;
         }
+
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down {
+          animation: fadeInDown 0.35s ease-out;
+        }
       `}</style>
 
       {/* Left Panel */}
@@ -151,6 +186,45 @@ const LoginPage = () => {
 
           <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Welcome back</h2>
           <p className="text-md xl:text-sm text-slate-400 mb-7">Access your account to manage your appointment schedule.</p>
+
+          {/* Logged Out Successfully Banner */}
+          {loggedOut && (
+            <div className="mb-5 p-4 bg-green-50 border border-green-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <span className="text-green-500 text-lg mt-0.5">✓</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-green-700">Logged out successfully</p>
+                <p className="text-xs text-green-600 mt-0.5 leading-relaxed">
+                  You have been signed out. Sign in again to continue.
+                </p>
+              </div>
+              <button
+                onClick={() => setLoggedOut(false)}
+                className="text-green-400 hover:text-green-600 transition-colors text-base leading-none mt-0.5"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Session Expired Banner */}
+          {sessionExpired && (
+            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-700">Session Expired</p>
+                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                  Your session has expired due to inactivity. Please sign in again to continue.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionExpired(false)}
+                className="text-amber-400 hover:text-red-600 transition-colors text-base leading-none mt-0.5"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
