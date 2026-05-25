@@ -195,6 +195,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
   },
 
+  accountDeletionToken: {
+    type: String,
+  },
+
+  accountDeletionTokenExpiry: {
+    type: Date,
+  },
+
   createdAt: {
     type: Date,
     default: Date.now,

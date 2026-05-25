@@ -131,6 +131,28 @@ export const userApi = {
         }
     },
 
+    requestAccountRemoval: async () => {
+        try {
+            const response = await api.post('/users/account-removal/request');
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'requestAccountRemoval');
+        }
+    },
+
+    confirmAccountRemoval: async (token) => {
+        try {
+            const response = await api.post('/users/account-removal/confirm', { token });
+            if (response.data.success) {
+                clearAuthData();
+                notifyAuthChanged();
+            }
+            return response.data;
+        } catch (error) {
+            handleApiError(error, 'confirmAccountRemoval');
+        }
+    },
+
     clearAuthData,
 
     completeGoogleProfile: async (profileData) => {

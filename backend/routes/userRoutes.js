@@ -6,6 +6,8 @@ import {
   logout,
   getUserProfile,
   updateUserProfile,
+  requestAccountRemoval,
+  confirmAccountRemoval,
   verifyEmail,
   resendVerificationCode,
   forgotPassword,
@@ -36,6 +38,7 @@ router.post('/resend-verification', resendVerificationCode);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/account-removal/confirm', confirmAccountRemoval);
 
 // Admin routes
 router.post('/admin/login', adminLogin);
@@ -47,6 +50,7 @@ router.get('/staff/session', authMiddleware, getStaffSession);
 // Protected routes 
 router.get('/profile', authMiddleware, getUserProfile);
 router.put('/profile', authMiddleware, updateUserProfile);
+router.post('/account-removal/request', authMiddleware, requestAccountRemoval);
 router.post('/complete-google-profile', authMiddleware, completeGoogleProfile);
 
 export default router;

@@ -1,5 +1,6 @@
 import userModel from "../models/userModel.js";
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import path from 'path';
@@ -38,6 +39,7 @@ const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isValidPhilippineMobile = (phoneNumber) => /^09\d{9}$/.test(phoneNumber);
 const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 60 * 1000);
+const ACCOUNT_DELETION_TOKEN_TTL_MS = Number(process.env.ACCOUNT_DELETION_TOKEN_TTL_MS || 15 * 60 * 1000);
 
 const isDuplicateKeyError = (error) => error?.code === 11000 || error?.code === 11001;
 
@@ -243,6 +245,74 @@ const validateUniquePhoneNumber = async (phoneNumber, currentUserId = null) => {
   }
 
   return userModel.findOne(query).select('_id email');
+};
+
+const getFrontendUrl = () => {
+  const configuredUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.VITE_FRONTEND_URL;
+  return String(configuredUrl || 'http://localhost:5173').trim().replace(/\/+$/, '');
+};
+
+const hashAccountDeletionToken = (token) => (
+  crypto.createHash('sha256').update(token).digest('hex')
+);
+
+const sendAccountDeletionEmail = async (user, confirmationUrl) => {
+  const displayName = user.fullName || user.firstName || user.email;
+
+  const mailOptions = {
+    from: `"JJSTrack" <${emailFrom}>`,
+    to: user.email,
+    subject: 'Confirm JJSTrack Account Removal',
+    attachments: [
+      {
+        filename: 'jjstrack-logo.png',
+        path: logoPath,
+        cid: logoCid,
+      },
+    ],
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; text-align: center; color: white; }
+          .logo { width: 86px; height: 86px; object-fit: contain; border-radius: 999px; background: white; padding: 8px; margin-bottom: 14px; }
+          .header h1 { margin: 0; font-size: 28px; font-family: 'Playfair Display', serif; }
+          .content { padding: 40px 30px; text-align: center; }
+          .message { color: #64748b; line-height: 1.6; margin: 20px 0; font-size: 16px; }
+          .button { display: inline-block; background: #dc2626; color: white !important; text-decoration: none; border-radius: 10px; padding: 14px 24px; font-weight: bold; margin: 18px 0; }
+          .warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px; line-height: 1.5; margin-top: 22px; padding: 14px; }
+          .footer { background: #f8fafc; padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
+            <h1>JJSTrack</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
+          </div>
+          <div class="content">
+            <h2 style="color: #1e293b; margin-bottom: 10px;">Hi ${displayName},</h2>
+            <p class="message">We received a request to remove your JJSTrack account. Click the button below to confirm and permanently remove your account.</p>
+            <a class="button" href="${confirmationUrl}">Remove my account</a>
+            <div class="warning">
+              This link expires in 15 minutes. Once confirmed, your account will be removed immediately and you will be signed out of JJSTrack.
+            </div>
+            <p class="message" style="font-size: 14px;">If you did not request this, please ignore this email and your account will stay active.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; 2026 DevMinds &bull; JJSTrack</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
 };
 
 export const googleAuth = async (req, res) => {
@@ -485,6 +555,80 @@ export const updateUserProfile = async (req, res) => {
       return res.status(409).json({ success: false, message: getDuplicateAccountMessage(error) });
     }
     res.status(500).json({ success: false, message: 'Error updating user' });
+  }
+};
+
+export const requestAccountRemoval = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+
+    if (!user || user.role !== 'user') {
+      return res.status(404).json({ success: false, message: 'User account not found' });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    user.accountDeletionToken = hashAccountDeletionToken(rawToken);
+    user.accountDeletionTokenExpiry = new Date(Date.now() + ACCOUNT_DELETION_TOKEN_TTL_MS);
+    await user.save();
+
+    const confirmationUrl = `${getFrontendUrl()}/account-removal/confirm?token=${rawToken}`;
+
+    try {
+      await sendAccountDeletionEmail(user, confirmationUrl);
+    } catch (emailError) {
+      console.error('Account removal email sending error:', emailError);
+      user.accountDeletionToken = undefined;
+      user.accountDeletionTokenExpiry = undefined;
+      await user.save();
+
+      return res.status(503).json({
+        success: false,
+        message: 'We could not send the account removal email right now. Please try again later.',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'We sent a confirmation link to your email. Click it to remove your account.',
+      expiresIn: Math.floor(ACCOUNT_DELETION_TOKEN_TTL_MS / 1000),
+    });
+  } catch (error) {
+    console.error('Request Account Removal Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send account removal email' });
+  }
+};
+
+export const confirmAccountRemoval = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Confirmation token is required' });
+    }
+
+    const hashedToken = hashAccountDeletionToken(String(token));
+    const user = await userModel.findOne({
+      accountDeletionToken: hashedToken,
+      accountDeletionTokenExpiry: { $gt: new Date() },
+      role: 'user',
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'This account removal link is invalid or has expired.',
+      });
+    }
+
+    await userModel.deleteOne({ _id: user._id });
+
+    res.json({
+      success: true,
+      message: 'Your account has been successfully removed. All associated account data is no longer accessible.',
+    });
+  } catch (error) {
+    console.error('Confirm Account Removal Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to remove account' });
   }
 };
 

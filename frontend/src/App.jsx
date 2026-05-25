@@ -10,6 +10,7 @@ const SignupPage = lazy(() => import('./pages/SignupPage'))
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const AccountRemovalConfirmPage = lazy(() => import('./pages/AccountRemovalConfirmPage'))
 const TermsOfUse = lazy(() => import('./pages/TermsOfUse'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const Design = lazy(() => import('./pages/Design'))
@@ -43,6 +44,7 @@ const App = () => {
           <Route path="/verify-email" element={withSuspense(<VerifyEmailPage />)} />
           <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
           <Route path="/reset-password" element={withSuspense(<ResetPasswordPage />)} />
+          <Route path="/account-removal/confirm" element={withSuspense(<AccountRemovalConfirmPage />)} />
           <Route path="/terms-of-use" element={withSuspense(<TermsOfUse />)} />
           <Route path="/privacy-policy" element={withSuspense(<PrivacyPolicy />)} />
           <Route path="/designs" element={withSuspense(<Design />)} />
