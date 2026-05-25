@@ -331,6 +331,103 @@ const formatDateKey = (date = new Date()) => {
 };
 
 const isDateKey = (value = '') => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+const BOOKING_TIME_ZONE = process.env.BOOKING_TIME_ZONE || 'Asia/Manila';
+const PICKUP_SLOT_START_MINUTES = {
+  morning: 8 * 60,
+  afternoon: 13 * 60,
+  evening: 17 * 60,
+};
+
+const parsePickupSlotStartMinutes = (pickupSlot = '') => {
+  const rawSlot = String(pickupSlot || '').trim();
+  const slotKey = rawSlot.toLowerCase();
+
+  if (Object.prototype.hasOwnProperty.call(PICKUP_SLOT_START_MINUTES, slotKey)) {
+    return PICKUP_SLOT_START_MINUTES[slotKey];
+  }
+
+  const start = rawSlot.split('-')[0]?.trim() || '';
+  const match = start.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+  if (!match) return null;
+
+  const [, hourText, minuteText, periodText] = match;
+  const period = periodText.toUpperCase();
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (period === 'PM' && hour !== 12) hour += 12;
+  if (period === 'AM' && hour === 12) hour = 0;
+
+  return hour * 60 + minute;
+};
+
+const getBookingZoneNow = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BOOKING_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+  const hour = Number(getPart('hour'));
+  const minute = Number(getPart('minute'));
+
+  return {
+    dateKey: `${year}-${month}-${day}`,
+    minutes: hour * 60 + minute,
+  };
+};
+
+const validateRepairPickupSchedule = (pickupDate = '', pickupSlot = '') => {
+  const pickupDateKey = String(pickupDate || '').trim();
+  const normalizedPickupSlot = String(pickupSlot || '').trim();
+
+  if (!isDateKey(pickupDateKey)) {
+    return {
+      valid: false,
+      message: 'Please select a valid pickup date.',
+    };
+  }
+
+  const slotStartMinutes = parsePickupSlotStartMinutes(normalizedPickupSlot);
+
+  if (slotStartMinutes === null) {
+    return {
+      valid: false,
+      message: 'Please select a valid pickup time slot.',
+    };
+  }
+
+  const now = getBookingZoneNow();
+
+  if (pickupDateKey < now.dateKey) {
+    return {
+      valid: false,
+      message: 'Pickup date has already passed. Please select another date.',
+    };
+  }
+
+  if (pickupDateKey === now.dateKey && now.minutes >= slotStartMinutes) {
+    return {
+      valid: false,
+      message: 'Selected pickup time has already passed. Please choose a later slot or another date.',
+    };
+  }
+
+  return {
+    valid: true,
+    pickupDate: pickupDateKey,
+    pickupSlot: normalizedPickupSlot,
+  };
+};
 
 const resolveDateRangeFromKey = (dateKey = '') => {
   if (!isDateKey(dateKey)) {
@@ -770,6 +867,18 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    const pickupScheduleValidation = bookingType === 'repair'
+      ? validateRepairPickupSchedule(pickupDate, pickupSlot)
+      : { valid: true };
+
+    if (!pickupScheduleValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: pickupScheduleValidation.message,
+        received: { pickupDate, pickupSlot },
+      });
+    }
+
     const bookingDateKey = resolveBookingDateKey(new Date());
 
     // Daily booking limits are based on when the booking was created.
@@ -942,8 +1051,8 @@ export const createBooking = async (req, res) => {
 
     // Only add pickup for repair
     if (bookingType === 'repair') {
-      bookingData.pickupDate = pickupDate;
-      bookingData.pickupSlot = pickupSlot;
+      bookingData.pickupDate = pickupScheduleValidation.pickupDate;
+      bookingData.pickupSlot = pickupScheduleValidation.pickupSlot;
     }
 
     const booking = new bookingModel(bookingData);

@@ -108,15 +108,22 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
 
     const set = (k, v) => {
         setForm((current) => {
-            const updated = { ...current, [k]: v };
+            let value = v;
+            // If editing name fields, automatically strip digits so numbers are not accepted
+            if (k === "firstName" || k === "lastName") {
+                value = String(v || "").replace(/\d+/g, "");
+            }
+            const updated = { ...current, [k]: value };
             if (!initialData && k === "lastName") {
-                updated.password = buildPassword(v, sequenceLabel);
+                updated.password = buildPassword(value, sequenceLabel);
             }
             return updated;
         });
         if (submitError) setSubmitError("");
         if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
     };
+
+    const isNameWithoutNumbers = (name = "") => !/\d/.test(String(name || ""));
 
     const [regionList, setRegionList] = useState([]);
     const [provinceList, setProvinceList] = useState([]);
@@ -162,7 +169,9 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
     const handleSubmit = async () => {
         const newErrors = {};
         if (!form.firstName.trim()) newErrors.firstName = "Required";
+        else if (!isNameWithoutNumbers(form.firstName)) newErrors.firstName = "Cannot contain numbers";
         if (!form.lastName.trim()) newErrors.lastName = "Required";
+        else if (!isNameWithoutNumbers(form.lastName)) newErrors.lastName = "Cannot contain numbers";
         if (!form.dob) newErrors.dob = "Required";
         if (!form.email.trim()) newErrors.email = "Required";
         if (!form.contact.trim()) newErrors.contact = "Required";

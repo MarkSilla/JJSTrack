@@ -4,6 +4,31 @@ import userModel from "../models/userModel.js";
 const STAFF_FIELDS_TO_EXCLUDE =
   "-password -verificationCode -verificationCodeExpiry -resetCode -resetCodeExpiry -__v";
 
+const isDuplicateKeyError = (error) => error?.code === 11000 || error?.code === 11001;
+
+const normalizeStaffPhoneNumber = (value) => {
+  const digits = String(value || "").replace(/\D/g, "").trim();
+  if (!digits) return "";
+
+  if (/^09\d{9}$/.test(digits)) return digits;
+  if (/^9\d{9}$/.test(digits)) return `0${digits}`;
+  if (/^639\d{9}$/.test(digits)) return `0${digits.slice(2)}`;
+
+  return digits;
+};
+
+const isValidStaffPhoneNumber = (value) => /^09\d{9}$/.test(normalizeStaffPhoneNumber(value));
+
+const getDuplicateStaffMessage = (error) => {
+  const duplicateField = Object.keys(error?.keyPattern || error?.keyValue || {})[0];
+
+  if (duplicateField === "email") return "Email already in use";
+  if (duplicateField === "employeeId") return "Employee ID already exists";
+  if (duplicateField === "phoneNumber") return "Phone number already in use";
+
+  return "Staff account details already exist";
+};
+
 const parseDate = (value) => {
   if (!value) return undefined;
   const parsed = new Date(value);
@@ -29,13 +54,14 @@ const buildStaffPayload = (body = {}, { isCreate = false } = {}) => {
   const firstName = String(body.firstName || "").trim();
   const lastName = String(body.lastName || "").trim();
   const fullName = composeFullName(firstName, lastName);
+  const contact = body.contact ?? body.phoneNumber;
 
   const payload = {
     firstName,
     lastName,
     fullName,
     email: body.email ? String(body.email).trim().toLowerCase() : undefined,
-    phoneNumber: body.contact ? String(body.contact).trim() : undefined,
+    phoneNumber: contact ? normalizeStaffPhoneNumber(contact) : undefined,
     address: body.address ? String(body.address).trim() : undefined,
     employeeId: body.id ? String(body.id).trim() : undefined,
     employmentType: body.type,
@@ -71,6 +97,17 @@ const buildStaffPayload = (body = {}, { isCreate = false } = {}) => {
   }
 
   return payload;
+};
+
+const findExistingStaffPhone = (phoneNumber, currentUserId = null) => {
+  if (!phoneNumber) return null;
+
+  const query = { phoneNumber };
+  if (currentUserId) {
+    query._id = { $ne: currentUserId };
+  }
+
+  return userModel.findOne(query).select("_id");
 };
 
 const compactObject = (obj) =>
@@ -142,8 +179,23 @@ export const createStaff = async (req, res) => {
       return res.status(409).json({ success: false, message: "Employee ID already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(String(password), 10);
+    if (req.body.contact || req.body.phoneNumber) {
+      if (!isValidStaffPhoneNumber(req.body.contact ?? req.body.phoneNumber)) {
+        return res.status(400).json({
+          success: false,
+          message: "Contact number must be a valid PH mobile number starting with 09 or +639",
+        });
+      }
+    }
+
     const payload = compactObject(buildStaffPayload(req.body, { isCreate: true }));
+
+    const existingPhone = await findExistingStaffPhone(payload.phoneNumber);
+    if (existingPhone) {
+      return res.status(409).json({ success: false, message: "Phone number already in use" });
+    }
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
 
     const staff = await userModel.create({
       ...payload,
@@ -161,6 +213,14 @@ export const createStaff = async (req, res) => {
     });
   } catch (error) {
     console.error("Create Staff Error:", error);
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ success: false, message: getDuplicateStaffMessage(error) });
+    }
+
+    if (error?.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+
     res.status(500).json({ success: false, message: "Failed to create staff account" });
   }
 };
@@ -187,6 +247,20 @@ export const updateStaff = async (req, res) => {
       }
     }
 
+    if (payload.phoneNumber) {
+      if (!isValidStaffPhoneNumber(payload.phoneNumber)) {
+        return res.status(400).json({
+          success: false,
+          message: "Contact number must be a valid PH mobile number starting with 09 or +639",
+        });
+      }
+
+      const phoneExists = await findExistingStaffPhone(payload.phoneNumber, id);
+      if (phoneExists) {
+        return res.status(409).json({ success: false, message: "Phone number already in use" });
+      }
+    }
+
     Object.assign(existing, payload);
     if (!existing.fullName) {
       existing.fullName = composeFullName(existing.firstName, existing.lastName);
@@ -202,6 +276,14 @@ export const updateStaff = async (req, res) => {
     });
   } catch (error) {
     console.error("Update Staff Error:", error);
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ success: false, message: getDuplicateStaffMessage(error) });
+    }
+
+    if (error?.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+
     res.status(500).json({ success: false, message: "Failed to update staff account" });
   }
 };
