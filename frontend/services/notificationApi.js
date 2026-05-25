@@ -1,10 +1,10 @@
-import api from './api.js';
+import api, { API_BASE_URL } from './api.js';
 
 const getStoredToken = () =>
   localStorage.getItem('token') || sessionStorage.getItem('token') || '';
 
 const getApiBaseUrl = () =>
-  api?.defaults?.baseURL || 'http://localhost:4000/api';
+  api?.defaults?.baseURL || API_BASE_URL;
 
 export const getNotificationUpdatesWebSocketUrl = () => {
   const token = getStoredToken();
