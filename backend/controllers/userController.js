@@ -40,8 +40,12 @@ const normalizeEmail = (email) => String(email).trim().toLowerCase();
 const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(/\D/g, '').trim();
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isValidPhilippineMobile = (phoneNumber) => /^09\d{9}$/.test(phoneNumber);
-const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 60 * 1000);
+const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 10 * 60 * 1000);
 const ACCOUNT_DELETION_TOKEN_TTL_MS = Number(process.env.ACCOUNT_DELETION_TOKEN_TTL_MS || 15 * 60 * 1000);
+const getVerificationCodeTtlLabel = () => {
+  const minutes = Math.max(1, Math.round(VERIFICATION_CODE_TTL_MS / (60 * 1000)));
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+};
 
 const isDuplicateKeyError = (error) => error?.code === 11000 || error?.code === 11001;
 
@@ -60,7 +64,7 @@ const getDuplicateAccountMessage = (error) => {
 };
 
 const sendVerificationEmailWithTimeout = async (email, code, fullName) => {
-  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 8000);
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 30000);
   let timeoutId;
 
   const timeout = new Promise((resolve) => {
@@ -78,6 +82,18 @@ const sendVerificationEmailWithTimeout = async (email, code, fullName) => {
   } finally {
     clearTimeout(timeoutId);
   }
+};
+
+const queueVerificationEmail = (email, code, fullName) => {
+  sendVerificationEmailWithTimeout(email, code, fullName)
+    .then((emailSent) => {
+      if (!emailSent) {
+        console.error(`Verification email was not accepted by provider for ${email}`);
+      }
+    })
+    .catch((emailError) => {
+      logEmailSendError('Verification email', emailError);
+    });
 };
 
 const sendMailWithTimeout = async (mailOptions, contextLabel = 'email') => {
@@ -234,7 +250,7 @@ const sendVerificationEmail = async (email, code, fullName) => {
             </div>
             
             <p class="message" style="margin-bottom: 5px;">Enter this code in the app to complete your registration.</p>
-            <div class="timer">This code expires in 60 seconds</div>
+            <div class="timer">This code expires in ${getVerificationCodeTtlLabel()}</div>
           </div>
           <div class="footer">
             <p>If you didn't create an account with JJSTrack, please ignore this email.</p>
@@ -701,7 +717,7 @@ export const register = async (req, res) => {
 
     let user = await userModel.findOne({ email: normalizedEmail });
 
-    if (user) {
+    if (user?.isVerified) {
       return res.status(409).json({
         success: false,
         message: user.password
@@ -710,7 +726,7 @@ export const register = async (req, res) => {
       });
     }
 
-    const existingPhoneUser = await validateUniquePhoneNumber(normalizedPhone);
+    const existingPhoneUser = await validateUniquePhoneNumber(normalizedPhone, user?._id);
 
     if (existingPhoneUser) {
       return res.status(409).json({
@@ -723,8 +739,7 @@ export const register = async (req, res) => {
     const verificationCode = generateVerificationCode();
     const codeExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
     const hashedPassword = await bcrypt.hash(String(password), 10);
-
-    user = new userModel({
+    const profileData = {
       email: normalizedEmail,
       password: hashedPassword,
       fullName: String(fullName).trim(),
@@ -745,19 +760,16 @@ export const register = async (req, res) => {
       isVerified: false,
       verificationCode,
       verificationCodeExpiry: codeExpiry,
-    });
+    };
+
+    if (user) {
+      Object.assign(user, profileData);
+    } else {
+      user = new userModel(profileData);
+    }
     await user.save();
 
-    const emailSent = await sendVerificationEmailWithTimeout(user.email, verificationCode, user.fullName);
-
-    if (!emailSent) {
-      await userModel.deleteOne({ _id: user._id, isVerified: false });
-
-      return res.status(503).json({
-        success: false,
-        message: 'We could not send the verification email right now. Please check the backend email credentials and try again.',
-      });
-    }
+    queueVerificationEmail(user.email, verificationCode, user.fullName);
 
     res.status(201).json({
       success: true,
@@ -849,21 +861,14 @@ export const resendVerificationCode = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
-    // Generate and send first. Only save it if the email provider accepts the message.
     const verificationCode = generateVerificationCode();
     const codeExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
-    const emailSent = await sendVerificationEmailWithTimeout(normalizedEmail, verificationCode, user.fullName);
-
-    if (!emailSent) {
-      return res.status(503).json({
-        success: false,
-        message: 'We could not send the verification email right now. Please check the backend email credentials and try again.'
-      });
-    }
 
     user.verificationCode = verificationCode;
     user.verificationCodeExpiry = codeExpiry;
     await user.save();
+
+    queueVerificationEmail(normalizedEmail, verificationCode, user.fullName);
 
     res.json({
       success: true,
