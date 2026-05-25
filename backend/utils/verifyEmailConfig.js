@@ -1,28 +1,22 @@
-import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
 import { getEmailConfig } from './emailConfig.js';
+import { verifyEmailConnection } from './emailSender.js';
 
-dotenv.config();
-
-const { emailUser, emailFrom, transport } = getEmailConfig();
-
-if (!emailUser || !transport.auth?.pass) {
-  console.error('Email config missing. Set EMAIL_USER/EMAIL_PASS or SMTP_USER/SMTP_PASS.');
-  process.exit(1);
-}
-
-const transporter = nodemailer.createTransport(transport);
+const { provider, emailFrom } = getEmailConfig();
 
 try {
-  await transporter.verify();
+  const result = await verifyEmailConnection();
   console.log('Email config OK');
-  console.log(`User: ${emailUser}`);
+  console.log(`Provider: ${provider}`);
   console.log(`From: ${emailFrom}`);
+  if (result.emailUser) {
+    console.log(`User: ${result.emailUser}`);
+  }
 } catch (error) {
   console.error('Email config failed:', {
     code: error.code,
     command: error.command,
     responseCode: error.responseCode,
+    statusCode: error.statusCode,
     message: error.message,
   });
   process.exit(1);

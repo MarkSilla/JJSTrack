@@ -2,33 +2,26 @@ import userModel from "../models/userModel.js";
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { getEmailConfig } from '../utils/emailConfig.js';
+import { sendEmail, verifyEmailConnection } from '../utils/emailSender.js';
 
-const { emailFrom, transport: emailTransportConfig } = getEmailConfig();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const logoPath = path.resolve(__dirname, '../assets/jjstrack-logo.png');
-const logoCid = 'jjstrack-logo';
+const { emailFrom } = getEmailConfig();
+const fromAddress = /<[^<>]+>/.test(emailFrom) ? emailFrom : `"JJSTrack" <${emailFrom}>`;
+const emailLogoUrl = String(process.env.EMAIL_LOGO_URL || 'https://user.jjstrack.fit/pwa-icon.png').trim();
 
-// Email transporter configuration
-const transporter = nodemailer.createTransport(emailTransportConfig);
-
-// Verify email connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Email transporter error:', {
+verifyEmailConnection()
+  .then(({ provider }) => {
+    console.log(`Email provider configured successfully (${provider})`);
+  })
+  .catch((error) => {
+    console.error('Email provider error:', {
       code: error.code,
       command: error.command,
       responseCode: error.responseCode,
+      statusCode: error.statusCode,
       message: error.message,
     });
-  } else {
-    console.log('Email transporter configured successfully');
-  }
-});
+  });
 
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -40,10 +33,16 @@ const normalizeEmail = (email) => String(email).trim().toLowerCase();
 const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(/\D/g, '').trim();
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isValidPhilippineMobile = (phoneNumber) => /^09\d{9}$/.test(phoneNumber);
-const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 10 * 60 * 1000);
+const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 60 * 1000);
 const ACCOUNT_DELETION_TOKEN_TTL_MS = Number(process.env.ACCOUNT_DELETION_TOKEN_TTL_MS || 15 * 60 * 1000);
 const getVerificationCodeTtlLabel = () => {
-  const minutes = Math.max(1, Math.round(VERIFICATION_CODE_TTL_MS / (60 * 1000)));
+  const seconds = Math.max(1, Math.round(VERIFICATION_CODE_TTL_MS / 1000));
+
+  if (seconds <= 60) {
+    return `${seconds} second${seconds === 1 ? '' : 's'}`;
+  }
+
+  const minutes = Math.max(1, Math.round(seconds / 60));
   return `${minutes} minute${minutes === 1 ? '' : 's'}`;
 };
 
@@ -99,10 +98,6 @@ const queueVerificationEmail = (email, code, fullName) => {
 const sendMailWithTimeout = async (mailOptions, contextLabel = 'email') => {
   const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 30000);
   let timeoutId;
-  const mailTransporter = nodemailer.createTransport({
-    ...emailTransportConfig,
-    pool: false,
-  });
 
   const timeout = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -112,12 +107,11 @@ const sendMailWithTimeout = async (mailOptions, contextLabel = 'email') => {
 
   try {
     return await Promise.race([
-      mailTransporter.sendMail(mailOptions),
+      sendEmail(mailOptions),
       timeout,
     ]);
   } finally {
     clearTimeout(timeoutId);
-    mailTransporter.close();
   }
 };
 
@@ -206,16 +200,9 @@ const buildFullAddressFromParts = ({
 
 const sendVerificationEmail = async (email, code, fullName) => {
   const mailOptions = {
-    from: `"JJSTrack" <${emailFrom}>`,
+    from: fromAddress,
     to: email,
     subject: 'Your JJSTrack Verification Code',
-    attachments: [
-      {
-        filename: 'jjstrack-logo.png',
-        path: logoPath,
-        cid: logoCid,
-      },
-    ],
     html: `
       <!DOCTYPE html>
       <html>
@@ -237,7 +224,7 @@ const sendVerificationEmail = async (email, code, fullName) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
+            <img src="${emailLogoUrl}" alt="JJSTrack Logo" class="logo" />
             <h1>JJSTrack</h1>
             <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
           </div>
@@ -264,7 +251,7 @@ const sendVerificationEmail = async (email, code, fullName) => {
 
   try {
     console.log(`📧 Attempting to send verification email to: ${email}`);
-    const result = await transporter.sendMail(mailOptions);
+    const result = await sendEmail(mailOptions);
     console.log(`✅ Email sent successfully to ${email}. Message ID: ${result.messageId}`);
     return true;
   } catch (error) {
@@ -273,6 +260,7 @@ const sendVerificationEmail = async (email, code, fullName) => {
       code: error.code,
       command: error.command,
       responseCode: error.responseCode,
+      statusCode: error.statusCode,
     });
     return false;
   }
@@ -303,7 +291,7 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
   const displayName = user.fullName || user.firstName || user.email;
 
   const mailOptions = {
-    from: `"JJSTrack" <${emailFrom}>`,
+    from: fromAddress,
     to: user.email,
     subject: 'Confirm JJSTrack Account Removal',
     html: `
@@ -813,7 +801,7 @@ export const verifyEmail = async (req, res) => {
 
     // Check if code expired
     if (!user.verificationCodeExpiry || new Date() > user.verificationCodeExpiry) {
-      return res.status(400).json({ success: false, message: 'Verification code expired after 60 seconds. Please request a new one.' });
+      return res.status(400).json({ success: false, message: `Verification code expired after ${getVerificationCodeTtlLabel()}. Please request a new one.` });
     }
 
     // Check if code matches
@@ -973,16 +961,9 @@ export const forgotPassword = async (req, res) => {
 
     // Send password reset email
     const mailOptions = {
-      from: `"JJSTrack" <${emailFrom}>`,
+      from: fromAddress,
       to: email,
       subject: 'JJSTrack Password Reset Code',
-      attachments: [
-        {
-          filename: 'jjstrack-logo.png',
-          path: logoPath,
-          cid: logoCid,
-        },
-      ],
       html: `
         <!DOCTYPE html>
         <html>
@@ -1004,7 +985,7 @@ export const forgotPassword = async (req, res) => {
         <body>
           <div class="container">
             <div class="header">
-              <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
+              <img src="${emailLogoUrl}" alt="JJSTrack Logo" class="logo" />
               <h1>JJSTrack</h1>
               <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
             </div>
@@ -1030,7 +1011,7 @@ export const forgotPassword = async (req, res) => {
     };
 
     try {
-      await transporter.sendMail(mailOptions);
+      await sendMailWithTimeout(mailOptions, 'password reset email');
     } catch (emailError) {
       console.error('Email sending error:', emailError);
       return res.status(500).json({
