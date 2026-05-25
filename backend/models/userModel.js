@@ -169,6 +169,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
   },
 
+  activeSessionId: {
+    type: String,
+  },
+
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

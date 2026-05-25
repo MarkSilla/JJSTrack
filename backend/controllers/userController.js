@@ -34,6 +34,8 @@ const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const generateSessionId = () => crypto.randomBytes(24).toString('hex');
+
 const normalizeEmail = (email) => String(email).trim().toLowerCase();
 const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(/\D/g, '').trim();
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
@@ -75,6 +77,31 @@ const sendVerificationEmailWithTimeout = async (email, code, fullName) => {
     ]);
   } finally {
     clearTimeout(timeoutId);
+  }
+};
+
+const sendMailWithTimeout = async (mailOptions, contextLabel = 'email') => {
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 30000);
+  let timeoutId;
+  const mailTransporter = nodemailer.createTransport({
+    ...emailTransportConfig,
+    pool: false,
+  });
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${contextLabel} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      mailTransporter.sendMail(mailOptions),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+    mailTransporter.close();
   }
 };
 
@@ -263,13 +290,6 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
     from: `"JJSTrack" <${emailFrom}>`,
     to: user.email,
     subject: 'Confirm JJSTrack Account Removal',
-    attachments: [
-      {
-        filename: 'jjstrack-logo.png',
-        path: logoPath,
-        cid: logoCid,
-      },
-    ],
     html: `
       <!DOCTYPE html>
       <html>
@@ -278,7 +298,6 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
           body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
           .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
           .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; text-align: center; color: white; }
-          .logo { width: 86px; height: 86px; object-fit: contain; border-radius: 999px; background: white; padding: 8px; margin-bottom: 14px; }
           .header h1 { margin: 0; font-size: 28px; font-family: 'Playfair Display', serif; }
           .content { padding: 40px 30px; text-align: center; }
           .message { color: #64748b; line-height: 1.6; margin: 20px 0; font-size: 16px; }
@@ -290,7 +309,6 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
             <h1>JJSTrack</h1>
             <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
           </div>
@@ -312,7 +330,7 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  return sendMailWithTimeout(mailOptions, 'account removal email');
 };
 
 export const googleAuth = async (req, res) => {
@@ -358,11 +376,15 @@ export const googleAuth = async (req, res) => {
         user.fullName = fullName || user.email.split('@')[0];
       }
       user.photoURL = photoURL || user.photoURL;
-      await user.save();
     }
 
+    const sessionId = generateSessionId();
+    user.activeSessionId = sessionId;
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = jwt.sign(
-      { id: user._id, firebaseUID: uid },
+      { id: user._id, firebaseUID: uid, sessionId },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '7d' }
     );
@@ -576,7 +598,12 @@ export const requestAccountRemoval = async (req, res) => {
     try {
       await sendAccountDeletionEmail(user, confirmationUrl);
     } catch (emailError) {
-      console.error('Account removal email sending error:', emailError);
+      console.error('Account removal email sending error:', {
+        code: emailError.code,
+        command: emailError.command,
+        responseCode: emailError.responseCode,
+        message: emailError.message,
+      });
       user.accountDeletionToken = undefined;
       user.accountDeletionTokenExpiry = undefined;
       await user.save();
@@ -886,8 +913,14 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
+
+    const sessionId = generateSessionId();
+    user.activeSessionId = sessionId;
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role, sessionId },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '7d' }
     );
@@ -1235,6 +1268,8 @@ export const adminLogin = async (req, res) => {
       });
     }
 
+    const sessionId = generateSessionId();
+    adminAccount.activeSessionId = sessionId;
     adminAccount.lastLoginAt = new Date();
     await adminAccount.save();
 
@@ -1242,7 +1277,8 @@ export const adminLogin = async (req, res) => {
       {
         id: adminAccount._id,
         email: adminAccount.email,
-        role: adminAccount.role
+        role: adminAccount.role,
+        sessionId
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '24h' }
@@ -1323,6 +1359,8 @@ export const staffLogin = async (req, res) => {
       });
     }
 
+    const sessionId = generateSessionId();
+    staffAccount.activeSessionId = sessionId;
     staffAccount.lastLoginAt = new Date();
     await staffAccount.save();
 
@@ -1330,7 +1368,8 @@ export const staffLogin = async (req, res) => {
       {
         id: staffAccount._id,
         email: staffAccount.email,
-        role: 'staff'
+        role: 'staff',
+        sessionId
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '24h' }

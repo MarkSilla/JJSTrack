@@ -18,6 +18,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionReplaced, setSessionReplaced] = useState(false);
   const [loggedOut, setLoggedOut] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -29,6 +30,9 @@ const LoginPage = () => {
     const params = new URLSearchParams(location.search);
     if (params.get('expired') === '1') {
       setSessionExpired(true);
+      window.history.replaceState({}, '', '/login');
+    } else if (params.get('session_replaced') === '1') {
+      setSessionReplaced(true);
       window.history.replaceState({}, '', '/login');
     } else if (params.get('logged_out') === '1') {
       setLoggedOut(true);
@@ -204,6 +208,23 @@ const LoginPage = () => {
                 aria-label="Dismiss"
               >
                 ✕
+              </button>
+            </div>
+          )}
+          {sessionReplaced && (
+            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-700">Signed out from this device</p>
+                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                  This account was signed in on another device. Please sign in again to continue here.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionReplaced(false)}
+                className="text-amber-400 hover:text-red-600 transition-colors text-base leading-none mt-0.5"
+                aria-label="Dismiss"
+              >
+                âœ•
               </button>
             </div>
           )}

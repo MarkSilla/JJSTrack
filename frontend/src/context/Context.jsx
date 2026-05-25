@@ -27,6 +27,18 @@ const getLoginTimestamp = () => {
   return ts ? parseInt(ts, 10) : null
 }
 
+const touchLoginTimestamp = () => {
+  const now = Date.now().toString()
+
+  if (localStorage.getItem('token')) {
+    localStorage.setItem('loginTimestamp', now)
+  }
+
+  if (sessionStorage.getItem('token')) {
+    sessionStorage.setItem('loginTimestamp', now)
+  }
+}
+
 const isSessionExpired = () => {
   const ts = getLoginTimestamp()
   if (!ts) return true
@@ -128,6 +140,54 @@ const Context = ({ children }) => {
       window.removeEventListener('userProfileUpdated', handleUserProfileUpdated)
     }
   }, [syncAuthFromStorage])
+
+  useEffect(() => {
+    let lastTouchedAt = 0
+
+    const handleActivity = () => {
+      const hasToken = localStorage.getItem('token') || sessionStorage.getItem('token')
+      if (!hasToken) return
+
+      const now = Date.now()
+      if (now - lastTouchedAt < 30 * 1000) return
+
+      lastTouchedAt = now
+      touchLoginTimestamp()
+    }
+
+    window.addEventListener('click', handleActivity)
+    window.addEventListener('keydown', handleActivity)
+    window.addEventListener('mousemove', handleActivity)
+    window.addEventListener('touchstart', handleActivity)
+
+    return () => {
+      window.removeEventListener('click', handleActivity)
+      window.removeEventListener('keydown', handleActivity)
+      window.removeEventListener('mousemove', handleActivity)
+      window.removeEventListener('touchstart', handleActivity)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined
+
+    let isCancelled = false
+    const intervalId = setInterval(async () => {
+      try {
+        const { userApi } = await import('../../services/userApi.js')
+        if (!isCancelled) {
+          await userApi.getUserProfile()
+        }
+      } catch (_) {
+        syncAuthFromStorage()
+      }
+    }, 30 * 1000)
+
+    return () => {
+      isCancelled = true
+      clearInterval(intervalId)
+    }
+  }, [isAuthenticated, syncAuthFromStorage])
 
   const login = (userData, token, remember = true) => {
     const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token')
