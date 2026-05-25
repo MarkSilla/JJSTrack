@@ -134,10 +134,10 @@ const LandingPage = () => {
               </button>
               <button
                 onClick={handleDownloadApp}
-                className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
+                className="group relative inline-flex items-center justify-center gap-3 px-7 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
                 type="button"
               >
-                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                <Download className="h-3 w-3 transition-transform group-hover:-translate-y-0.5" />
                 Download App
               </button>
             </div>

@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema({
 
   phoneNumber: {
     type: String,
+    trim: true,
   },
 
   address: {
@@ -204,5 +205,15 @@ const userSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+userSchema.index(
+  { phoneNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      phoneNumber: { $type: "string", $gt: "" },
+    },
+  }
+);
 
 export default mongoose.model("User", userSchema);

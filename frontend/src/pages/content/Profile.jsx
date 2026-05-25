@@ -231,7 +231,7 @@ const Profile = () => {
     if (!formData.firstName.trim()) nextErrors.firstName = 'First name is required'
     if (!formData.lastName.trim()) nextErrors.lastName = 'Last name is required'
     if (!formData.phone.trim()) nextErrors.phone = 'Phone number is required'
-    else if (formData.phone.length !== 11) nextErrors.phone = 'Phone number must be 11 digits'
+    else if (!/^09\d{9}$/.test(formData.phone)) nextErrors.phone = 'Phone number must be an 11-digit PH mobile number starting with 09'
     return nextErrors
   }
 

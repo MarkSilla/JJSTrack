@@ -9,22 +9,26 @@ const VerifyEmailPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
   const email = location.state?.email;
+  const [codeExpiresIn, setCodeExpiresIn] = useState(() => {
+    const expiresAt = location.state?.expiresAt ? new Date(location.state.expiresAt).getTime() : null;
+    if (expiresAt) return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    return Number(location.state?.expiresIn || 60);
+  });
 
-  // Cooldown timer for resend button
+  // Code expiry timer. After 60s, user must request a fresh code.
   useEffect(() => {
     let interval;
-    if (resendCooldown > 0) {
+    if (codeExpiresIn > 0) {
       interval = setInterval(() => {
-        setResendCooldown((prev) => prev - 1);
+        setCodeExpiresIn((prev) => Math.max(0, prev - 1));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [resendCooldown]);
+  }, [codeExpiresIn]);
 
   // Redirect if no email provided
   useEffect(() => {
@@ -44,6 +48,11 @@ const VerifyEmailPage = () => {
 
     if (!code || code.length !== 6) {
       setError('Please enter the 6-digit code');
+      return;
+    }
+
+    if (codeExpiresIn <= 0) {
+      setError('Verification code expired after 60 seconds. Please request a new one.');
       return;
     }
 
@@ -76,7 +85,8 @@ const VerifyEmailPage = () => {
 
       if (response.success) {
         setSuccess('Verification code sent! Check your email.');
-        setResendCooldown(60);
+        setCode('');
+        setCodeExpiresIn(Number(response.expiresIn || 60));
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.message || 'Failed to resend code');
@@ -186,16 +196,20 @@ const VerifyEmailPage = () => {
                 value={code}
                 onChange={handleCodeChange}
                 placeholder="000000"
-                disabled={loading}
+                disabled={loading || codeExpiresIn <= 0}
                 maxLength="6"
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-3xl font-mono font-bold text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
               />
-              <p className="text-xs text-gray-500 mt-2">Enter the 6-digit code from your email</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {codeExpiresIn > 0
+                  ? `Enter the 6-digit code from your email. Expires in ${codeExpiresIn}s.`
+                  : 'Code expired. Please resend a new code.'}
+              </p>
             </div>
 
             <button
               type="submit"
-              disabled={loading || code.length !== 6}
+              disabled={loading || code.length !== 6 || codeExpiresIn <= 0}
               className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-slate-800/25 hover:from-blue-500 hover:to-blue-400 hover:shadow-xl hover:shadow-slate-800/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
               {loading ? 'Verifying...' : 'Verify Email'} →
@@ -206,11 +220,11 @@ const VerifyEmailPage = () => {
             <p className="text-center text-sm text-gray-600 mb-4">Didn't receive the code?</p>
             <button
               onClick={handleResend}
-              disabled={resendLoading || resendCooldown > 0}
+              disabled={resendLoading || codeExpiresIn > 0}
               className="w-full py-2.5 bg-white border-[1.5px] border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {resendCooldown > 0
-                ? `Resend in ${resendCooldown}s`
+              {codeExpiresIn > 0
+                ? `Resend in ${codeExpiresIn}s`
                 : resendLoading
                   ? 'Sending...'
                   : 'Resend Code'}

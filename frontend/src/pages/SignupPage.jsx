@@ -143,7 +143,7 @@ const SignupPage = () => {
     NAME_REGEX.test(formData.firstName) &&
     formData.lastName &&
     NAME_REGEX.test(formData.lastName) &&
-    formData.phone.length >= 11 &&
+    /^09\d{9}$/.test(formData.phone) &&
     formData.email &&
     formData.password.length >= 8 &&
     formData.password === formData.confirmPassword;
@@ -184,6 +184,10 @@ const SignupPage = () => {
     }
     if (!formData.lastName || !NAME_REGEX.test(formData.lastName)) {
       setError('Last name must contain letters only');
+      return;
+    }
+    if (!/^09\d{9}$/.test(formData.phone)) {
+      setError('Phone number must be an 11-digit PH mobile number starting with 09');
       return;
     }
     if (!isStep1Valid()) { setError('Please fill in all fields correctly.'); return; }
@@ -232,12 +236,18 @@ const SignupPage = () => {
       });
 
       if (response.success) {
-        navigate('/verify-email', { state: { email: formData.email } });
+        navigate('/verify-email', {
+          state: {
+            email: response.email || formData.email,
+            expiresIn: response.expiresIn || 60,
+            expiresAt: response.expiresAt,
+          },
+        });
       } else {
         setError(response.message || 'Sign up failed.');
       }
     } catch (err) {
-      setError(err.message || 'Sign up failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Sign up failed. Please try again.');
     } finally {
       setLoading(false);
     }
