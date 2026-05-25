@@ -333,6 +333,15 @@ const sendAccountDeletionEmail = async (user, confirmationUrl) => {
   return sendMailWithTimeout(mailOptions, 'account removal email');
 };
 
+const logEmailSendError = (label, error) => {
+  console.error(`${label} sending error:`, {
+    code: error?.code,
+    command: error?.command,
+    responseCode: error?.responseCode,
+    message: error?.message,
+  });
+};
+
 export const googleAuth = async (req, res) => {
   try {
     const { uid, email, fullName, photoURL } = req.body;
@@ -595,28 +604,17 @@ export const requestAccountRemoval = async (req, res) => {
 
     const confirmationUrl = `${getFrontendUrl()}/account-removal/confirm?token=${rawToken}`;
 
-    try {
-      await sendAccountDeletionEmail(user, confirmationUrl);
-    } catch (emailError) {
-      console.error('Account removal email sending error:', {
-        code: emailError.code,
-        command: emailError.command,
-        responseCode: emailError.responseCode,
-        message: emailError.message,
+    sendAccountDeletionEmail(user, confirmationUrl)
+      .then((result) => {
+        console.log(`Account removal email queued for ${user.email}. Message ID: ${result?.messageId || 'n/a'}`);
+      })
+      .catch((emailError) => {
+        logEmailSendError('Account removal email', emailError);
       });
-      user.accountDeletionToken = undefined;
-      user.accountDeletionTokenExpiry = undefined;
-      await user.save();
-
-      return res.status(503).json({
-        success: false,
-        message: 'We could not send the account removal email right now. Please try again later.',
-      });
-    }
 
     res.json({
       success: true,
-      message: 'We sent a confirmation link to your email. Click it to remove your account.',
+      message: 'Confirmation email is being sent. Please check your inbox in a few moments.',
       expiresIn: Math.floor(ACCOUNT_DELETION_TOKEN_TTL_MS / 1000),
     });
   } catch (error) {

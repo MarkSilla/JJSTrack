@@ -324,6 +324,7 @@ const Profile = () => {
       if (response?.success) {
         setShowRemovalConfirm(false)
         setRemovalEmailSent(true)
+        setMessage({ type: '', text: '' })
       } else {
         setMessage({
           type: 'error',
@@ -821,7 +822,11 @@ const Profile = () => {
             Your information is kept private and only used for order processing and delivery.
           </p>
 
-          <div className="mx-auto max-w-2xl rounded-2xl border border-red-200 bg-red-50/60 px-6 py-5 sm:px-8">
+          <div className={`mx-auto max-w-2xl rounded-2xl border px-6 py-5 sm:px-8 ${
+            removalEmailSent
+              ? 'border-emerald-200 bg-emerald-50/80'
+              : 'border-red-200 bg-red-50/60'
+          }`}>
             <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                 removalEmailSent ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
@@ -834,7 +839,7 @@ const Profile = () => {
                 </h3>
                 <p className={`mt-1 text-sm leading-6 ${removalEmailSent ? 'text-emerald-700' : 'text-red-700'}`}>
                   {removalEmailSent
-                    ? 'Confirmation email sent. Please check your inbox and click the link to remove your account.'
+                    ? `Confirmation email is being sent to ${user?.email || 'your email address'}. Please check your inbox in a few moments and click the link to remove your account.`
                     : 'Request an email confirmation link. Once you click the link, your JJSTrack account will be removed immediately.'}
                 </p>
               </div>

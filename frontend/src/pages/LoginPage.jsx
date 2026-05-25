@@ -187,7 +187,7 @@ const LoginPage = () => {
               </div>
               <button
                 onClick={() => setLoggedOut(false)}
-                className="text-green-400 hover:text-green-600 transition-colors text-base leading-none mt-0.5"
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-green-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-green-500 hover:after:text-green-700"
                 aria-label="Dismiss"
               >
                 ✕
@@ -204,7 +204,7 @@ const LoginPage = () => {
               </div>
               <button
                 onClick={() => setSessionExpired(false)}
-                className="text-amber-400 hover:text-red-600 transition-colors text-base leading-none mt-0.5"
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
                 aria-label="Dismiss"
               >
                 ✕
@@ -221,7 +221,7 @@ const LoginPage = () => {
               </div>
               <button
                 onClick={() => setSessionReplaced(false)}
-                className="text-amber-400 hover:text-red-600 transition-colors text-base leading-none mt-0.5"
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
                 aria-label="Dismiss"
               >
                 âœ•
