@@ -9,6 +9,17 @@ const ADD_ON_CONFIG = {
     hoodie: { label: 'Hoodie T-shirt', price: 700 },
 };
 
+const ORG_PRODUCT_TYPES = {
+    tshirt: { label: 'T-Shirt', price: 500 },
+    polo: { label: 'Polo Shirt', price: 650 },
+};
+
+const JERSEY_PRODUCT_TYPES = {
+    jersey: { label: 'Jersey Only', price: 550 },
+    fullset: { label: 'Full Set (Jersey + Shorts)', price: 850 },
+    short: { label: 'Short Only', price: 400 },
+};
+
 const formatCurrency = (value) => `${PESO_SYMBOL}${Number(value || 0).toLocaleString()}`;
 
 const getAddOnMeta = (addOnId) =>
@@ -21,6 +32,19 @@ const getParticipantName = (participant, index) => {
     const fullName = [participant?.firstName, participant?.surname].filter(Boolean).join(' ').trim();
     return fullName || participant?.name || `Player ${index + 1}`;
 };
+
+const getJerseyProductLabel = (player = {}, item = {}) => {
+    const productType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[productType]) return JERSEY_PRODUCT_TYPES[productType].label;
+
+    const source = String(player?.classification || item?.description || item?.type || '').toLowerCase();
+    if (source.includes('jersey only')) return JERSEY_PRODUCT_TYPES.jersey.label;
+    if (source.includes('short only')) return JERSEY_PRODUCT_TYPES.short.label;
+    if (source.includes('full set') || source.includes('fullset')) return JERSEY_PRODUCT_TYPES.fullset.label;
+    return 'Team Jersey';
+};
+
+const DEFAULT_POCKET_PRICE = 100;
 
 const getItemTotal = (item) =>
     ((Number(item?.qty) || 1) * (Number(item?.unitPrice) || 0)) + (Number(item?.addOnPrice) || 0);
@@ -38,11 +62,14 @@ const ROLE_META = {
     tailor: 'Tailor',
 };
 
-export default function OrderSummary({ activeOrder, participants = [], bookingExtras = null }) {
+export default function OrderSummary({ activeOrder, participants = [], bookingExtras = null, serviceType = '' }) {
+    const isOrg = String(serviceType || '').toLowerCase().includes('organization');
     const displayItems = useMemo(() => {
         const invoiceItems = Array.isArray(activeOrder?.invoice?.items) ? activeOrder.invoice.items : [];
         const participantList = Array.isArray(participants) ? participants : [];
-        const hasExplicitAddOnItems = invoiceItems.some((item) => item?.addOn === 'Add-on');
+        const hasExplicitAddOnItems = invoiceItems.some((item) =>
+            (item?.addOnPrice > 0) || (item?.addOn && item.addOn !== 'None' && item.addOn !== 'Add-on') || (item?.addOn === 'Add-on')
+        );
         const derivedAddOnItems = !hasExplicitAddOnItems
             ? participantList.flatMap((participant, index) =>
                 (Array.isArray(participant?.addOns) ? participant.addOns : []).map((addOnId, addOnIndex) => {
@@ -61,46 +88,85 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
             )
             : [];
 
-        return [...invoiceItems, ...derivedAddOnItems];
-    }, [activeOrder, participants]);
+        const mappedInvoiceItems = invoiceItems.map((item, index) => {
+            const player = participantList[index];
+            if (!player) return item;
+
+            let itemType;
+            if (isOrg) {
+                // Organization: use productType field (tshirt, polo)
+                const orgProduct = ORG_PRODUCT_TYPES[player.productType];
+                itemType = orgProduct?.label || player.productType || 'Org Item';
+            } else {
+                itemType = getJerseyProductLabel(player, item);
+            }
+
+            const surname = player.surname || player.name || `Player ${index + 1}`;
+            const addOnEntries = Array.isArray(player.addOns) ? player.addOns.map(id => getAddOnMeta(id)) : [];
+            const hasPocket = Boolean(player.pockets || player.hasPocketShorts);
+
+            // Recalculate add-on price from roster data to fix manual DB errors
+            const calculatedAddOnPrice = addOnEntries.reduce((sum, addOn) => sum + Number(addOn.price || 0), 0) + (hasPocket ? DEFAULT_POCKET_PRICE : 0);
+
+            // For org orders, use per-product pricing from roster data instead of the flat backend price
+            const correctedUnitPrice = isOrg
+                ? (ORG_PRODUCT_TYPES[player.productType]?.price || item.unitPrice || 0)
+                : (item.unitPrice || JERSEY_PRODUCT_TYPES[String(player.productType || '').toLowerCase()]?.price || 0);
+
+            return {
+                ...item,
+                surname,
+                itemType,
+                unitPrice: correctedUnitPrice,
+                addOnPrice: isOrg ? 0 : calculatedAddOnPrice, // Org orders don't have jersey add-ons
+                addonsText: isOrg ? null : `Add-ons: ${addOnEntries.length > 0 ? addOnEntries.map(a => a.label).join(', ') : 'None'}`,
+                pocketText: isOrg ? null : `Pocket: ${hasPocket ? 'Yes' : 'No'}`,
+                isRosterItem: true
+            };
+        });
+
+        return [...mappedInvoiceItems, ...derivedAddOnItems];
+    }, [activeOrder, participants, isOrg]);
 
     const totalPrice = useMemo(() => {
-        if (displayItems.length > 0) {
-            return displayItems.reduce((sum, item) => sum + getItemTotal(item), 0);
-        }
+        // Source of truth: sum of calculated items to ensure accuracy
+        const calculatedTotal = displayItems.reduce((sum, item) => sum + getItemTotal(item), 0);
 
+        if (calculatedTotal > 0) return calculatedTotal;
+
+        // Fallback to database total only if no items or calculation resulted in 0
         return Number(activeOrder?.invoice?.total || activeOrder?.totalPrice || 0);
     }, [activeOrder, displayItems]);
 
     const displayDueDate = bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion || 'N/A';
     const displayTimeRange = getPickupSlotDisplay(bookingExtras?.pickupSlot || activeOrder?.pickupSlot || '', 'N/A');
-    const visibleRoles = useMemo(() => {
-        const labels = (Array.isArray(activeOrder?.steps) ? activeOrder.steps : [])
-            .map((step) => normalizeStepLabel(step?.label || step));
-
-        const roles = [];
-        if (labels.includes('layout') || labels.includes('printing')) roles.push('layoutArtist');
-        if (labels.includes('pressing')) roles.push('presser');
-        if (labels.includes('sewing') || roles.length === 0) roles.push('tailor');
-        return roles;
-    }, [activeOrder]);
-    const productionAssignments = {
-        tailor: activeOrder?.staffAssignments?.tailor || activeOrder?.assignedTailor || '',
-        presser: activeOrder?.staffAssignments?.presser || '',
-        layoutArtist: activeOrder?.staffAssignments?.layoutArtist || '',
-    };
+    const visibleOrderId = useMemo(() => {
+        if (!activeOrder) return '';
+        if (activeOrder.isBooking) {
+            return activeOrder.displayId || bookingExtras?.bookingId || activeOrder.id || activeOrder._id || '';
+        }
+        return activeOrder.displayId || activeOrder.orderId || activeOrder.id || activeOrder._id || '';
+    }, [activeOrder, bookingExtras]);
 
     return (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-blue-50/50 p-4 border-b border-gray-50">
+            <div className="bg-blue-50/50 p-4 border-b border-gray-50 shrink-0">
                 <h4 className="text-[11px] font-black text-blue-900 tracking-wider uppercase mb-3">Order Details</h4>
                 <div className="flex gap-x-8">
-                    {/* Left Column: Dates */}
+                    {/* Left Column */}
                     <div className="flex-1 space-y-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Order ID</span>
+                            <span className="text-sm font-bold text-gray-900">{visibleOrderId}</span>
+                        </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Drop Date</span>
                             <span className="text-sm font-bold text-gray-900">{getDropDate(activeOrder)}</span>
                         </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="flex-1 space-y-4">
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">Due Date</span>
                             <span className={`text-sm font-bold ${isOverdue(bookingExtras?.pickupDate || activeOrder?.pickupDate || activeOrder?.invoice?.dueDate || activeOrder?.estimatedCompletion) ? 'text-red-500' : 'text-gray-900'}`}>
@@ -114,31 +180,40 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
                             <span className="text-sm font-bold text-gray-900">{displayTimeRange}</span>
                         </div>
                     </div>
-
-                    {/* Right Column: Roles */}
-                    <div className="flex-1 space-y-4">
-                        {visibleRoles.map((roleKey) => (
-                            <div key={roleKey} className="flex flex-col gap-1">
-                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-tight">{ROLE_META[roleKey]}</span>
-                                <span className="text-sm font-bold text-gray-900 truncate">
-                                    {productionAssignments[roleKey] || 'Unassigned'}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
-            <div className="p-4 bg-white">
-                <div className="space-y-4 mb-4 max-h-[520px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="p-4 pb-2 bg-white">
+                <div className="grid grid-cols-12 gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2 mb-3 px-1 pr-3">
+                    <div className="col-span-4">Surname</div>
+                    <div className="col-span-4">Item</div>
+                    <div className="col-span-1 text-center">Qty</div>
+                    <div className="col-span-3 text-right">Price</div>
+                </div>
+                <div className="space-y-4 mb-4 max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
                     {displayItems.map((item, idx) => (
-                        <div key={item.id || `${item.description}-${idx}`} className="flex justify-between items-start text-[13px]">
-                            <div className="pr-4">
-                                <div className="font-bold text-gray-800 line-clamp-1">{item.description}</div>
-                                <div className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Qty: {item.qty || 1}</div>
-                            </div>
-                            <div className="font-black text-gray-900 whitespace-nowrap">
-                                {formatCurrency(getItemTotal(item))}
-                            </div>
+                        <div key={item.id || `${item.description}-${idx}`} className="border-b border-gray-50 pb-3 last:border-0 last:pb-0 px-1">
+                            {item.isRosterItem ? (
+                                <>
+                                    <div className="grid grid-cols-12 gap-2 items-center text-[12px]">
+                                        <div className="col-span-4 font-extrabold text-blue-900 truncate">{item.surname}</div>
+                                        <div className="col-span-4 font-semibold text-gray-700 truncate" title={item.itemType}>{item.itemType}</div>
+                                        <div className="col-span-1 font-bold text-gray-500 text-center">{item.qty || 1}</div>
+                                        <div className="col-span-3 font-black text-gray-900 text-right">{formatCurrency(getItemTotal(item))}</div>
+                                    </div>
+                                    {(item.addonsText || item.pocketText) && (
+                                        <div className="mt-2.5 flex flex-wrap gap-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                                            {item.addonsText && <span className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">{item.addonsText}</span>}
+                                            {item.pocketText && <span className="bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">{item.pocketText}</span>}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="grid grid-cols-12 gap-2 items-center text-[12px]">
+                                    <div className="col-span-8 font-extrabold text-gray-800 truncate">{item.description}</div>
+                                    <div className="col-span-1 font-bold text-gray-500 text-center">{item.qty || 1}</div>
+                                    <div className="col-span-3 font-black text-gray-900 text-right">{formatCurrency(getItemTotal(item))}</div>
+                                </div>
+                            )}
                         </div>
                     ))}
                     {displayItems.length === 0 && (
@@ -147,11 +222,16 @@ export default function OrderSummary({ activeOrder, participants = [], bookingEx
                         </div>
                     )}
                 </div>
-                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-                    <span className="text-xs uppercase tracking-wider font-bold text-gray-500">Total Price</span>
-                    <span className="text-lg font-black text-gray-900">
-                        {formatCurrency(totalPrice)}
-                    </span>
+                <div className="mt-2 pt-3 border-t-2 border-dashed border-gray-100 flex justify-between items-center px-1">
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grand Total</p>
+                        <p className="text-[11px] text-gray-500 font-medium mt-1">Total amount to pay</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-2xl font-black text-blue-600 tracking-tight">
+                            {formatCurrency(totalPrice)}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

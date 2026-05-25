@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import { persistStoredAdminUser } from '../utils/adminSession'
@@ -11,6 +11,7 @@ function Login() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [rememberMe, setRememberMe] = useState(false)
     const navigate = useNavigate()
     const { refreshAdminSession } = useContext(AdminAuthContext)
@@ -102,7 +103,7 @@ function Login() {
     }
 
     return (
-        <div className="flex min-h-screen w-full font-sans bg-slate-50 overflow-hidden">
+        <div className="flex min-h-screen w-full font-inter bg-slate-50 overflow-hidden">
             <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-8 md:p-12 text-white relative overflow-hidden">
                 <div className="absolute inset-0 z-0 pointer-events-none">
                     <img
@@ -149,13 +150,13 @@ function Login() {
                 </button>
                 <div className="w-full max-w-md">
                     <div className="rounded-[2.5rem] p-8 md:p-12 relative ">
-                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
+                        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
                             <img src={image.JJS} alt="Logo" className="w-30 h-30" />
                         </div>
 
-                        <div className="text-start mt-6 mb-5 xl:mb-10">
-                            <h2 className="text-extrabold text-2xl lg:text-3xl mb-2 font-playfair">Welcome Back</h2>
-                            <p className="text-slate-400 text-sm">Enter your credentials to access the admin panel</p>
+                        <div className="text-start mt-14 mb-6 xl:mb-10">
+                            <h2 className="text-black text-2xl lg:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
+                            <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access the admin panel</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -166,7 +167,7 @@ function Login() {
                             )}
 
                             <div className="space-y-2">
-                                <label className="block text-slate-300 text-sm font-medium">Email Address</label>
+                                <label className="block text-slate-300 text-sm md:text-xs font-semibold">Email Address</label>
                                 <div className="relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
@@ -174,7 +175,7 @@ function Login() {
                                     <input
                                         type="email"
                                         placeholder="Enter your email address"
-                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-slate-900 text-base md:text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         disabled={loading}
@@ -184,20 +185,28 @@ function Login() {
 
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-slate-300 text-sm font-medium">Password</label>
+                                    <label className="text-slate-300 text-sm md:text-xs font-semibold">Password</label>
                                 </div>
                                 <div className="relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                                     </div>
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         placeholder="Enter your password"
-                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-4 text-black text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        className="w-full bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-11 text-slate-900 text-base md:text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         disabled={loading}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors"
+                                        disabled={loading}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -231,7 +240,7 @@ function Login() {
                         </form>
 
                         <div className="text-center mt-8 pt-6 border-t border-slate-800/50">
-                            <p className="text-slate-500 text-xs tracking-wider uppercase">Admin Panel</p>
+                            <p className="text-slate-500 text-xs tracking-wider uppercase">Admin Portal</p>
                         </div>
                     </div>
                 </div>

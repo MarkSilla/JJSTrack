@@ -35,13 +35,13 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
     return (
         <div
             onClick={() => onClick(order.id)}
-            className="md:hidden bg-white rounded-3xl border border-gray-100 p-5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 relative overflow-hidden group"
+            className="font-inter md:hidden bg-white rounded-3xl border border-gray-100 p-5 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 relative overflow-hidden group"
         >
             <div className="flex items-center justify-between mb-3">
                 <span className="max-w-[170px] truncate text-xs font-bold text-gray-400 tracking-wider font-mono">
                     {orderDisplayId}
                 </span>
-                <span className={`text-xs font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
+                <span className={`text-xs font-bold uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
                     {statusConf.label}
                 </span>
             </div>
@@ -56,7 +56,7 @@ const OrderCard = ({ order, onClick, getDerivedStatus, getActiveStepIndex }) => 
 
             <div className="flex items-center gap-1.5 mb-3">
                 <span className="text-xs font-semibold text-gray-400">Assigned by</span>
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{order.assignedBy || 'Admin'}</span>
+                <span className="text-xs font-bold text-blue-600 px-2 py-0.5 rounded">{order.assignedBy || 'Admin'}</span>
             </div>
 
             <div className="mb-2">

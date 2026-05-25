@@ -45,7 +45,7 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
                 <div className="text-[11px] font-medium text-gray-400 mt-0.5">{order.phone || order.contact?.phone || order.contact || 'N/A'}</div>
             </td>
             <td className="px-5 py-4">
-                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg tracking-wider ${typeConf.color}`}>
+                <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg tracking-wider ${typeConf.color}`}>
                     {order.serviceType || order.serviceTitle || '—'}
                 </span>
             </td>
@@ -60,7 +60,7 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
                         <span className="text-[10px] font-bold text-slate-400 truncate max-w-[120px]">
                             {typeof currentStep === 'string' ? currentStep : 'Processing'}
                         </span>
-                        <span className="text-[10px] font-black text-slate-900">
+                        <span className="text-[10px] font-bold text-slate-900">
                             {isFinishedStatus ? '100%' : `${Math.round(((stepIdx + 1) / (steps.length || 1)) * 100)}%`}
                         </span>
                     </div>
@@ -74,10 +74,10 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
             </td>
 
             {/* Due Date */}
-            <td className="px-5 py-4">
+            <td className="px-1 py-4">
                 <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${formattedDueDate === 'N/A'
-                    ? 'text-gray-400 bg-gray-50 border border-gray-100'
-                    : 'text-red-600 bg-red-50 border border-red-100'
+                    ? 'text-gray-400 '
+                    : 'text-red-600 '
                     }`}>
                     {formattedDueDate}
                 </span>
@@ -85,7 +85,7 @@ const OrderRow = ({ order, isSelected, onClick, getDerivedStatus, getActiveStepI
 
             {/* Status (Last) */}
             <td className="px-5 py-4">
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg tracking-wider ${statusConf.color}`}>
+                <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg tracking-wider ${statusConf.color}`}>
                     {statusConf.label}
                 </span>
             </td>

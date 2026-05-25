@@ -1,26 +1,30 @@
 import userModel from "../models/userModel.js";
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { getEmailConfig } from '../utils/emailConfig.js';
+
+const { emailFrom, transport: emailTransportConfig } = getEmailConfig();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoPath = path.resolve(__dirname, '../assets/jjstrack-logo.png');
+const logoCid = 'jjstrack-logo';
 
 // Email transporter configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  pool: true,
-  maxConnections: 1,
-});
+const transporter = nodemailer.createTransport(emailTransportConfig);
 
 // Verify email connection on startup
 transporter.verify((error, success) => {
   if (error) {
-    console.error('Email transporter error:', error.message);
+    console.error('Email transporter error:', {
+      code: error.code,
+      command: error.command,
+      responseCode: error.responseCode,
+      message: error.message,
+    });
   } else {
     console.log('Email transporter configured successfully');
   }
@@ -30,7 +34,92 @@ const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const generateSessionId = () => crypto.randomBytes(24).toString('hex');
+
 const normalizeEmail = (email) => String(email).trim().toLowerCase();
+const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(/\D/g, '').trim();
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+const isValidPhilippineMobile = (phoneNumber) => /^09\d{9}$/.test(phoneNumber);
+const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 10 * 60 * 1000);
+const ACCOUNT_DELETION_TOKEN_TTL_MS = Number(process.env.ACCOUNT_DELETION_TOKEN_TTL_MS || 15 * 60 * 1000);
+const getVerificationCodeTtlLabel = () => {
+  const minutes = Math.max(1, Math.round(VERIFICATION_CODE_TTL_MS / (60 * 1000)));
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+};
+
+const isDuplicateKeyError = (error) => error?.code === 11000 || error?.code === 11001;
+
+const getDuplicateAccountMessage = (error) => {
+  const duplicateField = Object.keys(error?.keyPattern || error?.keyValue || {})[0];
+
+  if (duplicateField === 'email') {
+    return 'Email is already registered. Please use another email or log in instead.';
+  }
+
+  if (duplicateField === 'phoneNumber') {
+    return 'Phone number is already registered. Please use another phone number.';
+  }
+
+  return 'Account details already exist. Please use different information.';
+};
+
+const sendVerificationEmailWithTimeout = async (email, code, fullName) => {
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 30000);
+  let timeoutId;
+
+  const timeout = new Promise((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`Verification email timed out for ${email}`);
+      resolve(false);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      sendVerificationEmail(email, code, fullName),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const queueVerificationEmail = (email, code, fullName) => {
+  sendVerificationEmailWithTimeout(email, code, fullName)
+    .then((emailSent) => {
+      if (!emailSent) {
+        console.error(`Verification email was not accepted by provider for ${email}`);
+      }
+    })
+    .catch((emailError) => {
+      logEmailSendError('Verification email', emailError);
+    });
+};
+
+const sendMailWithTimeout = async (mailOptions, contextLabel = 'email') => {
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 30000);
+  let timeoutId;
+  const mailTransporter = nodemailer.createTransport({
+    ...emailTransportConfig,
+    pool: false,
+  });
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${contextLabel} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      mailTransporter.sendMail(mailOptions),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+    mailTransporter.close();
+  }
+};
 
 const buildClientUser = (user, extra = {}) => ({
   id: user._id,
@@ -115,12 +204,18 @@ const buildFullAddressFromParts = ({
   return parts.join(', ');
 };
 
-// Send 6-digit verification code email
 const sendVerificationEmail = async (email, code, fullName) => {
   const mailOptions = {
-    from: `"JJS Track" <${process.env.EMAIL_USER}>`,
+    from: `"JJSTrack" <${emailFrom}>`,
     to: email,
-    subject: 'Your JJS Track Verification Code',
+    subject: 'Your JJSTrack Verification Code',
+    attachments: [
+      {
+        filename: 'jjstrack-logo.png',
+        path: logoPath,
+        cid: logoCid,
+      },
+    ],
     html: `
       <!DOCTYPE html>
       <html>
@@ -129,6 +224,7 @@ const sendVerificationEmail = async (email, code, fullName) => {
           body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
           .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
           .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; text-align: center; color: white; }
+          .logo { width: 86px; height: 86px; object-fit: contain; border-radius: 999px; background: white; padding: 8px; margin-bottom: 14px; }
           .header h1 { margin: 0; font-size: 28px; font-family: 'Playfair Display', serif; }
           .content { padding: 40px 30px; text-align: center; }
           .code-box { background: #f8fafc; border: 2px solid #3b82f6; border-radius: 8px; padding: 25px; margin: 30px 0; }
@@ -141,7 +237,8 @@ const sendVerificationEmail = async (email, code, fullName) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>JJS Track</h1>
+            <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
+            <h1>JJSTrack</h1>
             <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
           </div>
           <div class="content">
@@ -153,11 +250,11 @@ const sendVerificationEmail = async (email, code, fullName) => {
             </div>
             
             <p class="message" style="margin-bottom: 5px;">Enter this code in the app to complete your registration.</p>
-            <div class="timer">⏰ This code expires in 10 minutes</div>
+            <div class="timer">This code expires in ${getVerificationCodeTtlLabel()}</div>
           </div>
           <div class="footer">
-            <p>If you didn't create an account with JJS Track, please ignore this email.</p>
-            <p style="margin-top: 10px;">© 2026 DevMinds • JJS Track</p>
+            <p>If you didn't create an account with JJSTrack, please ignore this email.</p>
+            <p style="margin-top: 10px;">&copy; 2026 DevMinds &bull; JJSTrack</p>
           </div>
         </div>
       </body>
@@ -172,9 +269,93 @@ const sendVerificationEmail = async (email, code, fullName) => {
     return true;
   } catch (error) {
     console.error(`❌ Email sending failed for ${email}:`, error.message);
-    console.error('Full error:', error);
+    console.error('Email provider details:', {
+      code: error.code,
+      command: error.command,
+      responseCode: error.responseCode,
+    });
     return false;
   }
+};
+
+const validateUniquePhoneNumber = async (phoneNumber, currentUserId = null) => {
+  if (!phoneNumber) return null;
+
+  const query = { phoneNumber };
+
+  if (currentUserId) {
+    query._id = { $ne: currentUserId };
+  }
+
+  return userModel.findOne(query).select('_id email');
+};
+
+const getFrontendUrl = () => {
+  const configuredUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.VITE_FRONTEND_URL;
+  return String(configuredUrl || 'http://localhost:5173').trim().replace(/\/+$/, '');
+};
+
+const hashAccountDeletionToken = (token) => (
+  crypto.createHash('sha256').update(token).digest('hex')
+);
+
+const sendAccountDeletionEmail = async (user, confirmationUrl) => {
+  const displayName = user.fullName || user.firstName || user.email;
+
+  const mailOptions = {
+    from: `"JJSTrack" <${emailFrom}>`,
+    to: user.email,
+    subject: 'Confirm JJSTrack Account Removal',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; text-align: center; color: white; }
+          .header h1 { margin: 0; font-size: 28px; font-family: 'Playfair Display', serif; }
+          .content { padding: 40px 30px; text-align: center; }
+          .message { color: #64748b; line-height: 1.6; margin: 20px 0; font-size: 16px; }
+          .button { display: inline-block; background: #dc2626; color: white !important; text-decoration: none; border-radius: 10px; padding: 14px 24px; font-weight: bold; margin: 18px 0; }
+          .warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px; line-height: 1.5; margin-top: 22px; padding: 14px; }
+          .footer { background: #f8fafc; padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>JJSTrack</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
+          </div>
+          <div class="content">
+            <h2 style="color: #1e293b; margin-bottom: 10px;">Hi ${displayName},</h2>
+            <p class="message">We received a request to remove your JJSTrack account. Click the button below to confirm and permanently remove your account.</p>
+            <a class="button" href="${confirmationUrl}">Remove my account</a>
+            <div class="warning">
+              This link expires in 15 minutes. Once confirmed, your account will be removed immediately and you will be signed out of JJSTrack.
+            </div>
+            <p class="message" style="font-size: 14px;">If you did not request this, please ignore this email and your account will stay active.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; 2026 DevMinds &bull; JJSTrack</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+
+  return sendMailWithTimeout(mailOptions, 'account removal email');
+};
+
+const logEmailSendError = (label, error) => {
+  console.error(`${label} sending error:`, {
+    code: error?.code,
+    command: error?.command,
+    responseCode: error?.responseCode,
+    message: error?.message,
+  });
 };
 
 export const googleAuth = async (req, res) => {
@@ -183,6 +364,10 @@ export const googleAuth = async (req, res) => {
 
     if (!uid || !email) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
     }
 
     const normalizedEmail = normalizeEmail(email);
@@ -216,11 +401,15 @@ export const googleAuth = async (req, res) => {
         user.fullName = fullName || user.email.split('@')[0];
       }
       user.photoURL = photoURL || user.photoURL;
-      await user.save();
     }
 
+    const sessionId = generateSessionId();
+    user.activeSessionId = sessionId;
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = jwt.sign(
-      { id: user._id, firebaseUID: uid },
+      { id: user._id, firebaseUID: uid, sessionId },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '7d' }
     );
@@ -290,7 +479,7 @@ export const updateUserProfile = async (req, res) => {
     if (hasStructuredProfileUpdate) {
       const trimmedFirstName = String(firstName || '').trim();
       const trimmedLastName = String(lastName || '').trim();
-      const trimmedPhoneNumber = String(phoneNumber || '').trim();
+      const trimmedPhoneNumber = normalizePhoneNumber(phoneNumber);
       const trimmedStreet = String(street || '').trim();
       const trimmedRegionCode = String(regionCode || '').trim();
       const trimmedRegionName = String(regionName || '').trim();
@@ -306,8 +495,8 @@ export const updateUserProfile = async (req, res) => {
         return res.status(400).json({ success: false, message: 'First name and last name are required' });
       }
 
-      if (!trimmedPhoneNumber || trimmedPhoneNumber.length !== 11) {
-        return res.status(400).json({ success: false, message: 'Phone number must be exactly 11 digits' });
+      if (!isValidPhilippineMobile(trimmedPhoneNumber)) {
+        return res.status(400).json({ success: false, message: 'Phone number must be an 11-digit PH mobile number starting with 09' });
       }
 
       if (
@@ -365,9 +554,9 @@ export const updateUserProfile = async (req, res) => {
       }
 
       if (typeof phoneNumber !== 'undefined') {
-        const trimmedPhoneNumber = String(phoneNumber).trim();
-        if (!trimmedPhoneNumber) {
-          return res.status(400).json({ success: false, message: 'Phone number is required' });
+        const trimmedPhoneNumber = normalizePhoneNumber(phoneNumber);
+        if (!isValidPhilippineMobile(trimmedPhoneNumber)) {
+          return res.status(400).json({ success: false, message: 'Phone number must be an 11-digit PH mobile number starting with 09' });
         }
         updateData.phoneNumber = trimmedPhoneNumber;
       }
@@ -385,6 +574,17 @@ export const updateUserProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No profile changes provided' });
     }
 
+    if (updateData.phoneNumber) {
+      const existingPhoneUser = await validateUniquePhoneNumber(updateData.phoneNumber, req.userId);
+
+      if (existingPhoneUser) {
+        return res.status(409).json({
+          success: false,
+          message: 'Phone number is already registered. Please use another phone number.',
+        });
+      }
+    }
+
     const user = await userModel.findByIdAndUpdate(
       req.userId,
       updateData,
@@ -398,7 +598,78 @@ export const updateUserProfile = async (req, res) => {
     res.json({ success: true, user: buildClientUser(user) });
   } catch (error) {
     console.error('Update User Profile Error:', error);
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ success: false, message: getDuplicateAccountMessage(error) });
+    }
     res.status(500).json({ success: false, message: 'Error updating user' });
+  }
+};
+
+export const requestAccountRemoval = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+
+    if (!user || user.role !== 'user') {
+      return res.status(404).json({ success: false, message: 'User account not found' });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    user.accountDeletionToken = hashAccountDeletionToken(rawToken);
+    user.accountDeletionTokenExpiry = new Date(Date.now() + ACCOUNT_DELETION_TOKEN_TTL_MS);
+    await user.save();
+
+    const confirmationUrl = `${getFrontendUrl()}/account-removal/confirm?token=${rawToken}`;
+
+    sendAccountDeletionEmail(user, confirmationUrl)
+      .then((result) => {
+        console.log(`Account removal email queued for ${user.email}. Message ID: ${result?.messageId || 'n/a'}`);
+      })
+      .catch((emailError) => {
+        logEmailSendError('Account removal email', emailError);
+      });
+
+    res.json({
+      success: true,
+      message: 'Confirmation email is being sent. Please check your inbox in a few moments.',
+      expiresIn: Math.floor(ACCOUNT_DELETION_TOKEN_TTL_MS / 1000),
+    });
+  } catch (error) {
+    console.error('Request Account Removal Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send account removal email' });
+  }
+};
+
+export const confirmAccountRemoval = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Confirmation token is required' });
+    }
+
+    const hashedToken = hashAccountDeletionToken(String(token));
+    const user = await userModel.findOne({
+      accountDeletionToken: hashedToken,
+      accountDeletionTokenExpiry: { $gt: new Date() },
+      role: 'user',
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'This account removal link is invalid or has expired.',
+      });
+    }
+
+    await userModel.deleteOne({ _id: user._id });
+
+    res.json({
+      success: true,
+      message: 'Your account has been successfully removed. All associated account data is no longer accessible.',
+    });
+  } catch (error) {
+    console.error('Confirm Account Removal Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to remove account' });
   }
 };
 
@@ -429,17 +700,22 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
     }
 
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
+    }
+
     if (password.length < 8) {
       return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
     }
 
     const normalizedEmail = normalizeEmail(email);
-    let user = await userModel.findOne({ email: normalizedEmail });
+    const normalizedPhone = normalizePhoneNumber(phone);
 
-    // Generate 6-digit verification code
-    const verificationCode = generateVerificationCode();
-    const codeExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    const hashedPassword = await bcrypt.hash(String(password), 10);
+    if (!isValidPhilippineMobile(normalizedPhone)) {
+      return res.status(400).json({ success: false, message: 'Phone number must be an 11-digit PH mobile number starting with 09' });
+    }
+
+    let user = await userModel.findOne({ email: normalizedEmail });
 
     if (user?.isVerified) {
       return res.status(409).json({
@@ -450,69 +726,63 @@ export const register = async (req, res) => {
       });
     }
 
-    if (!user) {
-      // Create new user
-      user = new userModel({
-        email: normalizedEmail,
-        password: hashedPassword,
-        fullName,
-        firstName: firstName || '',
-        lastName: lastName || '',
-        phoneNumber: phone || '',
-        address: address || '',
-        street: street || '',
-        regionCode: regionCode || '',
-        regionName: regionName || '',
-        provinceCode: provinceCode || '',
-        provinceName: provinceName || '',
-        cityCode: cityCode || '',
-        cityName: cityName || '',
-        brgyCode: brgyCode || '',
-        brgyName: brgyName || '',
-        zipCode: zipCode || '',
-        isVerified: false,
-        verificationCode,
-        verificationCodeExpiry: codeExpiry,
+    const existingPhoneUser = await validateUniquePhoneNumber(normalizedPhone, user?._id);
+
+    if (existingPhoneUser) {
+      return res.status(409).json({
+        success: false,
+        message: 'Phone number is already registered. Please use another phone number.',
       });
-      await user.save();
-    } else {
-      // Refresh an existing unverified account and resend a new code.
-      user.email = normalizedEmail;
-      user.password = hashedPassword;
-      user.fullName = fullName || user.fullName;
-      user.firstName = firstName || user.firstName;
-      user.lastName = lastName || user.lastName;
-      user.phoneNumber = phone || user.phoneNumber;
-      user.address = address || user.address;
-      user.street = street || user.street;
-      user.regionCode = regionCode || user.regionCode;
-      user.regionName = regionName || user.regionName;
-      user.provinceCode = provinceCode || user.provinceCode;
-      user.provinceName = provinceName || user.provinceName;
-      user.cityCode = cityCode || user.cityCode;
-      user.cityName = cityName || user.cityName;
-      user.brgyCode = brgyCode || user.brgyCode;
-      user.brgyName = brgyName || user.brgyName;
-      user.zipCode = zipCode || user.zipCode;
-      user.verificationCode = verificationCode;
-      user.verificationCodeExpiry = codeExpiry;
-      user.isVerified = false;
-      await user.save();
     }
 
-    // Send verification code email (non-blocking, errors are logged but don't fail registration)
-    sendVerificationEmail(email, verificationCode, fullName).catch((err) => {
-      console.error('Failed to send verification email:', err.message);
-      // Email failure is not critical - user can request resend on verify page
-    });
+    // Generate 6-digit verification code
+    const verificationCode = generateVerificationCode();
+    const codeExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const profileData = {
+      email: normalizedEmail,
+      password: hashedPassword,
+      fullName: String(fullName).trim(),
+      firstName: String(firstName || '').trim(),
+      lastName: String(lastName || '').trim(),
+      phoneNumber: normalizedPhone,
+      address: String(address || '').trim(),
+      street: String(street || '').trim(),
+      regionCode: String(regionCode || '').trim(),
+      regionName: String(regionName || '').trim(),
+      provinceCode: String(provinceCode || '').trim(),
+      provinceName: String(provinceName || '').trim(),
+      cityCode: String(cityCode || '').trim(),
+      cityName: String(cityName || '').trim(),
+      brgyCode: String(brgyCode || '').trim(),
+      brgyName: String(brgyName || '').trim(),
+      zipCode: String(zipCode || '').trim(),
+      isVerified: false,
+      verificationCode,
+      verificationCodeExpiry: codeExpiry,
+    };
+
+    if (user) {
+      Object.assign(user, profileData);
+    } else {
+      user = new userModel(profileData);
+    }
+    await user.save();
+
+    queueVerificationEmail(user.email, verificationCode, user.fullName);
 
     res.status(201).json({
       success: true,
       message: 'Registration successful. Check your email for a 6-digit verification code.',
       email: user.email,
+      expiresIn: Math.floor(VERIFICATION_CODE_TTL_MS / 1000),
+      expiresAt: user.verificationCodeExpiry,
     });
   } catch (error) {
     console.error('Register Error:', error);
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ success: false, message: getDuplicateAccountMessage(error) });
+    }
     res.status(500).json({ success: false, message: 'Registration failed. Please try again.' });
   }
 };
@@ -526,7 +796,12 @@ export const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and code are required' });
     }
 
-    const user = await userModel.findOne({ email: normalizeEmail(email) });
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const user = await userModel.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -537,8 +812,8 @@ export const verifyEmail = async (req, res) => {
     }
 
     // Check if code expired
-    if (new Date() > user.verificationCodeExpiry) {
-      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new one.' });
+    if (!user.verificationCodeExpiry || new Date() > user.verificationCodeExpiry) {
+      return res.status(400).json({ success: false, message: 'Verification code expired after 60 seconds. Please request a new one.' });
     }
 
     // Check if code matches
@@ -571,7 +846,12 @@ export const resendVerificationCode = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const user = await userModel.findOne({ email: normalizeEmail(email) });
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const user = await userModel.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -581,27 +861,20 @@ export const resendVerificationCode = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
-    // Generate new code
     const verificationCode = generateVerificationCode();
-    const codeExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const codeExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MS);
 
     user.verificationCode = verificationCode;
     user.verificationCodeExpiry = codeExpiry;
     await user.save();
 
-    // Send email
-    const emailSent = await sendVerificationEmail(email, verificationCode, user.fullName);
-
-    if (!emailSent) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification code'
-      });
-    }
+    queueVerificationEmail(normalizedEmail, verificationCode, user.fullName);
 
     res.json({
       success: true,
       message: 'Verification code sent successfully',
+      expiresIn: Math.floor(VERIFICATION_CODE_TTL_MS / 1000),
+      expiresAt: user.verificationCodeExpiry,
     });
   } catch (error) {
     console.error('Resend Code Error:', error);
@@ -643,8 +916,14 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
+
+    const sessionId = generateSessionId();
+    user.activeSessionId = sessionId;
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role, sessionId },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '7d' }
     );
@@ -694,9 +973,16 @@ export const forgotPassword = async (req, res) => {
 
     // Send password reset email
     const mailOptions = {
-      from: `"JJS Track" <${process.env.EMAIL_USER}>`,
+      from: `"JJSTrack" <${emailFrom}>`,
       to: email,
-      subject: 'JJS Track Password Reset Code',
+      subject: 'JJSTrack Password Reset Code',
+      attachments: [
+        {
+          filename: 'jjstrack-logo.png',
+          path: logoPath,
+          cid: logoCid,
+        },
+      ],
       html: `
         <!DOCTYPE html>
         <html>
@@ -705,6 +991,7 @@ export const forgotPassword = async (req, res) => {
             body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
             .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; text-align: center; color: white; }
+            .logo { width: 86px; height: 86px; object-fit: contain; border-radius: 999px; background: white; padding: 8px; margin-bottom: 14px; }
             .header h1 { margin: 0; font-size: 28px; font-family: 'Playfair Display', serif; }
             .content { padding: 40px 30px; text-align: center; }
             .code-box { background: #f8fafc; border: 2px solid #ef4444; border-radius: 8px; padding: 25px; margin: 30px 0; }
@@ -717,7 +1004,8 @@ export const forgotPassword = async (req, res) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1>JJS Track</h1>
+              <img src="cid:${logoCid}" alt="JJSTrack Logo" class="logo" />
+              <h1>JJSTrack</h1>
               <p style="margin: 5px 0 0 0; opacity: 0.9;">Where Every Stitch Reflects Quality and Craftsmanship</p>
             </div>
             <div class="content">
@@ -733,7 +1021,7 @@ export const forgotPassword = async (req, res) => {
               <p class="message" style="color: #ef4444; margin-top: 20px;">If you didn't request this, you can ignore this email.</p>
             </div>
             <div class="footer">
-              <p style="margin-top: 10px;">© 2026 DevMinds • JJS Track</p>
+              <p style="margin-top: 10px;">&copy; 2026 DevMinds &bull; JJSTrack</p>
             </div>
           </div>
         </body>
@@ -838,11 +1126,17 @@ export const completeGoogleProfile = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    if (!firstName || !lastName || !phoneNumber || !address || !street || !provinceName || !cityName || !brgyName) {
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+    if (!firstName || !lastName || !normalizedPhone || !address || !street || !provinceName || !cityName || !brgyName) {
       return res.status(400).json({
         success: false,
         message: 'First name, last name, phone number, and full address details are required'
       });
+    }
+
+    if (!isValidPhilippineMobile(normalizedPhone)) {
+      return res.status(400).json({ success: false, message: 'Phone number must be an 11-digit PH mobile number starting with 09' });
     }
 
     const user = await userModel.findById(userId);
@@ -851,10 +1145,19 @@ export const completeGoogleProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const existingPhoneUser = await validateUniquePhoneNumber(normalizedPhone, userId);
+
+    if (existingPhoneUser) {
+      return res.status(409).json({
+        success: false,
+        message: 'Phone number is already registered. Please use another phone number.',
+      });
+    }
+
     user.firstName = String(firstName).trim();
     user.lastName = String(lastName).trim();
     user.fullName = `${user.firstName} ${user.lastName}`.trim();
-    user.phoneNumber = String(phoneNumber).trim();
+    user.phoneNumber = normalizedPhone;
     user.address = String(address).trim();
     user.street = String(street).trim();
     user.provinceCode = String(provinceCode || '').trim();
@@ -875,6 +1178,9 @@ export const completeGoogleProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Complete Google Profile Error:', error);
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ success: false, message: getDuplicateAccountMessage(error) });
+    }
     res.status(500).json({ success: false, message: 'Failed to complete profile' });
   }
 };
@@ -965,6 +1271,8 @@ export const adminLogin = async (req, res) => {
       });
     }
 
+    const sessionId = generateSessionId();
+    adminAccount.activeSessionId = sessionId;
     adminAccount.lastLoginAt = new Date();
     await adminAccount.save();
 
@@ -972,7 +1280,8 @@ export const adminLogin = async (req, res) => {
       {
         id: adminAccount._id,
         email: adminAccount.email,
-        role: adminAccount.role
+        role: adminAccount.role,
+        sessionId
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '24h' }
@@ -1053,6 +1362,8 @@ export const staffLogin = async (req, res) => {
       });
     }
 
+    const sessionId = generateSessionId();
+    staffAccount.activeSessionId = sessionId;
     staffAccount.lastLoginAt = new Date();
     await staffAccount.save();
 
@@ -1060,7 +1371,8 @@ export const staffLogin = async (req, res) => {
       {
         id: staffAccount._id,
         email: staffAccount.email,
-        role: 'staff'
+        role: 'staff',
+        sessionId
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '24h' }

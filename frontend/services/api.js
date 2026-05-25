@@ -51,16 +51,23 @@ api.interceptors.response.use(
     console.error('❌ API Error:', status, url, error.response?.data);
 
     if (status === 401) {
+      const errorCode = error.response?.data?.code;
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("loginTimestamp");
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("user");
+      sessionStorage.removeItem("loginTimestamp");
 
       window.dispatchEvent(
         new CustomEvent("auth-error", {
           detail: { status, url, error: error.response?.data },
         })
       );
+
+      if (errorCode === "SESSION_REPLACED" && window.location.pathname !== "/login") {
+        window.location.replace("/login?session_replaced=1");
+      }
     }
 
     if (!error.response) {

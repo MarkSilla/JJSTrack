@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, CircleDashed, PackageCheck, ChevronDown, Settings,
+    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, CircleDashed, PackageCheck, ChevronDown, Settings, PhilippinePeso,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -33,6 +33,7 @@ const navItems = [
     { icon: QrCode, label: 'QR Scanner', description: 'Release and pickup scanning', path: '/admin/qr-scanner' },
     { type: 'section', label: 'Management' },
     { icon: Users, label: 'Staff', description: 'Employee profiles and access', path: '/admin/staff' },
+    { icon: PhilippinePeso, label: 'Services Pricing', description: 'Update service rates', path: '/admin/services-pricing' },
     { type: 'section', label: 'Insights' },
     { icon: BarChart3, label: 'Report', description: 'Analytics and business performance', path: '/admin/report' },
 ]

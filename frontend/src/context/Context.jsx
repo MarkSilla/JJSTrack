@@ -1,15 +1,16 @@
-import React, { createContext, useCallback, useEffect, useState } from 'react'
-import { signOut } from 'firebase/auth'
-import { auth } from '../../config/firebase.js'
-import { userApi } from '../../services/userApi.js'
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react'
 
 export const AuthContext = createContext()
+
+const SESSION_TIMEOUT_MS = 20 * 60 * 1000
 
 const clearStoredAuth = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  localStorage.removeItem('loginTimestamp')
   sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
+  sessionStorage.removeItem('loginTimestamp')
 }
 
 const persistAuth = (userData, token, remember = true) => {
@@ -18,12 +19,37 @@ const persistAuth = (userData, token, remember = true) => {
   clearStoredAuth()
   storage.setItem('token', token)
   storage.setItem('user', JSON.stringify(userData))
+  storage.setItem('loginTimestamp', Date.now().toString())
+}
+
+const getLoginTimestamp = () => {
+  const ts = localStorage.getItem('loginTimestamp') || sessionStorage.getItem('loginTimestamp')
+  return ts ? parseInt(ts, 10) : null
+}
+
+const touchLoginTimestamp = () => {
+  const now = Date.now().toString()
+
+  if (localStorage.getItem('token')) {
+    localStorage.setItem('loginTimestamp', now)
+  }
+
+  if (sessionStorage.getItem('token')) {
+    sessionStorage.setItem('loginTimestamp', now)
+  }
+}
+
+const isSessionExpired = () => {
+  const ts = getLoginTimestamp()
+  if (!ts) return true
+  return Date.now() - ts > SESSION_TIMEOUT_MS
 }
 
 const Context = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const expiryIntervalRef = useRef(null)
 
   const syncAuthFromStorage = useCallback(() => {
     const savedToken = localStorage.getItem('token') || sessionStorage.getItem('token')
@@ -43,6 +69,46 @@ const Context = ({ children }) => {
     } else {
       setIsAuthenticated(false)
       setUser(null)
+    }
+  }, [])
+
+  const handleSessionExpiry = useCallback(async () => {
+    clearStoredAuth()
+    setIsAuthenticated(false)
+    setUser(null)
+
+    try {
+      const { userApi } = await import('../../services/userApi.js')
+      await userApi.logout()
+    } catch (_) { }
+
+    try {
+      const [{ signOut }, { auth }] = await Promise.all([
+        import('firebase/auth'),
+        import('../../config/firebase.js'),
+      ])
+      await signOut(auth)
+    } catch (_) { }
+
+    window.location.replace('/login?expired=1')
+  }, [])
+
+  const startExpiryTimer = useCallback(() => {
+    if (expiryIntervalRef.current) clearInterval(expiryIntervalRef.current)
+
+    expiryIntervalRef.current = setInterval(() => {
+      if (isSessionExpired()) {
+        clearInterval(expiryIntervalRef.current)
+        expiryIntervalRef.current = null
+        handleSessionExpiry()
+      }
+    }, 20 * 1000) //time
+  }, [handleSessionExpiry])
+
+  const stopExpiryTimer = useCallback(() => {
+    if (expiryIntervalRef.current) {
+      clearInterval(expiryIntervalRef.current)
+      expiryIntervalRef.current = null
     }
   }, [])
 
@@ -75,6 +141,54 @@ const Context = ({ children }) => {
     }
   }, [syncAuthFromStorage])
 
+  useEffect(() => {
+    let lastTouchedAt = 0
+
+    const handleActivity = () => {
+      const hasToken = localStorage.getItem('token') || sessionStorage.getItem('token')
+      if (!hasToken) return
+
+      const now = Date.now()
+      if (now - lastTouchedAt < 30 * 1000) return
+
+      lastTouchedAt = now
+      touchLoginTimestamp()
+    }
+
+    window.addEventListener('click', handleActivity)
+    window.addEventListener('keydown', handleActivity)
+    window.addEventListener('mousemove', handleActivity)
+    window.addEventListener('touchstart', handleActivity)
+
+    return () => {
+      window.removeEventListener('click', handleActivity)
+      window.removeEventListener('keydown', handleActivity)
+      window.removeEventListener('mousemove', handleActivity)
+      window.removeEventListener('touchstart', handleActivity)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined
+
+    let isCancelled = false
+    const intervalId = setInterval(async () => {
+      try {
+        const { userApi } = await import('../../services/userApi.js')
+        if (!isCancelled) {
+          await userApi.getUserProfile()
+        }
+      } catch (_) {
+        syncAuthFromStorage()
+      }
+    }, 30 * 1000)
+
+    return () => {
+      isCancelled = true
+      clearInterval(intervalId)
+    }
+  }, [isAuthenticated, syncAuthFromStorage])
+
   const login = (userData, token, remember = true) => {
     const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token')
 
@@ -82,6 +196,7 @@ const Context = ({ children }) => {
       clearStoredAuth()
       setIsAuthenticated(false)
       setUser(null)
+      stopExpiryTimer()
       window.dispatchEvent(new CustomEvent('auth-state-changed'))
       return
     }
@@ -89,17 +204,25 @@ const Context = ({ children }) => {
     persistAuth(userData, authToken, remember)
     setIsAuthenticated(true)
     setUser(userData)
+    startExpiryTimer()
     window.dispatchEvent(new CustomEvent('auth-state-changed'))
   }
 
   const logout = async () => {
+    stopExpiryTimer()
+
     try {
+      const { userApi } = await import('../../services/userApi.js')
       await userApi.logout()
     } catch (error) {
       console.error('Logout error:', error)
     }
 
     try {
+      const [{ signOut }, { auth }] = await Promise.all([
+        import('firebase/auth'),
+        import('../../config/firebase.js'),
+      ])
       await signOut(auth)
     } catch (error) {
       console.error('Firebase sign out error:', error)
@@ -108,8 +231,20 @@ const Context = ({ children }) => {
     clearStoredAuth()
     setIsAuthenticated(false)
     setUser(null)
-    window.dispatchEvent(new CustomEvent('auth-state-changed'))
+    window.location.replace('/login?logged_out=1')
   }
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token') || sessionStorage.getItem('token')
+    if (savedToken) {
+      if (isSessionExpired()) {
+        handleSessionExpiry()
+      } else {
+        startExpiryTimer()
+      }
+    }
+    return () => stopExpiryTimer()
+  }, [])
 
   const value = {
     isAuthenticated,

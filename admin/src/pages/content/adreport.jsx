@@ -441,65 +441,7 @@ export default function AdAnalytics() {
   }
 
   return (
-    <div className="font-inter">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-black text-slate-900">Financial Reports</h1>
-          <p className="text-xs text-slate-500">Compact live analytics from backend bookings and appointments.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={timeRange}
-            onChange={(event) => setTimeRange(event.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
-          >
-            {TIME_RANGES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => fetchReportData(false)}
-            disabled={refreshing}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            Refresh
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
-            >
-              <Download size={13} />
-              Export PDF
-            </button>
-            {showExportMenu && (
-              <div
-                className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
-                style={{ top: "100%" }}
-              >
-                <button
-                  onClick={handleExport}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  <FileText size={14} className="text-slate-500" />
-                  Export Table
-                </button>
-                <div className="mx-3 border-t border-slate-100" />
-                <button
-                  onClick={handleExportChart}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  <BarChart4Icon size={14} className="text-slate-500" />
-                  Export Chart
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="font-inter p-3">
 
       {error && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
@@ -510,82 +452,138 @@ export default function AdAnalytics() {
 
       <div className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
         <div
-          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#3B82F6" }} />
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EFF6FF" }}>
-                <Banknote size={16} color="#3B82F6" strokeWidth={2.2} />
+          <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#3B82F6" }} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EFF6FF" }}>
+                <Banknote size={13} color="#3B82F6" strokeWidth={2.5} className="sm:hidden" />
+                <Banknote size={16} color="#3B82F6" strokeWidth={2.2} className="hidden sm:block" />
               </div>
-              <span className="text-[12px] font-semibold text-gray-500">Total Revenue</span>
+              <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">Total Revenue</span>
             </div>
           </div>
-          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+          <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
             {fmtCurrency(totals.paidAmount)}
           </div>
-          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Paid bookings only</div>
+          <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">Paid bookings only</div>
         </div>
 
         <div
-          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#F59E0B" }} />
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#FFFBEB" }}>
-                <Clock3 size={16} color="#F59E0B" strokeWidth={2.2} />
+          <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#F59E0B" }} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#FFFBEB" }}>
+                <Clock3 size={13} color="#F59E0B" strokeWidth={2.5} className="sm:hidden" />
+                <Clock3 size={16} color="#F59E0B" strokeWidth={2.2} className="hidden sm:block" />
               </div>
-              <span className="text-[12px] font-semibold text-gray-500">Outstanding</span>
+              <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">Outstanding</span>
             </div>
           </div>
-          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+          <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
             {fmtCurrency(totals.pendingAmount + totals.overdueAmount)}
           </div>
-          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Pending + overdue bookings</div>
+          <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">Pending + overdue</div>
         </div>
 
         <div
-          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#10B981" }} />
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#ECFDF5" }}>
-                <Receipt size={16} color="#10B981" strokeWidth={2.2} />
+          <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#10B981" }} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#ECFDF5" }}>
+                <Receipt size={13} color="#10B981" strokeWidth={2.5} className="sm:hidden" />
+                <Receipt size={16} color="#10B981" strokeWidth={2.2} className="hidden sm:block" />
               </div>
-              <span className="text-[12px] font-semibold text-gray-500">Paid Bookings</span>
+              <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">Paid Bookings</span>
             </div>
           </div>
-          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+          <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
             {totals.paidInvoiceCount}
           </div>
-          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Successfully collected</div>
+          <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">Successfully collected</div>
         </div>
 
         <div
-          className="bg-white rounded-2xl py-3 px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
+          className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
         >
-          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#6366F1" }} />
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EEF2FF" }}>
-                <PackageCheck size={16} color="#6366F1" strokeWidth={2.2} />
+          <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: "#6366F1" }} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: "#EEF2FF" }}>
+                <PackageCheck size={13} color="#6366F1" strokeWidth={2.5} className="sm:hidden" />
+                <PackageCheck size={16} color="#6366F1" strokeWidth={2.2} className="hidden sm:block" />
               </div>
-              <span className="text-[12px] font-semibold text-gray-500">Total Bookings</span>
+              <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">Total Bookings</span>
             </div>
           </div>
-          <div className="mt-[-14px] text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-[45px]">
+          <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
             {totals.totalOrderCount}
           </div>
-          <div className="text-[10px] text-gray-400 mt-0.5 pl-[45px]">Across booking services</div>
+          <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">Across all services</div>
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        <select
+          value={timeRange}
+          onChange={(event) => setTimeRange(event.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+        >
+          {TIME_RANGES.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={() => fetchReportData(false)}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+          Refresh
+        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            <Download size={13} />
+            Export PDF
+          </button>
+          {showExportMenu && (
+            <div
+              className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+              style={{ top: "100%" }}
+            >
+              <button
+                onClick={handleExport}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <FileText size={14} className="text-slate-500" />
+                Export Table
+              </button>
+              <div className="mx-3 border-t border-slate-100" />
+              <button
+                onClick={handleExportChart}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <BarChart4Icon size={14} className="text-slate-500" />
+                Export Chart
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
       <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
         <div className="rounded-xl border border-slate-200 bg-white p-3 lg:col-span-8">
           <div className="mb-2 flex items-center justify-between">

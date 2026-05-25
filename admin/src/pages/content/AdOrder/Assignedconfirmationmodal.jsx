@@ -5,9 +5,7 @@ import { EMPLOYEE_POOL } from './Constants.js';
 export default function AssignConfirmationModal({ assignConfirm, staffList = [], onConfirm, onCancel }) {
     if (!assignConfirm.show) return null;
 
-    // empId is now the fullName directly from dropdown
     const empName = assignConfirm.empId;
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">

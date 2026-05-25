@@ -18,8 +18,12 @@ export const fmtDate = (value) => {
 export const getBookingDisplayId = (record = {}) =>
     String(record?.bookingId || record?.orderId || record?.displayId || record?.id || record?._id || 'N/A');
 
-export const getRepairDisplayLabel = (record = {}) =>
-    record?.selectedOptions?.[0]?.name || record?.repairDescription || record?.service || record?.item || 'Repair';
+export const getRepairDisplayLabel = (record = {}) => {
+    if (Array.isArray(record?.selectedOptions) && record.selectedOptions.length > 0) {
+        return record.selectedOptions.map(opt => opt.name).join(', ');
+    }
+    return record?.repairDescription || record?.service || record?.item || 'Repair';
+};
 
 const inferTypeKey = (record = {}) => {
     const haystack = [
@@ -195,6 +199,7 @@ const buildRecord = (record = {}, entityType = 'booking') => {
         sourceStatus,
         isArchived: Boolean(record?.isArchived),
         archivedBy: record?.archivedBy || '',
+        releasedBy: record?.releasedBy || 'N/A',
         dropDateRaw,
         dropDate: fmtDate(dropDateRaw),
         releaseDateRaw,
@@ -203,6 +208,7 @@ const buildRecord = (record = {}, entityType = 'booking') => {
         archiveDate: fmtDate(archiveDateRaw),
         steps: Array.isArray(record?.steps) ? record.steps : [],
         teamRoster: record?.teamRoster || record?.players || record?.members || [],
+        items: Array.isArray(record?.items) ? record.items : (Array.isArray(record?.invoice?.items) ? record.invoice.items : []),
         imageUrls: getImageUrls(record),
         searchText: [
             displayId,

@@ -29,9 +29,38 @@ const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Conf
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
 
+const emptyAddressFields = {
+    address: '',
+    street: '',
+    regionCode: '',
+    regionName: '',
+    provinceCode: '',
+    provinceName: '',
+    cityCode: '',
+    cityName: '',
+    brgyCode: '',
+    brgyName: '',
+}
+
+const emptyRepairDetails = () => ({
+    name: '',
+    email: '',
+    phone: '',
+    city: '',
+    ...emptyAddressFields,
+})
+
+const emptyContactDetails = () => ({
+    fullName: '',
+    phone: '',
+    email: '',
+    facebook: '',
+    ...emptyAddressFields,
+})
+
 // Stepper
-const Stepper = ({ currentStep, labels }) => (
-    <nav className="w-full max-w-2xl mx-auto" aria-label="Progress">
+const Stepper = ({ currentStep, labels, expanded = false }) => (
+    <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
         <ol className="hidden sm:flex items-center">
             {labels.map((label, i) => {
                 const num = i + 1
@@ -109,13 +138,14 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [nextError, setNextError] = useState('')
+    const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
     const [quantities, setQuantities] = useState({})
     const [repairDescription, setRepairDescription] = useState('')
     const [photos, setPhotos] = useState([])
-    const [details, setDetails] = useState({ name: '', email: '', phone: '', address: '', city: '' })
+    const [details, setDetails] = useState(() => emptyRepairDetails())
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
 
@@ -124,14 +154,14 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [players, setPlayers] = useState([])
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
-    const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    const [contact, setContact] = useState(() => emptyContactDetails())
 
     // Org state
     const [orgName, setOrgName] = useState('')
     const [members, setMembers] = useState([])
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
-    const [orgContact, setOrgContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+    const [orgContact, setOrgContact] = useState(() => emptyContactDetails())
 
     // Initialize contact data from user on component mount
     useEffect(() => {
@@ -146,7 +176,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                         email: user.email || '',
                         phone: user.phoneNumber || '',
                         address: user.address || '',
-                        city: ''
+                        street: user.street || '',
+                        regionCode: user.regionCode || '',
+                        regionName: user.regionName || '',
+                        provinceCode: user.provinceCode || '',
+                        provinceName: user.provinceName || '',
+                        cityCode: user.cityCode || '',
+                        cityName: user.cityName || '',
+                        brgyCode: user.brgyCode || '',
+                        brgyName: user.brgyName || '',
+                        city: user.cityName || '',
                     })
                 }
                 // Auto-fill team contact
@@ -156,7 +195,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                         phone: user.phoneNumber || '',
                         email: user.email || '',
                         facebook: '',
-                        address: user.address || ''
+                        address: user.address || '',
+                        street: user.street || '',
+                        regionCode: user.regionCode || '',
+                        regionName: user.regionName || '',
+                        provinceCode: user.provinceCode || '',
+                        provinceName: user.provinceName || '',
+                        cityCode: user.cityCode || '',
+                        cityName: user.cityName || '',
+                        brgyCode: user.brgyCode || '',
+                        brgyName: user.brgyName || '',
                     })
                 }
                 // Auto-fill org contact
@@ -166,7 +214,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                         phone: user.phoneNumber || '',
                         email: user.email || '',
                         facebook: '',
-                        address: user.address || ''
+                        address: user.address || '',
+                        street: user.street || '',
+                        regionCode: user.regionCode || '',
+                        regionName: user.regionName || '',
+                        provinceCode: user.provinceCode || '',
+                        provinceName: user.provinceName || '',
+                        cityCode: user.cityCode || '',
+                        cityName: user.cityName || '',
+                        brgyCode: user.brgyCode || '',
+                        brgyName: user.brgyName || '',
                     })
                 }
             } catch (err) {
@@ -181,13 +238,14 @@ const BookingModal = ({ isOpen, onClose }) => {
         setService('')
         setLoading(false)
         setError('')
+        setSizeGuideOpen(false)
 
         // Reset repair state
         setSelectedOptions([])
         setQuantities({})
         setRepairDescription('')
         setPhotos([])
-        setDetails({ name: '', email: '', phone: '', address: '', city: '' })
+        setDetails(emptyRepairDetails())
         setSelectedDate(null)
         setSelectedSlot('')
 
@@ -196,14 +254,14 @@ const BookingModal = ({ isOpen, onClose }) => {
         setPlayers([])
         setDesignFile(null)
         setDriveLink('')
-        setContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+        setContact(emptyContactDetails())
 
         // Reset org state
         setOrgName('')
         setMembers([])
         setOrgDesignFile(null)
         setOrgDriveLink('')
-        setOrgContact({ fullName: '', phone: '', email: '', facebook: '', address: '' })
+        setOrgContact(emptyContactDetails())
     }
 
     // Handle modal close
@@ -218,13 +276,15 @@ const BookingModal = ({ isOpen, onClose }) => {
     const isOrg = service === 'organizational'
     const labels = isJersey ? TEAM_LABELS : isOrg ? ORG_LABELS : REPAIR_LABELS
     const totalSteps = labels.length
+    const isRosterEntryStep = (isJersey || isOrg) && step === 2
+    const isExpandedEntryStep = isRosterEntryStep && sizeGuideOpen
 
     const toggleOption = (id) => setSelectedOptions((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
 
     const isRepairDetailsComplete = () => {
-        return [details.name, details.email, details.phone, details.address, details.city].every((field) => field && field.trim().length > 0)
+        return [details.name, details.email, details.phone, details.address].every((field) => field && field.trim().length > 0)
     }
 
     const canNext = () => {
@@ -241,14 +301,14 @@ const BookingModal = ({ isOpen, onClose }) => {
         if (isJersey) {
             if (step === 2) return players.length > 0
             if (step === 3) return true 
-            if (step === 4) return [contact.fullName, contact.phone, contact.email].every((field) => field && field.trim().length > 0)
+            if (step === 4) return [contact.fullName, contact.phone, contact.email, contact.address].every((field) => field && field.trim().length > 0)
             return true
         }
 
         if (isOrg) {
             if (step === 2) return members.length > 0
             if (step === 3) return true 
-            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email].every((field) => field && field.trim().length > 0)
+            if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email, orgContact.address].every((field) => field && field.trim().length > 0)
             return true
         }
 
@@ -273,6 +333,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const handleNext = () => {
         if (canNext()) {
             setNextError('')
+            setSizeGuideOpen(false)
             setStep((s) => s + 1)
             return
         }
@@ -319,7 +380,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                     email: details.email,
                     phone: details.phone,
                     address: details.address,
-                    city: details.city,
+                    street: details.street,
+                    regionCode: details.regionCode,
+                    regionName: details.regionName,
+                    provinceCode: details.provinceCode,
+                    provinceName: details.provinceName,
+                    cityCode: details.cityCode,
+                    cityName: details.cityName,
+                    brgyCode: details.brgyCode,
+                    brgyName: details.brgyName,
+                    city: details.cityName || details.city,
                 }
             } else if (isOrg) {
                 contactToUse = orgContact
@@ -451,7 +521,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isJersey) {
             switch (step) {
-                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} />
+                case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
                 case 4: return <TeamStepContact contact={contact} setContact={setContact} />
                 case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} />
@@ -461,7 +531,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isOrg) {
             switch (step) {
-                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} />
+                case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
                 case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} />
                 case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} />
@@ -478,7 +548,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-2 sm:p-4">
-            <div className="relative w-full max-w-2xl max-h-[96vh] flex flex-col">
+            <div className={`relative w-full ${isExpandedEntryStep ? 'max-w-6xl' : 'max-w-2xl'} max-h-[96vh] flex flex-col transition-all duration-300`}>
                 <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
                     <button
                         onClick={handleClose}
@@ -497,7 +567,7 @@ const BookingModal = ({ isOpen, onClose }) => {
 
                     {/* Stepper */}
                     <div className="px-4 pb-1 shrink-0">
-                        <Stepper currentStep={step} labels={labels} />
+                        <Stepper currentStep={step} labels={labels} expanded={isExpandedEntryStep} />
                     </div>
 
                     {/* Main scrollable content area */}

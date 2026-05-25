@@ -1,30 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js'
 
 const VerifyEmailPage = () => {
-  const [code, setCode] = useState('');
+  const [codeDigits, setCodeDigits] = useState(Array(6).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const codeInputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const code = codeDigits.join('');
 
   const email = location.state?.email;
+  const [codeExpiresIn, setCodeExpiresIn] = useState(() => {
+    const expiresAt = location.state?.expiresAt ? new Date(location.state.expiresAt).getTime() : null;
+    if (expiresAt) return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    return Number(location.state?.expiresIn || 60);
+  });
 
-  // Cooldown timer for resend button
+  // Code expiry timer. After 60s, user must request a fresh code.
   useEffect(() => {
     let interval;
-    if (resendCooldown > 0) {
+    if (codeExpiresIn > 0) {
       interval = setInterval(() => {
-        setResendCooldown((prev) => prev - 1);
+        setCodeExpiresIn((prev) => Math.max(0, prev - 1));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [resendCooldown]);
+  }, [codeExpiresIn]);
 
   // Redirect if no email provided
   useEffect(() => {
@@ -33,10 +39,45 @@ const VerifyEmailPage = () => {
     }
   }, [email, navigate]);
 
-  const handleCodeChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setCode(value);
+  const handleCodeChange = (index, value) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    setCodeDigits((prev) => {
+      const nextDigits = [...prev];
+      nextDigits[index] = digit;
+      return nextDigits;
+    });
     setError('');
+
+    if (digit && index < 5) {
+      codeInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleCodeKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !codeDigits[index] && index > 0) {
+      codeInputRefs.current[index - 1]?.focus();
+    }
+
+    if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      codeInputRefs.current[index - 1]?.focus();
+    }
+
+    if (e.key === 'ArrowRight' && index < 5) {
+      e.preventDefault();
+      codeInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleCodePaste = (e) => {
+    e.preventDefault();
+    const pastedCode = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pastedCode) return;
+
+    setCodeDigits(Array.from({ length: 6 }, (_, index) => pastedCode[index] || ''));
+    setError('');
+    const nextFocusIndex = Math.min(pastedCode.length, 5);
+    codeInputRefs.current[nextFocusIndex]?.focus();
   };
 
   const handleVerify = async (e) => {
@@ -44,6 +85,11 @@ const VerifyEmailPage = () => {
 
     if (!code || code.length !== 6) {
       setError('Please enter the 6-digit code');
+      return;
+    }
+
+    if (codeExpiresIn <= 0) {
+      setError('Verification code expired after 60 seconds. Please request a new one.');
       return;
     }
 
@@ -76,7 +122,9 @@ const VerifyEmailPage = () => {
 
       if (response.success) {
         setSuccess('Verification code sent! Check your email.');
-        setResendCooldown(60);
+        setCodeDigits(Array(6).fill(''));
+        codeInputRefs.current[0]?.focus();
+        setCodeExpiresIn(Number(response.expiresIn || 60));
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.message || 'Failed to resend code');
@@ -181,21 +229,34 @@ const VerifyEmailPage = () => {
           <form onSubmit={handleVerify}>
             <div className="mb-6">
               <label className="block text-xs md:text-md font-medium text-gray-600 mb-2">Verification Code</label>
-              <input
-                type="text"
-                value={code}
-                onChange={handleCodeChange}
-                placeholder="000000"
-                disabled={loading}
-                maxLength="6"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-3xl font-mono font-bold text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition"
-              />
-              <p className="text-xs text-gray-500 mt-2">Enter the 6-digit code from your email</p>
+              <div className="grid grid-cols-6 gap-2 sm:gap-3" onPaste={handleCodePaste}>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <input
+                    key={index}
+                    ref={(element) => { codeInputRefs.current[index] = element }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                    value={codeDigits[index]}
+                    onChange={(e) => handleCodeChange(index, e.target.value)}
+                    onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                    disabled={loading || codeExpiresIn <= 0}
+                    maxLength={1}
+                    aria-label={`Verification code digit ${index + 1}`}
+                    className="aspect-square w-full rounded-xl border-2 border-gray-300 bg-white text-center text-2xl font-bold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-slate-400 sm:text-3xl"
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {codeExpiresIn > 0
+                  ? `Enter the 6-digit code from your email. Expires in ${codeExpiresIn}s.`
+                  : 'Code expired. Please resend a new code.'}
+              </p>
             </div>
 
             <button
               type="submit"
-              disabled={loading || code.length !== 6}
+              disabled={loading || code.length !== 6 || codeExpiresIn <= 0}
               className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-slate-800/25 hover:from-blue-500 hover:to-blue-400 hover:shadow-xl hover:shadow-slate-800/30 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
               {loading ? 'Verifying...' : 'Verify Email'} →
@@ -206,11 +267,11 @@ const VerifyEmailPage = () => {
             <p className="text-center text-sm text-gray-600 mb-4">Didn't receive the code?</p>
             <button
               onClick={handleResend}
-              disabled={resendLoading || resendCooldown > 0}
+              disabled={resendLoading || codeExpiresIn > 0}
               className="w-full py-2.5 bg-white border-[1.5px] border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {resendCooldown > 0
-                ? `Resend in ${resendCooldown}s`
+              {codeExpiresIn > 0
+                ? `Resend in ${codeExpiresIn}s`
                 : resendLoading
                   ? 'Sending...'
                   : 'Resend Code'}

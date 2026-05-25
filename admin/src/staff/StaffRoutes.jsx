@@ -12,6 +12,7 @@ import ArchivesPage from './pages/ArchivesPage'
 import StaffInventoryPage from './pages/inventory/StaffInventoryPage'
 import StaffInventoryHistoryPage from './pages/inventory/StaffInventoryHistoryPage'
 import StaffProfilePage from './pages/StaffProfilePage'
+import QRScanner from '../pages/content/qrscanner'
 
 function StaffAppShell() {
     return (
@@ -37,6 +38,7 @@ function StaffRoutes() {
                     <Route path="inventory" element={<StaffInventoryPage />} />
                     <Route path="inventory/history" element={<StaffInventoryHistoryPage />} />
                     <Route path="profile" element={<StaffProfilePage />} />
+                    <Route path="qr-scanner" element={<QRScanner />} />
                 </Route>
                 <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>

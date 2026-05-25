@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { getRequestActor } from '../utils/requestActor.js';
+import userModel from '../models/userModel.js';
 
-export const authMiddleware = (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
     console.log('AuthMiddleware: Checking authorization...');
     const token = req.headers.authorization?.split(' ')[1]; 
@@ -15,6 +16,24 @@ export const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
     req.userId = decoded.id;
     req.userRole = decoded.role;
+    req.sessionId = decoded.sessionId;
+
+    if (decoded.id !== 'admin') {
+      const user = await userModel.findById(decoded.id).select('activeSessionId role');
+
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'Account no longer exists' });
+      }
+
+      if (user.activeSessionId && user.activeSessionId !== decoded.sessionId) {
+        return res.status(401).json({
+          success: false,
+          code: 'SESSION_REPLACED',
+          message: 'This account was signed in on another device. Please sign in again.',
+        });
+      }
+    }
+
     console.log('Auth Success: userId =', req.userId, '| Calling next()...');
     
     if (typeof next !== 'function') {

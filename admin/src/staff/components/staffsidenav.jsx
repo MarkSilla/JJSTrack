@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown,
+    LayoutDashboard, ShoppingBag, Package, ChevronLeft, ChevronRight, ChevronDown, ScanQrCode
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -28,6 +28,8 @@ const navItems = [
             { label: 'Usage History', path: '/staff/inventory/history' },
         ],
     },
+    { type: 'section', label: 'Tools' },
+    { icon: ScanQrCode, label: 'Scanner', description: 'Scan QR for release', path: '/staff/qr-scanner' },
 ]
 
 const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {

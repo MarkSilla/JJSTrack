@@ -1,13 +1,16 @@
+/* ═══════════════════════════════════════════════
+   Calendar — Premium Clean Design
+   ═══════════════════════════════════════════════ */
+
 .calendar-wrapper {
     background: #ffffff;
     border-radius: 1.25rem;
     padding: 1.25rem;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.04),
-        0 8px 32px rgba(0, 0, 0, 0.03);
+    border: none;
     overflow: hidden;
 }
+
+/* ── Base FullCalendar Reset ── */
 .calendar-wrapper .fc {
     --fc-border-color: transparent;
     --fc-today-bg-color: transparent;
@@ -20,49 +23,46 @@
     border: none !important;
 }
 
-.calendar-wrapper .fc th {
+.calendar-wrapper .fc th,
+.calendar-wrapper .fc td {
     border: none !important;
 }
 
-.calendar-wrapper .fc td {
-    border: 1px solid #f1f5f9 !important;
-}
+/* ── Toolbar (Month title + nav) ── */
 .calendar-wrapper .fc .fc-toolbar {
-    margin-bottom: 1.25rem;
-    padding: 0.5rem 0.25rem;
+    margin-bottom: 1rem;
+    padding: 0.25rem 0;
     display: flex;
     align-items: center;
 }
 
 .calendar-wrapper .fc .fc-toolbar-title {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: #0f172a;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
 }
 
+/* ── Nav Buttons ── */
 .calendar-wrapper .fc .fc-button {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    border: none;
     color: #475569;
     box-shadow: none !important;
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    border-radius: 10px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 5px 9px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    transition: all 0.15s ease;
 }
 
 .calendar-wrapper .fc .fc-button:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+    background: #e2e8f0;
     color: #0f172a;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
 .calendar-wrapper .fc .fc-button:active {
-    background: #e2e8f0;
-    transform: translateY(0);
+    background: #cbd5e1;
+    transform: scale(0.96);
     box-shadow: none !important;
 }
 
@@ -71,52 +71,30 @@
 }
 
 .calendar-wrapper .fc .fc-button-group {
-    gap: 4px;
+    gap: 3px;
 }
 
 .calendar-wrapper .fc .fc-button-group .fc-button {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
 }
+
+/* ── Day-of-Week Headers ── */
 .calendar-wrapper .fc .fc-col-header-cell {
-    padding: 6px 0 10px;
+    padding: 4px 0 8px;
 }
 
 .calendar-wrapper .fc .fc-col-header-cell-cushion {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 700;
     color: #94a3b8;
     text-transform: uppercase;
     text-decoration: none;
-    letter-spacing: 0.1em;
-}
-.day-cell-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 100%;
-    position: relative;
+    letter-spacing: 0.08em;
 }
 
-.day-cell-spacer {
-    display: none;
-}
-
-.pickup-badge {
-    font-size: 9px;
-    font-weight: 700;
-    color: #3b82f6;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    padding: 1px 6px;
-    border-radius: 6px;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-}
+/* ── Day Cell ── */
 .calendar-wrapper .fc .fc-daygrid-day {
-    padding: 3px;
+    padding: 2px;
 }
 
 .calendar-wrapper .fc .fc-daygrid-day-frame {
@@ -124,19 +102,20 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    min-height: 76px;
+    min-height: 68px;
     border-radius: 12px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 6px 4px;
+    transition: all 0.15s ease;
+    padding: 4px 3px;
     position: relative;
 }
 
 .calendar-wrapper .fc .fc-daygrid-day-frame:hover {
     background: #f8fafc;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
+/* ── Day Number ── */
 .calendar-wrapper .fc .fc-daygrid-day-top {
     display: flex;
     justify-content: center;
@@ -144,17 +123,17 @@
 }
 
 .calendar-wrapper .fc .fc-daygrid-day-number {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: #334155;
     text-decoration: none;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 9px;
+    transition: all 0.15s ease;
 }
 
 .calendar-wrapper .fc .fc-daygrid-day-number:hover {
@@ -162,6 +141,7 @@
     color: #1d4ed8;
 }
 
+/* ── Other Month Days ── */
 .calendar-wrapper .fc .fc-day-other .fc-daygrid-day-number {
     color: #e2e8f0;
     font-weight: 400;
@@ -172,25 +152,29 @@
     transform: none;
     box-shadow: none;
 }
+
+/* ── Today Highlight ── */
 .calendar-wrapper .fc .fc-day-today .fc-daygrid-day-number {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: #fff;
     font-weight: 700;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+    border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .calendar-wrapper .fc .fc-day-today .fc-daygrid-day-number:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 3px 10px rgba(59, 130, 246, 0.35);
 }
+
+/* ── Past Days ── */
 .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
     color: #d1d5db;
 }
 
 .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-    opacity: 0.45;
+    opacity: 0.4;
     pointer-events: none;
 }
 
@@ -198,8 +182,10 @@
     transform: none;
     box-shadow: none;
 }
+
+/* ── Fully Booked Day ── */
 .calendar-wrapper .fc .day-full .fc-daygrid-day-frame {
-    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    background: #fef2f2;
     border-radius: 12px;
 }
 
@@ -213,16 +199,20 @@
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    background: #fee2e2;
 }
+
+/* ── Near Full Day ── */
 .calendar-wrapper .fc .day-near-full .fc-daygrid-day-frame {
-    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    background: #fffbeb;
     border-radius: 12px;
 }
 
 .calendar-wrapper .fc .day-near-full .fc-daygrid-day-frame:hover {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    background: #fef3c7;
 }
+
+/* ── User Has Booking ── */
 .calendar-wrapper .fc .day-user-booking .fc-daygrid-day-frame {
     background: transparent;
     border-radius: 12px;
@@ -232,10 +222,12 @@
 .calendar-wrapper .fc .day-user-booking .fc-daygrid-day-frame:hover {
     background: #f8fafc;
 }
+
+/* ── Selected Day ── */
 .calendar-wrapper .fc .day-selected .fc-daygrid-day-frame {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.28);
 }
 
 .calendar-wrapper .fc .day-selected .fc-daygrid-day-number {
@@ -247,9 +239,11 @@
 
 .calendar-wrapper .fc .day-selected .fc-daygrid-day-frame:hover {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 18px rgba(59, 130, 246, 0.32);
 }
+
+/* ── Events Container ── */
 .calendar-wrapper .fc .fc-daygrid-day-events {
     margin-top: 0 !important;
     display: flex;
@@ -278,26 +272,60 @@
 .calendar-wrapper .fc .fc-scroller {
     overflow: hidden !important;
 }
+
+/* ═══════════════════════════════════════════════
+   Day Cell Inner Elements
+   ═══════════════════════════════════════════════ */
+
+.day-cell-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.day-cell-spacer {
+    display: none;
+}
+
+/* ── Pickup Badge ── */
+.pickup-badge {
+    font-size: 8px;
+    font-weight: 700;
+    color: #3b82f6;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 1px 5px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+
+/* ── Slot Capacity Bar ── */
 .slot-badge {
     display: flex;
     align-items: center;
     gap: 3px;
     width: 100%;
-    padding: 0 3px;
-    margin-top: 4px;
+    padding: 0 2px;
+    margin-top: 3px;
 }
 
 .slot-bar {
     flex: 1;
-    height: 4px;
-    border-radius: 4px;
+    height: 3px;
+    border-radius: 3px;
     background: #e2e8f0;
     overflow: hidden;
 }
 
 .slot-bar-fill {
     height: 100%;
-    border-radius: 4px;
+    border-radius: 3px;
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -318,7 +346,7 @@
 }
 
 .slot-text {
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 700;
     color: #94a3b8;
     white-space: nowrap;
@@ -326,70 +354,110 @@
     letter-spacing: -0.02em;
 }
 
+/* ── Booking Pin (corner icon) ── */
 .booking-pin {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.4));
+    top: 3px;
+    right: 3px;
+    filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.35));
     pointer-events: none;
     z-index: 2;
 }
 
+/* ── Full Badge ── */
 .full-badge {
     font-size: 7px;
     font-weight: 800;
     color: #ef4444;
     background: rgba(239, 68, 68, 0.08);
-    padding: 2px 6px;
-    border-radius: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
     margin-top: 2px;
     line-height: 1;
     letter-spacing: 0.02em;
     text-transform: uppercase;
 }
+
+/* ═══════════════════════════════════════════════
+   Responsive — Tablet
+   ═══════════════════════════════════════════════ */
 @media (max-width: 768px) {
     .calendar-wrapper {
-        padding: 0.75rem;
-        border-radius: 1rem;
+        padding: 0.5rem;
+        border-radius: 0.75rem;
+    }
+
+    .calendar-wrapper .fc .fc-toolbar {
+        margin-bottom: 0.5rem;
+        padding: 0.15rem 0;
     }
 
     .calendar-wrapper .fc .fc-toolbar-title {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
+    }
+
+    .calendar-wrapper .fc .fc-button {
+        padding: 4px 7px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+    }
+
+    .calendar-wrapper .fc .fc-col-header-cell {
+        padding: 2px 0 4px;
+    }
+
+    .calendar-wrapper .fc .fc-col-header-cell-cushion {
+        font-size: 0.58rem;
     }
 
     .calendar-wrapper .fc .fc-daygrid-day-frame {
-        min-height: 60px;
-        padding: 4px 2px;
+        min-height: 44px;
+        padding: 2px 1px;
         border-radius: 8px;
-    }
-
-    .calendar-wrapper .fc .fc-daygrid-day-number {
-        width: 28px;
-        height: 28px;
-        font-size: 0.72rem;
-        border-radius: 8px;
-    }
-}
-
-@media (max-width: 480px) {
-    .calendar-wrapper .fc .fc-daygrid-day-frame {
-        min-height: 52px;
-        padding: 3px 1px;
     }
 
     .calendar-wrapper .fc .fc-daygrid-day-number {
         width: 24px;
         height: 24px;
-        font-size: 0.65rem;
+        font-size: 0.68rem;
+        border-radius: 7px;
+    }
+
+    .pickup-badge {
+        font-size: 6px;
+        padding: 0px 3px;
+    }
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive — Small Mobile
+   ═══════════════════════════════════════════════ */
+@media (max-width: 480px) {
+    .calendar-wrapper .fc .fc-daygrid-day {
+        padding: 1px;
+    }
+
+    .calendar-wrapper .fc .fc-daygrid-day-frame {
+        min-height: 36px;
+        padding: 1px 1px;
+        border-radius: 6px;
+    }
+
+    .calendar-wrapper .fc .fc-daygrid-day-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.6rem;
+        border-radius: 6px;
     }
 
     .slot-badge {
         display: none;
     }
 
+    .pickup-badge,
     .booking-badge,
     .full-badge {
-        font-size: 6px;
-        padding: 1px 3px;
+        font-size: 5px;
+        padding: 0px 2px;
     }
 }

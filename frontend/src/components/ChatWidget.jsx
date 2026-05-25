@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck, Users, MoreVertical, ArrowLeft } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { MessageCircle, X, Maximize2, Minimize2, Send, Paperclip, Check, CheckCheck, Users, MoreVertical, ArrowLeft, Scissors, Shield, Search } from "lucide-react";
+import { MdSearch } from 'react-icons/md';
 import img from "../assets/img";
 import { chatApi } from "../../services/chatApi";
+import { useChatContext } from "../context/ChatContext";
 import { requestWebNotificationPermission, showWebNotification } from "../utils/webNotification";
 
 const mapApiMessage = (raw) => {
@@ -39,16 +42,42 @@ const fileToDataUrl = (file) =>
 const isTailorConversation = (conversation) => Boolean(conversation?.assignedStaffId);
 
 const getConversationDisplayName = (conversation) => {
-  if (!conversation) return "Admin";
+  if (!conversation) return "admin";
   return isTailorConversation(conversation) ? (conversation.assignedStaffName || "Tailor") : "Admin";
 };
 
 const getConversationInitial = (conversation) =>
   getInitials(getConversationDisplayName(conversation));
 
-const CHAT_SIZE = "md:w-[720px] md:h-[600px]";
-const CHAT_POSITION = "md:bottom-24 md:right-8";
+const CHAT_SIZE = "md:w-[960px] md:h-[550px]";
+const CHAT_POSITION = "md:bottom-6 md:right-8";
 const CHAT_SUMMARY_REFRESH_MS = 5000;
+
+const getMessageDayKey = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
+const getMessageDayLabel = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(todayStart.getDate() - 1);
+  const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (targetStart.getTime() === todayStart.getTime()) return "Today";
+  if (targetStart.getTime() === yesterdayStart.getTime()) return "Yesterday";
+
+  return date.toLocaleDateString([], {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
 
 const MessageActionMenu = ({ onEdit, onDeleteForEveryone, onDeleteForMe, onClose, isSystem, isDeleted, isOwn }) => {
   const ref = useRef(null);
@@ -112,17 +141,42 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={2}
-        className="w-full bg-white/20 text-white placeholder:text-blue-200 border border-blue-400 rounded-lg px-3 py-2 text-[13px] focus:outline-none resize-none"
+        className="w-full bg-white/20 text-stone-800 placeholder:text-stone-400 border border-stone-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none resize-none"
       />
       <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="text-[11px] text-blue-200 hover:text-white px-2 py-0.5 rounded" type="button">Cancel</button>
-        <button onClick={() => { if (text.trim()) onSave(text.trim()); }} className="text-[11px] bg-white text-blue-700 font-semibold px-2.5 py-0.5 rounded hover:bg-blue-50" type="button">Save</button>
+        <button onClick={onCancel} className="text-[11px] text-stone-400 hover:text-stone-600 px-2 py-0.5 rounded" type="button">Cancel</button>
+        <button onClick={() => { if (text.trim()) onSave(text.trim()); }} className="text-[11px] bg-blue-600 text-white font-semibold px-2.5 py-0.5 rounded hover:bg-blue-700" type="button">Save</button>
       </div>
     </div>
   );
 };
 
-const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
+const ImageModal = ({ imageUrl, onClose }) => {
+  if (!imageUrl) return null;
+  return (
+    <div 
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <button 
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
+        type="button"
+      >
+        <X className="w-8 h-8" />
+      </button>
+      <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <img 
+          src={imageUrl} 
+          alt="Full view" 
+          className="max-w-full max-h-[90vh] object-contain rounded-lg"
+        />
+      </div>
+    </div>
+  );
+};
+
+const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type, imageUrl, status, isEdited, isDeleted, senderRole, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => {
   const timeStr = new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const isClient = sender === "client";
   const isSystem = senderRole === "system";
@@ -132,8 +186,8 @@ const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type
 
   if (isSystem) {
     return (
-      <div className="my-2 flex w-full justify-center">
-        <span className="rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-[11px] font-semibold text-blue-700 shadow-sm italic text-center">
+      <div className="my-4 flex w-full justify-center">
+        <span className="rounded-full border border-stone-100 bg-stone-50 px-4 py-1.5 text-[11px] font-semibold text-stone-500 shadow-sm italic text-center">
           {message}
         </span>
       </div>
@@ -146,18 +200,18 @@ const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type
   };
 
   const bubbleClasses = isDeleted
-    ? (isClient ? "bg-stone-100/90 text-stone-500 border border-stone-200 rounded-br-sm" : "bg-white text-stone-500 border border-stone-200 rounded-bl-sm")
-    : (isClient ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-700 text-white border border-gray-800 rounded-bl-sm");
+    ? (isClient ? "bg-stone-50 text-stone-400 border border-stone-100 rounded-2xl rounded-br-none" : "bg-white text-stone-400 border border-stone-100 rounded-2xl rounded-bl-none")
+    : (isClient ? "bg-blue-600 text-white rounded-2xl rounded-br-none shadow-sm" : "bg-white text-stone-800 border border-stone-100 shadow-sm rounded-2xl rounded-bl-none");
 
   return (
-    <div className={`flex w-full ${isClient ? "justify-end" : "justify-start"} items-end mb-3 gap-1.5`}>
+    <div className={`flex w-full ${isClient ? "justify-end" : "justify-start"} items-end mb-4 gap-2.5`}>
       {!isClient && (
-        <div className="shrink-0 mb-[1px]">
-          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center shadow-sm border border-blue-400 overflow-hidden text-white font-bold text-[8px] uppercase">
+        <div className="shrink-0 mb-1">
+          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shadow-sm border border-stone-200 overflow-hidden">
             {senderRole === "admin" ? (
-              <img src={img.jjslogo1} alt="JJS" className="h-full w-full object-contain p-0.5" />
+              <img src={img.jjslogo1} alt="JJS" className="h-full w-full object-contain p-1" />
             ) : (
-              getInitials(senderName || 'Staff')
+              <span className="text-blue-600 font-bold text-[10px] uppercase">{getInitials(senderName || 'Staff')}</span>
             )}
           </div>
         </div>
@@ -184,10 +238,15 @@ const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type
           )}
         </div>
 
-        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${bubbleClasses}`}>
+        <div className={`px-4 py-3 rounded-2xl text-[14px] leading-relaxed shadow-sm ${bubbleClasses}`}>
           {type === "image" && imageUrl && !isDeleted && (
-            <div className="mb-2">
-              <img src={imageUrl} alt="Attachment" className="max-h-44 rounded-xl border border-black/10 object-cover" />
+            <div className="mb-2 cursor-zoom-in group/img relative" onClick={() => onImageClick(imageUrl)}>
+              <img src={imageUrl} alt="Attachment" className="max-h-60 rounded-xl border border-black/10 object-cover transition-opacity group-hover:opacity-90" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-black/40 rounded-full p-2 text-white backdrop-blur-sm">
+                  <Maximize2 className="w-5 h-5" />
+                </div>
+              </div>
             </div>
           )}
 
@@ -198,7 +257,7 @@ const ChatBubble = ({ id, sender, senderId, senderName, message, timestamp, type
           )}
 
           {!editing && (
-            <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${isClient && !isDeleted ? "text-blue-200" : "text-stone-400"}`}>
+            <div className={`mt-1.5 flex items-center justify-end gap-1 text-[10px] ${isClient && !isDeleted ? "text-blue-100" : "text-stone-400"}`}>
               {isEdited && !isDeleted && <span className="italic opacity-70 mr-1">edited</span>}
               {timeStr}
               {isClient && status === "read" && !isDeleted && <CheckCheck className="w-3 h-3" />}
@@ -246,15 +305,15 @@ const InputArea = ({ onSendMessage }) => {
   };
 
   return (
-    <form onSubmit={handleSend} className="shrink-0 border-t border-stone-100 bg-white">
+    <form onSubmit={handleSend} className="shrink-0 border-t border-stone-100 bg-white px-4 py-4">
       <ImagePreview imageFile={imageFile} onRemove={() => setImageFile(null)} />
-      <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="shrink-0 rounded-full p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-blue-600"
+          className="shrink-0 rounded-xl p-2.5 text-stone-400 transition-colors hover:bg-stone-50 hover:text-blue-600"
         >
-          <Paperclip className="h-4 w-4" />
+          <Paperclip className="h-5 w-5" />
         </button>
         <input type="file" accept="image/*" className="hidden" ref={fileInputRef}
           onChange={(e) => { if (e.target.files?.[0]) setImageFile(e.target.files[0]); }}
@@ -263,62 +322,94 @@ const InputArea = ({ onSendMessage }) => {
           type="text" value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type your message…"
-          className="flex-1 rounded-full border border-stone-200 bg-stone-50 px-4 py-2 text-sm text-stone-700 placeholder:text-stone-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all font-sans"
+          className="flex-1 rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all font-sans"
         />
         <button
           type="submit"
           disabled={(!text.trim() && !imageFile) || sending}
-          className="shrink-0 rounded-full bg-blue-600 p-2 text-white shadow-md transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-2xl bg-blue-600 p-3 text-white shadow-lg transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-5 w-5" />
         </button>
       </div>
     </form>
   );
 };
 
-const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe }) => {
+const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "auto" }); }, [messages.length, isTyping]);
 
+  const messageHistory = messages.reduce((items, msg, index) => {
+    const previousMessage = messages[index - 1];
+    const currentDayKey = getMessageDayKey(msg.timestamp);
+    const previousDayKey = previousMessage ? getMessageDayKey(previousMessage.timestamp) : null;
+
+    if (currentDayKey !== previousDayKey) {
+      items.push({
+        type: "divider",
+        key: `divider-${currentDayKey}-${index}`,
+        label: getMessageDayLabel(msg.timestamp),
+      });
+    }
+
+    items.push({
+      type: "message",
+      key: msg.id || `message-${index}`,
+      message: msg,
+    });
+
+    return items;
+  }, []);
+
   return (
-    <div className="flex-1 overflow-y-auto bg-stone-50 p-4">
+    <div className="flex-1 overflow-y-auto bg-white p-6 custom-scrollbar">
       {isLoading ? (
-        <div className="flex h-full items-center justify-center text-[12px] text-stone-400">Loading messages…</div>
+        <div className="flex h-full items-center justify-center text-[13px] text-stone-400 font-medium">Loading messages…</div>
       ) : messages.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center text-center px-4">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-inner">
-            <MessageCircle className="h-7 w-7 text-stone-200" />
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[32px] bg-stone-50">
+            <Search className="h-10 w-10 text-blue-300" />
           </div>
-          <p className="text-[12px] text-stone-400 font-medium">No messages yet. Say hi!</p>
+          <h4 className="text-[16px] font-bold text-stone-800 mb-2">Start a conversation</h4>
+          <p className="text-[13px] text-stone-400 font-medium max-w-[240px]">Send a message to our team to get started.</p>
         </div>
       ) : (
-        messages.map((msg) => (
-          <ChatBubble
-            key={msg.id}
-            {...msg}
-            currentUserId={currentUserId}
-            onEdit={onEdit}
-            onDeleteForEveryone={onDeleteForEveryone}
-            onDeleteForMe={onDeleteForMe}
-          />
+        messageHistory.map((item) => (
+          item.type === "divider" ? (
+            <div key={item.key} className="mb-5 flex justify-center">
+              <span className="rounded-full border border-blue-100 bg-blue-50 px-4 py-1 text-[11px] font-semibold text-blue-500 shadow-sm">
+                {item.label}
+              </span>
+            </div>
+          ) : (
+            <ChatBubble
+              key={item.key}
+              {...item.message}
+              currentUserId={currentUserId}
+              onEdit={onEdit}
+              onDeleteForEveryone={onDeleteForEveryone}
+              onDeleteForMe={onDeleteForMe}
+              onImageClick={onImageClick}
+            />
+          )
         ))
       )}
       {isTyping && (
-        <div className="flex w-full justify-start mb-3">
-          <div className="rounded-2xl rounded-bl-sm border border-stone-200 bg-white px-4 py-3 shadow-sm flex gap-1">
+        <div className="flex w-full justify-start mb-4">
+          <div className="rounded-2xl rounded-bl-none border border-stone-100 bg-white px-4 py-3 shadow-sm flex gap-1">
             {["-0.3s", "-0.15s", "0s"].map((d, i) => (
-              <span key={i} className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce" style={{ animationDelay: d }} />
+              <span key={i} className="h-1.5 w-1.5 rounded-full bg-stone-300 animate-bounce" style={{ animationDelay: d }} />
             ))}
           </div>
         </div>
       )}
       {messages[messages.length - 1]?.senderRole === "admin" && quickReplies && (
-        <div className="mt-2 mb-2 flex flex-wrap justify-end gap-2">
+        <div className="mt-4 mb-2 flex flex-wrap justify-end gap-2">
           {quickReplies.map((qr, i) => (
             <button
               key={i} onClick={() => onSendQuickReply(qr)}
-              className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-600 shadow-sm transition-colors hover:bg-stone-50"
+              className="rounded-xl border border-stone-100 bg-white px-4 py-2 text-[12px] font-bold text-stone-600 shadow-sm transition-all hover:bg-stone-50 hover:border-blue-200 hover:text-blue-600"
               type="button"
             >
               {qr}
@@ -326,7 +417,7 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoa
           ))}
         </div>
       )}
-      {errorText && <div className="mt-2 text-center text-[11px] text-red-500 font-bold">{errorText}</div>}
+      {errorText && <div className="mt-4 text-center text-[12px] text-red-500 font-bold bg-red-50 py-2 rounded-xl border border-red-100">{errorText}</div>}
       <div ref={endRef} />
     </div>
   );
@@ -335,34 +426,34 @@ const MessageList = ({ messages, isTyping, quickReplies, onSendQuickReply, isLoa
 const ConversationItem = ({ conversation, isSelected, onClick }) => (
   <div
     onClick={() => onClick(conversation)}
-    className={`flex cursor-pointer border-b border-stone-100 transition-all items-center gap-3 px-4 py-3 ${isSelected ? "bg-blue-200" : "bg-stone-50 hover:bg-blue-100"
+    className={`flex cursor-pointer transition-all items-center gap-3 px-6 py-4 ${isSelected ? "bg-blue-50/80" : "bg-white hover:bg-stone-50"
       }`}
   >
     <div className="relative shrink-0">
-      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full font-bold text-white shadow-sm uppercase bg-blue-600 text-sm">
+      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full font-bold text-white shadow-sm uppercase bg-stone-100 text-sm border border-stone-200">
         {getConversationDisplayName(conversation).toLowerCase() === "admin" ? (
-          <img src={img.jjslogo1} alt="Admin" className="h-full w-full object-contain p-0.5" />
+          <img src={img.jjslogo1} alt="Admin" className="h-full w-full object-contain p-1.5" />
         ) : (
-          getConversationInitial(conversation)
+          <span className="text-blue-600">{getConversationInitial(conversation)}</span>
         )}
       </div>
-      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500" />
+      <div className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white" />
     </div>
     <div className="min-w-0 flex-1">
-      <div className="flex items-center justify-between gap-1">
-        <h4 className={`truncate text-sm font-semibold ${conversation.unreadCount > 0 ? "text-blue-900" : "text-stone-800"}`}>
+      <div className="flex items-center justify-between gap-1 mb-0.5">
+        <h4 className={`font-inter truncate text-[14px] font-bold ${conversation.unreadCount > 0 ? "text-stone-900" : "text-stone-800"}`}>
           {getConversationDisplayName(conversation)}
         </h4>
-        <span className="shrink-0 text-[10px] text-stone-400">
+        <span className="shrink-0 text-[11px] text-stone-400 font-medium">
           {conversation.lastMessageAt ? new Date(conversation.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <p className={`truncate text-[11px] ${conversation.unreadCount > 0 ? "font-semibold text-blue-600" : "text-stone-500"}`}>
+        <p className={`truncate text-[13px] ${conversation.unreadCount > 0 ? "font-semibold text-stone-600" : "text-stone-500"}`}>
           {conversation.lastMessagePreview || "No messages yet…"}
         </p>
         {conversation.unreadCount > 0 && (
-          <span className="min-w-[16px] rounded-full bg-blue-600 px-1 py-0.5 text-center text-[9px] font-bold text-white">
+          <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-blue-600 px-1 text-center text-[10px] font-bold text-white">
             {conversation.unreadCount}
           </span>
         )}
@@ -371,116 +462,118 @@ const ConversationItem = ({ conversation, isSelected, onClick }) => (
   </div>
 );
 
-const ConversationList = ({ adminConversations, tailorConversations, selectedConversation, onSelect, onClose }) => (
-  <div className={`flex w-full sm:w-[280px] shrink-0 flex-col border-r border-stone-100 bg-white ${selectedConversation ? 'hidden sm:flex' : 'flex'}`}>
-    <div className="shrink-0 border-b border-stone-100 px-6 py-4 flex items-center justify-between bg-white border-r border-stone-100 overflow-hidden">
-      {!selectedConversation && (
-        <h3 className="text-2xl font-extrabold text-stone-800 tracking-tight">Chats</h3>
-      )}
-      {!selectedConversation && (
-        <button onClick={onClose} className="md:hidden p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-md transition-colors" type="button">
-          <X className="w-5 h-5" />
-        </button>
-      )}
-    </div>
-    <div className="flex-1 overflow-y-auto">
-      {adminConversations.length > 0 && (
-        <div>
-          {adminConversations.map((conv) => (
-            <ConversationItem key={conv.id} conversation={conv} isSelected={selectedConversation?.id === conv.id} onClick={onSelect} />
-          ))}
-        </div>
-      )}
-      {tailorConversations.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 bg-stone-50/50 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-stone-500">
-            <Users className="h-3.5 w-3.5" /> Tailors
+const ConversationList = ({ adminConversations, tailorConversations, layoutArtistConversations, selectedConversation, onSelect, onClose }) => {
+  const [search, setSearch] = useState("");
+
+  const filterConvs = (list) =>
+    list.filter(c =>
+      getConversationDisplayName(c).toLowerCase().includes(search.toLowerCase()) ||
+      (c.lastMessagePreview || "").toLowerCase().includes(search.toLowerCase())
+    );
+
+  const filteredAdmins = filterConvs(adminConversations);
+  const filteredTailors = filterConvs(tailorConversations);
+  const filteredLayoutArtists = filterConvs(layoutArtistConversations);
+
+  return (
+    <div className={`flex w-full shrink-0 flex-col bg-white border-r border-stone-100 md:w-[320px] ${selectedConversation ? 'hidden sm:flex' : 'flex'}`}>
+      <div className="shrink-0 px-6 py-6 border-b border-gray-50">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-[26px] font-black text-stone-900 font-inter tracking-tight">Messages</h3>
+          <div className="flex items-center gap-3">
+            <X onClick={onClose} className="w-6 h-6 text-stone-400 cursor-pointer hover:text-stone-600 transition-colors" />
           </div>
-          {tailorConversations.map((conv) => (
-            <ConversationItem key={conv.id} conversation={conv} isSelected={selectedConversation?.id === conv.id} onClick={onSelect} />
-          ))}
         </div>
-      )}
-      {adminConversations.length === 0 && tailorConversations.length === 0 && (
-        <div className="p-6 text-center text-[12px] text-stone-400 font-medium">No conversations</div>
-      )}
+
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-stone-400 group-focus-within:text-blue-500 transition-colors" />
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search messages..."
+            className="block w-full pl-11 pr-4 py-3 bg-stone-50 border-none rounded-2xl text-[14px] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:bg-white focus:shadow-md transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+        {filteredAdmins.length > 0 && (
+          <div className="py-2">
+            <div className="px-6 py-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+              JJS Support
+            </div>
+            {filteredAdmins.map((conv) => (
+              <ConversationItem key={conv.id} conversation={conv} isSelected={selectedConversation?.id === conv.id} onClick={onSelect} />
+            ))}
+          </div>
+        )}
+
+        {filteredTailors.length > 0 && (
+          <div className="py-2">
+            <div className="px-6 py-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+              Tailors
+            </div>
+            {filteredTailors.map((conv) => (
+              <ConversationItem key={conv.id} conversation={conv} isSelected={selectedConversation?.id === conv.id} onClick={onSelect} />
+            ))}
+          </div>
+        )}
+
+        {filteredLayoutArtists.length > 0 && (
+          <div className="py-2">
+            <div className="px-6 py-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-stone-400">
+              Layout Artists
+            </div>
+            {filteredLayoutArtists.map((conv) => (
+              <ConversationItem key={conv.id} conversation={conv} isSelected={selectedConversation?.id === conv.id} onClick={onSelect} />
+            ))}
+          </div>
+        )}
+
+        {filteredAdmins.length === 0 && filteredTailors.length === 0 && filteredLayoutArtists.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <MessageCircle className="w-8 h-8 text-stone-200" />
+            </div>
+            <p className="text-sm font-medium text-stone-400">No conversations found</p>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
-const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText, adminConversations, tailorConversations, selectedConversation, onSelectConversation, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe }) => (
-  <div
-    className={`fixed z-[9999] flex overflow-hidden bg-white shadow-2xl transition-all duration-500 ${isFullScreen
-      ? "inset-0 md:inset-4 md:rounded-2xl"
-      : `inset-0 md:inset-auto ${CHAT_POSITION} ${CHAT_SIZE} md:rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.35)]`
-      }`}
-  >
-    <ConversationList
-      adminConversations={adminConversations}
-      tailorConversations={tailorConversations}
-      selectedConversation={selectedConversation}
-      onSelect={onSelectConversation}
-      onClose={onClose}
-    />
-    <div className={`flex-1 flex flex-col z-0 border-l border-stone-100 ${!selectedConversation ? 'hidden sm:flex' : 'flex'}`}>
-      <div className="flex shrink-0 items-center justify-between bg-blue-600 px-4 py-3 text-white shadow-lg z-10">
-        <div className="flex items-center gap-3">
-          {selectedConversation && (
-            <button
-              onClick={() => onSelectConversation(null)}
-              className="sm:hidden p-2 -ml-1 text-white hover:bg-white/10 rounded-full transition-all active:scale-95"
-              type="button"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
+const ActiveConversation = ({ conversation, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, onBack, onImageClick }) => {
+  return (
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
+      <div className="flex shrink-0 items-center justify-between border-b border-stone-50 px-6 py-4 bg-white z-10">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="p-2 -ml-2 text-stone-400 hover:text-stone-800 hover:bg-stone-50 rounded-full transition-all sm:hidden"
+            type="button"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
 
-          {selectedConversation ? (
-            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-              <div className="w-10 h-10 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-sm shadow-md overflow-hidden">
-                {getConversationDisplayName(selectedConversation).toLowerCase() === "admin" ? (
-                  <img src={img.jjslogo1} alt="JJS" className="h-full w-full object-contain" />
-                ) : (
-                  getConversationInitial(selectedConversation)
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-base leading-tight drop-shadow-sm">{getConversationDisplayName(selectedConversation)}</h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                  <span className="text-[10px] font-bold text-blue-100/90 tracking-widest uppercase">Active</span>
-                </div>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-stone-100 flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden">
+              {getConversationDisplayName(conversation).toLowerCase() === "admin" ? (
+                <img src={img.jjslogo1} alt="JJS" className="h-full w-full object-contain p-1" />
+              ) : (
+                <span className="text-blue-600">{getConversationInitial(conversation)}</span>
+              )}
+            </div>
+            <div>
+              <h3 className="font-bold text-[16px] text-stone-900 leading-tight">{getConversationDisplayName(conversation)}</h3>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] font-bold font-inter text-emerald-500">Active now</span>
               </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-3 animate-in fade-in duration-300">
-              <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
-                <img src={img.jjslogo1} alt="JJS" className="w-full h-full object-contain brightness-0 invert" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold leading-tight tracking-wide drop-shadow-sm text-white">JJS Support</h3>
-                <p className="text-[10px] font-bold text-blue-100/70 uppercase tracking-tighter">Support Inbox</p>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleFullScreen}
-            className="p-1.5 text-blue-100 hover:text-white hover:bg-white/10 rounded-md transition-all hidden sm:flex items-center justify-center"
-            type="button"
-            title={isFullScreen ? "Minimize" : "Maximize"}
-          >
-            {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={onClose}
-            className="p-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl transition-all shadow-inner group active:scale-95"
-            type="button"
-            title="Close Chat"
-          >
-            <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+          </div>
         </div>
       </div>
 
@@ -495,8 +588,54 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
         onEdit={onEdit}
         onDeleteForEveryone={onDeleteForEveryone}
         onDeleteForMe={onDeleteForMe}
+        onImageClick={onImageClick}
       />
       <InputArea onSendMessage={onSendMessage} />
+    </div>
+  );
+};
+
+const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText, adminConversations, tailorConversations, layoutArtistConversations, selectedConversation, onSelectConversation, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => (
+  <div
+    className={`fixed z-[9999] flex overflow-hidden bg-white shadow-2xl transition-all duration-500 ${isFullScreen
+      ? "inset-0 md:inset-4 md:rounded-[32px]"
+      : `inset-0 md:inset-auto ${CHAT_POSITION} ${CHAT_SIZE} md:rounded-[32px] shadow-[0_30px_100px_rgba(0,0,0,0.25)]`
+      }`}
+  >
+    <ConversationList
+      adminConversations={adminConversations}
+      tailorConversations={tailorConversations}
+      layoutArtistConversations={layoutArtistConversations}
+      selectedConversation={selectedConversation}
+      onSelect={onSelectConversation}
+      onClose={onClose}
+    />
+    <div className={`min-w-0 flex-1 flex-col z-0 bg-white ${!selectedConversation ? 'hidden' : 'flex sm:flex'}`}>
+      {selectedConversation ? (
+        <>
+          <ActiveConversation
+            conversation={selectedConversation}
+            messages={messages}
+            onSendMessage={onSendMessage}
+            isLoading={isLoading}
+            errorText={errorText}
+            currentUserId={currentUserId}
+            onEdit={onEdit}
+            onDeleteForEveryone={onDeleteForEveryone}
+            onDeleteForMe={onDeleteForMe}
+            onBack={() => onSelectConversation(null)}
+            onImageClick={onImageClick}
+          />
+        </>
+      ) : (
+        <div className="hidden sm:flex flex-1 flex-col items-center justify-center bg-stone-50/30 p-12 text-center">
+          <div className="w-24 h-24 bg-white rounded-[40px] shadow-sm flex items-center justify-center mb-8">
+            <MessageCircle className="w-12 h-12 text-stone-200" />
+          </div>
+          <h3 className="text-xl font-bold text-stone-800 mb-2">Select a Conversation</h3>
+          <p className="text-[15px] text-stone-500 max-w-[280px]">Choose a team member from the left to start chatting about your orders.</p>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -505,10 +644,10 @@ const ChatLauncher = ({ onClick, unreadCount }) => (
   <button
     onClick={onClick}
     aria-label="Toggle chat"
-    className="fixed bottom-6 right-8 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
+    className="fixed bottom-6 right-8 md:bottom-6 md:right-8 z-[9999] flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-8 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
     type="button"
   >
-    <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
+    <MessageCircle className="h-8 w-8 group-hover:rotate-12 transition-transform" />
     {unreadCount > 0 && (
       <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[10px] font-black text-white shadow-md animate-bounce">
         {unreadCount}
@@ -518,26 +657,23 @@ const ChatLauncher = ({ onClick, unreadCount }) => (
 );
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+  const { isOpen: contextIsOpen, openChat, closeChat } = useChatContext();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [fullScreenImage, setFullScreenImage] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const conversationSummaryRef = useRef(new Map());
   const hasLoadedConversationSummaryRef = useRef(false);
-  const isOpenRef = useRef(isOpen);
   const selectedConversationRef = useRef(selectedConversation);
 
   const QUICK_REPLIES = ["Track my order", "Pricing details", "Talk to an agent"];
-
-  useEffect(() => {
-    isOpenRef.current = isOpen;
-  }, [isOpen]);
 
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
@@ -559,7 +695,7 @@ export default function ChatWidget() {
 
     const selectedConversationId = String(selectedConversationRef.current?.id || "");
     if (
-      isOpenRef.current &&
+      contextIsOpen &&
       selectedConversationId === conversationId &&
       document.visibilityState === "visible"
     ) {
@@ -578,12 +714,12 @@ export default function ChatWidget() {
       {
         tagPrefix: "jjstrack-user-chat",
         onClick: () => {
-          setIsOpen(true);
+          openChat();
           setSelectedConversation(conversation);
         },
       }
     );
-  }, []);
+  }, [contextIsOpen, openChat]);
 
   const notifyNewUnreadConversations = useCallback((nextConversations = []) => {
     const previousMap = conversationSummaryRef.current;
@@ -631,14 +767,14 @@ export default function ChatWidget() {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token || !conversationId) return;
     try {
-      if (!silent) setIsLoading(true);
+      if (!silent) setIsLoadingMessages(true);
       const response = await chatApi.getMessages({ conversationId });
       setMessages(Array.isArray(response?.messages) ? response.messages.map(mapApiMessage) : []);
       setErrorText("");
     } catch (error) {
       setErrorText(error?.response?.data?.message || "Failed to load chat messages");
     } finally {
-      if (!silent) setIsLoading(false);
+      if (!silent) setIsLoadingMessages(false);
     }
   }, []);
 
@@ -696,11 +832,22 @@ export default function ChatWidget() {
   }, [loadConversationSummary]);
 
   useEffect(() => {
-    if (!isOpen || !selectedConversation) return;
+    if (location.pathname !== "/home") return;
+
+    const shouldOpenChat = sessionStorage.getItem("jjstrack-open-chat-on-dashboard");
+    if (shouldOpenChat !== "1") return;
+
+    sessionStorage.removeItem("jjstrack-open-chat-on-dashboard");
+    void requestWebNotificationPermission();
+    openChat();
+  }, [location.pathname, openChat]);
+
+  useEffect(() => {
+    if (!contextIsOpen || !selectedConversation) return;
     loadMessages(selectedConversation.id, false);
     const id = setInterval(() => loadMessages(selectedConversation.id, true), 3000);
     return () => clearInterval(id);
-  }, [isOpen, selectedConversation, loadMessages]);
+  }, [contextIsOpen, selectedConversation, loadMessages]);
 
   const handleSelectConversation = useCallback((conversation) => {
     setSelectedConversation(conversation);
@@ -709,47 +856,74 @@ export default function ChatWidget() {
   }, []);
 
   const adminConversations = conversations.filter((c) => !c.assignedStaffId);
-  const tailorConversations = conversations.filter((c) => c.assignedStaffId);
+
+  // Deduplicate staff conversations to show only the most recent one per staff member
+  const staffConversationsMap = conversations.filter((c) => c.assignedStaffId).reduce((acc, c) => {
+    const staffId = c.assignedStaffId;
+    if (!acc[staffId] || new Date(c.lastMessageAt) > new Date(acc[staffId].lastMessageAt)) {
+      acc[staffId] = c;
+    }
+    return acc;
+  }, {});
+
+  const staffConversations = Object.values(staffConversationsMap);
+
+  const tailorConversations = staffConversations.filter(c =>
+    (c.assignedStaffRole || "").toLowerCase().includes("tailor") ||
+    !(c.assignedStaffRole || "").toLowerCase().includes("layout")
+  ).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+
+  const layoutArtistConversations = staffConversations.filter(c =>
+    (c.assignedStaffRole || "").toLowerCase().includes("layout")
+  ).sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+
+  const hidePaths = ["/order", "/invoices"];
+  const shouldHide = hidePaths.some(path => location.pathname.startsWith(path));
+
+  if (shouldHide) return null;
 
   return (
     <>
-      {!isOpen && (
+      {!contextIsOpen && (
         <ChatLauncher
           onClick={() => {
             void requestWebNotificationPermission();
-            setIsOpen(true);
+            openChat();
             setSelectedConversation(null);
           }}
           unreadCount={unreadCount}
         />
       )}
 
-      {isOpen && (
+      {contextIsOpen && (
         <>
           <div
             className={`fixed inset-0 z-[9998] bg-stone-900/60 backdrop-blur-sm transition-opacity ${isFullScreen || (typeof window !== 'undefined' && window.innerWidth < 768) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => setIsOpen(false)}
+            onClick={() => closeChat()}
             aria-hidden="true"
           />
           <ChatWindow
-            onClose={() => setIsOpen(false)}
+            onClose={() => closeChat()}
             isFullScreen={isFullScreen}
             toggleFullScreen={() => setIsFullScreen(!isFullScreen)}
             messages={messages}
             onSendMessage={handleSendMessage}
             isTyping={isTyping}
             quickReplies={QUICK_REPLIES}
-            isLoading={isLoading}
+            isLoading={isLoadingMessages}
             errorText={errorText}
             adminConversations={adminConversations}
             tailorConversations={tailorConversations}
+            layoutArtistConversations={layoutArtistConversations}
             selectedConversation={selectedConversation}
             onSelectConversation={handleSelectConversation}
             currentUserId={currentUserId}
             onEdit={handleEdit}
             onDeleteForEveryone={handleDeleteForEveryone}
             onDeleteForMe={handleDeleteForMe}
+            onImageClick={(url) => setFullScreenImage(url)}
           />
+          <ImageModal imageUrl={fullScreenImage} onClose={() => setFullScreenImage(null)} />
         </>
       )}
     </>

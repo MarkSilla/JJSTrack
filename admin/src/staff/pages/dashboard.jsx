@@ -136,7 +136,7 @@ const Dashboard = () => {
     const upcomingScheduleRef = useRef(null);
 
     const fetchTasks = useCallback(async (silent = false) => {
-        const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => {};
+        const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => { };
 
         try {
             if (!silent) {
@@ -295,7 +295,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 font-inter">
             <div className="bg-white rounded-2xl px-8 py-7 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-200/60 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl -z-0 opacity-60 transform translate-x-1/2 -translate-y-1/2" />
                 <div className="relative z-10">
@@ -317,7 +317,7 @@ const Dashboard = () => {
                     </button>
                 </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 {summaryCards.map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
                     <button
                         key={idx}
@@ -328,15 +328,15 @@ const Dashboard = () => {
                     >
                         <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
                         <div className="flex items-center gap-3 relative z-10">
-                            <div 
-                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" 
+                            <div
+                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
                                 style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}
                             >
                                 {React.createElement(icon, { size: 20, color: accent, strokeWidth: 2.2 })}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5">{label}</div>
-                                <div className="text-2xl font-black text-slate-800 tracking-tighter leading-none mb-1">{value}</div>
+                                <div className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1">{value}</div>
                                 <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">
                                     {value === 0 ? 'No records today' : sub}
                                 </div>

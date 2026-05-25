@@ -29,6 +29,7 @@ import {
   maybeCreateStaffAssignmentNotification,
   maybeCreateWorkflowStepReadyNotification,
 } from '../utils/staffNotificationEvents.js';
+import { syncSubjectChatConversations } from '../utils/chatConversationSync.js';
 
 const isEnvAdminRequest = (req) => req.userId === 'admin';
 
@@ -134,6 +135,13 @@ const normalizeCurrency = (value) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
+const getPricingMapValue = (pricing, field, key, fallback = 0) => {
+  const source = pricing?.[field];
+  const rawValue = source instanceof Map ? source.get(key) : source?.[key];
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
 const normalizeBookingItems = (items = []) =>
   (Array.isArray(items) ? items : [])
     .map((item) => ({
@@ -160,11 +168,16 @@ const BOOKING_ADDON_CONFIG = {
   hoodie: { label: 'Hoodie T-shirt', price: 700 },
 };
 
-const getBookingAddOnMeta = (addOnId) =>
-  BOOKING_ADDON_CONFIG[addOnId] || {
+const getBookingAddOnMeta = (addOnId, pricingJersey = null) => {
+  const defaultMeta = BOOKING_ADDON_CONFIG[addOnId] || {
     label: String(addOnId || 'Add-on').trim() || 'Add-on',
     price: 0,
   };
+  return {
+    ...defaultMeta,
+    price: getPricingMapValue(pricingJersey, 'jerseyAddOns', addOnId, defaultMeta.price),
+  };
+};
 
 const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
   const fullName = [participant.nickname, participant.firstName, participant.surname]
@@ -175,12 +188,52 @@ const getParticipantLabel = (participant = {}, fallback = 'Customer') => {
   return fullName || String(participant.name || fallback).trim() || fallback;
 };
 
+const ORG_PRODUCT_CONFIG = {
+  tshirt: { label: 'T-Shirt', price: 500 },
+  polo: { label: 'Polo Shirt', price: 650 },
+};
+
+const JERSEY_PRODUCT_CONFIG = {
+  jersey: { label: 'Jersey Only', price: 550, needsJerseySize: true, needsShortSize: false },
+  fullset: { label: 'Full Set (Jersey + Shorts)', price: 850, needsJerseySize: true, needsShortSize: true },
+  short: { label: 'Short Only', price: 400, needsJerseySize: false, needsShortSize: true },
+};
+
+const getJerseyProductConfig = (participant = {}, fallbackPrice = 0, pricingJersey = null) => {
+  const productType = String(participant?.productType || '').toLowerCase();
+  const product = JERSEY_PRODUCT_CONFIG[productType] || {
+    label: 'Jersey',
+    price: fallbackPrice,
+    needsJerseySize: true,
+    needsShortSize: false,
+  };
+  return {
+    ...product,
+    price: getPricingMapValue(pricingJersey, 'jerseyProducts', productType, product.price),
+  };
+};
+
+const getOrgProductConfig = (participant = {}, fallbackPrice = 0, pricingOrg = null) => {
+  const productType = String(participant?.productType || '').toLowerCase();
+  const product = ORG_PRODUCT_CONFIG[productType] || {
+    label: 'Uniform',
+    price: fallbackPrice,
+  };
+  return {
+    ...product,
+    price: getPricingMapValue(pricingOrg, 'organizationalProducts', productType, product.price),
+  };
+};
+
 const buildParticipantInvoiceItems = ({
   participants = [],
   itemLabel = 'Jersey',
   basePrice = 0,
   pocketPrice = 0,
   sizeSelector,
+  priceSelector,
+  labelSelector,
+  addOnMetaSelector,
 }) => {
   const participantList = Array.isArray(participants) ? participants : [];
 
@@ -191,19 +244,27 @@ const buildParticipantInvoiceItems = ({
     const selectedSize = typeof sizeSelector === 'function'
       ? sizeSelector(participant)
       : participant?.jerseySize || participant?.size || '';
+    const resolvedPrice = typeof priceSelector === 'function'
+      ? priceSelector(participant)
+      : basePrice;
+    const resolvedLabel = typeof labelSelector === 'function'
+      ? labelSelector(participant)
+      : itemLabel;
 
     const baseItem = {
-      description: `${itemLabel} (${participantName}${itemSuffix})`,
+      description: `${resolvedLabel} (${participantName}${itemSuffix})`,
       type: 'Custom',
       qty: 1,
-      unitPrice: basePrice,
+      unitPrice: resolvedPrice,
       size: selectedSize,
       addOn: hasPocket ? `Pocket Short (+${pocketPrice})` : 'None',
       addOnPrice: hasPocket ? pocketPrice : 0,
     };
 
     const addOnItems = (Array.isArray(participant?.addOns) ? participant.addOns : []).map((addOnId) => {
-      const addOnMeta = getBookingAddOnMeta(addOnId);
+      const addOnMeta = typeof addOnMetaSelector === 'function'
+        ? addOnMetaSelector(addOnId)
+        : getBookingAddOnMeta(addOnId);
 
       return {
         description: `${addOnMeta.label} (${participantName}${itemSuffix})`,
@@ -756,9 +817,9 @@ export const createBooking = async (req, res) => {
     let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
 
     // Use database pricing or fallback to hardcoded defaults
-    const jerseyPrice = pricingJersey?.basePerPlayer || 650;
+    const jerseyPrice = pricingJersey?.basePerPlayer || getPricingMapValue(pricingJersey, 'jerseyProducts', 'jersey', 550);
     const pocketPrice = pricingJersey?.pocketPrice || 100;
-    const orgPrice = pricingOrg?.basePerItem || 650;
+    const orgPrice = pricingOrg?.basePerItem || getPricingMapValue(pricingOrg, 'organizationalProducts', 'tshirt', 500);
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
 
     const normalizedSelectedOptions = normalizeSelectedOptions(selectedOptions);
@@ -795,7 +856,13 @@ export const createBooking = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).price,
+        addOnMetaSelector: (addOnId) => getBookingAddOnMeta(addOnId, pricingJersey),
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice, pricingJersey);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
     } else if (normalizedItems.length === 0 && bookingType === 'organizational' && members) {
       normalizedItems = buildParticipantInvoiceItems({
@@ -804,6 +871,8 @@ export const createBooking = async (req, res) => {
         basePrice: orgPrice,
         pocketPrice: orgPocketPrice,
         sizeSelector: (member) => member?.size || member?.jerseySize || '',
+        labelSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).label,
+        priceSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).price,
       });
     }
 
@@ -824,7 +893,13 @@ export const createBooking = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).price,
+        addOnMetaSelector: (addOnId) => getBookingAddOnMeta(addOnId, pricingJersey),
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice, pricingJersey);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
       totalPrice = fallbackItems.reduce((sum, item) => {
         return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));
@@ -836,6 +911,8 @@ export const createBooking = async (req, res) => {
         basePrice: orgPrice,
         pocketPrice: orgPocketPrice,
         sizeSelector: (member) => member?.size || member?.jerseySize || '',
+        labelSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).label,
+        priceSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).price,
       });
       totalPrice = fallbackItems.reduce((sum, item) => {
         return sum + ((item.unitPrice * item.qty) + (item.addOnPrice || 0));
@@ -925,54 +1002,55 @@ export const createBooking = async (req, res) => {
 // Get all bookings (admin/staff) or user's bookings
 export const getBookings = async (req, res) => {
   try {
-    const { status, bookingType } = req.query;
+    const { status, bookingType, search } = req.query;
     const userId = req.userId;
     let query = {};
 
     // Only filter by userId if the user is NOT an admin or staff
     if (userId !== 'admin') {
-      try {
-        const user = await userModel.findById(userId);
-        if (user) {
-          if (user.role === 'staff') {
-            const assignmentQuery = buildStaffAssignmentQuery(user);
-            console.log('🔍 Staff Booking Query:', {
-              userId: userId,
-              fullName: user.fullName,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              employeeId: user.employeeId,
-              email: user.email,
-              assignmentQuery
-            });
-            if (assignmentQuery) {
-              Object.assign(query, assignmentQuery);
+        try {
+            const user = await userModel.findById(userId);
+            if (user) {
+                if (user.role === 'staff') {
+                    const assignmentQuery = buildStaffAssignmentQuery(user);
+                    if (assignmentQuery) {
+                        Object.assign(query, assignmentQuery);
+                    } else {
+                        query._id = null;
+                    }
+                } else if (user.role !== 'admin') {
+                    query.userId = userId;
+                }
             } else {
-              query._id = null;
+                query.userId = userId;
             }
-          } else if (user.role !== 'admin') {
+        } catch (err) {
             query.userId = userId;
-          }
-        } else {
-          // If user not found, filter by userId (for customers)
-          query.userId = userId;
         }
-      } catch (err) {
-        // If user lookup fails, filter by userId (for customers)
-        query.userId = userId;
-      }
     }
-    // If userId is 'admin', no filtering - show all bookings
 
     if (status) {
-      query.status = status;
+        query.status = status;
     }
 
     if (bookingType) {
-      query.bookingType = bookingType;
+        query.bookingType = bookingType;
     }
 
-    console.log('getBookings called with userId:', userId, 'query:', query);
+    if (search) {
+        query = {
+            $and: [
+                query,
+                {
+                    $or: [
+                        { service: { $regex: search, $options: 'i' } },
+                        { bookingId: { $regex: search, $options: 'i' } },
+                        { 'contact.fullName': { $regex: search, $options: 'i' } },
+                    ],
+                },
+            ],
+        };
+    }
 
     const bookings = await bookingModel.find(query).sort({ createdAt: -1 });
     await ensureBookingIds(bookings);
@@ -1149,6 +1227,7 @@ export const updateBooking = async (req, res) => {
     console.log('💾 Saving booking with status:', booking.status, 'steps:', booking.steps);
     booking.steps = booking.steps || [];
     await booking.save();
+    await syncSubjectChatConversations({ subjectType: 'booking', subjectDoc: booking });
     emitBookingTrackingUpdate(booking);
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
@@ -1343,6 +1422,7 @@ export const convertBookingToOrder = async (req, res) => {
     });
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     // Only broadcast tracking update if no staff notification being created
     // (to avoid duplicate notifications from both notification socket and feed refresh)
     const shouldBroadcastTracking = !assignedTailor || assignedTailor === booking.assignedTailor;
@@ -1388,9 +1468,9 @@ export const convertBookingToOrder = async (req, res) => {
     let pricingJersey = await pricingModel.findOne({ serviceType: 'jersey' });
     let pricingOrg = await pricingModel.findOne({ serviceType: 'organizational' });
 
-    const jerseyPrice = pricingJersey?.basePerPlayer || 650;
+    const jerseyPrice = pricingJersey?.basePerPlayer || getPricingMapValue(pricingJersey, 'jerseyProducts', 'jersey', 550);
     const pocketPrice = pricingJersey?.pocketPrice || 100;
-    const orgPrice = pricingOrg?.basePerItem || 650;
+    const orgPrice = pricingOrg?.basePerItem || getPricingMapValue(pricingOrg, 'organizationalProducts', 'tshirt', 500);
     const orgPocketPrice = pricingOrg?.pocketPrice || 100;
 
     if (booking.bookingType === 'jersey' && booking.players) {
@@ -1399,7 +1479,13 @@ export const convertBookingToOrder = async (req, res) => {
         itemLabel: 'Jersey',
         basePrice: jerseyPrice,
         pocketPrice,
-        sizeSelector: (player) => player?.jerseySize || player?.size || '',
+        labelSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).label,
+        priceSelector: (player) => getJerseyProductConfig(player, jerseyPrice, pricingJersey).price,
+        addOnMetaSelector: (addOnId) => getBookingAddOnMeta(addOnId, pricingJersey),
+        sizeSelector: (player) => {
+          const product = getJerseyProductConfig(player, jerseyPrice, pricingJersey);
+          return product.needsJerseySize ? (player?.jerseySize || player?.size || '') : (player?.shortSize || '');
+        },
       });
       const derivedAddOnItems = derivedItems.filter((item) => item.addOn === 'Add-on');
       const hasAddOnItems = items.some((item) => item?.addOn === 'Add-on');
@@ -1416,6 +1502,8 @@ export const convertBookingToOrder = async (req, res) => {
         basePrice: orgPrice,
         pocketPrice: orgPocketPrice,
         sizeSelector: (member) => member?.size || member?.jerseySize || '',
+        labelSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).label,
+        priceSelector: (member) => getOrgProductConfig(member, orgPrice, pricingOrg).price,
       });
       const derivedAddOnItems = derivedItems.filter((item) => item.addOn === 'Add-on');
       const hasAddOnItems = items.some((item) => item?.addOn === 'Add-on');
@@ -1729,7 +1817,7 @@ export const getBookingQR = async (req, res) => {
 // Mark booking as picked up by scanning QR code
 export const markAsPickedUp = async (req, res) => {
   try {
-    const { bookingId, releaseProofImage, releaseNotes } = req.body;
+    const { bookingId, releaseProofImage, releaseNotes, releasedBy: releasedByFromClient } = req.body;
 
     const booking = await bookingModel.findById(bookingId);
     if (!booking) {
@@ -1752,6 +1840,14 @@ export const markAsPickedUp = async (req, res) => {
     booking.status = 'Released';  // Set status to Released when QR is scanned
     booking.paid = true;  // Mark as paid when scanned
     booking.paidAt = new Date();
+
+    // Use name passed from frontend (most reliable) — fallback to token actor lookup
+    let releasedByName = releasedByFromClient || '';
+    if (!releasedByName) {
+      const actor = await getRequestActor(req);
+      releasedByName = actor?.fullName || actor?.name || 'Staff/Admin';
+    }
+    booking.releasedBy = releasedByName;
 
     if (releaseProofImage) {
       if (releaseProofImage.startsWith('data:image')) {

@@ -1,3 +1,5 @@
+import PhilippinesAddressFields from '../../components/PhilippinesAddressFields'
+
 const Field = ({ label, ...props }) => (
     <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-wider text-blue-600/70">{label}</label>
@@ -21,10 +23,12 @@ const StepDetails = ({ details, setDetail }) => (
                 <Field label="Email Address" type="email" placeholder="juan@example.com" value={details.email} onChange={(e) => setDetail('email', e.target.value)} />
                 <Field label="Phone Number" type="tel" placeholder="+63 9XX XXX XXXX" value={details.phone} onChange={(e) => setDetail('phone', e.target.value)} />
             </div>
-            <Field label="Street Address" placeholder="123 Rizal St, Barangay San Jose" value={details.address} onChange={(e) => setDetail('address', e.target.value)} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Field label="City" placeholder="Manila" value={details.city} onChange={(e) => setDetail('city', e.target.value)} />
-            </div>
+            <PhilippinesAddressFields
+                value={details}
+                onChange={(nextDetails) => {
+                    Object.entries(nextDetails).forEach(([key, value]) => setDetail(key, value))
+                }}
+            />
         </div>
     </section>
 )

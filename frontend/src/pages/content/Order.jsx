@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
     MdSearch, MdShoppingBag, MdLoop, MdDoneAll, MdFilterList, MdClose, MdCheckCircle, MdDateRange, MdPerson,
     MdPhone, MdEmail, MdLocationOn, MdAssignment, MdInfo, MdTag, MdSort,
@@ -6,14 +6,15 @@ import {
 } from 'react-icons/md'
 import {
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
-    Inbox, Monitor, Printer, Scissors, Truck
+    Inbox, Monitor, Printer, Scissors, Truck,
+    Package2, ArrowLeft, ChevronRight, Users
 } from 'lucide-react'
 import { GiSewingMachine } from 'react-icons/gi'
 import { toast } from 'sonner'
 import { orderApi } from '../../../services/orderApi.js'
 import { bookingApi } from '../../../services/bookingApi.js'
 import { useNavigate, useParams } from 'react-router-dom'
-import OrderTailorChatModal from '../../components/OrderTailorChatModal.jsx'
+
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import {
     getTrackingReferenceCode,
@@ -48,7 +49,44 @@ const CLOSED_TRACKING_STATUSES = new Set(['completed', 'released', 'cancelled'])
 
 const toStatCount = (value) => {
     const count = Number(value)
-    return Number.isFinite(count) ? count : 0
+    if (isNaN(count)) return '0'
+    return count.toLocaleString()
+}
+
+const formatDateLong = (dateStr) => {
+    if (!dateStr) return '—'
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    return date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    })
+}
+
+const formatFullDateTime = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    })
+}
+
+const formatDateSmall = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const formatTimeSmall = (dateStr) => {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 const getApiList = (response, primaryKey) => {
@@ -130,19 +168,19 @@ const matchesActiveFilter = (order, filter) => {
 
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
-    const label = step.label?.toLowerCase().trim() ?? ''
     const isDone = step.done
     const isActive = !step.done && step.active
-    const Icon = STEP_ICON[label]
+    const label = normalizeStepLabel(step.label)
+    const Icon = STEP_ICON[label] || Package
     const sz = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
     const iconSz = size === 'sm' ? 14 : 17
 
     return (
         <div className={`
             ${sz} rounded-full flex items-center justify-center shrink-0 transition-all
-            ${isDone ? 'bg-blue-500 text-white border-2 border-blue-500' : ''}
-            ${isActive ? 'bg-white text-blue-500 border-2 border-blue-500 shadow-md' : ''}
-            ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border-2 border-gray-200' : ''}
+            ${isDone ? 'bg-blue-600 text-white shadow-sm border-none' : ''}
+            ${isActive ? 'bg-white text-blue-600 border-2 border-blue-500 shadow-md animate-pulse' : ''}
+            ${!isDone && !isActive ? 'bg-gray-100 text-gray-300 border border-gray-200' : ''}
         `}>
             {Icon && <Icon size={iconSz} />}
         </div>
@@ -164,35 +202,47 @@ const StepLabel = ({ step, size = 'md' }) => {
     )
 }
 
-// ─── Progress Tracker ────────────────────────
+// ─── Progress Tracker (Horizontal) ─────────────
 const OrderProgressTracker = ({ steps }) => {
     if (!steps || steps.length === 0) return null
     return (
         <>
-            {/* Desktop & Tablet — horizontal */}
             <div className="hidden sm:flex items-center w-full mt-2 overflow-x-auto pb-1 gap-0">
                 {steps.map((step, i) => (
                     <React.Fragment key={step.label + i}>
-                        <div className="flex flex-col items-center min-w-[72px]">
+                        <div className="flex flex-col items-center min-w-[95px]">
                             <StepIcon step={step} />
                             <StepLabel step={step} />
-                            {step.active
-                                ? <span className="text-[9px] text-blue-400 font-semibold mt-0.5">Active</span>
-                                : <span className="text-[9px] text-gray-300 mt-0.5">
-                                    {step.date || '—'}
-                                </span>
-                            }
+                            <div className="flex flex-col items-center mt-1 text-center min-h-[35px]">
+                                {step.active ? (
+                                    <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest animate-pulse">
+                                        Active
+                                    </span>
+                                ) : step.done ? (
+                                    <>
+                                        <span className="text-[10px] text-gray-800 font-black uppercase tracking-tighter leading-tight">
+                                            {formatDateSmall(step.date)}
+                                        </span>
+                                        <span className="text-[9px] text-gray-500 font-bold">
+                                            {step.time || formatTimeSmall(step.date)}
+                                        </span>
+
+                                    </>
+                                ) : (
+                                    <span className="text-[9px] text-gray-300 font-bold uppercase tracking-tighter">
+                                        Pending
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         {i < steps.length - 1 && (
-                            <div className={`h-[2px] flex-1 min-w-[16px] -mt-9 mx-1 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            <div className={`h-[1px] flex-1 min-w-[12px] -mt-12 mx-1 rounded transition-all
+                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
                             />
                         )}
                     </React.Fragment>
                 ))}
             </div>
-
-            {/* Mobile — no scroll, fits full width evenly */}
             <div className="sm:hidden flex items-start w-full mt-3">
                 {steps.map((step, i) => (
                     <React.Fragment key={step.label + i}>
@@ -201,14 +251,60 @@ const OrderProgressTracker = ({ steps }) => {
                             <StepLabel step={step} size="sm" />
                         </div>
                         {i < steps.length - 1 && (
-                            <div className={`h-[2px] flex-1 mt-3 mx-0.5 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-200'}`}
+                            <div className={`h-[1px] flex-1 mt-3 mx-0.5 rounded transition-all
+                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
                             />
                         )}
                     </React.Fragment>
                 ))}
             </div>
         </>
+    )
+}
+
+const OrderTimelineVertical = ({ steps }) => {
+    if (!steps || steps.length === 0) return null
+    return (
+        <div className="space-y-0.5">
+            {steps.map((step, i) => {
+                const isDone = step.done
+                const isActive = step.active
+                const label = normalizeStepLabel(step.label)
+                const Icon = STEP_ICON[label] || Package
+
+                return (
+                    <div key={i} className="flex gap-4 relative">
+                        {i < steps.length - 1 && (
+                            <div className={`absolute left-[15.5px] top-[32px] w-[1px] h-[calc(100%-24px)] ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`} />
+                        )}
+
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 transition-all duration-500
+                            ${isDone ? 'bg-blue-600 text-white shadow-md shadow-blue-200 border-none' :
+                                isActive ? 'bg-white text-blue-600 border-2 border-blue-500 shadow-lg shadow-blue-100 animate-pulse' :
+                                    'bg-gray-50 text-gray-300 border border-gray-200'}`}>
+                            <Icon size={14} />
+                        </div>
+                        <div className="flex-1 pb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                <h4 className={`text-[12px] font-black tracking-tight ${isDone ? 'text-gray-900' : isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    {step.label}
+                                </h4>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <MdDateRange size={14} className={isDone || isActive ? 'text-blue-500' : 'text-gray-300'} />
+                                <span className={`text-[11px] font-bold uppercase tracking-tight ${isDone || isActive ? 'text-black' : 'text-gray-300'}`}>
+                                    {step.date
+                                        ? `${formatDateLong(step.date)}${step.time ? ` | ${step.time}` : ''}`
+                                        : (isActive ? 'Phase in progress...' : 'Scheduled Phase')
+                                    }
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
     )
 }
 
@@ -230,7 +326,7 @@ const StatusBadge = ({ status }) => {
 }
 
 // ─── Details Modal ────────────────────────────
-const DetailsModal = ({ order, onClose, onOpenChat }) => {
+const DetailsModal = ({ order, onClose }) => {
     const navigate = useNavigate()
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
@@ -249,12 +345,13 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
         normalizedStatus === 'released'
     )
     const displayName = getTrackingDisplayName(order)
-    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
+
 
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
-    const [activeTab, setActiveTab] = useState('items')
+    const [activeTab, setActiveTab] = useState('list')
     const [copied, setCopied] = useState(false)
+
 
     // Prevent body scroll when drawer is open
     useEffect(() => {
@@ -322,27 +419,41 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
     }
 
     const fields = [
+        { label: 'Full Name', value: order.contact?.fullName || order.customerName },
+        { label: 'Phone', value: order.contact?.phone || order.phone },
         { label: referenceLabel, value: referenceId },
         { label: 'Status', value: order.status },
         { label: 'Item/Service', value: getTrackingDisplayName(order) },
         { label: 'Service Type', value: serviceTypeLabel },
-        { label: 'Date Placed', value: order.date || new Date(order.createdAt).toLocaleDateString() },
-        { label: 'Est. Completion', value: order.estimatedCompletion },
+        { label: 'Date Placed', value: formatDateLong(order.date || order.createdAt) },
+        { label: 'Pickup Date', value: formatDateLong(order.pickupDate || order.estimatedCompletion) },
+        { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
+        { label: 'Email', value: order.contact?.email || order.email },
+        { label: 'Address', value: order.contact?.address || order.address },
         ...(!isBooking ? [
-            { label: 'Assigned Tailor', value: order.assignedTailor },
+            {
+                label: 'Staff Assigned',
+                value: [...new Set([
+                    order.staffAssignments?.layoutArtist || order.layoutArtist,
+                    order.staffAssignments?.tailor || order.assignedTailor
+                ].filter(Boolean))].join(' - ') || 'Not assigned'
+            },
             { label: 'Notes', value: order.notes },
-        ] : [
-            { label: 'Full Name', value: order.contact?.fullName },
-            { label: 'Phone', value: order.contact?.phone },
-            { label: 'Email', value: order.contact?.email },
-            { label: 'Pickup Date', value: order.pickupDate },
-            { label: 'Time Range', value: getPickupSlotDisplay(order.pickupSlot) },
-            { label: 'Address', value: order.contact?.address },
-        ]),
+        ] : []),
     ].filter(f => f.value)
 
     const items = order.items || []
+    const steps = order.steps || []
     const hasItems = items.length > 0
+
+    const grandTotal = useMemo(() => {
+        if (order.totalAmount || order.totalPrice) {
+            return Number(order.totalAmount || order.totalPrice || 0);
+        }
+        return items.reduce((sum, item) => {
+            return sum + (item.qty * (item.unitPrice || 0)) + (item.addOnPrice || 0)
+        }, 0)
+    }, [order.totalAmount, order.totalPrice, items])
 
     return (
         <>
@@ -351,25 +462,19 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 className="fixed top-0 left-0 w-screen h-screen z-40 bg-black/40 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
-
-            {/* Side Drawer - Mobile rounded-t-3xl, Desktop rounded-2xl */}
             <div
-                className="fixed bottom-0 sm:right-0 sm:top-0 h-1/2 sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+                className="fixed  bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
             >
-                {/* Mobile Handle Bar */}
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
                 </div>
-
-                {/* Header - Payroll Style */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                            <FileText size={16} className="text-white" />
+                            <Package2 size={16} className="text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-[15px] font-extrabold text-gray-900 truncate">{displayName}</h2>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{referenceCode}</p>
+                            <h2 className="text-[15px] font-extrabold text-gray-900 truncate">Your Order</h2>
                         </div>
                     </div>
                     <button
@@ -383,15 +488,26 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 {/* Tab Navigation */}
                 <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
                     <button
-                        onClick={() => setActiveTab('items')}
+                        onClick={() => setActiveTab('details')}
                         className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
-                        ${activeTab === 'items'
+                        ${activeTab === 'details'
+                                ? 'text-blue-600 border-b-blue-600'
+                                : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                            }`}
+                    >
+                        <MdInfo size={14} />
+                        Order Details
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('list')}
+                        className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                        ${activeTab === 'list'
                                 ? 'text-blue-600 border-b-blue-600'
                                 : 'text-gray-400 border-b-transparent hover:text-gray-600'
                             }`}
                     >
                         <Package size={14} />
-                        Ordered Items
+                        Order List
                     </button>
                     {order.status !== 'Cancelled' && (
                         <button
@@ -407,19 +523,17 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                         </button>
                     )}
                 </div>
-
-                {/* Body — scrollable */}
-                <div className="overflow-y-auto p-5 flex-1 space-y-5 font-inter">
-                    {activeTab === 'items' ? (
-                        <>
-                            {/* Details Section */}
+                <div className="overflow-y-auto p-5 pb-10 flex-1 space-y-5 font-inter">
+                    {activeTab === 'details' ? (
+                        <div>
                             <div>
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     {fields.map(({ label, value }) => {
                                         const Icon = iconMap[label]
+                                        const isAddress = label === 'Address'
                                         return (
-                                            <div key={label} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
+                                            <div key={label} className={`bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors ${isAddress ? 'col-span-2' : ''}`}>
                                                 {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -430,12 +544,20 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                     })}
                                 </div>
                             </div>
-
+                            {steps.length > 0 && (
+                                <div className="border-t border-gray-100 pt-5 md:hidden mt-5">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Order Progress</p>
+                                    <OrderTimelineVertical steps={steps} />
+                                </div>
+                            )}
+                        </div>
+                    ) : activeTab === 'list' ? (
+                        <div className="space-y-5">
                             {/* Items Section */}
                             {hasItems && (
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
-                                    <div className="space-y-2.5">
+                                    <div className="space-y-2.5 mb-8">
                                         {items.map((item, idx) => (
                                             <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
                                                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -466,9 +588,19 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                             </div>
                                         ))}
                                     </div>
+                                    {/* Grand Total Section */}
+                                    <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-100 flex justify-between items-center px-1">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grand Total</p>
+                                            <p className="text-[11px] text-gray-500 font-medium mt-1">Total amount to pay</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-2xl font-black text-blue-600 tracking-tight">₱{grandTotal.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                     ) : (
                         // QR Code Tab
                         <div className="space-y-4">
@@ -481,7 +613,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                 </div>
                             ) : qrCode ? (
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="bg-white p-4 rounded-xl border-2 border-purple-200 shadow-sm">
+                                    <div className="bg-white p-4 rounded-xl border-2 border-blue-200 shadow-sm">
                                         <img
                                             src={qrCode}
                                             alt="QR Code"
@@ -494,7 +626,7 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                                     <div className="flex gap-2 w-full">
                                         <button
                                             onClick={handleCopyQR}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg text-purple-600 text-[11px] font-bold transition-colors cursor-pointer"
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5  hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-600 text-[11px] font-bold transition-colors cursor-pointer"
                                         >
                                             {copied ? (
                                                 <>
@@ -531,16 +663,8 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                 </div>
 
                 {/* Footer */}
-                {(canViewInvoice || canMessageTailor) && (
+                {canViewInvoice && (
                     <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
-                        {canMessageTailor && (
-                            <button
-                                onClick={onOpenChat}
-                                className="w-full text-[12px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5 bg-white border border-emerald-200 rounded-xl shadow-sm"
-                            >
-                                <MessageCircle size={14} /> Message Tailor
-                            </button>
-                        )}
                         {canViewInvoice && (
                             <button
                                 onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
@@ -552,14 +676,17 @@ const DetailsModal = ({ order, onClose, onOpenChat }) => {
                     </div>
                 )}
             </div>
+
         </>
     )
 }
 
+
+
 // ─── Order Card ───────────────────────────────
 const OrderCard = ({ order, onCancel, onOpenDetails }) => {
+    const navigate = useNavigate()
     const [showModal, setShowModal] = useState(false)
-    const [showChatModal, setShowChatModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
     const isBooking = !!order.bookingType
@@ -567,7 +694,7 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const referenceCode = getTrackingReferenceCode(order)
     const displayName = getTrackingDisplayName(order)
     const steps = order.steps || []
-    const canMessageTailor = Boolean(order.assignedTailor) && order.status !== 'Cancelled'
+
     const canCancel = !isClosedTrackingStatus(order.status) && !hasReachedDropOffStep(steps)
 
     const loadQRCode = async () => {
@@ -601,7 +728,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
 
     return (
         <>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
+            <div
+                onClick={() => navigate(`/order/${order._id}`)}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all overflow-hidden cursor-pointer group"
+            >
 
                 {/* ── Header ── */}
                 <div className="p-4 sm:p-5 pb-3">
@@ -615,26 +745,14 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                                     {serviceTypeLabel || '—'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-gray-400 font-medium">
-                                <span className="truncate max-w-[120px] sm:max-w-none">
+                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium">
+                                <span className="truncate">
                                     {referenceCode}
                                 </span>
-                                <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0" />
-                                <span>{order.date || new Date(order.createdAt).toLocaleDateString()}</span>
                             </div>
                         </div>
                         <div className="shrink-0 text-right">
                             <StatusBadge status={order.status} />
-                            {!isBooking && order.estimatedCompletion && (
-                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                    Due {order.estimatedCompletion}
-                                </p>
-                            )}
-                            {isBooking && order.pickupDate && (
-                                <p className="text-[10px] text-gray-400 mt-1 font-medium">
-                                    Pickup {order.pickupDate}
-                                </p>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -645,8 +763,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                         {[
                             { label: 'Customer', value: order.contact?.fullName },
                             { label: 'Service', value: getTrackingDisplayName(order) },
-                            { label: 'Contact', value: order.contact?.phone || order.contact?.email },
-                            { label: 'Pickup', value: order.pickupDate },
+                            { label: 'Drop-off', value: formatDateLong(order.date || order.createdAt) },
+                            { label: 'Pickup', value: formatDateLong(order.pickupDate || order.estimatedCompletion) },
                         ].map(({ label, value }) => (
                             <div key={label} className="bg-gray-50 rounded-xl px-3 py-2">
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
@@ -666,34 +784,48 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 {/* ── Footer ── */}
                 <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-1.5 min-w-0 w-full sm:w-auto">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                            {order.assignedTailor ? 'Tailor:' : 'Status:'}
+                        <span className="text-[12px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
+                            Staff Assigned:
                         </span>
-                        <span className="text-[11px] font-black text-gray-700 truncate">
-                            {order.assignedTailor || 'is not assigned'}
+                        <span className="text-[12px] font-semibold text-slate-500 truncate">
+                            {[...new Set([
+                                order.staffAssignments?.layoutArtist || order.layoutArtist,
+                                order.staffAssignments?.tailor || order.assignedTailor
+                            ].filter(Boolean))].join(' - ') || 'is not assigned'}
                         </span>
                     </div>
                     <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
-                        {canMessageTailor && (
-                            <button
-                                onClick={() => setShowChatModal(true)}
-                                className="min-w-0 bg-white border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
-                            >
-                                <MessageCircle size={12} />
-                                <span className="truncate">Message Tailor</span>
-                            </button>
-                        )}
+
                         {canCancel && (
                             <button
-                                onClick={() => onCancel(order)}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onCancel(order)
+                                }}
                                 className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                             >
                                 Cancel
                             </button>
                         )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
+                                navigate('/home')
+                            }}
+                            className="min-w-0 bg-white border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-green-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                            title="Message the team"
+                        >
+                            <MessageCircle size={12} />
+                            <span className="hidden sm:inline">Message Team</span>
+                            <span className="sm:hidden">Chat</span>
+                        </button>
                         {order.status !== 'Cancelled' && (
                             <button
-                                onClick={handleDownloadQR}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDownloadQR()
+                                }}
                                 disabled={loadingQR}
                                 className="min-w-0 bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0 disabled:opacity-50"
                                 title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
@@ -704,17 +836,13 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             </button>
                         )}
                         <button
-                            onClick={() => {
-                                if (typeof onOpenDetails === 'function') {
-                                    onOpenDetails(order)
-                                    return
-                                }
-
-                                setShowModal(true)
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                navigate(`/order/${order._id}`)
                             }}
                             className="min-w-0 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
                         >
-                            <QrCode size={12} />
+                            <Eye size={12} />
                             Details
                         </button>
                     </div>
@@ -726,13 +854,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 <DetailsModal
                     order={order}
                     onClose={() => setShowModal(false)}
-                    onOpenChat={() => {
-                        setShowModal(false)
-                        setShowChatModal(true)
-                    }}
                 />
             )}
-            {showChatModal && <OrderTailorChatModal order={order} onClose={() => setShowChatModal(false)} />}
         </>
     )
 }
@@ -806,9 +929,15 @@ const Order = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [showFilter, setShowFilter] = useState(false)
+    const [showSortDropdown, setShowSortDropdown] = useState(false)
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false)
+    const [showCombinedDropdown, setShowCombinedDropdown] = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
-    const [activeChatOrder, setActiveChatOrder] = useState(null)
+
+    const statusDropdownRef = useRef(null)
+    const sortDropdownRef = useRef(null)
+    const combinedDropdownRef = useRef(null)
 
     const mainRef = useRef(null)
     const searchTimeoutRef = useRef(null)
@@ -885,6 +1014,22 @@ const Order = () => {
         }, FALLBACK_REFRESH_MS)
         return () => clearInterval(interval);
     }, [activeFilter, searchQuery, fetchData])
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+                setShowStatusDropdown(false)
+            }
+            if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+                setShowSortDropdown(false)
+            }
+            if (combinedDropdownRef.current && !combinedDropdownRef.current.contains(event.target)) {
+                setShowCombinedDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     useEffect(() => {
         const handleWindowFocus = () => {
@@ -1074,19 +1219,28 @@ const Order = () => {
                         <p className="text-slate-400 text-xs sm:text-sm">Track and manage your tailoring orders.</p>
                     </div>
                     {/* Stats — full width grid, no scroll */}
-                    <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
+                    <div className="grid w-full grid-cols-3 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
                         {[
-                            { label: 'Total', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                            { label: 'Total Orders', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
                             { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-green-400/20', text: 'text-green-300' },
                         ].map(({ label, value, icon: Icon, bg, text }) => (
-                            <div key={label} className="min-w-0 bg-white/10 border border-white/15 rounded-xl px-3 py-2.5 flex items-center gap-3 min-[420px]:flex-col min-[420px]:items-center min-[420px]:gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
-                                    <Icon size={16} className={text} />
+                            <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
+                                {/* Mobile: icon + label on top */}
+                                <div className="flex items-center gap-0.5 sm:hidden">
+                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
+                                        <Icon size={13} className={text} />
+                                    </div>
+                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
                                 </div>
-                                <div className="min-w-0 flex-1 min-[420px]:text-center sm:text-left">
-                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide leading-tight truncate min-[420px]:whitespace-normal sm:whitespace-nowrap">{label}</p>
-                                    <p className="text-white text-xl sm:text-lg font-bold leading-tight">{toStatCount(value)}</p>
+                                <p className="text-white text-xl font-bold leading-tight sm:hidden">{toStatCount(value)}</p>
+                                {/* Desktop/Tablet */}
+                                <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
+                                    <Icon size={18} className={text} />
+                                </div>
+                                <div className="hidden sm:block">
+                                    <p className="text-slate-400 text-[10px] font-medium">{label}</p>
+                                    <p className="text-white text-xl font-bold leading-tight">{toStatCount(value)}</p>
                                 </div>
                             </div>
                         ))}
@@ -1095,66 +1249,82 @@ const Order = () => {
             </div>
 
             {/* ── Controls ── */}
-            <div className="space-y-2 mb-5">
-                <div className="flex items-center gap-2">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <MdSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search orders..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
-                        />
-                    </div>
-
-                    {/* Refresh button - visible on all sizes */}
+            <div className="flex items-center gap-2 mb-6 sm:mb-8">
+                {/* Search Bar - Flex 1 */}
+                <div className="relative flex-1 group">
                     <button
                         onClick={() => fetchData(activeFilter, searchQuery)}
-                        className="bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 text-xs font-bold px-3 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
-                        title="Refresh orders"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 hover:text-blue-600 transition-colors z-10"
                     >
-                        <MdLoop size={16} />
-                        <span className="hidden sm:inline">Refresh</span>
+                        <MdSearch size={18} />
                     </button>
+                    <input
+                        type="text"
+                        placeholder="Search orders..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                    />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 sm:flex-none sm:min-w-[210px]">
-                        <MdSort size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <select
-                            value={sortBy}
-                            onChange={e => setSortBy(e.target.value)}
-                            className="w-full appearance-none pl-9 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all font-medium text-gray-600"
+                {/* Minimal Icons (Filter & Refresh) */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                    {/* Combined Filter/Sort Dropdown */}
+                    <div className="relative" ref={combinedDropdownRef}>
+                        <button
+                            onClick={() => setShowCombinedDropdown(!showCombinedDropdown)}
+                            className={`w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl shadow-sm transition-all hover:bg-gray-50 active:scale-95
+                                ${showCombinedDropdown ? 'ring-4 ring-blue-500/5 border-blue-400 text-blue-600' : 'text-gray-400'}`}
+                            title="Filters & Sorting"
                         >
-                            {SORT_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                            <MdFilterList size={20} />
+                        </button>
+
+                        {showCombinedDropdown && (
+                            <div className="absolute top-full right-0 mt-2 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl z-30 py-3 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                                <div className="px-4 pb-2">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Sort By</p>
+                                    <div className="space-y-1">
+                                        {SORT_OPTIONS.map(option => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => { setSortBy(option.value); setShowCombinedDropdown(false) }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
+                                                    ${sortBy === option.value ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="border-t border-gray-50 mt-2 pt-2 px-4">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Status Filter</p>
+                                    <div className="space-y-1">
+                                        {ORDER_STATUS_FILTERS.map(filter => (
+                                            <button
+                                                key={filter}
+                                                onClick={() => { setActiveFilter(filter); setShowCombinedDropdown(false) }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
+                                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                                            >
+                                                {filter}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Mobile filter button */}
+                    {/* Refresh Button */}
                     <button
-                        onClick={() => setShowFilter(true)}
-                        className="sm:hidden flex items-center gap-1.5 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-xs font-bold text-gray-600 shadow-sm shrink-0"
+                        onClick={() => fetchData(activeFilter, searchQuery)}
+                        className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 text-gray-400 hover:bg-gray-50 rounded-xl shadow-sm transition-all active:scale-95 group"
+                        title="Refresh orders"
                     >
-                        <MdFilterList size={16} />
-                        <span className="hidden xs:inline">{activeFilter === 'All Orders' ? 'Filter' : activeFilter}</span>
+                        <MdLoop size={20} className="group-active:rotate-180 transition-transform duration-500" />
                     </button>
-
-                    {/* Desktop filter tabs */}
-                    <div className="hidden sm:flex items-center gap-1.5">
-                        {ORDER_STATUS_FILTERS.map(filter => (
-                            <button key={filter} onClick={() => setActiveFilter(filter)}
-                                className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap cursor-pointer
-                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
-                                {filter}
-                            </button>
-                        ))}
-                    </div>
                 </div>
             </div>
 
@@ -1249,18 +1419,9 @@ const Order = () => {
                 <DetailsModal
                     order={selectedOrder}
                     onClose={() => navigate('/order')}
-                    onOpenChat={() => {
-                        setActiveChatOrder(selectedOrder)
-                        navigate('/order')
-                    }}
                 />
             )}
-            {activeChatOrder && (
-                <OrderTailorChatModal
-                    order={activeChatOrder}
-                    onClose={() => setActiveChatOrder(null)}
-                />
-            )}
+
         </main>
     )
 }

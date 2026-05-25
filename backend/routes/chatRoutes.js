@@ -6,6 +6,7 @@ import {
   sendMessage,
   markConversationRead,
   getOrCreateOrderConversationForSubject,
+  getOrCreateSupportConversationForTargetUser,
   editMessage,
   deleteMessageForEveryone,
   deleteMessageForMe,
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.get('/conversations', authMiddleware, listConversations);
 router.post('/conversations/order', authMiddleware, getOrCreateOrderConversationForSubject);
+router.post('/conversations/support', authMiddleware, getOrCreateSupportConversationForTargetUser);
 router.get('/messages', authMiddleware, getMessages);
 router.post('/messages', authMiddleware, sendMessage);
 router.patch('/messages/read', authMiddleware, markConversationRead);

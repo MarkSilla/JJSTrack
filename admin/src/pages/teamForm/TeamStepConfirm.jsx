@@ -85,35 +85,46 @@ const TeamStepConfirm = ({ teamName, players, designFile, driveLink, contact, go
                     <ReviewBlock title="Team & Players" onEdit={() => goToStep(2)}>
                         <p className="text-gray-800 font-semibold mb-3">{teamName || 'No team name'}</p>
                         {players.length > 0 ? (
-                            <div className="space-y-2">
-                                {players.map((pl, i) => {
-                                    const product = PRODUCT_TYPES.find((p) => p.id === pl.productType)
-                                    const price = getPlayerPrice(pl)
-                                    return (
-                                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-200 last:border-0">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <span className="w-8 h-8 rounded-lg bg-blue-50 text-black font-bold text-xs flex items-center justify-center shrink-0">
-                                                    {pl.number}
-                                                </span>
-                                                <div className="min-w-0">
-                                                    <p className="text-gray-800 text-sm font-medium truncate">
-                                                        {[pl.firstName, pl.surname].filter(Boolean).join(' ')}
-                                                    </p>
-                                                    <p className="text-gray-400 text-xs">
-                                                        {product?.label || '—'} · {pl.jerseySize || '—'}
-                                                        {product?.needsShortSize && ` / ${pl.shortSize || '—'}`}
-                                                        {pl.pockets && ' · Pockets'}
-                                                        {pl.addOns && pl.addOns.length > 0 && ` · ${pl.addOns.map(id => {
-                                                            const addon = OPTIONAL_PRODUCT_TYPES.find(p => p.id === id)
-                                                            return addon?.label
-                                                        }).join(', ')}`}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">₱{price}</span>
-                                        </div>
-                                    )
-                                })}
+                            <div className="overflow-x-auto -mx-5 px-5">
+                                <table className="w-full min-w-[600px] border-collapse text-left">
+                                    <thead>
+                                        <tr className="border-b-2 border-gray-200">
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">No.</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Full Name</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Number</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Add-ons</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Pockets</th>
+                                            <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-right">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {players.map((pl, i) => {
+                                            const price = getPlayerPrice(pl)
+                                            const jerseySizeText = pl.useManualjerseySize || (pl.jerseyLength && pl.jerseyBody) ? `${pl.jerseyLength || '-'}"×${pl.jerseyBody || '-'}"` : (pl.jerseySize || '—')
+                                            const shortSizeText = pl.useManualsShortSize || (pl.shortHips && pl.shortLength) ? `${pl.shortHips || '-'}"×${pl.shortLength || '-'}"` : (pl.shortSize || '—')
+                                            
+                                            const addOnLabels = (Array.isArray(pl.addOns) ? pl.addOns : [])
+                                                .map(id => OPTIONAL_PRODUCT_TYPES.find(p => p.id.toLowerCase() === String(id).toLowerCase())?.label)
+                                                .filter(Boolean)
+                                            const addOnText = addOnLabels.length > 0 ? addOnLabels.join(', ') : 'None'
+
+                                            return (
+                                                <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                    <td className="py-2.5 text-xs font-medium text-gray-500">{i + 1}.</td>
+                                                    <td className="py-2.5 text-xs font-semibold text-gray-800 uppercase">{getPlayerDisplayName(pl, i)}</td>
+                                                    <td className="py-2.5 text-xs font-bold text-gray-600 text-center">{pl.number || '—'}</td>
+                                                    <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{jerseySizeText}</td>
+                                                    <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{shortSizeText}</td>
+                                                    <td className="py-2.5 text-xs text-gray-500">{addOnText}</td>
+                                                    <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{pl.pockets ? 'Yes' : 'No'}</td>
+                                                    <td className="py-2.5 text-xs font-bold text-blue-600 text-right tabular-nums">₱{price}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         ) : (
                             <p className="text-gray-400 text-sm">No players added</p>

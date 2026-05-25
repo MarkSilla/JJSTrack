@@ -44,6 +44,11 @@ const chatConversationSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    assignedStaffRole: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     assignedAdminId: {
       type: String,
       default: null,
@@ -75,10 +80,10 @@ chatConversationSchema.index(
 );
 
 chatConversationSchema.index(
-  { userId: 1, scope: 1, subjectType: 1, subjectId: 1 },
+  { userId: 1, scope: 1, subjectType: 1, subjectId: 1, assignedStaffId: 1 },
   {
     unique: true,
-    partialFilterExpression: { scope: 'order' },
+    partialFilterExpression: { scope: 'order', assignedStaffId: { $ne: null } },
   }
 );
 

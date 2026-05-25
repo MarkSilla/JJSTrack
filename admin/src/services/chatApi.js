@@ -22,6 +22,11 @@ export const chatApi = {
     return response.data;
   },
 
+  openSupportConversation: async (targetUserId) => {
+    const response = await api.post('/chat/conversations/support', { targetUserId });
+    return response.data;
+  },
+
   sendMessage: async (payload) => {
     const response = await api.post('/chat/messages', payload);
     return response.data;

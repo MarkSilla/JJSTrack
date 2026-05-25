@@ -1,72 +1,33 @@
-import React, { useState, useContext, useEffect } from 'react'
+import React, { Suspense, lazy, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 import { AuthContext } from '../context/Context'
-import img from '../assets/img.js'
-import { Download, Quote } from 'lucide-react'
-import { toast } from 'sonner'
+import { ArrowRight, ClipboardList, Clock, Download, Mail, MapPin, Navigation, Package, Phone, Ruler, Users } from 'lucide-react'
+import shop from '../assets/shop_result.png'
+import jjsLogo from '../assets/jjs_result.png'
+import panorama from '../assets/panoramajjs_result.webp'
+import fit from '../assets/fit.jfif'
+import desi from '../assets/desi.jpg'
+import jersey from '../assets/jersey_result.jpg'
+import featuredSportswear from '../assets/jersey/nb (4)_result.jpg'
 
+const LandingTestimonials = lazy(() => import('./LandingTestimonials'))
+const LandingFAQ = lazy(() => import('./LandingFAQ'))
 
-const testimonials = [
-  {
-    name: 'Gerielle Quinn Marty',
-    role: 'Customer',
-    quote: 'Appreciation post thank you KM Graphics & Jjs Morales sa mabisang layout at pag tahi solid❤️🤍',
-    rating: 5,
-    date: 'August 2024',
-  },
-  {
-    name: 'Paul Allen Ragadio',
-    role: 'Customer',
-    quote: 'Maraming salamat Jjs Morales sa swabeng jersey🔥Thank you also Team Tinagkan para sa dikdikang laban',
-    rating: 5,
-    date: 'August 2024',
-  },
-  {
-    name: 'SUBIC Sepaktakraw Club INC',
-    role: 'Club',
-    quote: 'Maraming salamat sa napakaSOLID na suporta JJS SPORTSWEAR ‼️',
-    rating: 5,
-    date: 'February 2026',
-  },
-];
-
-const faqData = [
-  {
-    question: 'How to book appointments?',
-    answer: 'Booking an appointment is easy! Just log in to your account, head over to the dashboard, and click the "Book Now" button and choose what type of service you need.',
-  },
-  {
-    question: 'What types of services does JJSportswear offer?',
-    answer: 'We specialize in custom sportswear design (jerseys, team uniforms), clothing repairs and alterations (resizing, hemming, zipper replacement), and personalized garment tailoring. All services are trackable through the JJSTrack platform.',
-  },
-  {
-    question: 'How does the order tracking system work?',
-    answer: 'Once your order is placed, you\'ll receive real-time status updates through your JJSTrack account. You can monitor every stage — from dropped off, layout, printing, sewing, to pick-up — all from your dashboard.',
-  },
-  {
-    question: 'Am I able to schedule a booking on any day?',
-    answer: 'Appointment availability depends on our schedule. We kindly ask that you check the appointment calendar to confirm if your preferred date has open slots. If slots are available, you may proceed with the booking; if the date is fully booked, we regret that reservations cannot be made for that day.',
-  },
-  {
-    question: 'Is there an invoice or a way to know the price?',
-    answer: 'Yes, definitely. Our system generates a digital invoice for every order. You can view the full price breakdown and payment status directly on your invoice to stay updated on your expenses.',
-  },
-];
+const notify = async (type, message, options) => {
+  const { toast } = await import('sonner')
+  toast[type](message, options)
+}
 
 const LandingPage = () => {
-  const [openFaq, setOpenFaq] = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null)
   const [isAppInstalled, setIsAppInstalled] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator?.standalone === true
   })
-  const { isAuthenticated, loading } = useContext(AuthContext)
+  const { loading } = useContext(AuthContext)
   const navigate = useNavigate()
-  const toggleFaq = (index) => {
-    setOpenFaq(openFaq === index ? null : index);
-  };
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
@@ -77,7 +38,7 @@ const LandingPage = () => {
     const handleAppInstalled = () => {
       setInstallPrompt(null)
       setIsAppInstalled(true)
-      toast.success('JJSTrack app installed successfully.')
+      notify('success', 'JJSTrack app installed successfully.')
     }
 
     const standaloneQuery = window.matchMedia?.('(display-mode: standalone)')
@@ -101,7 +62,7 @@ const LandingPage = () => {
 
   const handleDownloadApp = async () => {
     if (isAppInstalled) {
-      toast.success('JJSTrack is already installed on this device.')
+      notify('success', 'JJSTrack is already installed on this device.')
       return
     }
 
@@ -115,7 +76,7 @@ const LandingPage = () => {
       return
     }
 
-    toast.info('Open your browser menu and choose Install app or Add to Home Screen.', {
+    notify('info', 'Open your browser menu and choose Install app or Add to Home Screen.', {
       duration: 6500,
     })
   }
@@ -143,7 +104,15 @@ const LandingPage = () => {
             <div className="absolute inset-0 opacity-[0.15] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
           </div>
 
-          <img src={img.shop} alt="JJS shop" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
+          <img
+            src={shop}
+            alt="JJS shop"
+            width="1600"
+            height="900"
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-transparent to-[#020617]" />
 
           <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center">
@@ -165,10 +134,10 @@ const LandingPage = () => {
               </button>
               <button
                 onClick={handleDownloadApp}
-                className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
+                className="group relative inline-flex items-center justify-center gap-3 px-7 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
                 type="button"
               >
-                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                <Download className="h-3 w-3 transition-transform group-hover:-translate-y-0.5" />
                 Download App
               </button>
             </div>
@@ -188,14 +157,14 @@ const LandingPage = () => {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 px-4">
               {[
-                { icon: 'assignment', title: 'Order Tracking', desc: 'Track every order from measurement to delivery with real-time status updates.' },
-                { icon: 'group', title: 'Client Management', desc: 'Build lasting relationships with detailed client profiles and history.' },
-                { icon: 'straighten', title: 'Measurements Database', desc: 'Store and access precise measurements instantly. Never lose a detail.' },
-                { icon: 'inventory_2', title: 'Inventory Control', desc: 'Monitor fabric stock and supplies in real-time to prevent shortages.' }
+                { icon: ClipboardList, title: 'Order Tracking', desc: 'Track every order from measurement to delivery with real-time status updates.' },
+                { icon: Users, title: 'Client Management', desc: 'Build lasting relationships with detailed client profiles and history.' },
+                { icon: Ruler, title: 'Measurements Database', desc: 'Store and access precise measurements instantly. Never lose a detail.' },
+                { icon: Package, title: 'Inventory Control', desc: 'Monitor fabric stock and supplies in real-time to prevent shortages.' }
               ].map((f, i) => (
                 <div key={i} className="group bg-white rounded-[2rem] p-10 text-left border border-gray-100 shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-20px_rgba(37,99,235,0.1)] transition-all duration-500 cursor-pointer">
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-blue-600 transition-colors duration-500">
-                    <span className="material-symbols-outlined text-blue-600 group-hover:text-white transition-colors duration-500 text-2xl">{f.icon}</span>
+                    <f.icon className="text-blue-600 group-hover:text-white transition-colors duration-500" size={24} />
                   </div>
                   <h3 className="text-md font-black text-[#0F172A] mb-4 tracking-tight uppercase">{f.title}</h3>
                   <p className="text-[#64748b] text-sm font-medium leading-relaxed">{f.desc}</p>
@@ -213,7 +182,7 @@ const LandingPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-3">
               <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[300px] md:min-h-[350px] group cursor-pointer" onClick={() => navigate('/designs')}>
                 <div className="absolute inset-0 bg-[#0F172A]/90 ">
-                  <img src={img.jerseys.nba[3]} alt="Custom Sportswear" className=" w-full h-full object-cover opacity-60 group-hover:opacity-80" />
+                  <img src={featuredSportswear} alt="Custom Sportswear" width="1200" height="900" loading="lazy" decoding="async" className=" w-full h-full object-cover opacity-60 group-hover:opacity-80" />
                   <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A] via-[#0F172A]/40 to-transparent" />
                 </div>
                 <div className="relative z-10 p-8 md:p-12 flex flex-col justify-center h-full text-left text-white max-w-xl">
@@ -233,14 +202,14 @@ const LandingPage = () => {
                       className="inline-flex items-center gap-3 bg-blue-400 text-white px-8 py-3.5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-blue-300 hover:scale-105 transition-all shadow-xl shadow-blue-400/20"
                     >
                       Explore Our Designs
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>
               </div>
               <div className="relative bg-[#0F172A] rounded-none overflow-hidden min-h-[280px] md:min-h-[350px] group">
                 <div className="absolute inset-0">
-                  <img src={img.fit} alt="Fit Profiles" className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity" />
+                  <img src={fit} alt="Fit Profiles" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity" />
                 </div>
                 <div className="relative z-10 p-8 flex flex-col justify-center h-full text-left text-white">
                   <h3 className="text-xl md:text-2xl font-bold font-playfair mb-3">Personalized <br /> Fit Profiles</h3>
@@ -251,7 +220,7 @@ const LandingPage = () => {
               </div>
               <div className="relative rounded-none overflow-hidden min-h-[250px] md:min-h-[320px] group">
                 <div className="absolute inset-0 bg-[#0F172A]">
-                  <img src={img.desi} alt="Repair" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500" />
+                  <img src={desi} alt="Repair" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent opacity-60" />
                 </div>
                 <div className="relative z-10 p-8 md:p-10 flex flex-col justify-center h-full text-left text-white">
@@ -263,7 +232,7 @@ const LandingPage = () => {
               </div>
               <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[280px] md:min-h-[320px] group">
                 <div className="absolute inset-0 bg-[#0F172A]">
-                  <img src={img.jersey} alt="jersey" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity" />
+                  <img src={jersey} alt="jersey" width="1200" height="800" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity" />
                 </div>
                 <div className="relative z-10 p-6 md:p-8 flex flex-col justify-center h-full text-left text-white">
                   <h3 className="text-3xl md:text-5xl font-black italic mb-2">Quality You Can Trust</h3>
@@ -276,15 +245,19 @@ const LandingPage = () => {
         <section id="location" className="relative bg-[#0F172A] overflow-hidden">
           <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
             <img
-              src={img.panorama}
+              src={panorama}
               alt="JJS Sportswear Shop Panorama"
+              width="1600"
+              height="900"
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/60 via-transparent to-[#0F172A]"></div>
             <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A]/40 to-transparent"></div>
             <div className="absolute top-2 left-3 md:top-12 md:left-12 z-10">
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-5 py-2.5">
-                <span className="material-symbols-outlined text-yellow-400 text-sm">location_on</span>
+                <MapPin className="text-yellow-400" size={16} />
                 <span className="text-white text-sm font-medium tracking-wide">Our Location</span>
               </div>
             </div>
@@ -315,7 +288,7 @@ const LandingPage = () => {
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-6">
-                    <img src={img.jjslogo1} alt="google" className="w-6 h-6" />
+                    <img src={jjsLogo} alt="google" width="24" height="24" loading="lazy" decoding="async" className="w-6 h-6" />
                     <span className="text-xs uppercase tracking-widest text-yellow-400 font-semibold">JJSportswear</span>
                   </div>
 
@@ -323,7 +296,7 @@ const LandingPage = () => {
 
                   <div className="space-y-4 mb-8">
                     <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-blue-400 mt-0.5 text-xl">location_on</span>
+                      <MapPin className="text-blue-400 mt-0.5 shrink-0" size={20} />
                       <p className="text-gray-300 text-sm leading-relaxed">
                         Purok 3B National Highway,<br />
                         Calapacuan, Subic,<br />
@@ -331,15 +304,15 @@ const LandingPage = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-blue-400 text-xl">phone</span>
+                      <Phone className="text-blue-400 shrink-0" size={20} />
                       <p className="text-gray-300 text-sm">0908 997 2332</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-blue-400 text-xl">mail</span>
+                      <Mail className="text-blue-400 shrink-0" size={20} />
                       <p className="text-gray-300 text-sm">jjsportswearph@gmail.com</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-blue-400 text-xl">schedule</span>
+                      <Clock className="text-blue-400 shrink-0" size={20} />
                       <div className="flex flex-col">
                         <p className="text-gray-300 text-sm">Mon - Sat: 8:00 AM – 8:00 PM</p>
                         <p className="text-gray-300 text-sm">Sun: <span className="text-red-500 font-bold">Closed</span></p>
@@ -353,117 +326,17 @@ const LandingPage = () => {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3.5 px-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-blue-600/25"
                 >
-                  <span className="material-symbols-outlined text-xl">directions</span>
+                  <Navigation size={20} />
                   Get Directions
                 </a>
               </div>
             </div>
           </div>
         </section>
-        <section id="testimonials" className="relative py-16 md:py-24 bg-[#F1F5F9] overflow-hidden">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-12 md:mb-16">
-              <span className="inline-block text-blue-600 text-sm uppercase tracking-[0.3em] font-medium mb-3">
-                Testimonials
-              </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-playfair text-[#0F172A] mb-4">
-                What Our Clients Say
-              </h2>
-              <div className="border-b-2 border-yellow-400 w-16 md:w-24 mx-auto mb-4"></div>
-              <p className="text-[#475569] text-sm md:text-base max-w-2xl mx-auto">
-                Hear from the people who trust JJSportswear with their custom sportswear
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-              {testimonials.map((t, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col justify-between relative group"
-                >
-                  <div className="absolute -top-4 left-8">
-                    <div className="w-10 h-10 bg-[#0F172A] rounded-xl flex items-center justify-center shadow-lg">
-                      <Quote className="text-yellow-400 w-5 h-5 fill-none" />
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="flex gap-1 mb-4">
-                      {[...Array(5)].map((_, s) => (
-                        <span
-                          key={s}
-                          className={`material-symbols-outlined text-lg ${s < t.rating ? 'text-yellow-400' : 'text-gray-200'
-                            }`}
-                        >
-                          star
-                        </span>
-                      ))}
-                    </div>
-
-                    <p className="text-[#475569] text-sm leading-relaxed mb-6 italic">
-                      "{t.quote}"
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                    <div>
-                      <p className="text-[#0F172A] font-semibold text-sm">{t.name}</p>
-                      <p className="text-[#94A3B8] text-xs">{t.role} - <span className='text-xs text-[#94A3B8]'> {t.date}</span></p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-        <section id="FAQ" className="relative py-16 md:py-24 bg-white overflow-hidden">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold font-playfair text-[#0F172A] mb-4">
-                Frequently Asked Questions
-              </h2>
-              <div className="border-b-2 border-yellow-400 w-16 md:w-24 mx-auto mb-4"></div>
-              <p className="text-[#475569] text-sm md:text-base max-w-2xl mx-auto">
-                Everything you need to know about JJSTrack and our services.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {faqData.map((faq, index) => (
-                <div
-                  key={index}
-                  className={`rounded-xl border transition-all duration-300 ${openFaq === index
-                    ? 'border-blue-200 bg-blue-50/50 shadow-sm'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                >
-                  <button
-                    onClick={() => toggleFaq(index)}
-                    className="w-full flex items-center justify-between px-6 py-5 text-left cursor-pointer"
-                  >
-                    <span className={`font-semibold text-sm md:text-base pr-4 transition-colors duration-300 ${openFaq === index ? 'text-blue-700' : 'text-[#0F172A]'
-                      }`}>
-                      {faq.question}
-                    </span>
-                    <span className={`material-symbols-outlined text-xl flex-shrink-0 transition-all duration-300 ${openFaq === index ? 'rotate-180 text-blue-600' : 'text-[#94A3B8]'
-                      }`}>
-                      expand_more
-                    </span>
-                  </button>
-                  <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaq === index ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                  >
-                    <div className="px-6 pb-5">
-                      <p className="text-[#475569] text-sm leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-
+        <Suspense fallback={null}>
+          <LandingTestimonials />
+          <LandingFAQ />
+        </Suspense>
       </main>
       <Footer />
     </div >
@@ -471,3 +344,5 @@ const LandingPage = () => {
 }
 
 export default LandingPage
+
+

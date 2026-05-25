@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import img from '../assets/img.js'
+import { Facebook, Instagram, Mail, MapPin, Phone } from 'lucide-react'
+import jjsLogo from '../assets/jjs_result.png'
 
 const Footer = () => {
   const [activeLegalDoc, setActiveLegalDoc] = useState(null)
@@ -46,7 +47,7 @@ const Footer = () => {
             <div >
               <div className="text-center md:text-left">
                 <div className="flex items-center gap-3 justify-center md:justify-start sm:justify-center">
-                  <img src={img.jjslogo1} alt="jjs logo" className="h-10" />
+                  <img src={jjsLogo} alt="jjs logo" width="40" height="40" loading="lazy" decoding="async" className="h-10 w-10 object-contain" />
                   <h3 className="text-lg font-bold mb-1 ">JJS Track</h3>
                 </div>
                 <div className="relative z-10 p-1 md:p-2 mr-0 xl:mr-10 mb-4 xl:mb-0">
@@ -70,10 +71,10 @@ const Footer = () => {
               <div className="  justify-center md:justify-start sm:justify-center lg:justify-center">
                 <h3 className="text-lg font-bold mb-2 text-center md:text-left">Contact</h3>
                 <ul className="text-gray-400 space-y-2 mx-auto">
-                  <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><span className="material-symbols-outlined text-medium text-blue-400">mail</span>jjsportswearph@gmail.com</a></li>
-                  <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><span className="material-symbols-outlined text-medium text-blue-400">phone</span>0908 997 2332</a></li>
+                  <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><Mail className="text-blue-400" size={18} />jjsportswearph@gmail.com</a></li>
+                  <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><Phone className="text-blue-400" size={18} />0908 997 2332</a></li>
                   <li><a href="https://www.google.com/maps/@14.8605929,120.2430905,3a,75y,42.19h,85.86t/data=!3m7!1e1!3m5!1sclhDjyO6FL7gA0kwpA0OsQ!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D4.141821770887503%26panoid%3DclhDjyO6FL7gA0kwpA0OsQ%26yaw%3D42.190002848256434!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDIwOS4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer"
-                    className="hover:text-blue-400 flex items-start justify-center md:justify-start"><span className="material-symbols-outlined text-medium text-blue-400">location_on</span>Purok 3B National Highway, Calapacuan, Subic, Philippines</a></li>
+                    className="hover:text-blue-400 flex items-start justify-center md:justify-start"><MapPin className="text-blue-400 mt-0.5 shrink-0" size={18} />Purok 3B National Highway, Calapacuan, Subic, Philippines</a></li>
                 </ul>
               </div>
             </div>
@@ -81,8 +82,8 @@ const Footer = () => {
               <div className="justify-center md:justify-start">
                 <h3 className="text-lg font-bold mb-2 text-center md:text-left">Follow Us</h3>
                 <ul className="  text-gray-400 flex space-x-4 justify-center md:justify-start">
-                  <li><a href="https://www.facebook.com/JennoelJennyl" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 "><i className="fa fa-facebook text-blue-400 text-xl"></i></a></li>
-                  <li><a href="https://www.instagram.com/jjsportswearph?igsh=MXNka3JiZXNtZ3NqNw==" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400"><i className="fa fa-instagram text-blue-400 text-xl"></i></a></li>
+                  <li><a href="https://www.facebook.com/JennoelJennyl" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 " aria-label="Facebook"><Facebook className="text-blue-400" size={20} /></a></li>
+                  <li><a href="https://www.instagram.com/jjsportswearph?igsh=MXNka3JiZXNtZ3NqNw==" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400" aria-label="Instagram"><Instagram className="text-blue-400" size={20} /></a></li>
                 </ul>
               </div>
             </div>

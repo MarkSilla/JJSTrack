@@ -15,6 +15,7 @@ import AdStaff from './pages/content/AdStaff'
 import AdInventory from './pages/content/AdInventory'
 import AdInventoryHistory from './pages/content/AdInventoryHistory'
 import AdminProfile from './pages/content/AdminProfile'
+import ServicesPricing from './pages/content/ServicesPricing'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { StockAlertProvider } from './context/StockAlertContext'
 import { GlobalStockAlert } from './components/GlobalStockAlert'
@@ -73,6 +74,7 @@ function AppRoutes() {
                 <Route path='staff' element={<AdStaff />} />
                 <Route path='inventory' element={<AdInventory />} />
                 <Route path='inventory/history' element={<AdInventoryHistory />} />
+                <Route path='services-pricing' element={<ServicesPricing />} />
                 <Route path='profile' element={<AdminProfile />} />
             </Route>
             <Route path='/staff/*' element={<StaffRoutes />} />

@@ -50,13 +50,26 @@ export const isReadyForPickupWorkflow = (steps = []) => {
   return Boolean(lastStep?.done || lastStep?.active);
 };
 
-export const resolveWorkflowStatus = ({ currentStatus, requestedStatus, steps }) => {
+export const resolveWorkflowStatus = ({ currentStatus, requestedStatus, steps, pickupDate }) => {
   const normalizedCurrentStatus = normalizeWorkflowStatus(currentStatus);
   const normalizedRequestedStatus = normalizeWorkflowStatus(requestedStatus);
   const nextStatus = normalizedRequestedStatus || normalizedCurrentStatus;
 
-  if (nextStatus === 'Cancelled' || nextStatus === 'Released') {
+  // Terminal statuses
+  if (nextStatus === 'Cancelled' || nextStatus === 'Released' || nextStatus === 'Completed') {
     return nextStatus;
+  }
+
+  // Check if overdue
+  if (pickupDate) {
+    const pDate = new Date(pickupDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Valid date check
+    if (!isNaN(pDate.getTime()) && pDate < today) {
+      return 'Overdue';
+    }
   }
 
   if (isReadyForPickupWorkflow(steps)) {
@@ -74,4 +87,5 @@ export const resolveEntityWorkflowStatus = (entity = {}) =>
   resolveWorkflowStatus({
     currentStatus: entity?.status,
     steps: entity?.steps,
+    pickupDate: entity?.pickupDate || entity?.invoice?.dueDate,
   });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CheckCircle, MapPin, User, Shield } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle, Mail, MapPin, Shield, Trash2, User } from 'lucide-react'
 import { regions, provinces, cities, barangays } from 'select-philippines-address'
 import { userApi } from '../../../services/userApi'
 
@@ -75,6 +75,9 @@ const Profile = () => {
   const [step, setStep] = useState(1)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [errors, setErrors] = useState({})
+  const [removalLoading, setRemovalLoading] = useState(false)
+  const [showRemovalConfirm, setShowRemovalConfirm] = useState(false)
+  const [removalEmailSent, setRemovalEmailSent] = useState(false)
 
   const [regionList, setRegionList] = useState([])
   const [provinceList, setProvinceList] = useState([])
@@ -231,7 +234,7 @@ const Profile = () => {
     if (!formData.firstName.trim()) nextErrors.firstName = 'First name is required'
     if (!formData.lastName.trim()) nextErrors.lastName = 'Last name is required'
     if (!formData.phone.trim()) nextErrors.phone = 'Phone number is required'
-    else if (formData.phone.length !== 11) nextErrors.phone = 'Phone number must be 11 digits'
+    else if (!/^09\d{9}$/.test(formData.phone)) nextErrors.phone = 'Phone number must be an 11-digit PH mobile number starting with 09'
     return nextErrors
   }
 
@@ -308,6 +311,33 @@ const Profile = () => {
       setMessage({ type: 'error', text: error.response?.data?.message || 'Something went wrong. Please try again.' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleRequestAccountRemoval = async () => {
+    setRemovalLoading(true)
+    setMessage({ type: '', text: '' })
+    setRemovalEmailSent(false)
+
+    try {
+      const response = await userApi.requestAccountRemoval()
+      if (response?.success) {
+        setShowRemovalConfirm(false)
+        setRemovalEmailSent(true)
+        setMessage({ type: '', text: '' })
+      } else {
+        setMessage({
+          type: 'error',
+          text: response?.message || 'Failed to send account removal email. Please try again.',
+        })
+      }
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to send account removal email. Please try again.',
+      })
+    } finally {
+      setRemovalLoading(false)
     }
   }
 
@@ -792,8 +822,101 @@ const Profile = () => {
             Your information is kept private and only used for order processing and delivery.
           </p>
 
+          <div className={`mx-auto max-w-2xl rounded-2xl border px-6 py-5 sm:px-8 ${
+            removalEmailSent
+              ? 'border-emerald-200 bg-emerald-50/80'
+              : 'border-red-200 bg-red-50/60'
+          }`}>
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                removalEmailSent ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+              }`}>
+                {removalEmailSent ? <CheckCircle className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+              </div>
+              <div className="flex-1">
+                <h3 className={`text-sm font-semibold ${removalEmailSent ? 'text-emerald-800' : 'text-red-900'}`}>
+                  {removalEmailSent ? 'Account removal email sent' : 'Remove account'}
+                </h3>
+                <p className={`mt-1 text-sm leading-6 ${removalEmailSent ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {removalEmailSent
+                    ? `Confirmation email is being sent to ${user?.email || 'your email address'}. Please check your inbox in a few moments and click the link to remove your account.`
+                    : 'Request an email confirmation link. Once you click the link, your JJSTrack account will be removed immediately.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRemovalConfirm(true)}
+                disabled={removalLoading || saving || removalEmailSent}
+                className={`inline-flex h-10 min-w-[146px] items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  removalEmailSent
+                    ? 'border-emerald-200 bg-white text-emerald-700'
+                    : 'border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50'
+                }`}
+              >
+                {removalEmailSent ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Sent
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Remove Account
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
+
+      {showRemovalConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Send removal confirmation?</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  We will send a confirmation link to {user?.email}. Clicking that email link permanently removes this account.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRemovalConfirm(false)}
+                disabled={removalLoading}
+                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestAccountRemoval}
+                disabled={removalLoading}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {removalLoading ? (
+                  <>
+                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    Send Email
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

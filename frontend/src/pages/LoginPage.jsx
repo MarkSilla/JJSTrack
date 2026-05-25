@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
 import { auth, googleProvider } from '../../config/firebase.js';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
 import GoogleProfileModal from '../components/GoogleProfileModal.jsx';
-import { useContext } from 'react';
 import { AuthContext } from '../context/Context.jsx';
 
 const LoginPage = () => {
@@ -17,11 +17,28 @@ const LoginPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionReplaced, setSessionReplaced] = useState(false);
+  const [loggedOut, setLoggedOut] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [googleUser, setGoogleUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useContext(AuthContext);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('expired') === '1') {
+      setSessionExpired(true);
+      window.history.replaceState({}, '', '/login');
+    } else if (params.get('session_replaced') === '1') {
+      setSessionReplaced(true);
+      window.history.replaceState({}, '', '/login');
+    } else if (params.get('logged_out') === '1') {
+      setLoggedOut(true);
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [location.search]);
 
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
@@ -72,7 +89,6 @@ const LoginPage = () => {
 
       if (response.success && response.token) {
         login(response.user, response.token);
-        setGoogleUser(response.user);
 
         // Navigate to home first, then show modal from there
         navigate('/home', { replace: true });
@@ -87,7 +103,7 @@ const LoginPage = () => {
     }
   };
 
-  const handleProfileSuccess = (updatedUser) => {
+  const handleProfileSuccess = () => {
     toast.success('Profile completed successfully!');
     navigate('/home', { replace: true });
   };
@@ -108,6 +124,14 @@ const LoginPage = () => {
         
         .animate-slide-in {
           animation: slideInFromLeft 0.4s ease-out;
+        }
+
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down {
+          animation: fadeInDown 0.35s ease-out;
         }
       `}</style>
 
@@ -152,6 +176,58 @@ const LoginPage = () => {
 
           <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Welcome back</h2>
           <p className="text-md xl:text-sm text-slate-400 mb-7">Access your account to manage your appointment schedule.</p>
+          {loggedOut && (
+            <div className="mb-5 p-4 bg-green-50 border border-green-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <span className="text-green-500 text-lg mt-0.5">✓</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-green-700">Logged out successfully</p>
+                <p className="text-xs text-green-600 mt-0.5 leading-relaxed">
+                  You have been signed out. Sign in again to continue.
+                </p>
+              </div>
+              <button
+                onClick={() => setLoggedOut(false)}
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-green-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-green-500 hover:after:text-green-700"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {sessionExpired && (
+            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-700">Session Expired</p>
+                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                  Your session has expired due to inactivity. Please sign in again to continue.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionExpired(false)}
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {sessionReplaced && (
+            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-700">Signed out from this device</p>
+                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                  This account was signed in on another device. Please sign in again to continue here.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionReplaced(false)}
+                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
+                aria-label="Dismiss"
+              >
+                âœ•
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
@@ -190,9 +266,7 @@ const LoginPage = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    {showPassword ? 'visibility' : 'visibility_off'}
-                  </span>
+                  {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
               </div>
             </div>

@@ -220,14 +220,14 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col" style={{ maxHeight: "90vh" }}>
-                <div className="flex items-center justify-between px-2 py-5 border-b border-slate-100">
-                    <div>
-                        <h2 className="text-[17px] font-bold text-slate-900 ml-[15px]">{initialData ? "Edit Employee Account" : "Create Employee Account"}</h2>
-                        <p className="text-[12px] text-slate-400 mt-0.5 ml-[15px]">{initialData ? "Update the details of the employee." : "Fill in the details to register a new employee."}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-none sm:rounded-2xl w-full h-full sm:h-auto sm:max-w-2xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "100vh" }}>
+                <div className="flex items-center justify-between px-4 sm:px-2 py-5 border-b border-slate-100 shrink-0">
+                    <div className="pl-2 sm:pl-0">
+                        <h2 className="text-[17px] font-bold text-slate-900 ml-0 sm:ml-[15px]">{initialData ? "Edit Employee Account" : "Create Employee Account"}</h2>
+                        <p className="text-[12px] text-slate-400 mt-0.5 ml-0 sm:ml-[15px]">{initialData ? "Update the details of the employee." : "Fill in the details to register a new employee."}</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 bg-transparent border-none cursor-pointer transition-colors">
+                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 bg-transparent border-none cursor-pointer transition-colors mr-2">
                         <X size={16} className="text-slate-500" />
                     </button>
                 </div>

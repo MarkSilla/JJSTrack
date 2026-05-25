@@ -24,7 +24,6 @@ const getAdminArchiveActor = () => {
 attachAdminAuthInterceptors(api);
 
 export const orderApi = {
-  // Get all orders
   getAllOrders: async () => {
     try {
       const response = await api.get('/orders');
@@ -130,9 +129,9 @@ export const orderApi = {
   },
 
   // Mark order as released by scanning QR
-  markAsReleased: async (orderId, releaseProofImage, releaseNotes) => {
+  markAsReleased: async (orderId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
-      const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes });
+      const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes, releasedBy });
       return response.data;
     } catch (error) {
       console.error('Error marking order as released:', error);

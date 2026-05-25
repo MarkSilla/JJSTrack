@@ -19,6 +19,7 @@ import {
     Wrench,
     Shirt,
     X,
+    ClipboardList,
 } from 'lucide-react';
 import { fmtDate, getRepairDisplayLabel } from './orderRecordUtils.js';
 
@@ -90,21 +91,75 @@ const MonoTag = ({ children, className = '' }) => (
     </span>
 );
 
+const PESO_SYMBOL = '\u20B1';
+const DEFAULT_POCKET_PRICE = 100;
+
+const ADD_ON_CONFIG = {
+    warmer: { label: 'Long Sleeve Warmer', price: 750 },
+    hoodie: { label: 'Hoodie T-shirt', price: 700 },
+};
+
+const JERSEY_PRODUCT_TYPES = {
+    jersey: { label: 'Jersey Only', price: 550 },
+    fullset: { label: 'Full Set (Jersey + Shorts)', price: 850 },
+    short: { label: 'Short Only', price: 400 },
+};
+
+const formatCurrency = (value) => `${PESO_SYMBOL}${Number(value || 0).toLocaleString()}`;
+
+const getAddOnMeta = (addOnId) => {
+    const key = String(addOnId || '').toLowerCase();
+    return ADD_ON_CONFIG[key] || { label: addOnId || 'Add-on', price: 0 };
+};
+
+const getPlayerName = (player, index) => {
+    const fullName = [player?.firstName, player?.surname].filter(Boolean).join(' ').trim();
+    return fullName || player?.name || player?.surname || `Player ${index + 1}`;
+};
+
+const getJerseyItemLabel = (player = {}, item = {}) => {
+    const productType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[productType]) return JERSEY_PRODUCT_TYPES[productType].label;
+
+    const classification = String(player?.classification || item?.type || item?.description || '').trim();
+    const normalized = classification.toLowerCase();
+    if (normalized.includes('jersey only')) return 'Jersey Only';
+    if (normalized.includes('short only')) return 'Short Only';
+    if (normalized.includes('full set') || normalized === 'fullset') return 'Full Set (Jersey + Shorts)';
+    return classification || 'Team Jersey';
+};
+
+const getJerseyBasePrice = (player = {}, item = {}) => {
+    const unitPrice = Number(item?.unitPrice);
+    if (Number.isFinite(unitPrice) && unitPrice > 0) return unitPrice;
+
+    const productType = String(player?.productType || '').toLowerCase();
+    if (JERSEY_PRODUCT_TYPES[productType]) return JERSEY_PRODUCT_TYPES[productType].price;
+
+    const itemLabel = getJerseyItemLabel(player, item).toLowerCase();
+    if (itemLabel.includes('jersey only')) return JERSEY_PRODUCT_TYPES.jersey.price;
+    if (itemLabel.includes('short only')) return JERSEY_PRODUCT_TYPES.short.price;
+    return JERSEY_PRODUCT_TYPES.fullset.price;
+};
+
+const getLineTotal = (item = {}) =>
+    ((Number(item.qty) || 1) * (Number(item.unitPrice) || 0)) + (Number(item.addOnPrice) || 0);
+
 const Section = ({ icon, title, badge, children }) => (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-slate-100 bg-slate-50">
             <span className="text-slate-500">{icon}</span>
-            <span className="text-[13px] font-bold text-slate-800">{title}</span>
+            <span className="text-[12px] sm:text-[13px] font-bold text-slate-800">{title}</span>
             {badge && <span className="ml-auto">{badge}</span>}
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-3 sm:p-5">{children}</div>
     </div>
 );
 
 const Field = ({ label, children }) => (
-    <div className="flex items-start py-2.5 border-b border-slate-50 last:border-0">
-        <span className="w-28 shrink-0 text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-0.5">{label}</span>
-        <span className="flex-1 text-[13px] font-medium text-slate-800 leading-snug">{children}</span>
+    <div className="flex flex-col sm:flex-row items-start py-2 sm:py-2.5 border-b border-slate-50 last:border-0 gap-0.5 sm:gap-0">
+        <span className="w-full sm:w-28 shrink-0 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wide pt-0 sm:pt-0.5">{label}</span>
+        <span className="flex-1 text-[12px] sm:text-[13px] font-medium text-slate-800 leading-snug">{children}</span>
     </div>
 );
 
@@ -118,6 +173,23 @@ const getOriginStatusStyles = (status = '') => {
     }
 
     return 'bg-slate-100 text-slate-700 border-slate-200';
+};
+
+const getJerseySizeText = (player) => {
+    if (player?.useManualjerseySize) {
+        return `${player.jerseyLength || '-'}" x ${player.jerseyBody || '-'}"`;
+    }
+    if (player?.useManualSize) {
+        return `${player.manualBody || '-'}" x ${player.manualLength || '-'}" x ${player.manualSleeveLength || '-'}"`;
+    }
+    return player?.jerseySize || player?.size || 'N/A';
+};
+
+const getShortSizeText = (player) => {
+    if (player?.useManualsShortSize) {
+        return `${player.shortHips || '-'}" x ${player.shortLength || '-'}"`;
+    }
+    return player?.shortSize || 'N/A';
 };
 
 const getLineupAddOns = (player = {}) => {
@@ -144,6 +216,51 @@ export default function OrderRecordDetail({
     const isRepair = record?.typeKey === 'repair';
     const repairDisplayLabel = getRepairDisplayLabel(record);
     const hasImages = Array.isArray(record?.imageUrls) && record.imageUrls.length > 0;
+    const displayItems = React.useMemo(() => {
+        const sourceItems = Array.isArray(record?.items) ? record.items : [];
+
+        if (!isJersey || teamRoster.length === 0) {
+            return sourceItems.map((item, index) => ({
+                id: item?._id || item?.id || `${item?.description || 'item'}-${index}`,
+                description: item?.description || item?.name || record?.serviceLabel || 'Service',
+                type: item?.type || 'Service',
+                qty: Number(item?.qty) || 1,
+                unitPrice: Number(item?.unitPrice) || 0,
+                addOnPrice: Number(item?.addOnPrice) || 0,
+                addOns: [],
+                hasPocket: false,
+                total: getLineTotal(item),
+            }));
+        }
+
+        return teamRoster.map((player, index) => {
+            const sourceItem = sourceItems[index] || {};
+            const addOns = Array.isArray(player?.addOns)
+                ? player.addOns.map((addOnId) => ({ id: addOnId, ...getAddOnMeta(addOnId) }))
+                : [];
+            const hasPocket = Boolean(player?.pockets || player?.hasPocketShorts);
+            const addOnPrice = addOns.reduce((sum, addOn) => sum + Number(addOn.price || 0), 0) + (hasPocket ? DEFAULT_POCKET_PRICE : 0);
+            const itemLabel = getJerseyItemLabel(player, sourceItem);
+            const playerName = getPlayerName(player, index);
+            const numberSuffix = player?.number !== undefined && player?.number !== null && player?.number !== ''
+                ? ` #${player.number}`
+                : '';
+            const qty = Number(sourceItem?.qty) || 1;
+            const unitPrice = getJerseyBasePrice(player, sourceItem);
+
+            return {
+                id: sourceItem?._id || sourceItem?.id || `${playerName}-${index}`,
+                description: `${itemLabel} (${playerName}${numberSuffix})`,
+                type: sourceItem?.type || 'Custom',
+                qty,
+                unitPrice,
+                addOnPrice,
+                addOns,
+                hasPocket,
+                total: (unitPrice * qty) + addOnPrice,
+            };
+        });
+    }, [isJersey, record?.items, record?.serviceLabel, teamRoster]);
 
     const headerConfig = isArchivedView
         ? {
@@ -213,7 +330,7 @@ export default function OrderRecordDetail({
                 {record.imageUrls.map((src, i) => (
                     <a key={`${src}-${i}`} href={src} target="_blank" rel="noreferrer"
                         className="block rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity">
-                        <img src={src} alt={`Image ${i + 1}`} className="w-full h-36 object-cover" />
+                        <img src={src} alt={`Image ${i + 1}`} className="w-full h-56 object-cover" />
                     </a>
                 ))}
             </div>
@@ -242,28 +359,74 @@ export default function OrderRecordDetail({
                     </span>
                 }
             >
-                <div className="overflow-x-auto -mx-5">
-                    <table className="w-full min-w-[520px] border-collapse">
+                {/* Premium Grid Header */}
+                <div className="bg-gray-50/50 rounded-2xl border border-gray-100 p-5 mb-4">
+                    <div className="text-center mb-5">
+                        <h2 className="text-lg font-black tracking-tight text-gray-900 uppercase">JJS SPORTSWEAR</h2>
+                        <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-1">Contact: 0908 997 2332</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">Purok 3B National Highway, Calapacuan, Subic, Zambales</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex items-end gap-2">
+                            <span className="text-[9px] font-black text-blue-600/70 uppercase tracking-wider mb-1">Headline:</span>
+                            <span className="flex-1 border-b border-gray-200 px-2 py-0.5 text-xs font-extrabold text-gray-800 uppercase truncate">
+                                {record?.headline || 'N/A'}
+                            </span>
+                        </div>
+                        <div className="flex items-end gap-2">
+                            <span className="text-[9px] font-black text-blue-600/70 uppercase tracking-wider mb-1">Contact:</span>
+                            <span className="flex-1 border-b border-gray-200 px-2 py-0.5 text-xs font-extrabold text-gray-800 truncate">
+                                {record?.customerName || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] border-collapse border border-gray-200">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/60">
-                                {['Name', 'No.', 'Jersey', 'Short', 'Add-ons'].map((col, ci) => (
-                                    <th key={col} className={`py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ${ci === 0 ? 'text-left pl-5' : 'text-center px-3'}`}>
-                                        {col}
-                                    </th>
-                                ))}
+                            <tr className="bg-gray-50/80">
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-12">No.</th>
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Full Name</th>
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center w-20">Number</th>
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Jersey Size</th>
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Short Size</th>
+                                <th className="border border-gray-200 p-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Add-ons</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedPlayers.map((player, idx) => (
-                                <tr key={`${player?.surname || player?.name || 'p'}-${idx}`}
-                                    className={`h-12 border-b border-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                    <td className="pl-5 pr-3 text-[13px] font-bold text-slate-900">{player?.surname || player?.name || '—'}</td>
-                                    <td className="px-3 text-center text-[11px] font-black text-slate-600">#{player?.number ?? '—'}</td>
-                                    <td className="px-3 text-center text-[13px] font-semibold text-slate-700">{player?.jerseySize || player?.size || '—'}</td>
-                                    <td className="px-3 text-center text-[12px] font-semibold text-slate-700">{player?.shortSize || player?.size || '—'}</td>
-                                    <td className="px-3 pr-5 text-center text-[10px] text-slate-400">{getLineupAddOns(player).join(', ') || '—'}</td>
-                                </tr>
-                            ))}
+                            {paginatedPlayers.map((player, idx) => {
+                                const realIdx = startIndex + idx;
+                                return (
+                                    <tr key={`${player?.surname || player?.name || 'p'}-${idx}`}
+                                        className="hover:bg-blue-50/30 transition-colors">
+                                        <td className="border border-gray-200 p-2 text-center text-[11px] font-bold text-gray-400">{realIdx}.</td>
+                                        <td className="border border-gray-200 p-2 text-[12px] font-extrabold text-gray-900 uppercase">
+                                            {player?.surname || player?.name || '—'}
+                                        </td>
+                                        <td className="border border-gray-200 p-2 text-center text-[12px] font-black text-blue-600">
+                                            {player?.number !== undefined ? `#${player.number}` : <span className="text-gray-300">—</span>}
+                                        </td>
+                                        <td className="border border-gray-200 p-2 text-center text-[12px] font-bold text-gray-700 bg-gray-50/30">
+                                            {getJerseySizeText(player)}
+                                        </td>
+                                        <td className="border border-gray-200 p-2 text-center text-[12px] font-bold text-gray-700">
+                                            {getShortSizeText(player)}
+                                        </td>
+                                        <td className="border border-gray-200 p-2">
+                                            <div className="flex flex-wrap gap-1">
+                                                {getLineupAddOns(player).map((addon, ai) => (
+                                                    <span key={ai} className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
+                                                        {addon}
+                                                    </span>
+                                                ))}
+                                                {getLineupAddOns(player).length === 0 && <span className="text-[10px] text-gray-300 italic">None</span>}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -349,6 +512,11 @@ export default function OrderRecordDetail({
                     <span className="font-bold text-green-600">{record?.releaseDate}</span>
                 </Field>
             )}
+            {!isArchivedView && record?.releasedBy && (
+                <Field label="Released By">
+                    <span className="font-semibold text-green-700">{record.releasedBy}</span>
+                </Field>
+            )}
             {isArchivedView && (
                 <Field label="Archived">
                     <span className="font-bold text-amber-600">{record?.archiveDate}</span>
@@ -416,6 +584,58 @@ export default function OrderRecordDetail({
         </Section>
     );
 
+    const itemsSection = displayItems.length > 0 && (
+        <Section icon={<ClipboardList size={15} />} title="Items Ordered">
+            <div className="space-y-4">
+                {displayItems.map((item, idx) => (
+                    <div key={`${item.id || item.description}-${idx}`} className="bg-slate-50/50 rounded-xl p-4 border border-slate-100 flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                            <p className="text-sm font-bold text-slate-800">{item.description}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type: {item.type || 'Service'}</p>
+                            {(item.addOns?.length > 0 || item.hasPocket) && (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {item.addOns.map((addOn) => (
+                                        <span key={`${item.id}-${addOn.id}`} className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 uppercase">
+                                            {addOn.label} +{formatCurrency(addOn.price)}
+                                        </span>
+                                    ))}
+                                    {item.hasPocket && (
+                                        <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase">
+                                            Pockets +{formatCurrency(DEFAULT_POCKET_PRICE)}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                            <div className="flex gap-4 mt-2">
+                                <div>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Unit Price</p>
+                                    <p className="text-xs font-bold text-slate-700">{formatCurrency(item.unitPrice)}</p>
+                                </div>
+                                {(item.addOnPrice || 0) > 0 && (
+                                    <div>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Add-ons</p>
+                                        <p className="text-xs font-bold text-slate-700">{formatCurrency(item.addOnPrice)}</p>
+                                    </div>
+                                )}
+                                <div>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Qty</p>
+                                    <p className="text-xs font-bold text-slate-700">x{item.qty || 1}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Total</p>
+                                    <p className="text-xs font-extrabold text-blue-600">{formatCurrency(item.total)}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm shadow-blue-100">
+                            x{item.qty || 1}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </Section>
+    );
+
     const repairSection = isRepair && (
         <Section
             icon={<Wrench size={15} />}
@@ -465,7 +685,7 @@ export default function OrderRecordDetail({
 
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm relative">
                 <div className={`h-1 ${headerConfig.accentBar}`} />
-                <div className="pt-5 px-6 pb-5">
+                <div className="pt-3 sm:pt-5 px-4 sm:px-6 pb-4 sm:pb-5">
                     <div className="flex items-center gap-2 flex-wrap mb-3.5">
                         <MonoTag>{record?.displayId}</MonoTag>
                         <Pill className={headerConfig.statusPillClass}>
@@ -483,7 +703,7 @@ export default function OrderRecordDetail({
                         </Pill>
                     </div>
 
-                    <h1 className="text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
+                    <h1 className="text-[18px] sm:text-[22px] font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
                         {record?.headline}
                     </h1>
                     <p className="text-xs text-slate-400 font-medium mb-4">
@@ -541,16 +761,15 @@ export default function OrderRecordDetail({
             <div className="grid grid-cols-1 xl:grid-cols-[60%_40%] gap-4">
                 {/* Left Column */}
                 <div className="space-y-4">
+                    {itemsSection}
                     {timelineSection}
                     {isComplex ? (
                         <>
-                            {rosterSection}
                             {notesSection}
                         </>
                     ) : (
                         <>
                             {imagesSection}
-                            {rosterSection}
                             {contactSection}
                             {infoSection}
                             {notesSection}
@@ -572,6 +791,8 @@ export default function OrderRecordDetail({
                     {paymentSection}
                 </div>
             </div>
+
+            {rosterSection}
         </div>
     );
 }

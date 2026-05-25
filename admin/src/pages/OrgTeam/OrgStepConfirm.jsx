@@ -43,33 +43,39 @@ const OrgStepConfirm = ({ orgName, members, designFile, driveLink, contact, goTo
                 <ReviewBlock title="Organization & Members" onEdit={() => goToStep(2)}>
                     <p className="text-gray-800 font-semibold mb-3">{orgName || 'No organization name'}</p>
                     {members.length > 0 ? (
-                        <div className="space-y-2">
-                            {members.map((m, i) => {
-                                const product = PRODUCT_TYPES.find((p) => p.id === m.productType)
-                                const price = getMemberPrice(m)
-                                return (
-                                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-200 last:border-0">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            {m.number ? (
-                                                <span className="w-8 h-8 rounded-lg bg-blue-50 text-black font-bold text-xs flex items-center justify-center shrink-0">
-                                                    {m.number}
-                                                </span>
-                                            ) : (
-                                                <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                                                    <Building2 size={14} />
-                                                </span>
-                                            )}
-                                            <div className="min-w-0">
-                                                <p className="text-gray-800 text-sm font-medium truncate">{[m.firstName, m.surname].filter(Boolean).join(' ')}</p>
-                                                <p className="text-gray-400 text-xs">
-                                                    {product?.label || '—'} · Size: {m.size || '—'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span className="text-blue-600 font-bold text-sm tabular-nums shrink-0">₱{price}</span>
-                                    </div>
-                                )
-                            })}
+                        <div className="overflow-x-auto -mx-5 px-5">
+                            <table className="w-full min-w-[500px] border-collapse text-left">
+                                <thead>
+                                    <tr className="border-b-2 border-gray-200">
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">No.</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider">Full Name</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Number</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Product</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Size</th>
+                                        <th className="py-2 text-[10px] font-black text-gray-500 uppercase tracking-wider text-right">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {members.map((m, i) => {
+                                        const product = PRODUCT_TYPES.find((p) => p.id === m.productType)
+                                        const price = getMemberPrice(m)
+                                        const sizeText = m.useManualSize || (m.manualBody && m.manualLength && m.manualSleeveLength) 
+                                            ? `${m.manualBody || '-'}"×${m.manualLength || '-'}"×${m.manualSleeveLength || '-'}"` 
+                                            : (m.size || '—')
+                                            
+                                        return (
+                                            <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="py-2.5 text-xs font-medium text-gray-500">{i + 1}.</td>
+                                                <td className="py-2.5 text-xs font-semibold text-gray-800 uppercase">{[m.firstName, m.surname].filter(Boolean).join(' ') || m.name || `Member ${i + 1}`}</td>
+                                                <td className="py-2.5 text-xs font-bold text-gray-600 text-center">{m.number || '—'}</td>
+                                                <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{product?.label || '—'}</td>
+                                                <td className="py-2.5 text-xs font-medium text-gray-600 text-center">{sizeText}</td>
+                                                <td className="py-2.5 text-xs font-bold text-blue-600 text-right tabular-nums">₱{price}</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     ) : (
                         <p className="text-gray-400 text-sm">No members added</p>

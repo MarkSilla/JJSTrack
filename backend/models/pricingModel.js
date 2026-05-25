@@ -23,6 +23,26 @@ const pricingSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  repairOptions: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
+  jerseyProducts: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
+  jerseyAddOns: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
+  organizationalProducts: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
   createdAt: {
     type: Date,
     default: Date.now,

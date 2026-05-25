@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { Suspense, lazy, useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import HomeSidebar from '../components/HomeSidebar'
 import HomeNavbar from '../components/HomeNavbar'
-import GoogleProfileModal from '../components/GoogleProfileModal'
-import ChatWidget from '../components/ChatWidget'
+import { ChatProvider } from '../context/ChatContext'
+
+const GoogleProfileModal = lazy(() => import('../components/GoogleProfileModal'))
+const ChatWidget = lazy(() => import('../components/ChatWidget'))
 
 const HomeLayout = () => {
   const [collapsed, setCollapsed] = useState(true)
@@ -49,21 +51,27 @@ const HomeLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HomeSidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
-      <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
-        <HomeNavbar collapsed={collapsed} setCollapsed={handleBurgerClick} />
-        <main>
-          <Outlet />
-        </main>
+    <ChatProvider>
+      <div className="min-h-screen bg-gray-50">
+        <HomeSidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
+        <div className={`transition-all duration-300 ${collapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+          <HomeNavbar collapsed={collapsed} setCollapsed={handleBurgerClick} />
+          <main>
+            <Outlet />
+          </main>
+        </div>
+        <Suspense fallback={null}>
+          {showProfileModal && (
+            <GoogleProfileModal
+              isOpen={showProfileModal}
+              onClose={() => setShowProfileModal(false)}
+              onSuccess={handleProfileSuccess}
+            />
+          )}
+          <ChatWidget />
+        </Suspense>
       </div>
-      <GoogleProfileModal 
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        onSuccess={handleProfileSuccess}
-      />
-      <ChatWidget />
-    </div>
+    </ChatProvider>
   )
 }
 

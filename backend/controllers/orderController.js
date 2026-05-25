@@ -26,6 +26,7 @@ import {
   maybeCreateStaffAssignmentNotification,
   maybeCreateWorkflowStepReadyNotification,
 } from '../utils/staffNotificationEvents.js';
+import { syncSubjectChatConversations } from '../utils/chatConversationSync.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
@@ -294,6 +295,7 @@ export const updateOrderStatus = async (req, res) => {
     if (nextStatus) order.status = nextStatus;
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     emitOrderTrackingUpdate(order);
     await maybeCreateStaffAssignmentNotification({
       req,
@@ -381,6 +383,7 @@ export const updateOrderSteps = async (req, res) => {
     if (players) order.players = players;
 
     await order.save();
+    await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     emitOrderTrackingUpdate(order);
     await maybeCreateWorkflowStepReadyNotification({
       req,
@@ -600,7 +603,7 @@ const generateOrderQR = async (orderId) => {
 // Mark order as released by scanning QR code
 export const markAsReleased = async (req, res) => {
   try {
-    const { orderId, releaseProofImage, releaseNotes } = req.body;
+    const { orderId, releaseProofImage, releaseNotes, releasedBy: releasedByFromClient } = req.body;
 
     const order = await orderModel.findOne({ orderId });
     if (!order) {
@@ -622,6 +625,14 @@ export const markAsReleased = async (req, res) => {
     order.status = 'Released';  // Set status to Released when QR is scanned
     order.paid = true;  // Mark as paid when scanned
     order.paidAt = new Date();
+
+    // Use name passed from frontend (most reliable) — fallback to token actor lookup
+    let releasedByName = releasedByFromClient || '';
+    if (!releasedByName) {
+      const actor = await getRequestActor(req);
+      releasedByName = actor?.fullName || actor?.name || 'Staff/Admin';
+    }
+    order.releasedBy = releasedByName;
 
     if (releaseProofImage) {
       if (releaseProofImage.startsWith('data:image')) {

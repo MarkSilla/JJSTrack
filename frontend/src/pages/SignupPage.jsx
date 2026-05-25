@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import img from '../assets/img.js';
 import { regions, provinces, cities, barangays } from 'select-philippines-address';
 
 const TOTAL_STEPS = 2;
+const NAME_REGEX = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/;
 
 const SignupPage = () => {
   const [step, setStep] = useState(1);
@@ -39,6 +41,7 @@ const SignupPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [nameErrors, setNameErrors] = useState({ firstName: '', lastName: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmedPassword, setConfirmedPassword] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
@@ -137,8 +140,10 @@ const SignupPage = () => {
   // Validation
   const isStep1Valid = () =>
     formData.firstName &&
+    NAME_REGEX.test(formData.firstName) &&
     formData.lastName &&
-    formData.phone.length >= 11 &&
+    NAME_REGEX.test(formData.lastName) &&
+    /^09\d{9}$/.test(formData.phone) &&
     formData.email &&
     formData.password.length >= 8 &&
     formData.password === formData.confirmPassword;
@@ -155,12 +160,36 @@ const SignupPage = () => {
   // Handlers
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === 'firstName' || name === 'lastName') {
+      const cleaned = value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s]/g, '');
+      setFormData((prev) => ({ ...prev, [name]: cleaned }));
+      setNameErrors((prev) => ({
+        ...prev,
+        [name]: value !== cleaned ? 'Letters only' : '',
+      }));
+      setError('');
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     setError('');
   };
 
   const handleNext = (e) => {
     e.preventDefault();
+    if (!formData.firstName || !NAME_REGEX.test(formData.firstName)) {
+      setError('First name must contain letters only');
+      return;
+    }
+    if (!formData.lastName || !NAME_REGEX.test(formData.lastName)) {
+      setError('Last name must contain letters only');
+      return;
+    }
+    if (!/^09\d{9}$/.test(formData.phone)) {
+      setError('Phone number must be an 11-digit PH mobile number starting with 09');
+      return;
+    }
     if (!isStep1Valid()) { setError('Please fill in all fields correctly.'); return; }
     setError('');
     setStep(2);
@@ -207,12 +236,18 @@ const SignupPage = () => {
       });
 
       if (response.success) {
-        navigate('/verify-email', { state: { email: formData.email } });
+        navigate('/verify-email', {
+          state: {
+            email: response.email || formData.email,
+            expiresIn: response.expiresIn || 60,
+            expiresAt: response.expiresAt,
+          },
+        });
       } else {
         setError(response.message || 'Sign up failed.');
       }
     } catch (err) {
-      setError(err.message || 'Sign up failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Sign up failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -240,6 +275,9 @@ const SignupPage = () => {
 
   const inputCls =
     'w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition bg-white';
+
+  const inputErrCls =
+    'w-full px-3.5 py-2.5 border border-red-400 rounded-lg text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-red-500 focus:ring-[3px] focus:ring-red-500/10 disabled:bg-gray-100 disabled:cursor-not-allowed transition bg-white';
 
   return (
     <div className="flex min-h-screen">
@@ -331,13 +369,33 @@ const SignupPage = () => {
                 <div className="flex gap-3 mb-4">
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
-                    <input type="text" name="firstName" value={formData.firstName} onChange={handleChange}
-                      placeholder="First name" disabled={loading} className={inputCls} />
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      placeholder="First name"
+                      disabled={loading}
+                      className={nameErrors.firstName ? inputErrCls : inputCls}
+                    />
+                    {nameErrors.firstName && (
+                      <p className="text-[11px] text-red-500 mt-1 leading-tight">{nameErrors.firstName}</p>
+                    )}
                   </div>
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Last Name</label>
-                    <input type="text" name="lastName" value={formData.lastName} onChange={handleChange}
-                      placeholder="Last name" disabled={loading} className={inputCls} />
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      placeholder="Last name"
+                      disabled={loading}
+                      className={nameErrors.lastName ? inputErrCls : inputCls}
+                    />
+                    {nameErrors.lastName && (
+                      <p className="text-[11px] text-red-500 mt-1 leading-tight">{nameErrors.lastName}</p>
+                    )}
                   </div>
                 </div>
 
@@ -362,7 +420,7 @@ const SignupPage = () => {
                       onChange={handleChange} placeholder="Min 8 characters" disabled={loading} className={inputCls} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility' : 'visibility_off'}</span>
+                      {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                   </div>
                 </div>
@@ -375,7 +433,7 @@ const SignupPage = () => {
                       placeholder="Confirm password" disabled={loading} className={inputCls} />
                     <button type="button" onClick={() => setConfirmedPassword(!showConfirmedPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      <span className="material-symbols-outlined text-xl">{showConfirmedPassword ? 'visibility' : 'visibility_off'}</span>
+                      {showConfirmedPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                   </div>
                 </div>

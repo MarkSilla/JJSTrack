@@ -12,7 +12,7 @@ export const REPAIR_OPTIONS = [
     { id: 'lining', label: 'Lining Repair', price: 250 },
     { id: 'sleeve', label: 'Sleeve Adjustment', price: 180 },
     { id: 'general', label: 'General Repair', price: 100 },
-    { id: 'others', label: 'Others', price: '' },
+    { id: 'others', label: 'Others', price: 0 },
 ]
 
 export const PRICING = {

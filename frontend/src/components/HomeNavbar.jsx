@@ -325,7 +325,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
     setShowDropdown(false)
     setShowNotifications(false)
     await logout()
-    navigate('/login', { replace: true })
+    // Context.logout() handles redirect to /login
   }
 
   const handleUpdateProfile = () => {

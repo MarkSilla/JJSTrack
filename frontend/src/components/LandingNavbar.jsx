@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
-import img from '../assets/img.js'
+import { Menu, X } from 'lucide-react'
+import jjsLogo from '../assets/jjs_result.png'
 import { AuthContext } from '../context/Context.jsx'
 
 const LandingNavbar = () => {
@@ -11,11 +12,19 @@ const LandingNavbar = () => {
   const { isAuthenticated } = useContext(AuthContext)
 
   useEffect(() => {
+    let frameId = null
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
+      if (frameId) return
+      frameId = window.requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 50)
+        frameId = null
+      })
     }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId)
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const handleAuthAction = () => {
@@ -159,7 +168,7 @@ const LandingNavbar = () => {
             <div className={`z-50 flex items-center transition-all duration-500 ease-in-out
                ${scrolled ? "flex-row items-center " : "flex-col items-center "}
                   `} >
-              <img src={img.jjslogo1} alt="logo" className={`w-10 h-10
+              <img src={jjsLogo} alt="logo" width="56" height="56" decoding="async" className={`w-10 h-10
                 ${scrolled ? "w-12 h-12" : "w-14 h-14"}
               `} />
               <div className={`flex flex-col transition-all duration-500
@@ -190,12 +199,11 @@ const LandingNavbar = () => {
                 }`}
               onClick={() => setIsOpen(!isOpen)}
             >
-              <span
-                className={`material-symbols-outlined transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                  }`}
-              >
-                {isOpen ? 'close' : 'menu'}
-              </span>
+              {isOpen ? (
+                <X className={`transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'}`} size={24} />
+              ) : (
+                <Menu className={`transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'}`} size={24} />
+              )}
             </div>
           </div>
         </div>
