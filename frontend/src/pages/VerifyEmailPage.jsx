@@ -15,13 +15,15 @@ const VerifyEmailPage = () => {
   const code = codeDigits.join('');
 
   const email = location.state?.email;
-  const [codeExpiresIn, setCodeExpiresIn] = useState(() => {
+  const getInitialExpiresIn = () => {
     const expiresAt = location.state?.expiresAt ? new Date(location.state.expiresAt).getTime() : null;
     if (expiresAt) return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
     return Number(location.state?.expiresIn || 60);
-  });
+  };
 
-  // Code expiry timer. After 60s, user must request a fresh code.
+  const [codeExpiresIn, setCodeExpiresIn] = useState(getInitialExpiresIn);
+  const [resendCooldown, setResendCooldown] = useState(getInitialExpiresIn);
+
   useEffect(() => {
     let interval;
     if (codeExpiresIn > 0) {
@@ -32,7 +34,16 @@ const VerifyEmailPage = () => {
     return () => clearInterval(interval);
   }, [codeExpiresIn]);
 
-  // Redirect if no email provided
+  useEffect(() => {
+    let interval;
+    if (resendCooldown > 0) {
+      interval = setInterval(() => {
+        setResendCooldown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
+
   useEffect(() => {
     if (!email) {
       navigate('/signup');
@@ -124,7 +135,9 @@ const VerifyEmailPage = () => {
         setSuccess('Verification code sent! Check your email.');
         setCodeDigits(Array(6).fill(''));
         codeInputRefs.current[0]?.focus();
-        setCodeExpiresIn(Number(response.expiresIn || 60));
+        const nextExpiresIn = Number(response.expiresIn || 60);
+        setCodeExpiresIn(nextExpiresIn);
+        setResendCooldown(nextExpiresIn);
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.message || 'Failed to resend code');
@@ -267,11 +280,11 @@ const VerifyEmailPage = () => {
             <p className="text-center text-sm text-gray-600 mb-4">Didn't receive the code?</p>
             <button
               onClick={handleResend}
-              disabled={resendLoading || codeExpiresIn > 0}
+              disabled={resendLoading || resendCooldown > 0}
               className="w-full py-2.5 bg-white border-[1.5px] border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {codeExpiresIn > 0
-                ? `Resend in ${codeExpiresIn}s`
+              {resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
                 : resendLoading
                   ? 'Sending...'
                   : 'Resend Code'}

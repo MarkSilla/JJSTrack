@@ -106,7 +106,7 @@ const LandingPage = () => {
 
           <img
             src={shop}
-            alt="JJS shop"
+            alt="JJS Sportswear shop storefront in Calapacuan, Subic, Zambales"
             width="1600"
             height="900"
             fetchPriority="high"
@@ -124,6 +124,9 @@ const LandingPage = () => {
               <p className="text-lg md:text-xl text-slate-100/60 max-w-2xl mx-auto font-medium leading-relaxed">
                 <br className="hidden md:block" />
                 We Create, Repair, and Elevate Team and Company Uniforms.</p>
+              <p className="mt-3 text-xs md:text-sm text-slate-300/70 font-semibold tracking-wide">
+                Official JJSTrack platform of Jennoel-Jennyl Sportswear in Subic, Zambales.
+              </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               <button
@@ -246,7 +249,7 @@ const LandingPage = () => {
           <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
             <img
               src={panorama}
-              alt="JJS Sportswear Shop Panorama"
+              alt="JJS Sportswear shop panorama at Purok 3B National Highway, Calapacuan, Subic"
               width="1600"
               height="900"
               loading="lazy"
@@ -293,8 +296,11 @@ const LandingPage = () => {
                   </div>
 
                   <h3 className="text-2xl font-playfair font-bold text-white mb-4">Jennoel-Jennyl Sportswear</h3>
+                  <p className="text-xs text-slate-300/80 leading-relaxed mb-5">
+                    Also searched as JJS Track, JJSTrack, JJS-Track, and JJS Sportswear.
+                  </p>
 
-                  <div className="space-y-4 mb-8">
+                  <address className="not-italic space-y-4 mb-8">
                     <div className="flex items-start gap-3">
                       <MapPin className="text-blue-400 mt-0.5 shrink-0" size={20} />
                       <p className="text-gray-300 text-sm leading-relaxed">
@@ -318,12 +324,13 @@ const LandingPage = () => {
                         <p className="text-gray-300 text-sm">Sun: <span className="text-red-500 font-bold">Closed</span></p>
                       </div>
                     </div>
-                  </div>
+                  </address>
                 </div>
                 <a
                   href="https://www.google.com/maps/@14.8605929,120.2430905,3a,75y,42.19h,85.86t/data=!3m7!1e1!3m5!1sclhDjyO6FL7gA0kwpA0OsQ!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D4.141821770887503%26panoid%3DclhDjyO6FL7gA0kwpA0OsQ%26yaw%3D42.190002848256434!7i16384!8i8192?entry=ttu&g_ep=EgoyMDI2MDIwOS4wIKXMDSoASAFQAw%3D%3D"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Open JJS Sportswear location in Google Maps"
                   className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3.5 px-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-blue-600/25"
                 >
                   <Navigation size={20} />
