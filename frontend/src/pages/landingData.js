@@ -24,6 +24,14 @@ export const testimonials = [
 
 export const faqData = [
   {
+    question: 'Where is JJS Track located?',
+    answer: 'JJS Track is the official online platform of Jennoel-Jennyl Sportswear located at Purok 3B National Highway, Calapacuan, Subic, Zambales, Philippines near Olongapo.',
+  },
+  {
+    question: 'Does JJS Sportswear offer tailoring in Zambales, Subic, or Olongapo?',
+    answer: 'Yes. JJS Sportswear offers custom jerseys, team uniforms, tailoring, alterations, and clothing repair services for customers in Subic, Zambales, Olongapo, and nearby areas.',
+  },
+  {
     question: 'How to book appointments?',
     answer: 'Booking an appointment is easy! Just log in to your account, head over to the dashboard, and click the "Book Now" button and choose what type of service you need.',
   },

@@ -124,9 +124,6 @@ const LandingPage = () => {
               <p className="text-lg md:text-xl text-slate-100/60 max-w-2xl mx-auto font-medium leading-relaxed">
                 <br className="hidden md:block" />
                 We Create, Repair, and Elevate Team and Company Uniforms.</p>
-              <p className="mt-3 text-xs md:text-sm text-slate-300/70 font-semibold tracking-wide">
-                Official JJSTrack platform of Jennoel-Jennyl Sportswear in Subic, Zambales.
-              </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               <button
@@ -150,6 +147,37 @@ const LandingPage = () => {
             <div className="w-1 h-12 bg-gradient-to-b from-blue-500 to-transparent animate-bounce" />
           </div>
         </section >
+        <section id="about" className="relative bg-white px-4 py-16 md:py-24 overflow-hidden">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-10 lg:gap-14 items-center">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-blue-600 mb-4">About JJS Track</p>
+              <h2 className="text-4xl md:text-6xl font-black font-playfair text-[#0F172A] leading-tight mb-6">
+                JJS Track is the official online home of Jennoel-Jennyl Sportswear.
+              </h2>
+              <p className="text-base md:text-lg text-slate-600 leading-relaxed mb-5">
+                JJS Track helps customers book tailoring services, request custom jerseys and company uniforms, track order progress, and receive updates from JJS Sportswear in Calapacuan, Subic, Zambales.
+              </p>
+              <p className="text-sm md:text-base text-slate-500 leading-relaxed">
+                If you are searching for tailoring in Zambales, a tailor near Subic, custom jerseys near Olongapo, uniform tailoring, clothing repair, or alterations, JJS Track connects you directly to the shop and its live order tracking system.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                ['Business name', 'Jennoel-Jennyl Sportswear'],
+                ['Platform name', 'JJS Track, JJSTrack, JJS-Track'],
+                ['Shop location', 'Purok 3B National Highway, Calapacuan, Subic, Zambales'],
+                ['Nearby areas', 'Subic, Olongapo, Zambales'],
+                ['Services', 'Custom jerseys, team uniforms, tailoring, alterations, clothing repair'],
+                ['Contact', '0908 997 2332']
+              ].map(([label, value]) => (
+                <div key={label} className="border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-2">{label}</p>
+                  <p className="text-sm font-bold text-slate-800 leading-relaxed">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
         <section id="features" className="relative px-4 px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
           <div className="absolute inset-0 bg-[#F1F5F9]"> </div>
           <div className="relative z-10 text-center px-0 max-w-6xl mx-auto">
@@ -176,7 +204,7 @@ const LandingPage = () => {
             </div>
           </div>
         </section>
-        <section id="about" className="relative py-16 md:py-24 overflow-hidden bg-white">
+        <section id="services" className="relative py-16 md:py-24 overflow-hidden bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-4">
             <div className="text-center mb-5 md:mb-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Our Expertise</h1>
