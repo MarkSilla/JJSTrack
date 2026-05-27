@@ -7,17 +7,48 @@ const STAFF_FIELDS_TO_EXCLUDE =
 const isDuplicateKeyError = (error) => error?.code === 11000 || error?.code === 11001;
 
 const normalizeStaffPhoneNumber = (value) => {
-  const digits = String(value || "").replace(/\D/g, "").trim();
+  const digits = String(value || "").trim();
   if (!digits) return "";
-
-  if (/^09\d{9}$/.test(digits)) return digits;
-  if (/^9\d{9}$/.test(digits)) return `0${digits}`;
-  if (/^639\d{9}$/.test(digits)) return `0${digits.slice(2)}`;
-
   return digits;
 };
 
-const isValidStaffPhoneNumber = (value) => /^09\d{9}$/.test(normalizeStaffPhoneNumber(value));
+const isValidStaffPhoneNumber = (value) => /^\d{11}$/.test(String(value || "").trim());
+const isTextOnly = (value) => /^[A-Za-z\s]+$/.test(String(value || "").trim());
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+const hasLetter = (value) => /[A-Za-z]/.test(String(value || ""));
+
+const validateStaffFields = (body = {}, { isCreate = false } = {}) => {
+  const errors = [];
+  const firstName = String(body.firstName || "").trim();
+  const lastName = String(body.lastName || "").trim();
+  const email = String(body.email || "").trim();
+  const contact = body.contact ?? body.phoneNumber;
+  const emergencyContact = body.emergencyContact?.contact ?? body.emergencyContactNum;
+  const emergencyName = body.emergencyContact?.name ?? body.emergencyName;
+  const emergencyRelation = body.emergencyContact?.relationship ?? body.emergencyRelation;
+
+  if (firstName && !isTextOnly(firstName)) errors.push("First name must contain letters and spaces only");
+  if (lastName && !isTextOnly(lastName)) errors.push("Last name must contain letters and spaces only");
+  if (email && !isValidEmail(email)) errors.push("Email address must be valid");
+  if (email && isValidEmail(email) && !hasLetter(email)) errors.push("Email address must contain letters");
+  if (contact && !isValidStaffPhoneNumber(contact)) errors.push("Contact number must be exactly 11 digits");
+  if (emergencyContact && !isValidStaffPhoneNumber(emergencyContact)) {
+    errors.push("Emergency contact number must be exactly 11 digits");
+  }
+  if (emergencyName && !isTextOnly(emergencyName)) {
+    errors.push("Emergency contact name must contain letters and spaces only");
+  }
+  if (emergencyRelation && !isTextOnly(emergencyRelation)) {
+    errors.push("Emergency relationship must contain letters and spaces only");
+  }
+
+  if (isCreate && !contact) errors.push("Contact number is required");
+  if (isCreate && !emergencyContact) errors.push("Emergency contact number is required");
+  if (isCreate && !emergencyName) errors.push("Emergency contact name is required");
+  if (isCreate && !emergencyRelation) errors.push("Emergency relationship is required");
+
+  return errors;
+};
 
 const getDuplicateStaffMessage = (error) => {
   const duplicateField = Object.keys(error?.keyPattern || error?.keyValue || {})[0];
@@ -72,9 +103,9 @@ const buildStaffPayload = (body = {}, { isCreate = false } = {}) => {
     dob: parseDate(body.dob),
     gender: body.gender,
     emergencyContact: {
-      name: body.emergencyContact?.name || body.emergencyName || "",
-      relationship: body.emergencyContact?.relationship || body.emergencyRelation || "",
-      contact: body.emergencyContact?.contact || body.emergencyContactNum || "",
+      name: String(body.emergencyContact?.name || body.emergencyName || "").trim(),
+      relationship: String(body.emergencyContact?.relationship || body.emergencyRelation || "").trim(),
+      contact: normalizeStaffPhoneNumber(body.emergencyContact?.contact || body.emergencyContactNum || ""),
     },
     regionCode: body.regionCode || "",
     regionName: body.regionName || "",
@@ -179,13 +210,12 @@ export const createStaff = async (req, res) => {
       return res.status(409).json({ success: false, message: "Employee ID already exists" });
     }
 
-    if (req.body.contact || req.body.phoneNumber) {
-      if (!isValidStaffPhoneNumber(req.body.contact ?? req.body.phoneNumber)) {
-        return res.status(400).json({
-          success: false,
-          message: "Contact number must be a valid PH mobile number starting with 09 or +639",
-        });
-      }
+    const fieldErrors = validateStaffFields(req.body, { isCreate: true });
+    if (fieldErrors.length) {
+      return res.status(400).json({
+        success: false,
+        message: fieldErrors[0],
+      });
     }
 
     const payload = compactObject(buildStaffPayload(req.body, { isCreate: true }));
@@ -240,6 +270,14 @@ export const updateStaff = async (req, res) => {
     delete payload.role;
     delete payload.password;
 
+    const fieldErrors = validateStaffFields(req.body);
+    if (fieldErrors.length) {
+      return res.status(400).json({
+        success: false,
+        message: fieldErrors[0],
+      });
+    }
+
     if (payload.email && payload.email !== existing.email) {
       const emailExists = await userModel.findOne({ email: payload.email, _id: { $ne: id } }).select("_id");
       if (emailExists) {
@@ -251,7 +289,7 @@ export const updateStaff = async (req, res) => {
       if (!isValidStaffPhoneNumber(payload.phoneNumber)) {
         return res.status(400).json({
           success: false,
-          message: "Contact number must be a valid PH mobile number starting with 09 or +639",
+          message: "Contact number must be exactly 11 digits",
         });
       }
 

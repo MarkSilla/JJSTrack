@@ -238,7 +238,7 @@ export default function ReleasedItems() {
     const [archiveTarget, setArchiveTarget] = useState(null);
     const [archiveLoading, setArchiveLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 7;
+    const itemsPerPage = 6;
 
     /* ── fetch ── */
     const fetchReleasedItems = async () => {

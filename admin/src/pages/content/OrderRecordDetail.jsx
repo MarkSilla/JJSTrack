@@ -93,6 +93,7 @@ const MonoTag = ({ children, className = '' }) => (
 
 const PESO_SYMBOL = '\u20B1';
 const DEFAULT_POCKET_PRICE = 100;
+const VISIBLE_ORDER_ITEMS = 6;
 
 const ADD_ON_CONFIG = {
     warmer: { label: 'Long Sleeve Warmer', price: 750 },
@@ -216,6 +217,7 @@ export default function OrderRecordDetail({
     const isRepair = record?.typeKey === 'repair';
     const repairDisplayLabel = getRepairDisplayLabel(record);
     const hasImages = Array.isArray(record?.imageUrls) && record.imageUrls.length > 0;
+    const [previewImage, setPreviewImage] = React.useState(null);
     const displayItems = React.useMemo(() => {
         const sourceItems = Array.isArray(record?.items) ? record.items : [];
 
@@ -328,10 +330,14 @@ export default function OrderRecordDetail({
         <Section icon={<ImageIcon size={15} />} title="Uploaded Images">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {record.imageUrls.map((src, i) => (
-                    <a key={`${src}-${i}`} href={src} target="_blank" rel="noreferrer"
-                        className="block rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity">
+                    <button
+                        key={`${src}-${i}`}
+                        type="button"
+                        onClick={() => setPreviewImage({ src, alt: `Image ${i + 1}` })}
+                        className="block w-full rounded-xl overflow-hidden border border-slate-100 bg-slate-50 hover:opacity-90 transition-opacity cursor-pointer p-0"
+                    >
                         <img src={src} alt={`Image ${i + 1}`} className="w-full h-56 object-cover" />
-                    </a>
+                    </button>
                 ))}
             </div>
         </Section>
@@ -566,10 +572,13 @@ export default function OrderRecordDetail({
                 {record?.releaseProofImage && (
                     <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Captured Photo</p>
-                        <a href={record.releaseProofImage} target="_blank" rel="noreferrer"
-                            className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:opacity-90 transition-opacity">
-                            <img src={record.releaseProofImage} alt="Release proof" className="w-full max-h-64 object-contain" />
-                        </a>
+                        <button
+                            type="button"
+                            onClick={() => setPreviewImage({ src: record.releaseProofImage, alt: 'Release proof' })}
+                            className="block w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:opacity-90 transition-opacity cursor-pointer p-0"
+                        >
+                            <img src={record.releaseProofImage} alt="Release proof" className="w-full max-h-96 object-contain" />
+                        </button>
                     </div>
                 )}
                 {record?.releaseNotes && (
@@ -586,7 +595,9 @@ export default function OrderRecordDetail({
 
     const itemsSection = displayItems.length > 0 && (
         <Section icon={<ClipboardList size={15} />} title="Items Ordered">
-            <div className="space-y-4">
+            <div
+                className={`space-y-4 ${displayItems.length > VISIBLE_ORDER_ITEMS ? 'max-h-[720px] overflow-y-auto pr-2' : ''}`}
+            >
                 {displayItems.map((item, idx) => (
                     <div key={`${item.id || item.description}-${idx}`} className="bg-slate-50/50 rounded-xl p-4 border border-slate-100 flex justify-between items-start gap-4">
                         <div className="space-y-1">
@@ -763,13 +774,14 @@ export default function OrderRecordDetail({
                 <div className="space-y-4">
                     {itemsSection}
                     {timelineSection}
+                    {paymentSection}
                     {isComplex ? (
                         <>
                             {notesSection}
                         </>
                     ) : (
                         <>
-                            {imagesSection}
+                            {proofSection}
                             {contactSection}
                             {infoSection}
                             {notesSection}
@@ -781,18 +793,36 @@ export default function OrderRecordDetail({
                 <div className="space-y-4">
                     {isComplex ? (
                         <>
+                            {proofSection}
                             {imagesSection}
                             {contactSection}
                             {infoSection}
                         </>
-                    ) : null}
-                    {proofSection}
+                    ) : (
+                        imagesSection
+                    )}
                     {repairSection}
-                    {paymentSection}
                 </div>
             </div>
 
             {rosterSection}
+            {previewImage && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm">
+                    <button
+                        type="button"
+                        onClick={() => setPreviewImage(null)}
+                        className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer"
+                        aria-label="Close image preview"
+                    >
+                        <X size={20} />
+                    </button>
+                    <img
+                        src={previewImage.src}
+                        alt={previewImage.alt}
+                        className="max-h-[92vh] max-w-[96vw] rounded-xl object-contain shadow-2xl"
+                    />
+                </div>
+            )}
         </div>
     );
 }

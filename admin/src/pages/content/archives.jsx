@@ -354,7 +354,7 @@ export default function ArchivedItems() {
                         ) : (
                             <>
                                 {/* Mobile Card View */}
-                                <div className="md:hidden overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+                                <div className="md:hidden max-h-[636px] overflow-y-auto p-4 space-y-3 bg-slate-50/50">
                                     {filteredItems.map((item) => (
                                         <div
                                             key={`${item.entityType}-${item.id}`}
@@ -409,7 +409,7 @@ export default function ArchivedItems() {
                                 </div>
 
                                 {/* Desktop Table View */}
-                                <div className="hidden md:block flex-1 overflow-auto table-scroll min-h-0">
+                                <div className="hidden md:block flex-1 max-h-[420px] overflow-auto table-scroll min-h-0">
                                     <table className="w-full text-left border-collapse" style={{ minWidth: 940 }}>
                                         <thead className="sticky top-0 z-10">
                                             <tr className="bg-slate-50 border-b border-slate-200">

@@ -25,13 +25,23 @@ const buildPassword = (lastName, sequenceLabel) => `${formatPasswordBase(lastNam
 const EMP_TYPES = ["Full Time", "Part Time", "Contractual"];
 const ROLES = ["Tailor", "Layout Artist", "Presser"];
 
-const Field = ({ label, error, children, cls = "" }) => (
+const TEXT_ONLY_PATTERN = /^[A-Za-z\s]+$/;
+const sanitizeTextOnly = (value = "") => String(value || "").replace(/[^A-Za-z\s]/g, "");
+const sanitizePhone = (value = "") => String(value || "").replace(/\D/g, "").slice(0, 11);
+const getPlaceholder = (error, fallback) => error || fallback;
+
+const Field = ({ label, required = false, filled = false, error, children, cls = "" }) => (
     <div className={cls}>
         <label className="text-[11px] font-semibold text-slate-600 mb-1.5 flex justify-between items-center">
-            <span>{label}</span>
+        <span>
+            {label}
+            {required && !filled && (
+            <span className="text-red-500"> *</span>
+        )}
+        </span>
             {error && <span className="text-[10px] text-red-500 font-medium">{error}</span>}
         </label>
-        <div className={`[&_input]:w-full [&_input]:px-3 [&_input]:py-2 [&_input]:bg-white [&_input]:border ${error ? '[&_input]:border-red-400 [&_input]:ring-1 [&_input]:ring-red-400/10' : '[&_input]:border-slate-200'} [&_input]:rounded-lg [&_input]:text-[12px] [&_input]:text-slate-800 [&_input]:outline-none [&_input:focus]:border-blue-400 [&_input:focus]:ring-2 [&_input:focus]:ring-blue-50 [&_select]:w-full [&_select]:px-3 [&_select]:py-2 [&_select]:bg-white [&_select]:border ${error ? '[&_select]:border-red-400 [&_select]:ring-1 [&_select]:ring-red-400/10' : '[&_select]:border-slate-200'} [&_select]:rounded-lg [&_select]:text-[12px] [&_select]:text-slate-800 [&_select]:outline-none [&_select:focus]:border-blue-400 [&_div_input]:flex-1`}>
+        <div className={`[&_input]:w-full [&_input]:px-3 [&_input]:py-2 [&_input]:bg-white [&_input]:border [&_input]:placeholder-slate-400 ${error ? '[&_input]:border-red-400 [&_input]:ring-1 [&_input]:ring-red-400/10 [&_input]:placeholder-red-400' : '[&_input]:border-slate-200'} [&_input]:rounded-lg [&_input]:text-[12px] [&_input]:text-slate-800 [&_input]:outline-none [&_input:focus]:border-blue-400 [&_input:focus]:ring-2 [&_input:focus]:ring-blue-50 [&_select]:w-full [&_select]:px-3 [&_select]:py-2 [&_select]:bg-white [&_select]:border ${error ? '[&_select]:border-red-400 [&_select]:ring-1 [&_select]:ring-red-400/10' : '[&_select]:border-slate-200'} [&_select]:rounded-lg [&_select]:text-[12px] [&_select]:text-slate-800 [&_select]:outline-none [&_select:focus]:border-blue-400 [&_div_input]:flex-1`}>
             {children}
         </div>
     </div>
@@ -109,9 +119,11 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
     const set = (k, v) => {
         setForm((current) => {
             let value = v;
-            // If editing name fields, automatically strip digits so numbers are not accepted
-            if (k === "firstName" || k === "lastName") {
-                value = String(v || "").replace(/\d+/g, "");
+            if (k === "firstName" || k === "lastName" || k === "emergencyName" || k === "emergencyRelation") {
+                value = sanitizeTextOnly(v);
+            }
+            if (k === "contact" || k === "emergencyContactNum") {
+                value = sanitizePhone(v);
             }
             const updated = { ...current, [k]: value };
             if (!initialData && k === "lastName") {
@@ -123,7 +135,10 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
         if (errors[k]) setErrors(e => ({ ...e, [k]: null }));
     };
 
-    const isNameWithoutNumbers = (name = "") => !/\d/.test(String(name || ""));
+    const isTextOnly = (value = "") => TEXT_ONLY_PATTERN.test(String(value || "").trim());
+    const isElevenDigitPhone = (value = "") => /^\d{11}$/.test(String(value || "").trim());
+    const isValidEmail = (value = "") => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+    const hasLetter = (value = "") => /[A-Za-z]/.test(String(value || ""));
 
     const [regionList, setRegionList] = useState([]);
     const [provinceList, setProvinceList] = useState([]);
@@ -169,16 +184,22 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
     const handleSubmit = async () => {
         const newErrors = {};
         if (!form.firstName.trim()) newErrors.firstName = "Required";
-        else if (!isNameWithoutNumbers(form.firstName)) newErrors.firstName = "Cannot contain numbers";
+        else if (!isTextOnly(form.firstName)) newErrors.firstName = "Letters only";
         if (!form.lastName.trim()) newErrors.lastName = "Required";
-        else if (!isNameWithoutNumbers(form.lastName)) newErrors.lastName = "Cannot contain numbers";
+        else if (!isTextOnly(form.lastName)) newErrors.lastName = "Letters only";
         if (!form.dob) newErrors.dob = "Required";
         if (!form.email.trim()) newErrors.email = "Required";
+        else if (!isValidEmail(form.email)) newErrors.email = "Enter a valid email";
+        else if (!hasLetter(form.email)) newErrors.email = "Email needs letters";
         if (!form.contact.trim()) newErrors.contact = "Required";
+        else if (!isElevenDigitPhone(form.contact)) newErrors.contact = "11 digits only";
         if (!form.hired) newErrors.hired = "Required";
         if (!form.emergencyName.trim()) newErrors.emergencyName = "Required";
+        else if (!isTextOnly(form.emergencyName)) newErrors.emergencyName = "Letters only";
         if (!form.emergencyRelation.trim()) newErrors.emergencyRelation = "Required";
+        else if (!isTextOnly(form.emergencyRelation)) newErrors.emergencyRelation = "Letters only";
         if (!form.emergencyContactNum.trim()) newErrors.emergencyContactNum = "Required";
+        else if (!isElevenDigitPhone(form.emergencyContactNum)) newErrors.emergencyContactNum = "11 digits only";
         if (!form.regionCode) newErrors.regionCode = "Required";
         if (!form.provinceCode) newErrors.provinceCode = "Required";
         if (!form.cityCode) newErrors.cityCode = "Required";
@@ -246,16 +267,16 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                         <div>
                             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Personal Information</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="First Name *" error={errors.firstName}>
-                                    <input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First name" />
+                                <Field label="First Name" required filled={Boolean(form.firstName.trim())} error={errors.firstName}>
+                                    <input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder={getPlaceholder(errors.firstName, "First name")} />
                                 </Field>
-                                <Field label="Last Name *" error={errors.lastName}>
-                                    <input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last name" />
+                                <Field label="Last Name" required filled={Boolean(form.lastName.trim())} error={errors.lastName}>
+                                    <input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder={getPlaceholder(errors.lastName, "Last name")} />
                                 </Field>
                                 <Field label="Employee ID" cls="col-span-2">
                                     <input value={form.id} readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
                                 </Field>
-                                <Field label="Date of Birth *" error={errors.dob}>
+                                <Field label="Date of Birth" required filled={Boolean(form.dob)} error={errors.dob}>
                                     <input type="date" value={form.dob} onChange={e => set("dob", e.target.value)} />
                                 </Field>
                                 <Field label="Gender">
@@ -269,32 +290,32 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                         <div>
                             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Address</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Region *" error={errors.regionCode}>
+                                <Field label="Region" required filled={Boolean(form.regionCode)} error={errors.regionCode}>
                                     <select value={form.regionCode} onChange={handleRegion}>
                                         <option value="">Select Region</option>
                                         {regionList.map(r => <option key={r.region_code} value={r.region_code}>{r.region_name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Province *" error={errors.provinceCode}>
+                                <Field label="Province" required filled={Boolean(form.provinceCode)} error={errors.provinceCode}>
                                     <select value={form.provinceCode} onChange={handleProvince} disabled={!form.regionCode}>
                                         <option value="">Select Province</option>
                                         {provinceList.map(p => <option key={p.province_code} value={p.province_code}>{p.province_name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="City / Municipality *" error={errors.cityCode}>
+                                <Field label="City / Municipality" required filled={Boolean(form.cityCode)} error={errors.cityCode}>
                                     <select value={form.cityCode} onChange={handleCity} disabled={!form.provinceCode}>
                                         <option value="">Select City</option>
                                         {cityList.map(c => <option key={c.city_code} value={c.city_code}>{c.city_name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Barangay *" error={errors.brgyCode}>
+                                <Field label="Barangay" required filled={Boolean(form.brgyCode)} error={errors.brgyCode}>
                                     <select value={form.brgyCode} onChange={handleBrgy} disabled={!form.cityCode}>
                                         <option value="">Select Barangay</option>
                                         {brgyList.map(b => <option key={b.brgy_code} value={b.brgy_code}>{b.brgy_name}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Street / House No. / Building *" cls="col-span-2" error={errors.street}>
-                                    <input value={form.street} onChange={e => set("street", e.target.value)} placeholder="e.g. #123 Gordon Heights, Street" />
+                                <Field label="Street / House No. / Building" required filled={Boolean(form.street.trim())} cls="col-span-2" error={errors.street}>
+                                    <input value={form.street} onChange={e => set("street", e.target.value)} placeholder={getPlaceholder(errors.street, "e.g. #123 Gordon Heights, Street")} />
                                 </Field>
                             </div>
                         </div>
@@ -302,11 +323,11 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                         <div>
                             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Contact & Account</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Email Address *" placeholder="employee@jjs.com" error={errors.email}>
-                                    <input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="employee@jjs.com" />
+                                <Field label="Email Address" required filled={Boolean(form.email.trim())} placeholder="employee@jjs.com" error={errors.email}>
+                                    <input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder={getPlaceholder(errors.email, "employee@jjs.com")} />
                                 </Field>
-                                <Field label="Contact Number *" error={errors.contact}>
-                                    <input value={form.contact} onChange={e => set("contact", e.target.value)} placeholder="+63 9XX XXX XXXX" />
+                                <Field label="Contact Number" required filled={Boolean(form.contact.trim())} error={errors.contact}>
+                                    <input value={form.contact} onChange={e => set("contact", e.target.value)} inputMode="numeric" maxLength={11} placeholder={getPlaceholder(errors.contact, "09XXXXXXXXX")} />
                                 </Field>
                             </div>
                         </div>
@@ -324,7 +345,7 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                                         {ROLES.map(r => <option key={r}>{r}</option>)}
                                     </select>
                                 </Field>
-                                <Field label="Date Hired *" error={errors.hired}>
+                                <Field label="Date Hired" required filled={Boolean(form.hired)} error={errors.hired}>
                                     <input type="date" value={form.hired} onChange={e => set("hired", e.target.value)} />
                                 </Field>
                                 <Field label="Status">
@@ -343,14 +364,14 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                         <div>
                             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Emergency Contact</div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Contact Name *" error={errors.emergencyName}>
-                                    <input value={form.emergencyName} onChange={e => set("emergencyName", e.target.value)} placeholder="Name" />
+                                <Field label="Contact Name" required filled={Boolean(form.emergencyName.trim())} error={errors.emergencyName}>
+                                    <input value={form.emergencyName} onChange={e => set("emergencyName", e.target.value)} placeholder={getPlaceholder(errors.emergencyName, "Name")} />
                                 </Field>
-                                <Field label="Relationship *" error={errors.emergencyRelation}>
-                                    <input value={form.emergencyRelation} onChange={e => set("emergencyRelation", e.target.value)} placeholder="e.g. Mother" />
+                                <Field label="Relationship" required filled={Boolean(form.emergencyRelation.trim())} error={errors.emergencyRelation}>
+                                    <input value={form.emergencyRelation} onChange={e => set("emergencyRelation", e.target.value)} placeholder={getPlaceholder(errors.emergencyRelation, "e.g. Mother")} />
                                 </Field>
-                                <Field label="Contact Number *" cls="col-span-2" error={errors.emergencyContactNum}>
-                                    <input value={form.emergencyContactNum} onChange={e => set("emergencyContactNum", e.target.value)} placeholder="+63 9XX XXX XXXX" />
+                                <Field label="Contact Number" required filled={Boolean(form.emergencyContactNum.trim())} cls="col-span-2" error={errors.emergencyContactNum}>
+                                    <input value={form.emergencyContactNum} onChange={e => set("emergencyContactNum", e.target.value)} inputMode="numeric" maxLength={11} placeholder={getPlaceholder(errors.emergencyContactNum, "09XXXXXXXXX")} />
                                 </Field>
                             </div>
                         </div>
