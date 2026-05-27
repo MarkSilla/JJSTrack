@@ -278,9 +278,18 @@ const validateUniquePhoneNumber = async (phoneNumber, currentUserId = null) => {
   return userModel.findOne(query).select('_id email');
 };
 
+const PRODUCTION_FRONTEND_URL = 'https://user.jjstrack.fit';
+
+const isLocalhostUrl = (value = '') => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(String(value).trim());
+
 const getFrontendUrl = () => {
   const configuredUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.VITE_FRONTEND_URL;
-  return String(configuredUrl || 'http://localhost:5173').trim().replace(/\/+$/, '');
+  const fallbackUrl = process.env.NODE_ENV === 'production' ? PRODUCTION_FRONTEND_URL : 'http://localhost:5174';
+  const selectedUrl = process.env.NODE_ENV === 'production' && isLocalhostUrl(configuredUrl)
+    ? fallbackUrl
+    : (configuredUrl || fallbackUrl);
+
+  return String(selectedUrl).trim().replace(/\/+$/, '');
 };
 
 const hashAccountDeletionToken = (token) => (
