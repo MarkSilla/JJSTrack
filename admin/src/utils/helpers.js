@@ -50,7 +50,8 @@ export const getDerivedStatus = (order) => {
     const hasPickupDate = Boolean(order?.pickupDate || order?.invoice?.dueDate || order?.estimatedCompletion);
     if (needsApproval && !hasPickupDate && !hasReachedDropOffStep(order?.steps)) return "For Approval";
     if (isCompletedStatus(order)) return "Completed";
-    if (order.status !== 'Completed' && order.status !== 'Complete' && isOverdue(order.invoice?.dueDate)) return "Overdue";
+    const dueDate = order?.dueDate || order?.estimatedCompletion || order?.invoice?.dueDate || order?.pickupDate;
+    if (normalizedStatus !== 'completed' && normalizedStatus !== 'complete' && isOverdue(dueDate)) return "Overdue";
     if (normalizedStatus === "in progress" || normalizedStatus === "in-progress" || hasReachedDropOffStep(order?.steps)) return "In Progress";
     return "Pending";
 };

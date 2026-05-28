@@ -28,6 +28,19 @@ import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
 const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Confirm']
 const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
 const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
+const BOOKING_TIME_ZONE = 'Asia/Manila'
+
+const getBookingDateKey = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: BOOKING_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date)
+
+    const getPart = (type) => parts.find((part) => part.type === type)?.value || ''
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')}`
+}
 
 const emptyAddressFields = {
     address: '',
@@ -139,6 +152,8 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [error, setError] = useState('')
     const [nextError, setNextError] = useState('')
     const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
+    const [bookingCapacity, setBookingCapacity] = useState(null)
+    const [capacityLoading, setCapacityLoading] = useState(false)
 
     // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
@@ -232,6 +247,19 @@ const BookingModal = ({ isOpen, onClose }) => {
         }
     }, [])
 
+    useEffect(() => {
+        if (!isOpen) return
+
+        setCapacityLoading(true)
+        bookingApi.getAvailableSlots(getBookingDateKey())
+            .then((response) => setBookingCapacity(response))
+            .catch((err) => {
+                console.error('Error loading booking capacity:', err)
+                setBookingCapacity(null)
+            })
+            .finally(() => setCapacityLoading(false))
+    }, [isOpen])
+
     // Reset form function
     const resetForm = () => {
         setStep(1)
@@ -282,13 +310,19 @@ const BookingModal = ({ isOpen, onClose }) => {
     const toggleOption = (id) => setSelectedOptions((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
+    const selectedServiceCapacity = service === 'repair'
+        ? bookingCapacity?.repair
+        : service
+            ? bookingCapacity?.jerseyOrg
+            : null
+    const isSelectedServiceFull = Boolean(selectedServiceCapacity?.isFull)
 
     const isRepairDetailsComplete = () => {
         return [details.name, details.email, details.phone, details.address].every((field) => field && field.trim().length > 0)
     }
 
     const canNext = () => {
-        if (step === 1) return !!service
+        if (step === 1) return !!service && !isSelectedServiceFull
 
         if (isRepair) {
             if (step === 2) return selectedOptions.length > 0
@@ -316,6 +350,11 @@ const BookingModal = ({ isOpen, onClose }) => {
     }
 
     const getNextErrorMessage = () => {
+        if (step === 1 && isSelectedServiceFull) {
+            return service === 'repair'
+                ? 'Repair booking slots for today are already full. Please try again on another booking day.'
+                : 'Team jersey and organization booking slots for today are already full. Please try again on another booking day.'
+        }
         if (step === 1) return 'Please select a service before continuing.'
         if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
         if (isRepair && step === 4) return 'Please complete all your delivery details before continuing.'
@@ -506,7 +545,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     }, [nextError, step, service, players.length, members.length])
 
     const renderStep = () => {
-        if (step === 1) return <StepService service={service} setService={setService} />
+        if (step === 1) return <StepService service={service} setService={setService} bookingCapacity={bookingCapacity} capacityLoading={capacityLoading} />
 
         if (isRepair) {
             switch (step) {

@@ -59,7 +59,7 @@ const PAGE_META = [
     {
         match: /^\/admin\/inventory\/history$/,
         title: 'Inventory History',
-        subtitle: 'Review detailed stock movement, FIFO usage, and audit activity.'
+        subtitle: 'Review detailed stock movement, batch usage, and audit activity.'
     },
     {
         match: /^\/admin\/profile$/,

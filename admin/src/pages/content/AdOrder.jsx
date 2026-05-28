@@ -297,7 +297,8 @@ export default function AdOrder() {
             (o.item || o.itemType || o.serviceType || '').toLowerCase().includes(normalizedQuery)
         );
 
-        if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
+        if (filterStatus === 'All Records') result = result;
+        else if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
         else if (filterStatus === 'Released') result = result.filter(o => getDerivedStatus(o) === 'Released');
         else if (filterStatus === 'Overdue') result = result.filter(o => getDerivedStatus(o) === 'Overdue');
         else if (filterStatus === 'For Approval') result = result.filter(o => getDerivedStatus(o) === 'For Approval');
@@ -334,7 +335,7 @@ export default function AdOrder() {
     }, [searchQuery, filterStatus, orders, serviceTypeFilter, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
+        const c = { All: 0, 'All Records': orders.length, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
         orders.forEach(o => {
             const s = getDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;

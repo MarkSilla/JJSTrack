@@ -125,16 +125,15 @@ export default function OrderList({
     const [showServiceTypeSort, setShowServiceTypeSort] = useState(false);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
     const [activeMobileMenu, setActiveMobileMenu] = useState(null);
-    const statusTabs = ['All', 'For Approval', 'Pending', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
+    const statusTabs = ['All Records', 'For Approval', 'Pending', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
     const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
     const currentServiceTypeLabel = SERVICE_TYPE_OPTIONS.find(o => o.value === serviceTypeFilter)?.label || 'Service: All';
-    const approvalTabs = [
+    const quickStatusFilters = [
         { label: 'All', value: 'All' },
-        { label: 'For Approval', value: 'For Approval' },
-        { label: 'Pending', value: 'Pending' },
+        { label: 'Pending Approval', value: 'For Approval' },
         { label: 'Completed', value: 'Completed' },
-        { label: 'Released', value: 'Released' },
         { label: 'Overdue', value: 'Overdue' },
+        { label: 'Cancelled', value: 'Cancelled' },
     ];
 
     // Width classes: full-width mode vs the original fixed side-panel width
@@ -328,6 +327,41 @@ export default function OrderList({
                             )}
                         </div>
                     </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    {quickStatusFilters.map((status) => {
+                        const isActive = filterStatus === status.value;
+                        const count = counts[status.value] ?? 0;
+                        const showCount = (status.value === 'For Approval' || status.value === 'Overdue') && count > 0;
+
+                        return (
+                            <button
+                                key={status.value}
+                                type="button"
+                                onClick={() => {
+                                    setFilterStatus(isActive ? 'All' : status.value);
+                                    setIsFilterOpen(false);
+                                    setShowSort(false);
+                                    setShowServiceTypeSort(false);
+                                    setMobileFilterOpen(false);
+                                    setActiveMobileMenu(null);
+                                }}
+                                className={`h-7 rounded-full border px-2.5 text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer
+                                    ${isActive
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-blue-200 hover:text-blue-700'
+                                    }`}
+                            >
+                                <span>{status.label}</span>
+                                {showCount && (
+                                    <span className="min-w-5 h-5 px-1 rounded-full flex items-center justify-center bg-red-600 text-[9px] font-black text-white shadow-sm">
+                                        {count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
 
 

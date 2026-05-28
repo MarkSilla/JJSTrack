@@ -26,6 +26,8 @@ const STATUS_CONFIG = {
     'in progress': { color: 'bg-blue-100 text-blue-700' },
     'pending': { color: 'bg-amber-100 text-amber-700' },
     'completed': { color: 'bg-gray-100 text-gray-700' },
+    'released': { color: 'bg-cyan-100 text-cyan-700' },
+    'cancelled': { color: 'bg-red-100 text-red-700' },
 };
 
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -153,7 +155,8 @@ const AdAppointment = () => {
             'approved': 'ready',
             'in progress': 'in progress',
             'completed': 'completed',
-            'cancelled': 'pending'
+            'released': 'released',
+            'cancelled': 'cancelled'
         };
         return statusMap[backendStatus?.toLowerCase()] || 'pending';
     };

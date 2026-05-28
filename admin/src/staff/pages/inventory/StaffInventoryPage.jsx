@@ -361,7 +361,7 @@ function UseItemModal({
             </p>
             <p className="text-sm text-slate-600">
               This will deduct the quantity directly from the real backend
-              inventory using FIFO, so the oldest batch is used first.
+              inventory. The system uses the oldest available batch first.
             </p>
           </div>
 

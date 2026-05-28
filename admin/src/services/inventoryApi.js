@@ -131,7 +131,7 @@ export const inventoryApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Error previewing FIFO deduction:', error);
+      console.error('Error checking stock usage:', error);
       throw error;
     }
   },

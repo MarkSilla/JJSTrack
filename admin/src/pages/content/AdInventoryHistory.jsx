@@ -319,7 +319,7 @@ function DetailModal({ item, onClose }) {
                 </div>
               </div>
             </div>
-            <p className="text-sm text-slate-500">Detailed stock movement and FIFO batch usage.</p>
+            <p className="text-sm text-slate-500">Detailed stock movement and batch usage.</p>
           </div>
           <button
             onClick={onClose}
@@ -386,11 +386,11 @@ function DetailModal({ item, onClose }) {
             <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-bold text-gray-900">FIFO Batch Breakdown</p>
+                  <p className="text-sm font-bold text-gray-900">Stock Batch Breakdown</p>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {batchBreakdown.length > 0
                       ? `${batchBreakdown.length} batch record${batchBreakdown.length === 1 ? "" : "s"} tracked`
-                      : "No FIFO batch impact recorded"}
+                      : "No stock batch impact recorded"}
                   </p>
                 </div>
                 <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
@@ -643,10 +643,10 @@ export default function AdInventoryHistory() {
   const statCards = [
     { label: "Total Logs", value: stats.totalLogs, sub: "Latest synced records", icon: BarChart3, accent: "#2563EB", bgAccent: "#EFF6FF" },
     { label: "Stock In", value: formatQty(stats.stockIn), sub: "Units received or opened", icon: ArrowUpCircle, accent: "#2563EB", bgAccent: "#EFF6FF" },
-    { label: "Stock Out", value: formatQty(stats.stockOut), sub: "Units consumed by FIFO", icon: ArrowDownCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
+    { label: "Stock Out", value: formatQty(stats.stockOut), sub: "Units used from stock", icon: ArrowDownCircle, accent: "#DC2626", bgAccent: "#FEF2F2" },
     { label: "Items Touched", value: stats.touchedItems, sub: "Unique inventory records", icon: Package, accent: "#7C3AED", bgAccent: "#F5F3FF" },
     { label: "Movement Value", value: fmt(stats.movementValue), sub: "Tracked stock cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
-    { label: "Batch Touches", value: stats.batchTouches, sub: "FIFO batches involved", icon: Layers, accent: "#0891B2", bgAccent: "#ECFEFF" },
+    { label: "Batch Touches", value: stats.batchTouches, sub: "Stock batches involved", icon: Layers, accent: "#0891B2", bgAccent: "#ECFEFF" },
     { label: "Adjustments", value: stats.nonStockChanges, sub: "Update, archive, restore", icon: Pencil, accent: "#D97706", bgAccent: "#FFFBEB" },
   ]
 

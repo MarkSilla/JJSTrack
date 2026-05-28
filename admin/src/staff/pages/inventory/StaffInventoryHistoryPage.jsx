@@ -104,7 +104,7 @@ function DetailModal({ activity, onClose }) {
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-black text-gray-900">{activity.inventoryName || "Inventory item"}</h2>
-            <p className="text-sm text-slate-500 mt-1">Stock usage details and FIFO batch record.</p>
+            <p className="text-sm text-slate-500 mt-1">Stock usage details and batch records.</p>
           </div>
           <button
             onClick={onClose}
@@ -136,7 +136,7 @@ function DetailModal({ activity, onClose }) {
 
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100">
-              <p className="text-sm font-bold text-gray-900">FIFO Batch Breakdown</p>
+              <p className="text-sm font-bold text-gray-900">Stock Batch Breakdown</p>
               <p className="text-xs text-slate-400 mt-0.5">
                 {batchBreakdown.length > 0
                   ? `${batchBreakdown.length} batch record${batchBreakdown.length === 1 ? "" : "s"} tracked`

@@ -386,6 +386,8 @@ const getBookingZoneNow = (date = new Date()) => {
   };
 };
 
+const getBookingDateKeyForNow = () => getBookingZoneNow().dateKey;
+
 const validateRepairPickupSchedule = (pickupDate = '', pickupSlot = '') => {
   const pickupDateKey = String(pickupDate || '').trim();
   const normalizedPickupSlot = String(pickupSlot || '').trim();
@@ -879,7 +881,7 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const bookingDateKey = resolveBookingDateKey(new Date());
+    const bookingDateKey = getBookingDateKeyForNow();
 
     // Daily booking limits are based on when the booking was created.
     // Repair: max 7 bookings created per day
@@ -1047,6 +1049,7 @@ export const createBooking = async (req, res) => {
       items: normalizedItems,
       notes,
       totalPrice,
+      bookingDateKey,
     };
 
     // Only add pickup for repair

@@ -7,7 +7,10 @@ const SERVICES = [
     { id: 'organizational', label: 'Organization', desc: 'T-shirts & polo shirts for your organization', Icon: MdBusiness },
 ]
 
-const StepService = ({ service, setService }) => (
+const getCapacityForService = (id, bookingCapacity) =>
+    id === 'repair' ? bookingCapacity?.repair : bookingCapacity?.jerseyOrg
+
+const StepService = ({ service, setService, bookingCapacity, capacityLoading = false }) => (
     <section className="h-full flex flex-col font-inter">
         <div className="text-center mb-6 shrink-0">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">What brings you in?</h2>
@@ -18,32 +21,46 @@ const StepService = ({ service, setService }) => (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-2xl mx-auto">
                 {SERVICES.map(({ id, label, desc, Icon }) => {
                     const selected = service === id
+                    const capacity = getCapacityForService(id, bookingCapacity)
+                    const isFull = Boolean(capacity?.isFull)
                     return (
                         <button
                             key={id}
-                            onClick={() => setService(id)}
-                            className={`group relative p-6 rounded-2xl text-left transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-md
-                    ${selected
-                                    ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100'
-                                    : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100'
+                            type="button"
+                            disabled={isFull}
+                            onClick={() => !isFull && setService(id)}
+                            className={`group relative p-6 rounded-2xl text-left transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md
+                    ${isFull
+                                    ? 'bg-gray-50 border border-gray-200 opacity-70 cursor-not-allowed'
+                                    : selected
+                                        ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100 cursor-pointer'
+                                        : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100 cursor-pointer'
                                 }`}>
 
-                        {selected && <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />}
-                        <div
-                            className={`relative w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300
+                            {selected && <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />}
+                            <div
+                                className={`relative w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300
                   ${selected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 group-hover:text-gray-600'}`}
-                        >
-                            <Icon size={26} />
-                        </div>
-                        <h3 className={`relative text-lg font-bold mb-1 transition-colors ${selected ? 'text-blue-600' : 'text-gray-800'}`}>
-                            {label}
-                        </h3>
-                        <p className="relative text-sm text-gray-500 leading-relaxed">{desc}</p>
-                    </button>
-                )
-               
-            })}
-             </div>
+                            >
+                                <Icon size={26} />
+                            </div>
+                            <h3 className={`relative text-lg font-bold mb-1 transition-colors ${selected ? 'text-blue-600' : 'text-gray-800'}`}>
+                                {label}
+                            </h3>
+                            <p className="relative text-sm text-gray-500 leading-relaxed">{desc}</p>
+                            <p className={`relative mt-4 text-[10px] font-black uppercase tracking-widest ${isFull ? 'text-red-500' : 'text-blue-500/70'}`}>
+                                {capacityLoading && !capacity
+                                    ? 'Checking slots...'
+                                    : capacity
+                                        ? isFull
+                                            ? 'Fully booked today'
+                                            : `${capacity.available} / ${capacity.max} slots left today`
+                                        : 'Slots checked on submit'}
+                            </p>
+                        </button>
+                    )
+                })}
+            </div>
         </div>
     </section>
 )

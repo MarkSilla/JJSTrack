@@ -74,7 +74,8 @@ const normalizeAppointmentStatus = (status) => {
   const text = String(status || "").toLowerCase();
   if (text.includes("overdue")) return "Overdue";
   if (text.includes("cancel")) return "Cancel/Incomplete";
-  if (text.includes("released") || text.includes("complete")) return "Complete";
+  if (text.includes("released")) return "Released";
+  if (text.includes("complete")) return "Complete";
   if (text.includes("progress")) return "In-Progress";
   if (text.includes("approved") || text.includes("confirm")) return "Confirmed";
   return "Pending";
@@ -114,6 +115,7 @@ const BADGE_CLASSES = {
   Pending: "bg-amber-100 text-amber-700",
   "In-Progress": "bg-violet-100 text-violet-700",
   Complete: "bg-emerald-100 text-emerald-700",
+  Released: "bg-cyan-100 text-cyan-700",
   "Cancel/Incomplete": "bg-red-100 text-red-600",
   Overdue: "bg-rose-100 text-rose-700 border border-rose-200",
   Repair: "bg-orange-100 text-orange-700",
@@ -159,6 +161,8 @@ const BOOKING_VOLUME_META = {
     subtitle: "Bookings scheduled, completed & cancelled in recent years",
   },
 };
+
+const CLOSED_APPOINTMENT_STATUSES = new Set(["Complete", "Released", "Cancel/Incomplete"]);
 
 const CustomDot = ({ cx, cy, fill }) => (
   <circle cx={cx} cy={cy} fill={fill} stroke="#fff" strokeWidth={2} />
@@ -407,7 +411,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const apptToday = useMemo(
     () =>
       appointments
-        .filter((a) => isSameDay(a.dropDateObj, todayDate))
+        .filter((a) => isSameDay(a.dateObj, todayDate))
         .sort((a, b) => parseTime(a.time) - parseTime(b.time)),
     [appointments, todayDate]
   );
@@ -418,7 +422,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         .filter((a) => {
           if (!a.dateObj) return false;
           const isPast = a.dateObj < todayDate;
-          const isPending = a.status !== "Complete" && a.status !== "Cancel/Incomplete";
+          const isPending = !CLOSED_APPOINTMENT_STATUSES.has(a.status);
           if (!isPast || !isPending) return false;
 
           if (overdueFilter === "yesterday") {
@@ -706,7 +710,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       trend: null,
       onClick: () =>
         navigateWithDashboardPreset("/admin/orders", {
-          filterStatus: "All",
+          filterStatus: "All Records",
         }),
     },
   ];
