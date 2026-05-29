@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jjstrack-v2';
+const CACHE_NAME = 'jjstrack-v3';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -39,6 +39,26 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(request.url);
   if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  if (requestUrl.pathname === '/service-worker.js') {
+    return;
+  }
+
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.ok) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', responseToCache));
+          }
+
+          return networkResponse;
+        })
+        .catch(() => caches.match('/') || caches.match(request))
+    );
     return;
   }
 
