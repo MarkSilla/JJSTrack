@@ -112,6 +112,21 @@ const hasReachedDropOffStep = (steps = []) =>
         return ['dropped off', 'drop off'].includes(label) && Boolean(step?.done || step?.active)
     })
 
+const getAssignedTeamMembers = (entry = {}) =>
+    [...new Set([
+        entry.staffAssignments?.layoutArtist || entry.layoutArtist,
+        entry.staffAssignments?.presser || entry.presser,
+        entry.staffAssignments?.tailor || entry.assignedTailor,
+    ].filter((value) => String(value || '').trim()))]
+
+const getCancellationReason = (entry = {}) =>
+    String(
+        entry.cancellationReason ||
+        entry.cancelReason ||
+        entry.cancellation?.reason ||
+        ''
+    ).trim()
+
 const getTrackingStats = (items = []) => ({
     total: items.length,
     inProgress: items.filter((item) => isActiveTrackingStatus(item?.status)).length,
@@ -322,6 +337,59 @@ const StatusBadge = ({ status }) => {
         <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border ${map[status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
             {status}
         </span>
+    )
+}
+
+const CancellationReasonModal = ({ order, onClose }) => {
+    const reason = getCancellationReason(order)
+    const cancelledBy = String(order?.cancelledBy || '').trim()
+    const cancelledAt = formatFullDateTime(order?.cancelledAt)
+
+    return (
+        <>
+            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between gap-4 border-b border-red-100 px-5 py-4">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                            <AlertCircle size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-gray-900">Why This Was Canceled</h3>
+                            <p className="mt-1 text-xs text-gray-500">{getTrackingReferenceCode(order)}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        aria-label="Close cancellation reason"
+                    >
+                        <MdClose size={18} />
+                    </button>
+                </div>
+                <div className="space-y-3 px-5 py-4">
+                    <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                        <p className="text-xs font-semibold leading-5 text-red-700">
+                            {reason || 'No cancellation reason was recorded for this item.'}
+                        </p>
+                    </div>
+                    {(cancelledBy || cancelledAt) && (
+                        <p className="text-[11px] font-medium text-gray-400">
+                            {cancelledBy ? `Canceled by ${cancelledBy}` : 'Canceled'}
+                            {cancelledAt ? ` on ${cancelledAt}` : ''}
+                        </p>
+                    )}
+                </div>
+                <div className="border-t border-gray-100 px-5 py-4">
+                    <button
+                        onClick={onClose}
+                        className="w-full rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-gray-800"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </>
     )
 }
 
@@ -694,6 +762,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const referenceCode = getTrackingReferenceCode(order)
     const displayName = getTrackingDisplayName(order)
     const steps = order.steps || []
+    const assignedTeamMembers = getAssignedTeamMembers(order)
+    const hasAssignedTeam = assignedTeamMembers.length > 0
+    const isCancelled = normalizeTrackingStatus(order.status) === 'cancelled'
+    const [showCancelReason, setShowCancelReason] = useState(false)
 
     const canCancel = !isClosedTrackingStatus(order.status) && !hasReachedDropOffStep(steps)
 
@@ -788,13 +860,10 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             Staff Assigned:
                         </span>
                         <span className="text-[12px] font-semibold text-slate-500 truncate">
-                            {[...new Set([
-                                order.staffAssignments?.layoutArtist || order.layoutArtist,
-                                order.staffAssignments?.tailor || order.assignedTailor
-                            ].filter(Boolean))].join(' - ') || 'is not assigned'}
+                            {assignedTeamMembers.join(' - ') || 'is not assigned'}
                         </span>
                     </div>
-                    <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
+                    <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 min-[520px]:grid-cols-5 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
 
                         {canCancel && (
                             <button
@@ -807,19 +876,21 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                                 Cancel
                             </button>
                         )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
-                                navigate('/home')
-                            }}
-                            className="min-w-0 bg-white border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-green-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
-                            title="Message the team"
-                        >
-                            <MessageCircle size={12} />
-                            <span className="hidden sm:inline">Message Team</span>
-                            <span className="sm:hidden">Chat</span>
-                        </button>
+                        {hasAssignedTeam && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
+                                    navigate('/home')
+                                }}
+                                className="min-w-0 bg-white border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-green-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                                title="Message the team"
+                            >
+                                <MessageCircle size={12} />
+                                <span className="hidden sm:inline">Message Team</span>
+                                <span className="sm:hidden">Chat</span>
+                            </button>
+                        )}
                         {order.status !== 'Cancelled' && (
                             <button
                                 onClick={(e) => {
@@ -833,6 +904,19 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                                 <Download size={12} />
                                 <span className="hidden sm:inline">Download QR</span>
                                 <span className="sm:hidden">QR</span>
+                            </button>
+                        )}
+                        {isCancelled && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowCancelReason(true)
+                                }}
+                                className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                            >
+                                <AlertCircle size={12} />
+                                <span className="hidden sm:inline">View Why Canceled</span>
+                                <span className="sm:hidden">Why</span>
                             </button>
                         )}
                         <button
@@ -854,6 +938,12 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 <DetailsModal
                     order={order}
                     onClose={() => setShowModal(false)}
+                />
+            )}
+            {showCancelReason && (
+                <CancellationReasonModal
+                    order={order}
+                    onClose={() => setShowCancelReason(false)}
                 />
             )}
         </>
@@ -916,6 +1006,74 @@ const FilterSheet = ({ active, onSelect, onClose }) => {
     )
 }
 
+const CancelOrderReasonModal = ({
+    order,
+    reason,
+    setReason,
+    loading,
+    onClose,
+    onConfirm,
+}) => {
+    const displayName = getTrackingDisplayName(order)
+    const referenceCode = getTrackingReferenceCode(order)
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+                    <div>
+                        <h3 className="text-base font-black text-gray-900">Cancel Order</h3>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">
+                            Tell us why you need to cancel {displayName ? `"${displayName}"` : 'this order'}.
+                        </p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                        aria-label="Close cancel order modal"
+                    >
+                        <MdClose size={18} />
+                    </button>
+                </div>
+                <div className="space-y-3 bg-gray-50 px-5 py-4">
+                    <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                        <p className="text-xs font-bold text-red-700">{referenceCode}</p>
+                    </div>
+                    <label className="block">
+                        <span className="text-xs font-bold text-gray-700">Reason for cancellation</span>
+                        <textarea
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            disabled={loading}
+                            maxLength={1000}
+                            rows={4}
+                            placeholder="Example: I need to change the design details before ordering again."
+                            className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition-all focus:border-red-300 focus:ring-4 focus:ring-red-500/10 disabled:opacity-60"
+                        />
+                    </label>
+                </div>
+                <div className="flex gap-3 border-t border-gray-100 px-5 py-4">
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                    >
+                        Keep Order
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={loading || !reason.trim()}
+                        className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                    >
+                        {loading ? 'Cancelling...' : 'Cancel Order'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // ─── Main Page ────────────────────────────────
 const Order = () => {
     const navigate = useNavigate()
@@ -934,6 +1092,9 @@ const Order = () => {
     const [showCombinedDropdown, setShowCombinedDropdown] = useState(false)
     const [showStickySearch, setShowStickySearch] = useState(false)
     const [selectedOrder, setSelectedOrder] = useState(null)
+    const [cancelTarget, setCancelTarget] = useState(null)
+    const [cancelReason, setCancelReason] = useState('')
+    const [cancelSubmitting, setCancelSubmitting] = useState(false)
 
     const statusDropdownRef = useRef(null)
     const sortDropdownRef = useRef(null)
@@ -1147,7 +1308,6 @@ const Order = () => {
     const handleCancelOrder = (order) => {
         const orderId = order?._id || order?.id
         const bookingId = order?.bookingType ? orderId : null
-        const orderName = getTrackingDisplayName(order)
 
         if (!orderId) {
             toast.error('Unable to cancel this item right now.')
@@ -1159,47 +1319,53 @@ const Order = () => {
             return
         }
 
-        const orderLabel = orderName ? `"${orderName}"` : 'this order'
-        const confirmationId = `cancel-order-${bookingId || orderId}`
+        setCancelReason('')
+        setCancelTarget(order)
+    }
 
-        toast(`Cancel ${orderLabel}?`, {
-            id: confirmationId,
-            description: 'This action cannot be undone.',
-            duration: 12000,
-            action: {
-                label: 'Yes, cancel',
-                onClick: () => {
-                    toast.dismiss(confirmationId)
-                    toast.promise(
-                        (async () => {
-                            try {
-                                const response = bookingId
-                                    ? await bookingApi.cancelBooking(bookingId)
-                                    : await orderApi.cancelOrder(orderId)
+    const closeCancelModal = () => {
+        if (cancelSubmitting) return
+        setCancelTarget(null)
+        setCancelReason('')
+    }
 
-                                if (!response.success) {
-                                    throw new Error(response.message || 'Unknown error')
-                                }
+    const confirmCancelOrder = async () => {
+        const order = cancelTarget
+        const orderId = order?._id || order?.id
+        const bookingId = order?.bookingType ? orderId : null
+        const cancellationReason = cancelReason.trim()
 
-                                await fetchData(activeFilter, searchQuery, { silent: true })
-                                return response
-                            } catch (error) {
-                                console.error('Cancel order error:', error)
-                                throw error
-                            }
-                        })(),
-                        {
-                            loading: `Cancelling ${orderLabel}...`,
-                            success: 'Order cancelled successfully',
-                            error: (error) => `Failed to cancel order: ${error?.message || 'Unknown error'}`,
-                        }
-                    )
-                },
-            },
-            cancel: {
-                label: 'Keep order',
-            },
-        })
+        if (!orderId) {
+            toast.error('Unable to cancel this item right now.')
+            closeCancelModal()
+            return
+        }
+
+        if (!cancellationReason) {
+            toast.error('Please enter a cancellation reason.')
+            return
+        }
+
+        try {
+            setCancelSubmitting(true)
+            const response = bookingId
+                ? await bookingApi.cancelBooking(bookingId, { cancellationReason })
+                : await orderApi.cancelOrder(orderId, { cancellationReason })
+
+            if (!response.success) {
+                throw new Error(response.message || 'Unknown error')
+            }
+
+            await fetchData(activeFilter, searchQuery, { silent: true })
+            setCancelTarget(null)
+            setCancelReason('')
+            toast.success('Order cancelled successfully')
+        } catch (error) {
+            console.error('Cancel order error:', error)
+            toast.error(`Failed to cancel order: ${error?.response?.data?.message || error?.message || 'Unknown error'}`)
+        } finally {
+            setCancelSubmitting(false)
+        }
     }
 
     return (
@@ -1382,6 +1548,17 @@ const Order = () => {
                     active={activeFilter}
                     onSelect={handleFilterSelect}
                     onClose={() => setShowFilter(false)}
+                />
+            )}
+
+            {cancelTarget && (
+                <CancelOrderReasonModal
+                    order={cancelTarget}
+                    reason={cancelReason}
+                    setReason={setCancelReason}
+                    loading={cancelSubmitting}
+                    onClose={closeCancelModal}
+                    onConfirm={confirmCancelOrder}
                 />
             )}
 

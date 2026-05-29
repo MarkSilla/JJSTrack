@@ -107,9 +107,9 @@ export const orderApi = {
   },
 
   // Cancel order
-  cancelOrder: async (id) => {
+  cancelOrder: async (id, data = {}) => {
     try {
-      const response = await api.put(`/orders/${id}/cancel`);
+      const response = await api.put(`/orders/${id}/cancel`, data);
       return response.data;
     } catch (error) {
       console.error('Error cancelling order:', error);

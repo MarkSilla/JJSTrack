@@ -33,6 +33,7 @@ export default function OrderDetail({
     const [approvalMode, setApprovalMode] = useState(false);
     const [cancelLoading, setCancelLoading] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
     const [archiveLoading, setArchiveLoading] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [bookingExtras, setBookingExtras] = useState(null);
@@ -210,27 +211,40 @@ export default function OrderDetail({
     ]);
 
     const handleCancelOrder = () => {
+        setCancelReason('');
         setShowCancelConfirm(true);
+    };
+
+    const closeCancelModal = () => {
+        if (cancelLoading) return;
+        setShowCancelConfirm(false);
+        setCancelReason('');
     };
 
     const confirmCancelOrder = async () => {
         const orderId = activeOrder.id || activeOrder._id;
+        const cancellationReason = cancelReason.trim();
+
+        if (!cancellationReason) {
+            toast.error('Please enter a cancellation reason.');
+            return;
+        }
 
         try {
             setCancelLoading(true);
             if (activeOrder.isBooking) {
-                await bookingApi.cancelBooking(orderId);
+                await bookingApi.cancelBooking(orderId, { cancellationReason });
             } else {
-                await orderApi.cancelOrder(orderId);
+                await orderApi.cancelOrder(orderId, { cancellationReason });
             }
             setShowCancelConfirm(false);
+            setCancelReason('');
             setIsMenuOpen(false);
             setActiveOrderId(null);
             toast.success('Order cancelled successfully.');
         } catch (error) {
             console.error('Failed to cancel order:', error);
             toast.error('Failed to cancel order. Please try again.');
-            setShowCancelConfirm(false);
         } finally {
             setCancelLoading(false);
         }
@@ -318,6 +332,7 @@ export default function OrderDetail({
                                 </button>
                                 <button
                                     onClick={() => {
+                                        setCancelReason('');
                                         setShowCancelConfirm(true);
                                         setIsMenuOpen(false);
                                     }}
@@ -554,7 +569,7 @@ export default function OrderDetail({
                                 <p className="text-sm text-gray-500 mt-1">Are you sure you want to cancel this order? This action cannot be undone.</p>
                             </div>
                             <button
-                                onClick={() => setShowCancelConfirm(false)}
+                                onClick={closeCancelModal}
                                 disabled={cancelLoading}
                                 className="text-gray-400 hover:text-gray-600 disabled:opacity-50 bg-transparent border-none cursor-pointer ml-2"
                             >
@@ -567,11 +582,23 @@ export default function OrderDetail({
                                 <p className="text-xs font-semibold text-red-700">Order ID: <span className="font-bold">{visibleOrderId}</span></p>
                                 <p className="text-xs font-semibold text-red-700 mt-1">Customer: <span className="font-bold">{activeOrder.customer}</span></p>
                             </div>
+                            <label className="block">
+                                <span className="text-xs font-bold text-gray-700">Reason for cancellation</span>
+                                <textarea
+                                    value={cancelReason}
+                                    onChange={(event) => setCancelReason(event.target.value)}
+                                    disabled={cancelLoading}
+                                    maxLength={1000}
+                                    rows={4}
+                                    placeholder="Tell the customer why this order needs to be cancelled..."
+                                    className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition-all focus:border-red-300 focus:ring-4 focus:ring-red-500/10 disabled:opacity-60"
+                                />
+                            </label>
                         </div>
 
                         <div className="p-6 flex gap-3 border-t border-gray-100">
                             <button
-                                onClick={() => setShowCancelConfirm(false)}
+                                onClick={closeCancelModal}
                                 disabled={cancelLoading}
                                 className="flex-1 px-4 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
                             >
@@ -579,7 +606,7 @@ export default function OrderDetail({
                             </button>
                             <button
                                 onClick={confirmCancelOrder}
-                                disabled={cancelLoading}
+                                disabled={cancelLoading || !cancelReason.trim()}
                                 className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors border-none cursor-pointer"
                             >
                                 {cancelLoading ? 'Cancelling...' : 'Cancel Order'}

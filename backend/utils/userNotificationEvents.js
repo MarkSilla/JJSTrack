@@ -180,6 +180,98 @@ export const maybeCreateBookingReadyForPickupNotification = async ({
   });
 };
 
+export const maybeCreateOrderCancelledNotification = async ({
+  req,
+  order,
+  previousStatus = '',
+}) => {
+  const nextStatus = normalizeWorkflowStatus(order?.status);
+  const normalizedPreviousStatus = normalizeWorkflowStatus(previousStatus);
+  const recipientId = normalizeEntityId(order?.userId);
+
+  if (
+    !order?._id ||
+    nextStatus !== 'Cancelled' ||
+    normalizedPreviousStatus === 'Cancelled' ||
+    !recipientId
+  ) {
+    return null;
+  }
+
+  const orderReference = getOrderReferenceLabel(order);
+  const subjectLabel = String(order?.item || order?.serviceType || 'order').trim() || 'order';
+
+  return createNotification({
+    audience: 'user',
+    recipientId,
+    type: 'order',
+    title: 'Order cancelled',
+    message: `Your ${subjectLabel} (${orderReference}) has been cancelled. Please contact JJS Sportswear if you have questions.`,
+    route: resolveUserTrackingRoute(order?._id),
+    entityId: order?._id,
+    entityModel: 'Order',
+    metadata: {
+      event: 'cancelled',
+      orderId: orderReference,
+      bookingId: normalizeEntityId(order?.bookingId) || null,
+      serviceType: order?.serviceType || '',
+      cancellationReason: order?.cancellationReason || '',
+      cancelledAt: order?.cancelledAt || null,
+      cancelledBy: order?.cancelledBy || '',
+      previousStatus: normalizedPreviousStatus || '',
+      nextStatus,
+    },
+    req,
+  });
+};
+
+export const maybeCreateBookingCancelledNotification = async ({
+  req,
+  booking,
+  previousStatus = '',
+}) => {
+  const nextStatus = normalizeWorkflowStatus(booking?.status);
+  const normalizedPreviousStatus = normalizeWorkflowStatus(previousStatus);
+  const recipientId = normalizeEntityId(booking?.userId);
+
+  if (
+    !booking?._id ||
+    nextStatus !== 'Cancelled' ||
+    normalizedPreviousStatus === 'Cancelled' ||
+    !recipientId
+  ) {
+    return null;
+  }
+
+  const bookingReference = getBookingReferenceLabel(booking);
+  const bookingTypeLabel = getBookingTypeLabel(booking?.bookingType);
+  const subjectLabel = getBookingSubjectLabel(booking);
+
+  return createNotification({
+    audience: 'user',
+    recipientId,
+    type: 'booking',
+    title: 'Booking cancelled',
+    message: `Your ${bookingTypeLabel} booking for ${subjectLabel} (${bookingReference}) has been cancelled. Please contact JJS Sportswear if you have questions.`,
+    route: resolveUserTrackingRoute(booking?._id),
+    entityId: booking?._id,
+    entityModel: 'Booking',
+    metadata: {
+      event: 'cancelled',
+      bookingId: bookingReference,
+      orderId: normalizeEntityId(booking?.orderId) || null,
+      bookingType: booking?.bookingType || '',
+      service: booking?.service || '',
+      cancellationReason: booking?.cancellationReason || '',
+      cancelledAt: booking?.cancelledAt || null,
+      cancelledBy: booking?.cancelledBy || '',
+      previousStatus: normalizedPreviousStatus || '',
+      nextStatus,
+    },
+    req,
+  });
+};
+
 export const maybeCreateOrderReleasedNotification = async ({
   req,
   order,

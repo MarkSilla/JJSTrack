@@ -210,6 +210,13 @@ const bookingSchema = new mongoose.Schema({
     enum: ['Pending', 'Approved', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
   },
+  cancellationReason: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  cancelledAt: Date,
+  cancelledBy: String,
 
   // Archive tracking
   isArchived: {
