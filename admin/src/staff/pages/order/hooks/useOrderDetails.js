@@ -16,14 +16,20 @@ const SERVICE_STEPS = {
 
 const useOrderDetails = (orderId) => {
     const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const fetchOrderDetails = useCallback(async () => {
+    const fetchOrderDetails = useCallback(async ({ silent = false } = {}) => {
         if (!orderId) {
             setOrder(null);
+            setLoading(false);
             return;
         }
 
         try {
+            if (!silent) {
+                setLoading(true);
+            }
+
             const [bookingResponse, orderResponse] = await Promise.allSettled([
                 bookingApi.getBookingById(orderId),
                 orderApi.getOrderById(orderId),
@@ -56,15 +62,19 @@ const useOrderDetails = (orderId) => {
         } catch (err) {
             console.error('Error fetching order details:', err);
             setOrder(null);
+        } finally {
+            if (!silent) {
+                setLoading(false);
+            }
         }
     }, [orderId]);
 
     useEffect(() => {
-        fetchOrderDetails();
+        fetchOrderDetails({ silent: false });
     }, [fetchOrderDetails]);
 
     useOrderFeedSocket(() => {
-        fetchOrderDetails();
+        fetchOrderDetails({ silent: true });
     });
 
     const steps = useMemo(() => {
@@ -84,7 +94,7 @@ const useOrderDetails = (orderId) => {
         return getStaffDerivedStatus(order);
     }, [order]);
 
-    return { order, steps, currentStepIdx, statusLabel };
+    return { order, steps, currentStepIdx, statusLabel, loading };
 };
 
 export default useOrderDetails;

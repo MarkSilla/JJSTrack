@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom'
 import { getTrackingReferenceId } from '../../utils/trackingReference.js'
 import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 import { exportInvoiceToPDF } from '../../utils/exportUtils.js'
+import { InvoicePageSkeleton } from '../../components/SkeletonLoaders.jsx'
 
 const useUser = () => ({ name: 'Juan' })
 
@@ -44,6 +45,56 @@ const typeBadge = (type) => {
         </span>
     )
 }
+
+const InvoiceHero = ({ paidAmount, paidCount, totalAmount, invoiceCount }) => (
+    <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
+        <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
+            <GiSewingMachine size={140} />
+        </div>
+        <div className="absolute bottom-2 left-6 opacity-[0.07] text-white -rotate-12 pointer-events-none">
+            <MdReceipt size={110} />
+        </div>
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.04] text-white pointer-events-none">
+            <div className="w-44 h-44 rounded-full border-[18px] border-current" />
+        </div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                    Invoices
+                </h2>
+                <p className="text-slate-400 text-sm">View and manage your receipts & invoices.</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
+                {[
+                    { label: 'Paid', value: `\u20b1${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-400/20 text-emerald-300' },
+                    { label: 'Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Paid only', icon: MdReceipt, color: 'bg-amber-400/20 text-amber-300' },
+                    { label: 'Total', value: `\u20b1${totalAmount.toLocaleString('en-PH')}`, sub: `${invoiceCount} Invoices`, icon: MdReceipt, color: 'bg-blue-400/20 text-blue-300' },
+                ].map(({ label, value, sub, icon: Icon, color }) => (
+                    <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
+                        <div className="flex items-center gap-1.5 sm:hidden">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${color.split(' ')[0]}`}>
+                                <Icon size={13} className={color.split(' ')[1]} />
+                            </div>
+                            <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
+                        </div>
+                        <p className="text-white text-base font-bold leading-tight sm:hidden">{value}</p>
+
+                        <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
+                            <Icon size={18} className={color.split(' ')[1]} />
+                        </div>
+                        <div className="hidden sm:block">
+                            <p className="text-slate-400 text-[10px] font-medium">{label}</p>
+                            <p className="text-white text-base font-bold leading-tight">{value}</p>
+                            <p className="text-slate-500 text-[10px]">{sub}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+)
 
 const toNumeric = (value) => {
     const n = Number(value)
@@ -407,16 +458,24 @@ const Invoices = () => {
     const paidCount = invoices.filter(i => i.status === 'Paid').length
     const totalAmount = invoices.reduce((sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0), 0)
 
+    if (loading) {
+        return (
+            <main className="p-4 sm:p-6 lg:p-8 pb-0 font-inter">
+                <InvoicePageSkeleton />
+            </main>
+        )
+    }
+
     return (
         <main className="p-4 sm:p-6 lg:p-8 pb-0 font-inter">
-            {loading ? (
-                <div className="flex items-center justify-center h-80">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-600">Loading invoices...</p>
-                    </div>
-                </div>
-            ) : invoices.length === 0 ? (
+            <InvoiceHero
+                paidAmount={paidAmount}
+                paidCount={paidCount}
+                totalAmount={totalAmount}
+                invoiceCount={invoices.length}
+            />
+
+            {invoices.length === 0 ? (
                 <div className="flex items-center justify-center h-80">
                     <div className="text-center">
                         <MdReceipt size={48} className="mx-auto mb-4 text-gray-300" />
@@ -425,60 +484,6 @@ const Invoices = () => {
                 </div>
             ) : (
                 <>
-
-                    {/* ── Hero Banner ── */}
-                    <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
-                        {/* Tailoring bg elements */}
-                        <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
-                            <GiSewingMachine size={140} />
-                        </div>
-                        <div className="absolute bottom-2 left-6 opacity-[0.07] text-white -rotate-12 pointer-events-none">
-                            <MdReceipt size={110} />
-                        </div>
-                        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.04] text-white pointer-events-none">
-                            <div className="w-44 h-44 rounded-full border-[18px] border-current" />
-                        </div>
-
-                        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                            {/* Left */}
-                            <div>
-                                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                                    Invoices
-                                </h2>
-                                <p className="text-slate-400 text-sm">View and manage your receipts & invoices.</p>
-                            </div>
-
-                            {/* Right — Stats */}
-                            <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
-                                {[
-                                    { label: 'Paid', value: `₱${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-400/20 text-emerald-300' },
-                                    { label: 'Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Paid only', icon: MdReceipt, color: 'bg-amber-400/20 text-amber-300' },
-                                    { label: 'Total', value: `₱${totalAmount.toLocaleString('en-PH')}`, sub: `${invoices.length} Invoices`, icon: MdReceipt, color: 'bg-blue-400/20 text-blue-300' },
-                                ].map(({ label, value, sub, icon: Icon, color }) => (
-                                    <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
-                                        {/* Mobile: icon + label on top */}
-                                        <div className="flex items-center gap-1.5 sm:hidden">
-                                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${color.split(' ')[0]}`}>
-                                                <Icon size={13} className={color.split(' ')[1]} />
-                                            </div>
-                                            <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
-                                        </div>
-                                        <p className="text-white text-base font-bold leading-tight sm:hidden">{value}</p>
-
-                                        {/* Desktop/Tablet */}
-                                        <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                            <Icon size={18} className={color.split(' ')[1]} />
-                                        </div>
-                                        <div className="hidden sm:block">
-                                            <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                                            <p className="text-white text-base font-bold leading-tight">{value}</p>
-                                            <p className="text-slate-500 text-[10px]">{sub}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Download Button — desktop only */}
                     <div className="hidden sm:flex justify-end mb-6">

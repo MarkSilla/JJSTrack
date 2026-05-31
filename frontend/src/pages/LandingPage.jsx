@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 import { AuthContext } from '../context/Context'
+import { RouteSkeleton } from '../components/SkeletonLoaders'
 import { ArrowRight, ClipboardList, Clock, Download, Mail, MapPin, Navigation, Package, Phone, Ruler, Users } from 'lucide-react'
 import shop from '../assets/shop_result.png'
 import jjsLogo from '../assets/jjs_result.png'
@@ -83,14 +84,7 @@ const LandingPage = () => {
 
   // Show loading state while checking auth
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
-        </div>
-      </div>
-    )
+    return <RouteSkeleton />
   }
 
   return (

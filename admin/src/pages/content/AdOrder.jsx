@@ -18,6 +18,7 @@ import KPICards from './AdOrder/KPICards';
 import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
+import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const FALLBACK_REFRESH_MS = 60000;
 const getRepairDisplayLabel = (booking = {}) =>
@@ -400,8 +401,9 @@ export default function AdOrder() {
 
     if (loading) {
         return (
-            <div className="font-inter min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-gray-400 text-sm font-medium">Loading orders...</div>
+            <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
+                <StatCardsSkeleton count={5} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5" />
+                <TableSkeleton rows={7} columns={6} />
             </div>
         );
     }

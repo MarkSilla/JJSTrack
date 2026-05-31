@@ -4,6 +4,7 @@ import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, } from "lucide-react";
 import { bookingApi } from "../../services/bookingApi";
 import { inventoryApi } from "../../services/inventoryApi";
+import { DashboardSkeleton } from "../../components/SkeletonLoaders.jsx";
 import {
   getPickupSlotBucket,
   getPickupSlotDisplay,
@@ -806,13 +807,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   }
 
   if (loading) {
-    return (
-      <div className="font-inter min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-          <Loader2 size={18} className="animate-spin" /> Loading dashboard...
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error && appointments.length === 0 && inventory.length === 0) {

@@ -6,6 +6,7 @@ import OrderFilters from './order/components/OrderFilters';
 import OrderTable from './order/components/OrderTable';
 import OrderCard from './order/components/OrderCard';
 import OrderDetails from './order/components/OrderDetails';
+import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const KPI_CARDS = [
     { label: 'All', key: 'All', icon: Inbox, sub: 'Total assigned', color: '#3B82F6' },
@@ -67,13 +68,13 @@ const OrderPage = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="inline-block animate-spin p-2">
-                        <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full"></div>
-                    </div>
-                    <p className="mt-4 text-gray-600 font-medium">Loading orders...</p>
+            <div className="font-inter flex min-h-screen w-full flex-col space-y-4">
+                <div>
+                    <div className="mb-2 h-7 w-40 animate-pulse rounded-lg bg-slate-200/80" />
+                    <div className="h-3 w-48 animate-pulse rounded-lg bg-slate-100" />
                 </div>
+                <StatCardsSkeleton count={6} className="grid grid-cols-2 xl:grid-cols-6 gap-4" />
+                <TableSkeleton rows={7} columns={7} />
             </div>
         );
     }

@@ -22,6 +22,7 @@ import {
     getCurrentStaffRole,
     getWorkflowStepRequiredRole,
 } from '../../../utils/workflowAccess.js';
+import { SkeletonBlock } from '../../../../components/SkeletonLoaders.jsx';
 
 const getStaffArchiveActor = () => {
     const staffUser = getStoredStaffUser();
@@ -271,7 +272,7 @@ const ArchiveConfirmModal = ({ isOpen, onConfirm, onCancel, isArchiving }) => {
 };
 
 const OrderDetails = ({ orderId, onBack }) => {
-    const { order, steps: initialSteps, currentStepIdx: initialStepIdx, statusLabel } = useOrderDetails(orderId);
+    const { order, steps: initialSteps, currentStepIdx: initialStepIdx, statusLabel, loading } = useOrderDetails(orderId);
     const [productionSteps, setProductionSteps] = useState([]);
     const [currentIdx, setCurrentIdx] = useState(0);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -320,6 +321,36 @@ const OrderDetails = ({ orderId, onBack }) => {
 
         return Array.from(new Set(urls));
     }, [order]);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col gap-4 w-full max-w-full overflow-x-hidden">
+                <SkeletonBlock className="h-5 w-36" />
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                        <div className="space-y-3">
+                            <SkeletonBlock className="h-4 w-44" />
+                            <SkeletonBlock className="h-7 w-72" />
+                            <SkeletonBlock className="h-3 w-56 bg-slate-100" />
+                        </div>
+                        <SkeletonBlock className="hidden h-24 w-44 bg-slate-100 sm:block" />
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                        <div className="space-y-3">
+                            {[0, 1, 2, 3].map((item) => (
+                                <SkeletonBlock key={item} className="h-20 w-full bg-slate-100" />
+                            ))}
+                        </div>
+                        <div className="space-y-3">
+                            {[0, 1, 2].map((item) => (
+                                <SkeletonBlock key={item} className="h-24 w-full bg-slate-100" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!order) {
         return (

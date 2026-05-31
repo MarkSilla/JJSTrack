@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
+import { CalendarPageSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -356,6 +357,10 @@ const AdAppointment = () => {
             { label: 'Overall Total', value: totalCount, sub: 'All appointments', icon: Package, color: '#2563EB', bg: '#EFF6FF' },
         ];
     }, [appointments]);
+
+    if (loading) {
+        return <CalendarPageSkeleton />;
+    }
 
     return (
         <div className="font-inter min-h-screen bg-slate-50">

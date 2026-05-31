@@ -13,6 +13,7 @@ import { bookingApi } from '../../../services/bookingApi'
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
 import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
+import { SkeletonBlock } from '../../components/SkeletonLoaders.jsx'
 import '../../styles/calendar.css'
 
 const useUser = () => {
@@ -490,16 +491,29 @@ export default function Dashboard() {
                                         <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
                                             <Icon size={13} className={text} />
                                         </div>
-                                        <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
+                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
                                     </div>
-                                    <p className="text-white text-xl font-bold leading-tight sm:hidden">{value}</p>
+                                    {loading ? (
+                                        <SkeletonBlock className="h-6 w-10 bg-white/15 sm:hidden" />
+                                    ) : (
+                                        <p className="text-white text-xl font-bold leading-tight sm:hidden">{value}</p>
+                                    )}
                                     <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
                                         <Icon size={18} className={text} />
                                     </div>
                                     <div className="hidden sm:block">
                                         <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                                        <p className="text-white text-xl font-bold leading-tight">{value}</p>
-                                        <p className="text-slate-500 text-[10px]">{sub}</p>
+                                        {loading ? (
+                                            <>
+                                                <SkeletonBlock className="my-1 h-5 w-12 bg-white/15" />
+                                                <SkeletonBlock className="h-2.5 w-14 bg-white/10" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="text-white text-xl font-bold leading-tight">{value}</p>
+                                                <p className="text-slate-500 text-[10px]">{sub}</p>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))}
