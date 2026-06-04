@@ -9,6 +9,7 @@ import img from '../assets/img.js';
 import { regions, provinces, cities, barangays } from 'select-philippines-address';
 
 const TOTAL_STEPS = 2;
+const DEFAULT_VERIFICATION_CODE_TTL_SECONDS = 10 * 60;
 const NAME_REGEX = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/;
 
 const SignupPage = () => {
@@ -239,7 +240,7 @@ const SignupPage = () => {
         navigate('/verify-email', {
           state: {
             email: response.email || formData.email,
-            expiresIn: response.expiresIn || 60,
+            expiresIn: response.expiresIn || DEFAULT_VERIFICATION_CODE_TTL_SECONDS,
             expiresAt: response.expiresAt,
           },
         });
