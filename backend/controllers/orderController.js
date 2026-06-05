@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import orderModel from '../models/orderModel.js';
+import bookingModel from '../models/bookingModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import userModel from '../models/userModel.js';
 import QRCode from 'qrcode';
@@ -15,11 +16,13 @@ import {
 } from '../utils/workflowStepAccess.js';
 import {
   maybeCreateAdminOrderReadyForPickupNotification,
+  maybeCreateOrderCancelledNotification,
   maybeCreateOrderReadyForPickupNotification,
   maybeCreateOrderReleasedNotification,
 } from '../utils/userNotificationEvents.js';
 import {
   emitBackofficeOrdersFeedRefresh,
+  emitBookingTrackingUpdate,
   emitOrderTrackingUpdate,
 } from '../utils/trackingUpdateEvents.js';
 import {
@@ -30,6 +33,21 @@ import { syncSubjectChatConversations } from '../utils/chatConversationSync.js';
 
 const getOrderOwnerId = (order = {}) =>
   String(order?.userId?._id || order?.userId || '');
+
+const normalizeCancellationReason = (value = '') =>
+  String(value || '').trim().slice(0, 1000);
+
+const getCancellationReasonFromBody = (body = {}) =>
+  normalizeCancellationReason(body.cancellationReason || body.cancelReason || body.reason);
+
+const getActorDisplayName = (actor = {}) =>
+  String(actor?.fullName || actor?.name || actor?.email || actor?.role || 'System').trim();
+
+const applyCancellationDetails = ({ entity, reason, actor }) => {
+  entity.cancellationReason = normalizeCancellationReason(reason);
+  entity.cancelledAt = new Date();
+  entity.cancelledBy = getActorDisplayName(actor);
+};
 
 const normalizeStepLabel = (label = '') =>
   String(label || '')
@@ -208,6 +226,9 @@ export const updateOrderStatus = async (req, res) => {
       completedAt,
       archivedAt,
       archivedBy,
+      cancellationReason,
+      cancelReason,
+      reason,
     } = req.body;
 
     const order = await orderModel.findById(id);
@@ -294,9 +315,42 @@ export const updateOrderStatus = async (req, res) => {
 
     if (nextStatus) order.status = nextStatus;
 
+    const nextCancellationReason = normalizeCancellationReason(
+      cancellationReason || cancelReason || reason
+    );
+    if (order.status === 'Cancelled' && previousStatus !== 'Cancelled') {
+      if (!nextCancellationReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cancellation reason is required',
+        });
+      }
+      applyCancellationDetails({
+        entity: order,
+        reason: nextCancellationReason,
+        actor: user,
+      });
+    }
+
     await order.save();
     await syncSubjectChatConversations({ subjectType: 'order', subjectDoc: order });
     emitOrderTrackingUpdate(order);
+    if (order.status === 'Cancelled' && previousStatus !== 'Cancelled' && order.bookingId) {
+      const cancelledBooking = await bookingModel.findByIdAndUpdate(
+        order.bookingId,
+        {
+          status: 'Cancelled',
+          cancellationReason: order.cancellationReason,
+          cancelledAt: order.cancelledAt,
+          cancelledBy: order.cancelledBy,
+        },
+        { new: true }
+      );
+
+      if (cancelledBooking) {
+        emitBookingTrackingUpdate(cancelledBooking, 'cancelled');
+      }
+    }
     await maybeCreateStaffAssignmentNotification({
       req,
       entityType: 'order',
@@ -315,6 +369,11 @@ export const updateOrderStatus = async (req, res) => {
       previousStatus,
     });
     await maybeCreateAdminOrderReadyForPickupNotification({
+      req,
+      order,
+      previousStatus,
+    });
+    await maybeCreateOrderCancelledNotification({
       req,
       order,
       previousStatus,
@@ -448,9 +507,44 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
+    const cancellationReason = getCancellationReasonFromBody(req.body);
+    if (!cancellationReason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cancellation reason is required',
+      });
+    }
+
+    const previousStatus = order.status;
     order.status = 'Cancelled';
+    applyCancellationDetails({
+      entity: order,
+      reason: cancellationReason,
+      actor: user,
+    });
     await order.save();
-    emitOrderTrackingUpdate(order);
+    emitOrderTrackingUpdate(order, 'cancelled');
+    if (order.bookingId) {
+      const cancelledBooking = await bookingModel.findByIdAndUpdate(
+        order.bookingId,
+        {
+          status: 'Cancelled',
+          cancellationReason,
+          cancelledAt: order.cancelledAt,
+          cancelledBy: order.cancelledBy,
+        },
+        { new: true }
+      );
+
+      if (cancelledBooking) {
+        emitBookingTrackingUpdate(cancelledBooking, 'cancelled');
+      }
+    }
+    await maybeCreateOrderCancelledNotification({
+      req,
+      order,
+      previousStatus,
+    });
 
     res.json({
       success: true,

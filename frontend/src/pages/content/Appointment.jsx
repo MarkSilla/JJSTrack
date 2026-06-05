@@ -7,6 +7,7 @@ import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
 import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 import { MdClose, MdCalendarToday, MdAccessTime, MdInfo, MdCheckCircle, MdPending, MdEventAvailable, MdExpandMore } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
+import { AppointmentListSkeleton } from '../../components/SkeletonLoaders.jsx'
 import '../../styles/calendar.css'
 
 const formatDateForUi = (dateKey) => {
@@ -641,10 +642,7 @@ const Appointment = () => {
                             </div>
                             <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
                                 {loading ? (
-                                    <div className="text-center py-10 text-gray-400 text-sm">
-                                        <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
-                                        Loading appointments...
-                                    </div>
+                                    <AppointmentListSkeleton />
                                 ) : error ? (
                                     <div className="text-center py-10 text-red-500 text-sm">
                                         <MdInfo size={32} className="mx-auto mb-2 opacity-20" />

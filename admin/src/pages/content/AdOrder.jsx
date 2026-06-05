@@ -18,6 +18,7 @@ import KPICards from './AdOrder/KPICards';
 import OrderList from './AdOrder/Orderlist';
 import AssignConfirmationModal from './AdOrder/Assignedconfirmationmodal';
 import { getDerivedStatus } from '../../utils/helpers.js';
+import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const FALLBACK_REFRESH_MS = 60000;
 const getRepairDisplayLabel = (booking = {}) =>
@@ -297,7 +298,8 @@ export default function AdOrder() {
             (o.item || o.itemType || o.serviceType || '').toLowerCase().includes(normalizedQuery)
         );
 
-        if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
+        if (filterStatus === 'All Records') result = result;
+        else if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
         else if (filterStatus === 'Released') result = result.filter(o => getDerivedStatus(o) === 'Released');
         else if (filterStatus === 'Overdue') result = result.filter(o => getDerivedStatus(o) === 'Overdue');
         else if (filterStatus === 'For Approval') result = result.filter(o => getDerivedStatus(o) === 'For Approval');
@@ -334,7 +336,7 @@ export default function AdOrder() {
     }, [searchQuery, filterStatus, orders, serviceTypeFilter, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
+        const c = { All: 0, 'All Records': orders.length, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
         orders.forEach(o => {
             const s = getDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
@@ -399,8 +401,9 @@ export default function AdOrder() {
 
     if (loading) {
         return (
-            <div className="font-inter min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="text-gray-400 text-sm font-medium">Loading orders...</div>
+            <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
+                <StatCardsSkeleton count={5} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-5" />
+                <TableSkeleton rows={7} columns={6} />
             </div>
         );
     }

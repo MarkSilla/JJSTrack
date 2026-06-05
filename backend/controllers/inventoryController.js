@@ -163,6 +163,14 @@ const buildActivityText = (activity) => {
   }
 };
 
+const formatInventoryActivityNoteForDisplay = (value = "") =>
+  String(value || "")
+    .replace(/FIFO batches/gi, "stock batches")
+    .replace(/FIFO batch/gi, "stock batch")
+    .replace(/FIFO stock/gi, "stock")
+    .replace(/FIFO deduction/gi, "stock usage")
+    .replace(/FIFO/gi, "stock batch order");
+
 const serializeActivity = (activity) => ({
   _id: activity._id,
   inventoryId: activity.inventoryId,
@@ -180,7 +188,7 @@ const serializeActivity = (activity) => ({
   performedByRole: activity.performedByRole,
   performedById: activity.performedById?.toString?.() || "",
   createdAt: activity.createdAt,
-  note: activity.note || "",
+  note: formatInventoryActivityNoteForDisplay(activity.note || ""),
   usageContext: {
     orderId: activity.usageContext?.orderId || "",
     orderDisplayId: activity.usageContext?.orderDisplayId || "",
@@ -590,7 +598,7 @@ export const createInventory = async (req, res) => {
         newStock: updatedSummary.stock,
         note:
           stockValue > 0
-            ? `New FIFO batch received${createdBatch ? ` (${createdBatch.batchCode})` : ""}`
+            ? `New stock batch received${createdBatch ? ` (${createdBatch.batchCode})` : ""}`
             : "Inventory item details updated through create inventory flow",
         batchBreakdown: createdBatch
           ? [
@@ -639,7 +647,7 @@ export const createInventory = async (req, res) => {
         ...serializeInventory(updatedInventory, thresholds),
         message:
           stockValue > 0
-            ? "Existing item restocked as a new FIFO batch."
+            ? "Existing item restocked as a new stock batch."
             : "Existing item details updated.",
         isUpdate: true
       });
@@ -833,7 +841,7 @@ export const updateInventory = async (req, res) => {
 
         if (!deduction.success) {
           return res.status(400).json({
-            message: "Unable to reduce stock below available FIFO batches.",
+            message: "Unable to reduce stock below available stock batches.",
             ...deduction,
           });
         }
@@ -863,7 +871,7 @@ export const updateInventory = async (req, res) => {
       newStock: updatedSummary.stock,
       note:
         batchBreakdown.length > 0
-          ? `Inventory item updated with FIFO batch impact (${buildFifoNote(batchBreakdown)})`
+          ? `Inventory item updated with stock batch impact (${buildFifoNote(batchBreakdown)})`
           : "Inventory item updated",
       batchBreakdown,
       totalCost,
@@ -959,7 +967,7 @@ export const adjustStock = async (req, res) => {
       const deduction = applyFifoDeduction(inventory, adjustmentAmount);
       if (!deduction.success) {
         return res.status(400).json({
-          message: "Insufficient stock available across FIFO batches.",
+          message: "Insufficient stock available across stock batches.",
           ...deduction,
         });
       }
@@ -987,9 +995,9 @@ export const adjustStock = async (req, res) => {
     const customNote = sanitizeActivityText(note, 260);
     const defaultActivityNote =
       type === "decrease" && batchBreakdown.length > 0
-        ? `Stock deducted with FIFO batches (${buildFifoNote(batchBreakdown)})`
+        ? `Stock used from stock batches (${buildFifoNote(batchBreakdown)})`
         : type === "increase" && batchBreakdown.length > 0
-          ? `New FIFO batch received (${batchBreakdown[0].batchCode})`
+          ? `New stock batch received (${batchBreakdown[0].batchCode})`
           : `Stock ${type}d through adjust stock flow`;
 
     await logInventoryActivity({

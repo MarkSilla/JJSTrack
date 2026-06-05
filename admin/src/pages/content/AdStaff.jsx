@@ -7,6 +7,7 @@ import ProfilePanel from "./Staff/ProfilePanel";
 import { staffApi } from "../../services/staffApi";
 import { bookingApi } from "../../services/bookingApi";
 import { orderApi } from "../../services/orderApi";
+import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx";
 
 const EMP_TYPES = ["All Types", "Full Time", "Part Time", "Contractual"];
 const STATUSES = ["All Status", "Active", "Inactive", "Suspended"];
@@ -818,11 +819,19 @@ const AdStaff = () => {
                 </div>
                 <div className="lg:hidden space-y-3">
                     {loading ? (
-                        <div className="bg-white rounded-2xl border border-slate-100 py-16 flex flex-col items-center gap-3 text-slate-400">
-                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
-                                <Search size={22} className="text-slate-200" />
-                            </div>
-                            <span className="text-[13px] font-medium">Loading staff...</span>
+                        <div className="space-y-3">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <div key={index} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <SkeletonBlock className="h-11 w-11 rounded-2xl" />
+                                        <div className="flex-1 space-y-2">
+                                            <SkeletonBlock className="h-3.5 w-36" />
+                                            <SkeletonBlock className="h-3 w-48 bg-slate-100" />
+                                            <SkeletonBlock className="h-8 w-full bg-slate-100" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : filtered.length === 0 ? (
                         <div className="bg-white rounded-2xl border border-slate-100 py-16 flex flex-col items-center gap-3 text-slate-400">
@@ -858,16 +867,24 @@ const AdStaff = () => {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-20 text-slate-400">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
-                                                    <Search size={24} className="text-slate-200" />
+                                    Array.from({ length: 6 }).map((_, row) => (
+                                        <tr key={row} className="border-b border-slate-50">
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <SkeletonBlock className="h-9 w-9 rounded-xl" />
+                                                    <div className="space-y-2">
+                                                        <SkeletonBlock className="h-3.5 w-32" />
+                                                        <SkeletonBlock className="h-2.5 w-20 bg-slate-100" />
+                                                    </div>
                                                 </div>
-                                                <span className="text-[13px] font-medium">Loading staff list...</span>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td className="px-5 py-4"><SkeletonBlock className="h-3 w-40 bg-slate-100" /></td>
+                                            <td className="px-5 py-4"><SkeletonBlock className="h-7 w-24 rounded-full bg-slate-100" /></td>
+                                            <td className="px-5 py-4"><SkeletonBlock className="h-7 w-24 rounded-full bg-slate-100" /></td>
+                                            <td className="px-5 py-4"><SkeletonBlock className="h-3 w-24 bg-slate-100" /></td>
+                                            <td className="px-5 py-4"><SkeletonBlock className="h-8 w-28 bg-slate-100" /></td>
+                                        </tr>
+                                    ))
                                 ) : filtered.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="text-center py-20 text-slate-400">

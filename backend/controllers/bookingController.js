@@ -15,6 +15,7 @@ import {
 } from '../utils/workflowStepAccess.js';
 import { createNotification } from '../utils/notificationHelpers.js';
 import {
+  maybeCreateBookingCancelledNotification,
   maybeCreateBookingReadyForPickupNotification,
   maybeCreateBookingReleasedNotification,
   maybeCreateBookingRescheduleNotification,
@@ -51,6 +52,21 @@ const getBookingOwnerId = (booking) =>
   booking?.userId?._id?.toString?.() ||
   booking?.userId?.toString?.() ||
   '';
+
+const normalizeCancellationReason = (value = '') =>
+  String(value || '').trim().slice(0, 1000);
+
+const getCancellationReasonFromBody = (body = {}) =>
+  normalizeCancellationReason(body.cancellationReason || body.cancelReason || body.reason);
+
+const getActorDisplayName = (actor = {}) =>
+  String(actor?.fullName || actor?.name || actor?.email || actor?.role || 'System').trim();
+
+const applyCancellationDetails = ({ entity, reason, actor }) => {
+  entity.cancellationReason = normalizeCancellationReason(reason);
+  entity.cancelledAt = new Date();
+  entity.cancelledBy = getActorDisplayName(actor);
+};
 
 const normalizeStepLabel = (label = '') =>
   String(label || '')
@@ -385,6 +401,8 @@ const getBookingZoneNow = (date = new Date()) => {
     minutes: hour * 60 + minute,
   };
 };
+
+const getBookingDateKeyForNow = () => getBookingZoneNow().dateKey;
 
 const validateRepairPickupSchedule = (pickupDate = '', pickupSlot = '') => {
   const pickupDateKey = String(pickupDate || '').trim();
@@ -879,7 +897,7 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const bookingDateKey = resolveBookingDateKey(new Date());
+    const bookingDateKey = getBookingDateKeyForNow();
 
     // Daily booking limits are based on when the booking was created.
     // Repair: max 7 bookings created per day
@@ -1047,6 +1065,7 @@ export const createBooking = async (req, res) => {
       items: normalizedItems,
       notes,
       totalPrice,
+      bookingDateKey,
     };
 
     // Only add pickup for repair
@@ -1249,6 +1268,9 @@ export const updateBooking = async (req, res) => {
       isArchived,
       archivedAt,
       archivedBy,
+      cancellationReason,
+      cancelReason,
+      reason,
     } = req.body;
 
     console.log('UpdateBooking request:', { id, assignedTailor, staffAssignments, status, hasAssignedTailor: assignedTailor !== undefined });
@@ -1311,6 +1333,24 @@ export const updateBooking = async (req, res) => {
     }
 
     if (nextStatus) booking.status = nextStatus;
+
+    const nextCancellationReason = normalizeCancellationReason(
+      cancellationReason || cancelReason || reason
+    );
+    if (booking.status === 'Cancelled' && previousStatus !== 'Cancelled') {
+      if (!nextCancellationReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cancellation reason is required',
+        });
+      }
+      applyCancellationDetails({
+        entity: booking,
+        reason: nextCancellationReason,
+        actor: user,
+      });
+    }
+
     if (adminNotes !== undefined) booking.adminNotes = adminNotes;
     if (contact !== undefined) booking.contact = contact;
     if (pickupDate !== undefined) booking.pickupDate = pickupDate;
@@ -1338,9 +1378,30 @@ export const updateBooking = async (req, res) => {
     await booking.save();
     await syncSubjectChatConversations({ subjectType: 'booking', subjectDoc: booking });
     emitBookingTrackingUpdate(booking);
+    if (booking.status === 'Cancelled' && previousStatus !== 'Cancelled' && booking.orderId) {
+      const cancelledOrder = await orderModel.findByIdAndUpdate(
+        booking.orderId,
+        {
+          status: 'Cancelled',
+          cancellationReason: booking.cancellationReason,
+          cancelledAt: booking.cancelledAt,
+          cancelledBy: booking.cancelledBy,
+        },
+        { new: true }
+      );
+
+      if (cancelledOrder) {
+        emitOrderTrackingUpdate(cancelledOrder, 'cancelled');
+      }
+    }
 
     console.log('✅ Booking saved with assignedTailor:', booking.assignedTailor);
     await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingCancelledNotification({
       req,
       booking,
       previousStatus,
@@ -1426,11 +1487,48 @@ export const updateBookingStatus = async (req, res) => {
       requestedStatus: status,
       steps: booking.steps,
     });
+
+    const cancellationReason = getCancellationReasonFromBody(req.body);
+    if (booking.status === 'Cancelled' && previousStatus !== 'Cancelled') {
+      if (!cancellationReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cancellation reason is required',
+        });
+      }
+      applyCancellationDetails({
+        entity: booking,
+        reason: cancellationReason,
+        actor: user,
+      });
+    }
+
     if (adminNotes) booking.adminNotes = adminNotes;
 
     await booking.save();
     emitBookingTrackingUpdate(booking);
+    if (booking.status === 'Cancelled' && previousStatus !== 'Cancelled' && booking.orderId) {
+      const cancelledOrder = await orderModel.findByIdAndUpdate(
+        booking.orderId,
+        {
+          status: 'Cancelled',
+          cancellationReason: booking.cancellationReason,
+          cancelledAt: booking.cancelledAt,
+          cancelledBy: booking.cancelledBy,
+        },
+        { new: true }
+      );
+
+      if (cancelledOrder) {
+        emitOrderTrackingUpdate(cancelledOrder, 'cancelled');
+      }
+    }
     await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingCancelledNotification({
       req,
       booking,
       previousStatus,
@@ -1690,13 +1788,8 @@ export const cancelBooking = async (req, res) => {
     }
 
     // Handle special case where userId is 'admin' (string)
-    let isAdminStaff = false;
-    if (isEnvAdminRequest(req)) {
-      isAdminStaff = true;
-    } else {
-      const user = await userModel.findById(req.userId);
-      isAdminStaff = user && (user.role === 'admin' || user.role === 'staff');
-    }
+    const actor = await getRequestUser(req);
+    const isAdminStaff = actor && (actor.role === 'admin' || actor.role === 'staff');
 
     // Check ownership - allow if user owns booking or is admin/staff
     if (!isAdminStaff && booking.userId?.toString() !== req.userId) {
@@ -1719,11 +1812,29 @@ export const cancelBooking = async (req, res) => {
     }
 
     // Update booking status
+    const cancellationReason = getCancellationReasonFromBody(req.body);
+    if (!cancellationReason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cancellation reason is required',
+      });
+    }
+
     const previousStatus = booking.status;
     booking.status = 'Cancelled';
+    applyCancellationDetails({
+      entity: booking,
+      reason: cancellationReason,
+      actor,
+    });
     await booking.save();
     emitBookingTrackingUpdate(booking, 'cancelled');
     await maybeCreateBookingStatusNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingCancelledNotification({
       req,
       booking,
       previousStatus,
@@ -1733,7 +1844,12 @@ export const cancelBooking = async (req, res) => {
     if (booking.orderId) {
       const cancelledOrder = await orderModel.findByIdAndUpdate(
         booking.orderId,
-        { status: 'Cancelled' },
+        {
+          status: 'Cancelled',
+          cancellationReason,
+          cancelledAt: booking.cancelledAt,
+          cancelledBy: booking.cancelledBy,
+        },
         { new: true }
       );
 

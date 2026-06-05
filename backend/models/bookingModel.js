@@ -61,17 +61,32 @@ const staffAssignmentsSchema = new mongoose.Schema({
   layoutArtist: { type: String, default: '' },
 }, { _id: false });
 
+const BOOKING_TIME_ZONE = process.env.BOOKING_TIME_ZONE || 'Asia/Manila';
+
+const getBookingDateParts = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BOOKING_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || '';
+
+  return {
+    year: getPart('year'),
+    month: getPart('month'),
+    day: getPart('day'),
+  };
+};
+
 const formatBookingDateSegment = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const { year, month, day } = getBookingDateParts(date);
   return `${year}${month}${day}`;
 };
 
 const formatBookingDateKey = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const { year, month, day } = getBookingDateParts(date);
   return `${year}-${month}-${day}`;
 };
 
@@ -195,6 +210,13 @@ const bookingSchema = new mongoose.Schema({
     enum: ['Pending', 'Approved', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
   },
+  cancellationReason: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  cancelledAt: Date,
+  cancelledBy: String,
 
   // Archive tracking
   isArchived: {

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
+import { CalendarPageSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -26,6 +27,8 @@ const STATUS_CONFIG = {
     'in progress': { color: 'bg-blue-100 text-blue-700' },
     'pending': { color: 'bg-amber-100 text-amber-700' },
     'completed': { color: 'bg-gray-100 text-gray-700' },
+    'released': { color: 'bg-cyan-100 text-cyan-700' },
+    'cancelled': { color: 'bg-red-100 text-red-700' },
 };
 
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -153,7 +156,8 @@ const AdAppointment = () => {
             'approved': 'ready',
             'in progress': 'in progress',
             'completed': 'completed',
-            'cancelled': 'pending'
+            'released': 'released',
+            'cancelled': 'cancelled'
         };
         return statusMap[backendStatus?.toLowerCase()] || 'pending';
     };
@@ -353,6 +357,10 @@ const AdAppointment = () => {
             { label: 'Overall Total', value: totalCount, sub: 'All appointments', icon: Package, color: '#2563EB', bg: '#EFF6FF' },
         ];
     }, [appointments]);
+
+    if (loading) {
+        return <CalendarPageSkeleton />;
+    }
 
     return (
         <div className="font-inter min-h-screen bg-slate-50">

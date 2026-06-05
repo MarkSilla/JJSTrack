@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle, Mail, MapPin, Shield, Trash2, User } from 'lucide-react'
 import { regions, provinces, cities, barangays } from 'select-philippines-address'
 import { userApi } from '../../../services/userApi'
+import { ProfilePageSkeleton } from '../../components/SkeletonLoaders.jsx'
 
 const TOTAL_STEPS = 2
 
@@ -602,12 +603,7 @@ const Profile = () => {
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-700 rounded-full animate-spin" />
-        <p className="text-sm text-slate-400">Loading your profile...</p>
-      </div>
-    )
+    return <ProfilePageSkeleton />
   }
 
   const completionPercent = step === 1 ? 50 : 100

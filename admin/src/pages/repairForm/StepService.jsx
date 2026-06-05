@@ -6,7 +6,10 @@ const SERVICES = [
     { id: 'organizational', label: 'Organization', desc: 'T-shirts & polo shirts for your organization', Icon: Building2 },
 ]
 
-const StepService = ({ service, setService }) => (
+const getCapacityForService = (id, bookingCapacity) =>
+    id === 'repair' ? bookingCapacity?.repair : bookingCapacity?.jerseyOrg
+
+const StepService = ({ service, setService, bookingCapacity, capacityLoading = false }) => (
     <section>
         <div className="text-center mb-5 font-inter">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">What brings you in?</h2>
@@ -16,14 +19,20 @@ const StepService = ({ service, setService }) => (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-2xl mx-auto">
             {SERVICES.map(({ id, label, desc, Icon }) => {
                 const selected = service === id
+                const capacity = getCapacityForService(id, bookingCapacity)
+                const isFull = Boolean(capacity?.isFull)
                 return (
                     <button
                         key={id}
-                        onClick={() => setService(id)}
-                        className={`group relative p-7 rounded-2xl text-left transition-all duration-300 cursor-pointer overflow-hidden
-                ${selected
-                                ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100'
-                                : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100'
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => !isFull && setService(id)}
+                        className={`group relative p-7 rounded-2xl text-left transition-all duration-300 overflow-hidden
+                ${isFull
+                                ? 'bg-gray-50 border border-gray-200 opacity-70 cursor-not-allowed'
+                                : selected
+                                    ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100 cursor-pointer'
+                                    : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100 cursor-pointer'
                             }`}
                     >
                         {selected && <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl" />}
@@ -37,6 +46,15 @@ const StepService = ({ service, setService }) => (
                             {label}
                         </h3>
                         <p className="relative text-sm text-gray-500 leading-relaxed">{desc}</p>
+                        <p className={`relative mt-4 text-[10px] font-black uppercase tracking-widest ${isFull ? 'text-red-500' : 'text-blue-500/70'}`}>
+                            {capacityLoading && !capacity
+                                ? 'Checking slots...'
+                                : capacity
+                                    ? isFull
+                                        ? 'Fully booked today'
+                                        : `${capacity.available} / ${capacity.max} slots left today`
+                                    : 'Slots checked on submit'}
+                        </p>
                     </button>
                 )
             })}

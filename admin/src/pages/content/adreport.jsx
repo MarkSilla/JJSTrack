@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import api, { bookingApi } from "../../services/bookingApi.js";
 import { exportToPDF, exportChartToPDF } from "../../components/Export.js";
+import { StatCardsSkeleton, TableSkeleton, SkeletonBlock } from "../../components/SkeletonLoaders.jsx";
 
 const TIME_RANGES = ["Daily", "Weekly", "Monthly", "Quarterly"];
 const RANGE_LIMITS = {
@@ -431,11 +432,21 @@ export default function AdAnalytics() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-          <Loader2 size={16} className="animate-spin" />
-          Loading report data...
+      <div className="font-inter p-3">
+        <StatCardsSkeleton count={4} className="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4" />
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <SkeletonBlock className="mb-4 h-4 w-40" />
+            <SkeletonBlock className="h-72 w-full bg-slate-100" />
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <SkeletonBlock className="mb-4 h-4 w-36" />
+            {[0, 1, 2, 3].map((item) => (
+              <SkeletonBlock key={item} className="mb-3 h-14 bg-slate-100" />
+            ))}
+          </div>
         </div>
+        <TableSkeleton rows={5} columns={5} className="mt-3" />
       </div>
     );
   }

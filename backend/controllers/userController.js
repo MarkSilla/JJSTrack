@@ -33,7 +33,11 @@ const normalizeEmail = (email) => String(email).trim().toLowerCase();
 const normalizePhoneNumber = (phoneNumber) => String(phoneNumber || '').replace(/\D/g, '').trim();
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 const isValidPhilippineMobile = (phoneNumber) => /^09\d{9}$/.test(phoneNumber);
-const VERIFICATION_CODE_TTL_MS = Number(process.env.VERIFICATION_CODE_TTL_MS || 60 * 1000);
+const DEFAULT_VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000;
+const configuredVerificationCodeTtlMs = Number(process.env.VERIFICATION_CODE_TTL_MS);
+const VERIFICATION_CODE_TTL_MS = Number.isFinite(configuredVerificationCodeTtlMs) && configuredVerificationCodeTtlMs > 0
+  ? configuredVerificationCodeTtlMs
+  : DEFAULT_VERIFICATION_CODE_TTL_MS;
 const ACCOUNT_DELETION_TOKEN_TTL_MS = Number(process.env.ACCOUNT_DELETION_TOKEN_TTL_MS || 15 * 60 * 1000);
 const getVerificationCodeTtlLabel = () => {
   const seconds = Math.max(1, Math.round(VERIFICATION_CODE_TTL_MS / 1000));

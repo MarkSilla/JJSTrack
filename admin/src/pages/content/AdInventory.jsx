@@ -10,6 +10,7 @@ import ArchiveConfirmModal from './ArchiveConfirmModal.jsx';
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi";
 import { useStockAlert } from "../../context/StockAlertContext";
 import { fmt } from "../../utils/helpers.js";
+import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx";
 
 const numberInputStyle = `../../services/inventoryApi.js
   input[type="number"]::-webkit-outer-spin-button,
@@ -365,7 +366,7 @@ function MobileCard({ item, onAdjust, onArchive, onUpdate, isArchived }) {
             </button>
             <button onClick={() => onAdjust(item, "decrease")}
               className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-2 rounded-lg bg-white border border-slate-200 text-slate-600 transition-all active:scale-95">
-              <ArrowDownCircle size={12} /> Use FIFO
+              <ArrowDownCircle size={12} /> Use Stock
             </button>
             <div className="flex gap-1.5">
               <button onClick={() => onUpdate(item)}
@@ -652,7 +653,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
         if (!ignore) {
           setFifoPreview(null);
           setPreviewError(
-            error?.response?.data?.message || "Failed to preview FIFO deduction"
+            error?.response?.data?.message || "Failed to check stock usage"
           );
         }
       })
@@ -691,7 +692,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
     }
 
     if (fifoPreview && !fifoPreview.canFulfill) {
-      toast.error("Requested quantity exceeds available FIFO stock");
+      toast.error("Requested quantity exceeds available stock");
       return;
     }
 
@@ -700,9 +701,9 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-xl rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-xl rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-start justify-between mb-1">
+        <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-4 flex items-start justify-between bg-white px-6 pt-6 pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-lg font-black text-gray-900">Adjust Stock</h3>
             <p className="text-sm text-slate-500">{item.name}</p>
@@ -741,7 +742,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           </button>
           <button onClick={() => setAdjType("decrease")}
             className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "decrease" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-500"}`}>
-            <ArrowDownCircle size={15} /> Use FIFO
+            <ArrowDownCircle size={15} /> Use Stock
           </button>
         </div>
 
@@ -779,7 +780,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
             </div>
 
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5">
-              <p className="text-sm font-bold text-gray-900 mb-1">New FIFO batch</p>
+              <p className="text-sm font-bold text-gray-900 mb-1">New stock batch</p>
               <p className="text-sm text-slate-600">
                 This stock will be stored as a separate batch and will not merge with older stock.
               </p>
@@ -788,9 +789,9 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
         ) : (
           <div className="space-y-4 mb-5">
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <p className="text-sm font-bold text-gray-900 mb-1">FIFO deduction</p>
+              <p className="text-sm font-bold text-gray-900 mb-1">Stock usage</p>
               <p className="text-sm text-slate-600">
-                The oldest batch is always consumed first for quality control and accurate costing.
+                The system uses the oldest available batch first for quality control and accurate costing.
               </p>
             </div>
 
@@ -823,14 +824,14 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">FIFO Preview</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stock Usage Preview</p>
                 {fifoPreview?.totalCost > 0 && (
                   <span className="text-xs font-semibold text-slate-500">Cost {fmt(fifoPreview.totalCost)}</span>
                 )}
               </div>
               <div className="rounded-xl border border-slate-200 overflow-hidden">
                 {previewLoading ? (
-                  <div className="px-4 py-4 text-sm text-slate-400">Calculating FIFO preview...</div>
+                  <div className="px-4 py-4 text-sm text-slate-400">Checking stock usage...</div>
                 ) : previewError ? (
                   <div className="px-4 py-4 text-sm text-red-500">{previewError}</div>
                 ) : !parsedAmount ? (
@@ -865,7 +866,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex gap-3 border-t border-slate-100 bg-white px-6 pt-3 pb-6">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
             Cancel
           </button>
@@ -877,7 +878,7 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
               : "bg-blue-600 hover:bg-blue-700"
               }`}
           >
-            <Check size={15} /> {adjType === "increase" ? "Receive Batch" : "Confirm FIFO"}
+            <Check size={15} /> {adjType === "increase" ? "Receive Batch" : "Confirm Stock Use"}
           </button>
         </div>
       </div>
@@ -1031,7 +1032,7 @@ function AddItemModal({ settings, onConfirm, onClose }) {
         <div className="flex items-center justify-between mb-10">
           <div>
             <h3 className="text-lg font-black text-gray-900">Add Item / Receive Batch</h3>
-            <p className="text-xs text-slate-400">Create a new item or add a new FIFO batch to an existing one</p>
+            <p className="text-xs text-slate-400">Create a new item or add a new stock batch to an existing one</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
         </div>
@@ -1402,9 +1403,8 @@ function InventorySystemContent() {
     if (typeof preset.sortBy === "string") setSortBy(preset.sortBy);
     if (typeof preset.showArchived === "boolean") setShowArchived(preset.showArchived);
 
-    setShowCategory(false);
-    setShowStatus(false);
-    setShowSort(false);
+    setActiveDropdown(null);
+    setActiveFilterMenu(null);
   }, [location.state]);
 
   useEffect(() => {
@@ -1537,7 +1537,7 @@ function InventorySystemContent() {
 
   const STAT_CARDS = [
     { label: "Total Items", value: activeInventory.length, sub: "Active supplies", icon: Package, accent: "#2563EB", bgAccent: "#EFF6FF" },
-    { label: "Open Batches", value: totalBatchCount, sub: "FIFO layers on hand", icon: Layers, accent: "#7C3AED", bgAccent: "#F5F3FF" },
+    { label: "Open Batches", value: totalBatchCount, sub: "Stock batches on hand", icon: Layers, accent: "#7C3AED", bgAccent: "#F5F3FF" },
     { label: "In Stock", value: inStockCount, sub: "Healthy inventory", icon: CheckCircle2, accent: "#10B981", bgAccent: "#F0FDF4" },
     { label: "Low Stock", value: lowCount, sub: "Need restock", icon: AlertTriangle, accent: "#D97706", bgAccent: "#FFFBEB" },
     { label: "Current Value", value: fmt(currentValue), sub: "Exact batch-based cost", icon: ShoppingBag, accent: "#059669", bgAccent: "#ECFDF5" },
@@ -1875,7 +1875,20 @@ function InventorySystemContent() {
             </button>
           </div>
           {loading ? (
-            <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">Loading...</div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <SkeletonBlock className="h-4 w-36" />
+                      <SkeletonBlock className="h-3 w-24 bg-slate-100" />
+                    </div>
+                    <SkeletonBlock className="h-7 w-20 rounded-full bg-slate-100" />
+                  </div>
+                  <SkeletonBlock className="h-10 w-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
           ) : filtered.length === 0
             ? <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-xl border border-slate-200">
               <ShoppingBag size={28} className="mx-auto mb-2 opacity-30" />No items found.
@@ -1920,7 +1933,17 @@ function InventorySystemContent() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0
+              {loading
+                ? Array.from({ length: 7 }).map((_, row) => (
+                  <tr key={row} className="border-b border-slate-50">
+                    {Array.from({ length: 11 }).map((__, column) => (
+                      <td key={column} className="px-4 py-3">
+                        <SkeletonBlock className={`${column === 0 ? "h-4 w-36" : "h-3 w-24"} bg-slate-100`} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+                : filtered.length === 0
                 ? <tr><td colSpan={12} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
                 : filtered.map(item => (
                   <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
@@ -1979,7 +2002,7 @@ function InventorySystemContent() {
                               <ArrowUpCircle size={14} />
                             </button>
                             <button onClick={() => setAdjModal({ item, type: "decrease" })}
-                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Use FIFO">
+                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Use Stock">
                               <ArrowDownCircle size={14} />
                             </button>
                             <button onClick={() => setUpdateModal(item)}

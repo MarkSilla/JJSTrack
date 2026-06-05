@@ -13,6 +13,7 @@ import {
 import useOrderFeedSocket from '../hooks/useOrderFeedSocket.js';
 import { getPickupSlotDisplay } from '../utils/pickupSlot.js';
 import { getStaffDerivedStatus } from '../utils/orderStatus.js';
+import { StaffDashboardSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const FALLBACK_REFRESH_MS = 60000;
 
@@ -293,6 +294,10 @@ const Dashboard = () => {
         if (hour < 18) return 'Good afternoon';
         return 'Good evening';
     };
+
+    if (loading) {
+        return <StaffDashboardSkeleton />;
+    }
 
     return (
         <div className="space-y-5 font-inter">

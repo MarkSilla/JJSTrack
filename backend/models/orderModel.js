@@ -54,6 +54,13 @@ const orderSchema = new mongoose.Schema({
     enum: ['Pending', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
   },
+  cancellationReason: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  cancelledAt: Date,
+  cancelledBy: String,
   isReleased: {
     type: Boolean,
     default: false,

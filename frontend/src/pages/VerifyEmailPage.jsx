@@ -3,6 +3,26 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js'
 
+const DEFAULT_VERIFICATION_CODE_TTL_SECONDS = 10 * 60;
+const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
+
+const getPositiveSeconds = (value, fallback = DEFAULT_VERIFICATION_CODE_TTL_SECONDS) => {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : fallback;
+};
+
+const formatCodeDuration = (value) => {
+  const seconds = Math.max(0, Math.floor(Number(value) || 0));
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+};
+
 const VerifyEmailPage = () => {
   const [codeDigits, setCodeDigits] = useState(Array(6).fill(''));
   const [loading, setLoading] = useState(false);
@@ -17,12 +37,12 @@ const VerifyEmailPage = () => {
   const email = location.state?.email;
   const getInitialExpiresIn = () => {
     const expiresAt = location.state?.expiresAt ? new Date(location.state.expiresAt).getTime() : null;
-    if (expiresAt) return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-    return Number(location.state?.expiresIn || 60);
+    if (Number.isFinite(expiresAt)) return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    return getPositiveSeconds(location.state?.expiresIn);
   };
 
   const [codeExpiresIn, setCodeExpiresIn] = useState(getInitialExpiresIn);
-  const [resendCooldown, setResendCooldown] = useState(getInitialExpiresIn);
+  const [resendCooldown, setResendCooldown] = useState(DEFAULT_RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
     let interval;
@@ -100,7 +120,7 @@ const VerifyEmailPage = () => {
     }
 
     if (codeExpiresIn <= 0) {
-      setError('Verification code expired after 60 seconds. Please request a new one.');
+      setError('Verification code expired. Please request a new one.');
       return;
     }
 
@@ -135,9 +155,9 @@ const VerifyEmailPage = () => {
         setSuccess('Verification code sent! Check your email.');
         setCodeDigits(Array(6).fill(''));
         codeInputRefs.current[0]?.focus();
-        const nextExpiresIn = Number(response.expiresIn || 60);
+        const nextExpiresIn = getPositiveSeconds(response.expiresIn);
         setCodeExpiresIn(nextExpiresIn);
-        setResendCooldown(nextExpiresIn);
+        setResendCooldown(DEFAULT_RESEND_COOLDOWN_SECONDS);
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(response.message || 'Failed to resend code');
@@ -262,7 +282,7 @@ const VerifyEmailPage = () => {
               </div>
               <p className="text-xs text-gray-500 mt-2">
                 {codeExpiresIn > 0
-                  ? `Enter the 6-digit code from your email. Expires in ${codeExpiresIn}s.`
+                  ? `Enter the 6-digit code from your email. Expires in ${formatCodeDuration(codeExpiresIn)}.`
                   : 'Code expired. Please resend a new code.'}
               </p>
             </div>
@@ -284,7 +304,7 @@ const VerifyEmailPage = () => {
               className="w-full py-2.5 bg-white border-[1.5px] border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
               {resendCooldown > 0
-                ? `Resend in ${resendCooldown}s`
+                ? `Resend in ${formatCodeDuration(resendCooldown)}`
                 : resendLoading
                   ? 'Sending...'
                   : 'Resend Code'}

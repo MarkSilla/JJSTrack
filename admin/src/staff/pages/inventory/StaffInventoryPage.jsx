@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { inventoryApi } from "../../services/inventoryApi";
 import { bookingApi } from "../../services/bookingApi";
 import { orderApi } from "../../services/orderApi";
+import { SkeletonBlock } from "../../../components/SkeletonLoaders.jsx";
 
 const getStatus = (stock, minStock) => {
   if (stock <= 0) return "Out of Stock";
@@ -361,7 +362,7 @@ function UseItemModal({
             </p>
             <p className="text-sm text-slate-600">
               This will deduct the quantity directly from the real backend
-              inventory using FIFO, so the oldest batch is used first.
+              inventory. The system uses the oldest available batch first.
             </p>
           </div>
 
@@ -862,7 +863,15 @@ export default function StaffInventoryPage() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
-                  Loading inventory...
+                  <div className="space-y-3">
+                    {Array.from({ length: 6 }).map((_, row) => (
+                      <div key={row} className="grid grid-cols-5 gap-4 px-5">
+                        {Array.from({ length: 5 }).map((__, column) => (
+                          <SkeletonBlock key={column} className={`${column === 0 ? "h-4 w-36" : "h-3 w-24"} bg-slate-100`} />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -929,8 +938,19 @@ export default function StaffInventoryPage() {
 
       <div className="lg:hidden space-y-3 mb-5">
         {loading ? (
-          <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-200">
-            Loading inventory...
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <SkeletonBlock className="h-4 w-36" />
+                    <SkeletonBlock className="h-3 w-24 bg-slate-100" />
+                  </div>
+                  <SkeletonBlock className="h-7 w-20 rounded-full bg-slate-100" />
+                </div>
+                <SkeletonBlock className="h-10 w-full bg-slate-100" />
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-200">

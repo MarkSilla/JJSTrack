@@ -15,6 +15,7 @@ import {
   ArrowUpDown
 } from "lucide-react";
 import { inventoryApi } from "../../services/inventoryApi";
+import { SkeletonBlock } from "../../../components/SkeletonLoaders.jsx";
 import { getStoredStaffUser } from "../../utils/staffSession";
 
 const HISTORY_FETCH_LIMIT = 500;
@@ -104,7 +105,7 @@ function DetailModal({ activity, onClose }) {
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-black text-gray-900">{activity.inventoryName || "Inventory item"}</h2>
-            <p className="text-sm text-slate-500 mt-1">Stock usage details and FIFO batch record.</p>
+            <p className="text-sm text-slate-500 mt-1">Stock usage details and batch records.</p>
           </div>
           <button
             onClick={onClose}
@@ -136,7 +137,7 @@ function DetailModal({ activity, onClose }) {
 
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100">
-              <p className="text-sm font-bold text-gray-900">FIFO Batch Breakdown</p>
+              <p className="text-sm font-bold text-gray-900">Stock Batch Breakdown</p>
               <p className="text-xs text-slate-400 mt-0.5">
                 {batchBreakdown.length > 0
                   ? `${batchBreakdown.length} batch record${batchBreakdown.length === 1 ? "" : "s"} tracked`
@@ -424,9 +425,15 @@ export default function StaffInventoryHistoryPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">Loading history...</td>
-                </tr>
+                Array.from({ length: 6 }).map((_, row) => (
+                  <tr key={row} className="border-b border-slate-50">
+                    {Array.from({ length: 6 }).map((__, column) => (
+                      <td key={column} className="px-5 py-3.5">
+                        <SkeletonBlock className={`${column === 1 ? "h-4 w-36" : "h-3 w-24"} bg-slate-100`} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : filteredActivities.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400">No usage history found.</td>
@@ -471,7 +478,20 @@ export default function StaffInventoryHistoryPage() {
 
         <div className="lg:hidden divide-y divide-slate-100">
           {loading ? (
-            <div className="text-center py-12 text-slate-400 text-sm">Loading history...</div>
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="rounded-2xl border border-slate-100 p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <SkeletonBlock className="h-4 w-36" />
+                      <SkeletonBlock className="h-3 w-28 bg-slate-100" />
+                    </div>
+                    <SkeletonBlock className="h-5 w-16 rounded-full bg-slate-100" />
+                  </div>
+                  <SkeletonBlock className="h-9 w-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
           ) : filteredActivities.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">No usage history found.</div>
           ) : (

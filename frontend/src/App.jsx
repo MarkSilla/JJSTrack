@@ -4,6 +4,7 @@ import Context from './context/Context'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
 import LandingPage from './pages/LandingPage'
+import { RouteSkeleton } from './components/SkeletonLoaders'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const SignupPage = lazy(() => import('./pages/SignupPage'))
@@ -24,7 +25,9 @@ const BookingForms = lazy(() => import('./pages/content/Bookingforms'))
 const Profile = lazy(() => import('./pages/content/Profile'))
 
 const PageFallback = () => (
-  <div className="min-h-screen bg-slate-950" aria-label="Loading page" />
+  <div aria-label="Loading page">
+    <RouteSkeleton />
+  </div>
 )
 
 const withSuspense = (element) => (

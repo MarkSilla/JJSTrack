@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { bookingApi } from '../services/bookingApi';
 import { orderApi } from '../services/orderApi.js';
 import img from '../assets/img';
+import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
 
 const getJerseySizeText = (player) => {
     if (player?.useManualjerseySize) {
@@ -1097,11 +1098,13 @@ const ArchivesPage = () => {
 
     if (loading) {
         return (
-            <div className="font-sans flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-blue-500 animate-spin mx-auto mb-4" />
-                    <p className="text-sm font-semibold text-slate-500">Loading archives...</p>
+            <div className="font-inter flex flex-col gap-4 md:gap-5 w-full max-w-full overflow-x-hidden">
+                <div>
+                    <div className="mb-2 h-7 w-32 animate-pulse rounded-lg bg-slate-200/80" />
+                    <div className="h-3 w-56 animate-pulse rounded-lg bg-slate-100" />
                 </div>
+                <StatCardsSkeleton count={4} className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4" />
+                <TableSkeleton rows={7} columns={6} />
             </div>
         );
     }
