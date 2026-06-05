@@ -4,6 +4,15 @@ import { Menu, X } from 'lucide-react'
 import jjsLogo from '../assets/jjs_result.png'
 import { AuthContext } from '../context/Context.jsx'
 
+const navLinks = [
+  ['Home', '#home'],
+  ['Features', '#features'],
+  ['About', '#about'],
+  ['Location', '#location'],
+  ['Testimonials', '#testimonials'],
+  ['FAQ', '#FAQ'],
+]
+
 const LandingNavbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -27,7 +36,22 @@ const LandingNavbar = () => {
     }
   }, [])
 
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : ''
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen])
+
   const handleAuthAction = () => {
+    setIsOpen(false)
     if (isAuthenticated) {
       navigate('/login')
     } else {
@@ -37,7 +61,7 @@ const LandingNavbar = () => {
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${scrolled
+      className={`fixed top-0 left-0 right-0 z-[80] transition-all duration-500 ease-in-out ${scrolled
         ? 'bg-white/95 backdrop-blur-md shadow-lg'
         : 'bg-transparent'
         }`}
@@ -101,187 +125,120 @@ const LandingNavbar = () => {
         }
       `}</style>
 
-      <div className="container mx-auto px-6 py-2 2xl:mx-24 py-2 px-0">
-        <div className="flex justify-between items-center w-full">
-          {/* Nav Links (Left Side) */}
-          <div className="flex-1 flex justify-start">
-            <ul className="hidden xl:flex gap-6 items-center md:gap-3">
-              <li>
-                <a
-                  href="#home"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  Home
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#features"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  Features
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#about"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  About
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#location"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  Location
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#testimonials"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  Testimonials
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#FAQ"
-                  className={`nav-link font-medium transition-colors duration-500 ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
-                    }`}
-                >
-                  FAQ
-                </a>
-              </li>
+      <div className="mx-auto w-full max-w-[88rem] px-4 py-2 sm:px-6 lg:px-8">
+        <div className="relative flex h-14 w-full items-center justify-between sm:h-16">
+          <div className="min-w-0 flex-1">
+            <ul className="hidden items-center gap-4 xl:flex 2xl:gap-6">
+              {navLinks.map(([label, href]) => (
+                <li key={href}>
+                  <a
+                    href={href}
+                    className={`nav-link whitespace-nowrap text-sm font-medium transition-colors duration-500 2xl:text-base ${scrolled ? 'text-[#1E293B] nav-dark' : 'text-white nav-light'
+                      }`}
+                  >
+                    {label}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Logo (Centered) */}
-          <div className="flex-shrink-0 flex justify-center">
-            <div className={`z-50 flex items-center transition-all duration-500 ease-in-out
-               ${scrolled ? "flex-row items-center " : "flex-col items-center "}
-                  `} >
-              <img src={jjsLogo} alt="logo" width="56" height="56" decoding="async" className={`w-10 h-10
-                ${scrolled ? "w-12 h-12" : "w-14 h-14"}
-              `} />
-              <div className={`flex flex-col transition-all duration-500
-              ${scrolled ? "ml-3 items-start" : "items-center mt-2"}
-              `}>
-                <span
-                  className={`text-xs font-inter font-light transition-all duration-900
-          ${scrolled ? "opacity-100" : "opacity-0"}
-        `}
-                >
-                  Jennoel-Jennyl Sportswear
-                </span>
-              </div>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-[85] flex -translate-x-1/2 -translate-y-1/2 justify-center">
+            <div className="flex items-center justify-center transition-all duration-500 ease-in-out">
+              <img
+                src={jjsLogo}
+                alt="JJS logo"
+                width="56"
+                height="56"
+                decoding="async"
+                className={`h-11 w-11 object-contain transition-all duration-500 sm:h-12 sm:w-12 ${scrolled ? 'xl:h-12 xl:w-12' : 'xl:h-14 xl:w-14'}`}
+              />
             </div>
           </div>
-          <div className="flex-1 flex justify-end items-center">
+
+          <div className="flex min-w-0 flex-1 items-center justify-end">
             <button
               onClick={handleAuthAction}
-              className={`hidden xl:block px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
+              className={`hidden rounded-lg px-6 py-2.5 font-medium transition-all duration-500 xl:block ${scrolled
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
                 }`}
             >
               {isAuthenticated ? 'Sign in' : 'Sign In'}
             </button>
-            <div
-              className={` xl:hidden flex w-10 h-10 cursor-pointer items-center justify-center rounded-lg transition-all duration-500 ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
-                }`}
+            <button
+              type="button"
+              aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={isOpen}
               onClick={() => setIsOpen(!isOpen)}
+              className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-500 xl:hidden ${scrolled ? 'hover:bg-blue-50' : 'hover:bg-white/20'
+                }`}
             >
               {isOpen ? (
                 <X className={`transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'}`} size={24} />
               ) : (
                 <Menu className={`transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'}`} size={24} />
               )}
-            </div>
+            </button>
           </div>
         </div>
       </div>
-      {
-        isOpen && (
+
+      <div
+        className={`fixed inset-0 z-[90] xl:hidden ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        aria-hidden={!isOpen}
+      >
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setIsOpen(false)}
+          className={`absolute inset-0 bg-slate-950/55 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+        />
+        <aside
+          className={`absolute right-0 top-0 flex h-dvh w-[min(82vw,22rem)] flex-col overflow-y-auto border-l shadow-2xl transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${scrolled
+            ? 'border-gray-200 bg-white/95 text-slate-900'
+            : 'border-white/15 bg-[#020617]/95 text-white'
+            }`}
+        >
+          <div className={`flex min-h-20 items-center justify-center border-b px-5 ${scrolled ? 'border-gray-200' : 'border-white/15'}`}>
+            <img
+              src={jjsLogo}
+              alt="JJS logo"
+              width="56"
+              height="56"
+              decoding="async"
+              className="h-14 w-14 object-contain"
+            />
+            <button
+              type="button"
+              aria-label="Close navigation menu"
+              onClick={() => setIsOpen(false)}
+              className={`absolute right-4 top-5 flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${scrolled ? 'text-blue-600 hover:bg-blue-50' : 'text-white hover:bg-white/10'}`}
+            >
+              <X size={24} />
+            </button>
+          </div>
           <div
-            className={`xl:hidden border-t px-6 pb-6 pt-4 animate-slideDown transition-all duration-500 ${scrolled
-              ? 'border-gray-200 bg-white/95 backdrop-blur-md'
-              : 'border-white/20 bg-black/40 backdrop-blur-md'
-              }`}
+            className="flex flex-1 flex-col px-5 pb-6 pt-5"
           >
             <ul className="flex flex-col space-y-4">
-              <li>
-                <a
-                  href="#home"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  Home
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#features"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  Features
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#about"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  About
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#location"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  Location
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#testimonials"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  Testimonials
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#FAQ"
-                  onClick={() => setIsOpen(false)}
-                  className={`mobile-nav-link font-medium block transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
-                    }`}
-                >
-                  FAQ
-                </a>
-              </li>
+              {navLinks.map(([label, href]) => (
+                <li key={href}>
+                  <a
+                    href={href}
+                    onClick={() => setIsOpen(false)}
+                    className={`mobile-nav-link block text-base font-semibold transition-colors duration-500 ${scrolled ? 'text-blue-600' : 'text-white'
+                      }`}
+                  >
+                    {label}
+                  </a>
+                </li>
+              ))}
             </ul>
-            <div className="border-t-2 border-black/3 0 mt-6"></div>
+            <div className={`mt-6 border-t-2 ${scrolled ? 'border-slate-200' : 'border-white/25'}`}></div>
             <button
               onClick={handleAuthAction}
-              className={`mt-6 w-full px-6 py-2.5 rounded-lg font-medium transition-all duration-500 ${scrolled
+              className={`mt-6 w-full rounded-lg px-6 py-2.5 font-medium transition-all duration-500 ${scrolled
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-white/20 text-white border border-white/30 hover:bg-white/30'
                 }`}
@@ -289,8 +246,8 @@ const LandingNavbar = () => {
               {isAuthenticated ? 'Sign In' : 'Sign In'}
             </button>
           </div>
-        )
-      }
+        </aside>
+      </div>
     </nav >
   )
 }

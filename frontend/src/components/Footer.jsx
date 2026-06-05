@@ -41,24 +41,24 @@ const Footer = () => {
 
   return (
     <>
-      <footer className=" relative bg-gray-800 text-white py-8">
+      <footer className="relative bg-gray-800 py-8 text-white">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-">
-            <div >
+          <div className="grid grid-cols-2 gap-x-8 gap-y-8 md:grid-cols-4">
+            <div className="col-span-2 order-1 md:col-span-1 md:order-1">
               <div className="text-center md:text-left">
-                <div className="flex items-center gap-3 justify-center md:justify-start sm:justify-center">
+                <div className="flex items-center justify-center gap-3 md:justify-start">
                   <img src={jjsLogo} alt="jjs logo" width="40" height="40" loading="lazy" decoding="async" className="h-10 w-10 object-contain" />
-                  <h3 className="text-lg font-bold mb-1 ">JJS Track</h3>
+                  <h3 className="mb-1 text-lg font-bold">JJS Track</h3>
                 </div>
                 <div className="relative z-10 p-1 md:p-2 mr-0 xl:mr-10 mb-4 xl:mb-0">
                   <p className="text-gray-400">Custom full sublimation sportswear and repairs, tailored for teams, events, and individuals. Quality design matters.</p>
                 </div>
               </div>
             </div>
-            <div className="text-center md:text-left">
-              <div className="justify-center md:justify-start sm:justify-center">
-                <h3 className="text-lg text-center md:text-left font-bold mb-4">Quick Links</h3>
-                <ul className="text-gray-400 space-y-2">
+            <div className="order-3 text-center md:order-2 md:text-left">
+              <div>
+                <h3 className="mb-4 text-center text-lg font-bold md:text-left">Quick Links</h3>
+                <ul className="space-y-2 text-gray-400">
                   <li><a href="#home" className="hover:text-blue-400">Home</a></li>
                   <li><a href="#features" className="hover:text-blue-400">Features</a></li>
                   <li><a href="#about" className="hover:text-blue-400">About</a></li>
@@ -67,9 +67,9 @@ const Footer = () => {
                 </ul>
               </div>
             </div>
-            <div className="text-center md:text-left">
-              <div className="  justify-center md:justify-start sm:justify-center lg:justify-center">
-                <h3 className="text-lg font-bold mb-2 text-center md:text-left">Contact</h3>
+            <div className="col-span-2 order-2 text-center md:col-span-1 md:order-3 md:text-left">
+              <div>
+                <h3 className="mb-2 text-center text-lg font-bold md:text-left">Contact</h3>
                 <ul className="text-gray-400 space-y-2 mx-auto">
                   <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><Mail className="text-blue-400" size={18} />jjsportswearph@gmail.com</a></li>
                   <li><a href="#" className="hover:text-blue-400 flex items-center gap-2 justify-center md:justify-start"><Phone className="text-blue-400" size={18} />0908 997 2332</a></li>
@@ -78,10 +78,10 @@ const Footer = () => {
                 </ul>
               </div>
             </div>
-            <div className="text-center md:text-left">
-              <div className="justify-center md:justify-start">
-                <h3 className="text-lg font-bold mb-2 text-center md:text-left">Follow Us</h3>
-                <ul className="  text-gray-400 flex space-x-4 justify-center md:justify-start">
+            <div className="order-4 text-center md:text-left">
+              <div>
+                <h3 className="mb-2 text-center text-lg font-bold md:text-left">Follow Us</h3>
+                <ul className="flex justify-center space-x-4 text-gray-400 md:justify-start">
                   <li><a href="https://www.facebook.com/JennoelJennyl" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 " aria-label="Facebook"><Facebook className="text-blue-400" size={20} /></a></li>
                   <li><a href="https://www.instagram.com/jjsportswearph?igsh=MXNka3JiZXNtZ3NqNw==" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400" aria-label="Instagram"><Instagram className="text-blue-400" size={20} /></a></li>
                 </ul>
@@ -89,9 +89,9 @@ const Footer = () => {
             </div>
           </div>
           <div className="text-center md:text-left">
-            <div className=" flex flex-col md:flex-row sm:flex-row border-t border-gray-700 mt-8 pt-8 flex justify-between items-center text-gray text-sm">
+            <div className="mt-8 flex flex-col items-center justify-between border-t border-gray-700 pt-8 text-sm text-gray md:flex-row">
               <p>&copy; 2026 JJS Track. All rights reserved.</p>
-              <ul className="flex space-x-6">
+              <ul className="mt-2 flex items-center gap-3 md:mt-0">
                 <li>
                   <button
                     type="button"
@@ -101,6 +101,7 @@ const Footer = () => {
                     Privacy Policy
                   </button>
                 </li>
+                <li aria-hidden="true" className="text-gray-500">|</li>
                 <li>
                   <button
                     type="button"

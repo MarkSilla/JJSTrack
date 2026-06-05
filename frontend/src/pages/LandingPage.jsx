@@ -14,6 +14,7 @@ import featuredSportswear from '../assets/jersey/nb (4)_result.jpg'
 
 const LandingTestimonials = lazy(() => import('./LandingTestimonials'))
 const LandingFAQ = lazy(() => import('./LandingFAQ'))
+const heroServices = 'Custom Team Jerseys • Company & Organization Uniforms • Alteration & Repair Service • Quality You Can Trust • Made-to-Order Apparel'
 
 const notify = async (type, message, options) => {
   const { toast } = await import('sonner')
@@ -98,6 +99,20 @@ const LandingPage = () => {
       <LandingNavbar />
       <main className="flex-grow">
         <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
+          <style>{`
+            @keyframes heroServicesMarquee {
+              from {
+                transform: translateX(0);
+              }
+              to {
+                transform: translateX(-50%);
+              }
+            }
+
+            .hero-services-track {
+              animation: heroServicesMarquee 24s linear infinite;
+            }
+          `}</style>
           <div className="absolute inset-0 bg-[#020617]">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[150px]" />
@@ -142,42 +157,19 @@ const LandingPage = () => {
               </button>
             </div>
           </div>
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-opacity cursor-pointer">
-
-            <div className="w-1 h-12 bg-gradient-to-b from-blue-500 to-transparent animate-bounce" />
-          </div>
-        </section >
-        <section id="about" className="relative bg-white px-4 py-16 md:py-24 overflow-hidden">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-10 lg:gap-14 items-center">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-blue-600 mb-4">About JJS Track</p>
-              <h2 className="text-4xl md:text-6xl font-black font-playfair text-[#0F172A] leading-tight mb-6">
-                JJS Track is the official online home of Jennoel-Jennyl Sportswear.
-              </h2>
-              <p className="text-base md:text-lg text-slate-600 leading-relaxed mb-5">
-                JJS Track helps customers book tailoring services, request custom jerseys and company uniforms, track order progress, and receive updates from JJS Sportswear in Calapacuan, Subic, Zambales.
-              </p>
-              <p className="text-sm md:text-base text-slate-500 leading-relaxed">
-                If you are searching for tailoring in Zambales, a tailor near Subic, custom jerseys near Olongapo, uniform tailoring, clothing repair, or alterations, JJS Track connects you directly to the shop and its live order tracking system.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                ['Business name', 'Jennoel-Jennyl Sportswear'],
-                ['Platform name', 'JJS Track, JJSTrack, JJS-Track'],
-                ['Shop location', 'Purok 3B National Highway, Calapacuan, Subic, Zambales'],
-                ['Nearby areas', 'Subic, Olongapo, Zambales'],
-                ['Services', 'Custom jerseys, team uniforms, tailoring, alterations, clothing repair'],
-                ['Contact', '0908 997 2332']
-              ].map(([label, value]) => (
-                <div key={label} className="border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-2">{label}</p>
-                  <p className="text-sm font-bold text-slate-800 leading-relaxed">{value}</p>
-                </div>
+          <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-white/10 bg-[#020617]/70 py-3 backdrop-blur-md sm:py-4">
+            <div className="hero-services-track flex w-max whitespace-nowrap">
+              {[...Array(4)].map((_, index) => (
+                <span
+                  key={index}
+                  className="px-6 text-[11px] font-black uppercase tracking-[0.24em] text-white/80 sm:px-8 sm:text-xs"
+                >
+                  {heroServices}
+                </span>
               ))}
             </div>
           </div>
-        </section>
+        </section >
         <section id="features" className="relative px-4 px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
           <div className="absolute inset-0 bg-[#F1F5F9]"> </div>
           <div className="relative z-10 text-center px-0 max-w-6xl mx-auto">
