@@ -10,8 +10,9 @@ import TeamStepPlayers from './TeamStepPlayers'
 import TeamStepDesign from './TeamStepDesign'
 import TeamStepContact from './TeamStepContact'
 import TeamStepConfirm from './TeamStepConfirm'
+import StepBookingDate from '../bookingDate/StepBookingDate'
 
-const STEP_LABELS = ['Team & Players', 'Design', 'Contact', 'Confirm']
+const STEP_LABELS = ['Team & Players', 'Design', 'Contact', 'Booking Date', 'Confirm']
 
 const buildContactFromUser = (user) => ({
     fullName: user?.fullName || '',
@@ -132,6 +133,8 @@ const TeamBook = () => {
         brgyCode: '',
         brgyName: '',
     })
+    const [bookingDate, setBookingDate] = useState('')
+    const [bookingDateAvailable, setBookingDateAvailable] = useState(false)
     const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
     const [servicePricing, setServicePricing] = useState(() => mergeServicePricing())
 
@@ -154,6 +157,7 @@ const TeamBook = () => {
     const canNext = () => {
         if (step === 1) return players.length > 0
         if (step === 3) return [contact.fullName, contact.phone, contact.email, contact.address].every((field) => field && field.trim().length > 0)
+        if (step === 4) return !!bookingDate && bookingDateAvailable
         return true
     }
 
@@ -177,6 +181,7 @@ const TeamBook = () => {
                 designFile: uploadedDesignFile,
                 driveLink,
                 contact,
+                bookingDateKey: bookingDate,
             }
 
             const response = await bookingApi.createBooking(bookingData)
@@ -202,7 +207,8 @@ const TeamBook = () => {
             case 1: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.jersey} />
             case 2: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
             case 3: return <TeamStepContact contact={contact} setContact={setContact} />
-            case 4: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} pricing={servicePricing.jersey} />
+            case 4: return <StepBookingDate bookingType="jersey" bookingDate={bookingDate} setBookingDate={setBookingDate} onAvailabilityChange={setBookingDateAvailable} />
+            case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} pricing={servicePricing.jersey} />
             default: return null
         }
     }
@@ -243,7 +249,7 @@ const TeamBook = () => {
                                 </button>
                             )}
 
-                            {step < 4 ? (
+                            {step < 5 ? (
                                 <button
                                     onClick={() => canNext() && setStep((s) => s + 1)}
                                     disabled={!canNext()}

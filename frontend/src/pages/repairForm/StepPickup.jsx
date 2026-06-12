@@ -1,64 +1,52 @@
 import React, { useState, useEffect } from 'react'
 import { MdCalendarToday, MdAccessTime, MdInfo, MdChevronLeft, MdChevronRight, MdClose, MdCheck } from 'react-icons/md'
 import { TIME_SLOTS } from './constants'
+import { bookingApi } from '../../../services/bookingApi'
 
 const pad = (n) => String(n).padStart(2, '0')
 const toKey = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate()
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay()
-const toDateKey = (date = new Date()) => toKey(date.getFullYear(), date.getMonth(), date.getDate())
-const getCurrentMinutes = (date = new Date()) => date.getHours() * 60 + date.getMinutes()
-const parseSlotStartMinutes = (range = '') => {
-    const start = String(range).split('-')[0]?.trim() || ''
-    const match = start.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
-    if (!match) return null
-
-    const [, hourText, minuteText, periodText] = match
-    const period = periodText.toUpperCase()
-    let hour = Number(hourText)
-    const minute = Number(minuteText)
-
-    if (period === 'PM' && hour !== 12) hour += 12
-    if (period === 'AM' && hour === 12) hour = 0
-
-    return hour * 60 + minute
+const DATE_STATUS_STYLES = {
+    full_slots: 'bg-red-50 border-red-200 text-red-700',
+    holiday: 'bg-violet-50 border-violet-200 text-violet-700',
+    closed: 'bg-slate-100 border-slate-300 text-slate-700',
 }
-const isSlotPastForDate = (dateKey, slot, now = new Date()) => {
-    if (!dateKey || dateKey !== toDateKey(now)) return false
 
-    const slotStartMinutes = parseSlotStartMinutes(slot?.range)
-    if (slotStartMinutes === null) return false
-
-    return getCurrentMinutes(now) >= slotStartMinutes
-}
-const hasSelectableSlotForDate = (dateKey, now = new Date()) =>
-    TIME_SLOTS.some((slot) => !isSlotPastForDate(dateKey, slot, now))
-
-const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSlot }) => {
+const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSlot, bookingType = 'repair' }) => {
     const today = new Date()
     const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
     const [isTimeModalOpen, setIsTimeModalOpen] = useState(false)
-    const [now, setNow] = useState(() => new Date())
-
-    useEffect(() => {
-        const interval = setInterval(() => setNow(new Date()), 60 * 1000)
-        return () => clearInterval(interval)
-    }, [])
-
-    useEffect(() => {
-        if (!selectedDate || !selectedSlot) return
-
-        const activeSlot = TIME_SLOTS.find((slot) => slot.range === selectedSlot)
-        if (activeSlot && isSlotPastForDate(selectedDate, activeSlot, now)) {
-            setSelectedSlot('')
-        }
-    }, [now, selectedDate, selectedSlot, setSelectedSlot])
+    const [slotSummary, setSlotSummary] = useState({})
+    const [summaryLoading, setSummaryLoading] = useState(false)
 
     const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
     const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
 
+    useEffect(() => {
+        const year = currentMonth.getFullYear()
+        const month = currentMonth.getMonth()
+        const from = toKey(year, month, 1)
+        const to = toKey(year, month, getDaysInMonth(year, month))
+
+        setSummaryLoading(true)
+        bookingApi.getSlotSummary(from, to)
+            .then((response) => setSlotSummary(response?.slots || {}))
+            .catch((err) => {
+                console.error('Error loading slot summary:', err)
+                setSlotSummary({})
+            })
+            .finally(() => setSummaryLoading(false))
+    }, [currentMonth])
+
     const handleDateSelection = (dateStr) => {
-        setNow(new Date())
+        const daySummary = slotSummary[dateStr]
+        const isRepairFull = Boolean(daySummary?.repairIsFull)
+        const isJerseyOrgFull = Boolean(daySummary?.jerseyOrgIsFull)
+        const isCapacityFull = bookingType === 'repair' ? isRepairFull : isJerseyOrgFull
+        const isDateBlocked = Boolean(daySummary?.isDateBlocked)
+        if (isCapacityFull || isDateBlocked) return
+
         setSelectedDate(dateStr)
         setSelectedSlot('')
         setIsTimeModalOpen(true)
@@ -77,11 +65,19 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toKey(year, month, d)
-            const dateObj = new Date(year, month, d)
-            const isPastDate = dateObj < new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            const hasSelectableSlot = hasSelectableSlotForDate(dateStr, now)
-            const isUnavailable = isPastDate || !hasSelectableSlot
+            const daySummary = slotSummary[dateStr]
+            const isRepairFull = Boolean(daySummary?.repairIsFull)
+            const isJerseyOrgFull = Boolean(daySummary?.jerseyOrgIsFull)
+            const isCapacityFull = bookingType === 'repair' ? isRepairFull : isJerseyOrgFull
+            const isDateBlocked = Boolean(daySummary?.isDateBlocked)
+            const isUnavailable = isCapacityFull || isDateBlocked
             const isSelected = selectedDate === dateStr
+            const unavailableLabel = isDateBlocked
+                ? (daySummary?.dateStatus?.label || 'Unavailable')
+                : isCapacityFull
+                    ? 'Full'
+                    : ''
+            const statusStyle = DATE_STATUS_STYLES[daySummary?.dateStatus?.status]
 
             cells.push(
                 <div key={d} className="relative">
@@ -91,13 +87,17 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                         onClick={() => handleDateSelection(dateStr)}
                         className={`
                             relative w-full aspect-square flex flex-col items-center justify-center rounded-lg border transition-all duration-300
-                            ${isUnavailable ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                            ${isDateBlocked ? `${statusStyle || 'bg-gray-100 border-gray-200 text-gray-500'} cursor-not-allowed` :
+                                isCapacityFull ? 'bg-red-50 border-red-200 text-red-600 cursor-not-allowed' :
                                 isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg z-10 scale-105 cursor-pointer' :
                                     'bg-white border-gray-100 text-gray-700 hover:border-blue-400 hover:shadow-md cursor-pointer'
                             }
                         `}
                     >
                         <span className="text-[11px] sm:text-xs font-bold">{d}</span>
+                        {unavailableLabel && (
+                            <span className="mt-0.5 text-[8px] font-black uppercase tracking-wide leading-none">{unavailableLabel}</span>
+                        )}
                     </button>
                 </div>
             )
@@ -158,11 +158,16 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                     <div className="grid grid-cols-7 gap-1.5">
                         {renderCalendarCells()}
                     </div>
+                    {summaryLoading && (
+                        <p className="mt-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">Checking availability...</p>
+                    )}
 
                     <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-50">
                         {[
                             { color: 'bg-green-500', label: 'Available' },
-                            { color: 'bg-gray-300', label: 'Unavailable' },
+                            { color: 'bg-red-500', label: 'Full Slots' },
+                            { color: 'bg-violet-500', label: 'Holiday' },
+                            { color: 'bg-slate-500', label: 'Closed' },
                         ].map(({ color, label }) => (
                             <div key={label} className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${color}  ring-offset-0 ${color.replace('bg-', 'ring-')}/10`} />
@@ -201,34 +206,26 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                                 <div className="grid grid-cols-1 gap-3 mt-4">
                                     {TIME_SLOTS.map((slot) => {
                                         const active = selectedSlot === slot.range
-                                        const isPastSlot = isSlotPastForDate(selectedDate, slot, now)
                                         return (
                                             <button
                                                 key={slot.id}
                                                 type="button"
-                                                disabled={isPastSlot}
                                                 onClick={() => {
-                                                    if (isPastSlot) return
                                                     setSelectedSlot(slot.range)
                                                     setIsTimeModalOpen(false)
                                                 }}
                                                 className={`group relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300
-                                                    ${isPastSlot
-                                                        ? 'cursor-not-allowed border-gray-100 bg-gray-100 text-gray-400 opacity-70'
-                                                        : active
+                                                    ${active
                                                         ? 'border-blue-600 bg-blue-50 shadow-md ring-4 ring-blue-600/5'
                                                         : 'cursor-pointer border-gray-50 bg-gray-50/50 text-gray-600 hover:border-blue-200 hover:bg-white'
                                                 }`}
                                             >
                                                 <div className="flex flex-col items-start">
-                                                    <span className={`font-bold text-sm ${isPastSlot ? 'text-gray-400' : active ? 'text-blue-600' : 'text-gray-900'}`}>{slot.label}</span>
-                                                    <span className={`text-[10px] font-medium ${isPastSlot ? 'text-gray-400' : active ? 'text-blue-400' : 'text-gray-500'}`}>{slot.range}</span>
-                                                    {isPastSlot && (
-                                                        <span className="mt-1 text-[10px] font-semibold text-gray-400">No longer available today</span>
-                                                    )}
+                                                    <span className={`font-bold text-sm ${active ? 'text-blue-600' : 'text-gray-900'}`}>{slot.label}</span>
+                                                    <span className={`text-[10px] font-medium ${active ? 'text-blue-400' : 'text-gray-500'}`}>{slot.range}</span>
                                                 </div>
                                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
-                                                    ${active ? 'border-blue-600 bg-blue-600 text-white' : isPastSlot ? 'border-gray-200 bg-gray-100' : 'border-gray-200 group-hover:border-blue-300'}`}>
+                                                    ${active ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200 group-hover:border-blue-300'}`}>
                                                     {active && <MdCheck size={14} />}
                                                 </div>
                                             </button>

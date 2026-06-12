@@ -167,6 +167,48 @@ export const bookingApi = {
       throw error;
     }
   },
+
+  getDateStatuses: async (from, to) => {
+    try {
+      const response = await api.get('/bookings/date-status', {
+        params: { from, to },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get Date Statuses Error:', error);
+      throw error;
+    }
+  },
+
+  saveDateStatus: async (date, data) => {
+    try {
+      const response = await api.put(`/bookings/date-status/${date}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Save Date Status Error:', error);
+      throw error;
+    }
+  },
+
+  saveManualCounts: async (date, data) => {
+    try {
+      const response = await api.put(`/bookings/date-status/${date}/counts`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Save Manual Counts Error:', error);
+      throw error;
+    }
+  },
+
+  clearDateStatus: async (date) => {
+    try {
+      const response = await api.delete(`/bookings/date-status/${date}`);
+      return response.data;
+    } catch (error) {
+      console.error('Clear Date Status Error:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

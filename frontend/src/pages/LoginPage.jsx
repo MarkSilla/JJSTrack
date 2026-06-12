@@ -89,8 +89,6 @@ const LoginPage = () => {
 
       if (response.success && response.token) {
         login(response.user, response.token);
-
-        // Navigate to home first, then show modal from there
         navigate('/home', { replace: true });
       } else {
         setError(response.message || 'Google login failed');

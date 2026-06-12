@@ -10,6 +10,10 @@ import {
   cancelBooking,
   getAvailableSlots,
   getSlotSummary,
+  getBookingDateStatuses,
+  upsertBookingDateStatus,
+  saveManualBookedCounts,
+  deleteBookingDateStatus,
   getBookingQR,
   markAsPickedUp,
   generateMissingBookingQRCodes,
@@ -23,6 +27,7 @@ const router = express.Router();
 // Public routes
 router.get('/slots/available/:date', getAvailableSlots);
 router.get('/slots/summary', getSlotSummary);
+router.get('/date-status', getBookingDateStatuses);
 
 // Protected routes - requires authentication
 router.post('/', authMiddleware, createBooking);
@@ -41,6 +46,9 @@ router.post('/qr/pickup', authMiddleware, markAsPickedUp);
 
 // Admin only - generate missing QR codes
 router.post('/admin/generate-qr', authMiddleware, adminMiddleware, generateMissingBookingQRCodes);
+router.put('/date-status/:date', authMiddleware, adminMiddleware, upsertBookingDateStatus);
+router.put('/date-status/:date/counts', authMiddleware, adminMiddleware, saveManualBookedCounts);
+router.delete('/date-status/:date', authMiddleware, adminMiddleware, deleteBookingDateStatus);
 
 // Less specific routes
 router.get('/:id', authMiddleware, getBookingById);

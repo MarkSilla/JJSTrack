@@ -26,10 +26,11 @@ import TeamStepConfirm from '../teamForm/TeamStepConfirm.jsx'
 import OrgStepDetails from '../OrgTeam/OrgStepDetails.jsx'
 import OrgStepContact from '../OrgTeam/OrgStepContact.jsx'
 import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
+import StepBookingDate from '../bookingDate/StepBookingDate.jsx'
 
 const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Confirm']
-const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
-const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
+const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Booking Date', 'Confirm']
+const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Booking Date', 'Confirm']
 const BOOKING_TIME_ZONE = 'Asia/Manila'
 
 const getBookingDateKey = (date = new Date()) => {
@@ -86,50 +87,12 @@ const buildContactFromUser = (user) => ({
     cityName: user?.cityName || '',
     brgyCode: user?.brgyCode || '',
     brgyName: user?.brgyName || '',
+    city: user?.cityName || '',
 })
 
-// Stepper
 const Stepper = ({ currentStep, labels, expanded = false }) => (
     <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
-        <ol className="hidden sm:flex items-center">
-            {labels.map((label, i) => {
-                const num = i + 1
-                const active = num === currentStep
-                const done = num < currentStep
-                return (
-                    <li key={label} className="flex-1 flex items-center">
-                        <div className="flex flex-col items-center w-full relative">
-                            {i > 0 && (
-                                <span
-                                    className={`absolute top-4 right-1/2 w-full h-[2px] -translate-y-1/2 transition-colors duration-500
-                    ${done ? 'bg-blue-500' : active ? 'bg-gradient-to-r from-blue-500 to-gray-300' : 'bg-gray-300'}`}
-                                />
-                            )}
-                            <span
-                                className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold tracking-wide transition-all duration-300
-                  ${active
-                                        ? 'bg-blue-600 text-white ring-[3px] ring-blue-500/30 shadow-lg shadow-blue-600/25'
-                                        : done
-                                            ? 'bg-blue-600/90 text-white'
-                                            : 'bg-gray-100 text-gray-400 ring-1 ring-gray-300'
-                                    }`}
-                            >
-                                {done ? <MdCheck size={18} /> : num}
-                            </span>
-                            <span
-                                className={`mt-2 text-[8px] font-semibold uppercase tracking-widest transition-colors
-                  ${active ? 'text-blue-600' : done ? 'text-blue-500/70' : 'text-gray-400'}`}
-                            >
-                                {label}
-                            </span>
-                        </div>
-                    </li>
-                )
-            })}
-        </ol>
-
-        {/* Mobile */}
-        <div className="sm:hidden flex items-center justify-between px-2">
+        <div className="hidden sm:flex items-center justify-between">
             {labels.map((label, i) => {
                 const num = i + 1
                 const active = num === currentStep
@@ -162,7 +125,7 @@ const Stepper = ({ currentStep, labels, expanded = false }) => (
     </nav>
 )
 
-const BookingModal = ({ isOpen, onClose }) => {
+const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const [step, setStep] = useState(1)
     const [service, setService] = useState('')
     const [loading, setLoading] = useState(false)
@@ -180,6 +143,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [repairNotes, setRepairNotes] = useState({})
     const [photos, setPhotos] = useState([])
     const [details, setDetails] = useState(() => buildRepairDetailsFromUser(getStoredUser()))
+    const [repairBookingDate, setRepairBookingDate] = useState(initialBookingDate || '')
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
     const [notes, setNotes] = useState('')
@@ -190,6 +154,8 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
     const [contact, setContact] = useState(() => buildContactFromUser(getStoredUser()))
+    const [teamBookingDate, setTeamBookingDate] = useState('')
+    const [teamBookingDateAvailable, setTeamBookingDateAvailable] = useState(false)
 
     // Org state
     const [orgName, setOrgName] = useState('')
@@ -197,6 +163,8 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState(() => buildContactFromUser(getStoredUser()))
+    const [orgBookingDate, setOrgBookingDate] = useState('')
+    const [orgBookingDateAvailable, setOrgBookingDateAvailable] = useState(false)
     const repairOptions = REPAIR_OPTIONS.map((option) => ({
         ...option,
         price: Number(servicePricing.repair?.repairOptions?.[option.id] ?? option.price),
@@ -210,20 +178,27 @@ const BookingModal = ({ isOpen, onClose }) => {
         setDetails(buildRepairDetailsFromUser(user))
         setContact(buildContactFromUser(user))
         setOrgContact(buildContactFromUser(user))
+        setRepairBookingDate(initialBookingDate || getBookingDateKey())
+        setSelectedDate(null)
+        setTeamBookingDate(initialBookingDate || '')
+        setOrgBookingDate(initialBookingDate || '')
+        setTeamBookingDateAvailable(false)
+        setOrgBookingDateAvailable(false)
 
+        const capacityDate = initialBookingDate || getBookingDateKey()
         pricingApi.getAllPricing()
             .then((response) => setServicePricing(mergeServicePricing(response.data || response.pricing)))
             .catch((err) => console.error('Error loading service pricing:', err))
 
         setCapacityLoading(true)
-        bookingApi.getAvailableSlots(getBookingDateKey())
+        bookingApi.getAvailableSlots(capacityDate)
             .then((response) => setBookingCapacity(response))
             .catch((err) => {
                 console.error('Error loading booking capacity:', err)
                 setBookingCapacity(null)
             })
             .finally(() => setCapacityLoading(false))
-    }, [isOpen])
+    }, [isOpen, initialBookingDate])
 
     // Reset form function
     const resetForm = () => {
@@ -240,6 +215,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         setRepairNotes({})
         setPhotos([])
         setDetails(buildRepairDetailsFromUser(getStoredUser()))
+        setRepairBookingDate('')
         setSelectedDate(null)
         setSelectedSlot('')
         setNotes('')
@@ -250,6 +226,8 @@ const BookingModal = ({ isOpen, onClose }) => {
         setDesignFile(null)
         setDriveLink('')
         setContact(buildContactFromUser(getStoredUser()))
+        setTeamBookingDate('')
+        setTeamBookingDateAvailable(false)
 
         // Reset org state
         setOrgName('')
@@ -257,6 +235,8 @@ const BookingModal = ({ isOpen, onClose }) => {
         setOrgDesignFile(null)
         setOrgDriveLink('')
         setOrgContact(buildContactFromUser(getStoredUser()))
+        setOrgBookingDate('')
+        setOrgBookingDateAvailable(false)
     }
 
     // Handle modal close
@@ -304,6 +284,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             if (step === 2) return players.length > 0
             if (step === 3) return true // Design is optional, can skip or add
             if (step === 4) return [contact.fullName, contact.phone, contact.email, contact.address].every((field) => field && field.trim().length > 0)
+            if (step === 5) return !!teamBookingDate && teamBookingDateAvailable
             return true
         }
 
@@ -311,6 +292,7 @@ const BookingModal = ({ isOpen, onClose }) => {
             if (step === 2) return members.length > 0
             if (step === 3) return true // Design is optional, can skip or add
             if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email, orgContact.address].every((field) => field && field.trim().length > 0)
+            if (step === 5) return !!orgBookingDate && orgBookingDateAvailable
             return true
         }
 
@@ -330,9 +312,11 @@ const BookingModal = ({ isOpen, onClose }) => {
 
         if (isJersey && step === 2) return 'Please add at least one player first.'
         if (isJersey && step === 4) return 'Please complete your profile contact details first before continuing.'
+        if (isJersey && step === 5) return 'Please select an available booking date.'
 
         if (isOrg && step === 2) return 'Please add at least one member first.'
         if (isOrg && step === 4) return 'Please complete your profile contact details first before continuing.'
+        if (isOrg && step === 5) return 'Please select an available booking date.'
 
         return 'Please complete the required fields before continuing.'
     }
@@ -449,6 +433,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
+                bookingData.bookingDateKey = repairBookingDate || initialBookingDate || getBookingDateKey()
             } else if (isJersey) {
                 // Team jersey booking
                 bookingData.teamName = teamName
@@ -488,6 +473,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.designFile = uploadedDesignFile
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact
+                bookingData.bookingDateKey = teamBookingDate
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
@@ -495,6 +481,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 bookingData.orgDesignFile = uploadedOrgDesignFile
                 bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
+                bookingData.bookingDateKey = orgBookingDate
             }
 
             console.log('Submitting booking data:', bookingData)
@@ -549,7 +536,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     }, [nextError, step, service, players.length, members.length])
 
     const renderStep = () => {
-        if (step === 1) return <StepService service={service} setService={setService} bookingCapacity={bookingCapacity} capacityLoading={capacityLoading} />
+        if (step === 1) return <StepService service={service} setService={setService} bookingCapacity={bookingCapacity} capacityLoading={capacityLoading} bookingDate={repairBookingDate || initialBookingDate || getBookingDateKey()} />
 
         if (isRepair) {
             switch (step) {
@@ -567,7 +554,8 @@ const BookingModal = ({ isOpen, onClose }) => {
                 case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.jersey} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
                 case 4: return <TeamStepContact contact={contact} setContact={setContact} readOnly />
-                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly pricing={servicePricing.jersey} />
+                case 5: return <StepBookingDate bookingType="jersey" bookingDate={teamBookingDate} setBookingDate={setTeamBookingDate} onAvailabilityChange={setTeamBookingDateAvailable} />
+                case 6: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly pricing={servicePricing.jersey} />
                 default: return null
             }
         }
@@ -577,7 +565,8 @@ const BookingModal = ({ isOpen, onClose }) => {
                 case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.organizational} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
                 case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} readOnly />
-                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly pricing={servicePricing.organizational} />
+                case 5: return <StepBookingDate bookingType="organizational" bookingDate={orgBookingDate} setBookingDate={setOrgBookingDate} onAvailabilityChange={setOrgBookingDateAvailable} />
+                case 6: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly pricing={servicePricing.organizational} />
                 default: return null
             }
         }
@@ -651,6 +640,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                                     {step < totalSteps ? (
                                         <button
                                             onClick={handleNext}
+                                            disabled={!canNext()}
                                             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer shadow-sm
                                             ${canNext()
                                                     ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'

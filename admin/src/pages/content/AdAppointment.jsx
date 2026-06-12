@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
     ChevronLeft,
     ChevronRight,
@@ -10,7 +11,9 @@ import {
     Scissors,
     Briefcase,
     X,
-    Package
+    Package,
+    Minus,
+    Plus
 } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
@@ -34,6 +37,11 @@ const STATUS_CONFIG = {
 const WEEKDAYS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const LIVE_REFRESH_MS = 5000;
+const DATE_STATUS_CONFIG = {
+    full_slots: { label: 'Full Slots', color: 'bg-red-100 text-red-700 border-red-200' },
+    holiday: { label: 'Holiday', color: 'bg-violet-100 text-violet-700 border-violet-200' },
+    closed: { label: 'Closed', color: 'bg-slate-200 text-slate-700 border-slate-300' },
+};
 const getRepairDisplayLabel = (booking = {}) =>
     booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair';
 
@@ -122,6 +130,12 @@ const AdAppointment = () => {
     const [showSchedule, setShowSchedule] = useState(false);
     const [activeFilter, setActiveFilter] = useState('all');
     const [appointments, setAppointments] = useState([]);
+    const [dateStatuses, setDateStatuses] = useState({});
+    const [slotSummaryByDate, setSlotSummaryByDate] = useState({});
+    const [statusSaving, setStatusSaving] = useState(false);
+    const [statusNote, setStatusNote] = useState('');
+    const [statusCounts, setStatusCounts] = useState({ repair: 0, jerseyOrg: 0 });
+    const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm }
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const today = new Date();
@@ -171,9 +185,10 @@ const AdAppointment = () => {
             const response = await bookingApi.getAllBookings();
             const mappedAppointments = response.bookings?.map(booking => ({
                 id: booking._id,
-                date: booking.pickupDate
-                    ? booking.pickupDate.substring(0, 10)
-                    : new Date(booking.createdAt).toISOString().split('T')[0],
+                date: booking.bookingDateKey
+                    || (booking.pickupDate
+                        ? booking.pickupDate.substring(0, 10)
+                        : new Date(booking.createdAt).toISOString().split('T')[0]),
                 time: getPickupSlotDisplay(booking.pickupSlot, '09:00 AM'),
                 customer: booking.contact?.fullName || 'Unknown Customer',
                 service: booking.bookingType === 'repair' ? getRepairDisplayLabel(booking) : booking.service,
@@ -215,6 +230,146 @@ const AdAppointment = () => {
     const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const fetchDateStatuses = useCallback(async () => {
+        try {
+            const from = toDateString(year, month, 1);
+            const to = toDateString(year, month, daysInMonth);
+            const response = await bookingApi.getDateStatuses(from, to);
+            const nextStatuses = {};
+            (response.statuses || []).forEach((status) => {
+                nextStatuses[status.dateKey] = status;
+            });
+            setDateStatuses(nextStatuses);
+        } catch (err) {
+            console.error('Failed to fetch date statuses:', err);
+        }
+    }, [year, month, daysInMonth]);
+
+    const fetchSlotSummary = useCallback(async () => {
+        try {
+            const from = toDateString(year, month, 1);
+            const to = toDateString(year, month, daysInMonth);
+            const response = await bookingApi.getSlotSummary(from, to);
+            setSlotSummaryByDate(response?.slots || {});
+        } catch (err) {
+            console.error('Failed to fetch slot summary:', err);
+            setSlotSummaryByDate({});
+        }
+    }, [year, month, daysInMonth]);
+
+    useEffect(() => {
+        fetchDateStatuses();
+        fetchSlotSummary();
+    }, [fetchDateStatuses, fetchSlotSummary]);
+
+    useEffect(() => {
+        const selectedStatus = dateStatuses[selectedDateStr];
+        setStatusNote(selectedStatus?.note || '');
+        setStatusCounts({
+            repair: Number(selectedStatus?.manualRepairBooked ?? 0),
+            jerseyOrg: Number(selectedStatus?.manualJerseyOrgBooked ?? 0),
+        });
+    }, [dateStatuses, selectedDateStr]);
+
+    const saveSelectedDateStatus = async (status) => {
+        const label = DATE_STATUS_CONFIG[status]?.label || status;
+
+        if (status && ['full_slots', 'holiday', 'closed'].includes(status)) {
+            const activeBookings = selectedAppointments.filter(
+                app => ['pending', 'ready', 'in progress'].includes(app.status)
+            );
+            if (activeBookings.length > 0) {
+                toast.error("Cannot close or block this date because there are active bookings. Please reschedule them first.");
+                return;
+            }
+        }
+
+        setConfirmModal({
+            title: `Apply "${label}"?`,
+            message: `This will mark ${selectedDateStr} as ${label} and update the public customer calendar.`,
+            onConfirm: async () => {
+                try {
+                    setStatusSaving(true);
+                    const response = await bookingApi.saveDateStatus(selectedDateStr, {
+                        status,
+                        note: statusNote,
+                        manualRepairBooked: statusCounts.repair,
+                        manualJerseyOrgBooked: statusCounts.jerseyOrg,
+                    });
+                    setDateStatuses((prev) => ({ ...prev, [selectedDateStr]: response.dateStatus }));
+                    await fetchSlotSummary();
+                    toast.success(`Date marked as ${label}.`);
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to save date status.');
+                } finally {
+                    setStatusSaving(false);
+                }
+            },
+        });
+    };
+
+    const saveManualCounts = async () => {
+        const repairVal = effectiveStatusCounts.repair;
+        const jerseyVal = effectiveStatusCounts.jerseyOrg;
+        setConfirmModal({
+            title: 'Save Slot Counts?',
+            message: `This will set the booked count for ${selectedDateStr} to:\n• Repair: ${repairVal}/7\n• Team Jersey / Company: ${jerseyVal}/3\n\nCustomers will see updated availability immediately.`,
+            onConfirm: async () => {
+                try {
+                    setStatusSaving(true);
+                    const response = await bookingApi.saveManualCounts(selectedDateStr, {
+                        note: statusNote,
+                        manualRepairBooked: statusCounts.repair,
+                        manualJerseyOrgBooked: statusCounts.jerseyOrg,
+                    });
+                    if (response.dateStatus) {
+                        setDateStatuses((prev) => ({ ...prev, [selectedDateStr]: response.dateStatus }));
+                    }
+                    await fetchSlotSummary();
+                    toast.success('Slot counts saved. Customer calendar updated.');
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to save slot counts.');
+                } finally {
+                    setStatusSaving(false);
+                }
+            },
+        });
+    };
+
+
+    const clearSelectedDateStatus = async () => {
+        setConfirmModal({
+            title: 'Clear Calendar Status?',
+            message: `This will remove the status and manual counts for ${selectedDateStr}, making it open for bookings again.`,
+            onConfirm: async () => {
+                try {
+                    setStatusSaving(true);
+                    await bookingApi.clearDateStatus(selectedDateStr);
+                    setDateStatuses((prev) => {
+                        const next = { ...prev };
+                        delete next[selectedDateStr];
+                        return next;
+                    });
+                    setStatusNote('');
+                    setStatusCounts({ repair: 0, jerseyOrg: 0 });
+                    await fetchSlotSummary();
+                    toast.success('Date status cleared.');
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to clear date status.');
+                } finally {
+                    setStatusSaving(false);
+                }
+            },
+        });
+    };
+
+    const adjustStatusCount = (key, nextValue, max, min = 0) => {
+        setStatusCounts((prev) => ({
+            ...prev,
+            [key]: Math.min(max, Math.max(min, Number.isFinite(Number(nextValue)) ? Number(nextValue) : 0)),
+        }));
+    };
 
     const selectedAppointments = useMemo(() => {
         return appointments.filter(app => app.date === selectedDateStr).sort((a, b) => {
@@ -266,6 +421,7 @@ const AdAppointment = () => {
             const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
             const isSelected = selectedDateStr === dateStr;
             const marks = marksByDate[dateStr] || {};
+            const dateStatus = dateStatuses[dateStr];
             const activeTypes = Object.keys(marks).sort();
             const totalCount = Object.values(marks).reduce((s, n) => s + n, 0);
 
@@ -284,6 +440,8 @@ const AdAppointment = () => {
                         p-2 sm:p-3 cursor-pointer group
                         ${isSelected
                             ? 'bg-green-600/70 border-green-600 shadow-xl z-10 -translate-y-0.5'
+                            : dateStatus
+                                ? 'bg-slate-100 border-slate-300 hover:border-slate-400 hover:shadow-md'
                             : countStatus === 'full'
                                 ? 'bg-red-50/50 border-red-100 hover:border-red-300 hover:shadow-md'
                                 : countStatus === 'near-full'
@@ -300,6 +458,8 @@ const AdAppointment = () => {
                         w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-black shrink-0 text-[11px] sm:text-[13px] transition-all duration-300
                         ${isSelected
                             ? 'bg-white/20 text-white backdrop-blur-sm'
+                            : dateStatus
+                                ? 'bg-slate-700 text-white shadow-sm ring-4 ring-slate-100'
                             : countStatus === 'full'
                                 ? 'bg-red-500 text-white shadow-sm ring-4 ring-red-50'
                                 : countStatus === 'near-full'
@@ -313,6 +473,12 @@ const AdAppointment = () => {
                     `}>
                         {d}
                     </div>
+
+                    {dateStatus && dateStatus.status && (
+                        <div className={`mt-2 inline-flex w-fit rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${DATE_STATUS_CONFIG[dateStatus.status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
+                            {dateStatus.label || 'Blocked'}
+                        </div>
+                    )}
 
                     <div className="mt-auto pt-2">
                         {activeTypes.length > 0 && (
@@ -343,6 +509,15 @@ const AdAppointment = () => {
     };
 
     const selectedDateFormatted = new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const selectedSlotSummary = slotSummaryByDate[selectedDateStr] || {};
+    const actualStatusCounts = {
+        repair: Number(selectedSlotSummary.repairActualBooked ?? 0),
+        jerseyOrg: Number(selectedSlotSummary.jerseyOrgActualBooked ?? 0),
+    };
+    const effectiveStatusCounts = {
+        repair: Math.min(7, Math.max(actualStatusCounts.repair, Number(statusCounts.repair || 0))),
+        jerseyOrg: Math.min(3, Math.max(actualStatusCounts.jerseyOrg, Number(statusCounts.jerseyOrg || 0))),
+    };
 
     const stats = useMemo(() => {
         const repairCount = appointments.filter(a => a.type === 'repair').length;
@@ -486,6 +661,136 @@ const AdAppointment = () => {
                             </div>
                         )}
 
+                        <div className="shrink-0 px-4 sm:px-6 lg:px-8 pb-3 border-b border-gray-100">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div>
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Customer Booking</h4>
+                                        <p className="mt-1 text-xs font-semibold text-slate-700">
+                                            {(dateStatuses[selectedDateStr]?.status && dateStatuses[selectedDateStr]?.label) || 'Open for bookings'}
+                                        </p>
+                                    </div>
+                                    {dateStatuses[selectedDateStr] && dateStatuses[selectedDateStr].status && (
+                                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${DATE_STATUS_CONFIG[dateStatuses[selectedDateStr].status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
+                                            Active
+                                        </span>
+                                    )}
+                                </div>
+
+                                <textarea
+                                    value={statusNote}
+                                    onChange={(event) => setStatusNote(event.target.value)}
+                                    placeholder="Optional note"
+                                    className="mt-3 h-16 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                />
+
+                                <div className="mt-3 grid grid-cols-1 gap-2">
+                                    {[
+                                        {
+                                            key: 'repair',
+                                            label: 'Repair',
+                                            value: statusCounts.repair,
+                                            effective: effectiveStatusCounts.repair,
+                                            actual: actualStatusCounts.repair,
+                                            max: 7,
+                                        },
+                                        {
+                                            key: 'jerseyOrg',
+                                            label: 'Team Jersey / Company',
+                                            value: statusCounts.jerseyOrg,
+                                            effective: effectiveStatusCounts.jerseyOrg,
+                                            actual: actualStatusCounts.jerseyOrg,
+                                            max: 3,
+                                        },
+                                    ].map((item) => {
+                                        const minAllowed = item.actual;
+                                        const canDecrement = !statusSaving && item.value > minAllowed;
+                                        const canIncrement = !statusSaving && item.effective < item.max;
+                                        return (
+                                            <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.label}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400">
+                                                        {item.actual > 0
+                                                            ? <span className="text-blue-500">{item.actual} from customers</span>
+                                                            : 'Manual booked count'
+                                                        }
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canDecrement}
+                                                        onClick={() => adjustStatusCount(item.key, item.value - 1, item.max, minAllowed)}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Minus size={14} />
+                                                    </button>
+                                                    <span className="w-12 text-center text-sm font-black text-slate-800">
+                                                        {item.effective}/{item.max}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canIncrement}
+                                                        onClick={() => adjustStatusCount(item.key, item.value + 1, item.max, minAllowed)}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-3 gap-2">
+                                    {Object.entries(DATE_STATUS_CONFIG).map(([status, config]) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            disabled={statusSaving}
+                                            onClick={() => saveSelectedDateStatus(status)}
+                                            className={`rounded-xl border px-2 py-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60 ${config.color}`}
+                                        >
+                                            {config.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={statusSaving}
+                                        onClick={saveManualCounts}
+                                        className="w-full rounded-xl border border-blue-200 bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    >
+                                        {statusSaving ? (
+                                            <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                        ) : (
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                                                <polyline points="17 21 17 13 7 13 7 21" />
+                                                <polyline points="7 3 7 8 15 8" />
+                                            </svg>
+                                        )}
+                                        Save Counts
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={statusSaving || !dateStatuses[selectedDateStr]}
+                                        onClick={clearSelectedDateStatus}
+                                        className="w-full rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    >
+                                        <X size={12} strokeWidth={2.5} />
+                                        Clear Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="overflow-y-auto p-3 sm:px-4 lg:px-6 pt-3 space-y-2 sm:space-y-2.5 max-h-[540px] custom-scrollbar">
                             {filteredAppointments.length > 0 ? (
                                 <>
@@ -583,6 +888,53 @@ const AdAppointment = () => {
             </div>
 
             <BookingDetailsModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
+
+            {/* Confirmation Modal */}
+            {confirmModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setConfirmModal(null)}
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 fade-in duration-200">
+                        <div className="flex items-start gap-4 mb-5">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" className="h-5 w-5">
+                                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                                    <polyline points="17 21 17 13 7 13 7 21" />
+                                    <polyline points="7 3 7 8 15 8" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-slate-800 leading-tight">{confirmModal.title}</h3>
+                                <p className="mt-2 text-xs text-slate-500 font-medium leading-relaxed whitespace-pre-line">{confirmModal.message}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(null)}
+                                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-600 transition hover:bg-slate-100"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={statusSaving}
+                                onClick={async () => {
+                                    const fn = confirmModal.onConfirm;
+                                    setConfirmModal(null);
+                                    await fn();
+                                }}
+                                className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

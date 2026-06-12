@@ -11,10 +11,7 @@ import {
 import { orderApi } from '../../services/orderApi';
 import { bookingApi } from '../../services/bookingApi';
 import { toast } from 'sonner';
-
-// Read the name of whoever is currently logged in (staff or admin)
 const getLoggedInUserName = () => {
-    // Check staff session first (staffUser is stored by staff login)
     try {
         const staffUser = localStorage.getItem('staffUser') || sessionStorage.getItem('staffUser');
         if (staffUser) {
@@ -24,13 +21,10 @@ const getLoggedInUserName = () => {
             if (name) return name;
         }
     } catch { }
-
-    // Fallback: check admin session
     try {
         const adminUser = localStorage.getItem('adminUser');
         if (adminUser) {
             const parsed = JSON.parse(adminUser);
-            // Env admin has no fullName — just show 'Admin'
             const name = parsed?.fullName || parsed?.name;
             if (name) return name;
             if (parsed?.role === 'admin') return 'Admin';

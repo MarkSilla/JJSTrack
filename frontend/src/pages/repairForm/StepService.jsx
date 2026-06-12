@@ -10,11 +10,25 @@ const SERVICES = [
 const getCapacityForService = (id, bookingCapacity) =>
     id === 'repair' ? bookingCapacity?.repair : bookingCapacity?.jerseyOrg
 
-const StepService = ({ service, setService, bookingCapacity, capacityLoading = false }) => (
+const formatDate = (dateKey = '') => {
+    if (!dateKey) return ''
+    const date = new Date(`${dateKey}T00:00:00`)
+    if (Number.isNaN(date.getTime())) return dateKey
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+const StepService = ({ service, setService, bookingCapacity, capacityLoading = false, bookingDate = '' }) => (
     <section className="h-full flex flex-col font-inter">
         <div className="text-center mb-6 shrink-0">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800 tracking-tight">What brings you in?</h2>
             <p className="text-gray-500 mt-2 text-sm">Select the service you need</p>
+            {bookingDate && (
+                <div className="mt-3 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                        Booking Date: {formatDate(bookingDate)}
+                    </span>
+                </div>
+            )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-1 font-inter">
@@ -29,12 +43,12 @@ const StepService = ({ service, setService, bookingCapacity, capacityLoading = f
                             type="button"
                             disabled={isFull}
                             onClick={() => !isFull && setService(id)}
-                            className={`group relative p-6 rounded-2xl text-left transition-all duration-300 overflow-hidden shadow-sm hover:shadow-md
+                            className={`group relative p-6 rounded-2xl text-left transition-all duration-300 overflow-hidden shadow-sm
                     ${isFull
-                                    ? 'bg-gray-50 border border-gray-200 opacity-70 cursor-not-allowed'
-                                    : selected
-                                        ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100 cursor-pointer'
-                                        : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100 cursor-pointer'
+                                        ? 'bg-gray-50 border-2 border-red-100 opacity-70 cursor-not-allowed'
+                                        : selected
+                                            ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100 cursor-pointer hover:shadow-md'
+                                            : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100 cursor-pointer'
                                 }`}>
 
                             {selected && <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />}
@@ -53,8 +67,8 @@ const StepService = ({ service, setService, bookingCapacity, capacityLoading = f
                                     ? 'Checking slots...'
                                     : capacity
                                         ? isFull
-                                            ? 'Fully booked today'
-                                            : `${capacity.available} / ${capacity.max} slots left today`
+                                            ? 'This date is full - choose another date'
+                                            : `${capacity.available} / ${capacity.max} slots left on this date`
                                         : 'Slots checked on submit'}
                             </p>
                         </button>

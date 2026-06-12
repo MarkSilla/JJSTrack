@@ -202,6 +202,37 @@
     background: #fee2e2;
 }
 
+.calendar-wrapper .fc .day-status-full-slots .fc-daygrid-day-frame {
+    background: #fef2f2;
+}
+
+.calendar-wrapper .fc .day-status-full-slots .fc-daygrid-day-number {
+    color: #dc2626;
+}
+
+.calendar-wrapper .fc .day-status-holiday .fc-daygrid-day-frame {
+    background: #f5f3ff;
+}
+
+.calendar-wrapper .fc .day-status-holiday .fc-daygrid-day-number {
+    color: #7c3aed;
+}
+
+.calendar-wrapper .fc .day-status-closed .fc-daygrid-day-frame {
+    background: #e2e8f0;
+}
+
+.calendar-wrapper .fc .day-status-closed .fc-daygrid-day-number {
+    color: #475569;
+}
+
+.calendar-wrapper .fc .day-status-full-slots .fc-daygrid-day-frame:hover,
+.calendar-wrapper .fc .day-status-holiday .fc-daygrid-day-frame:hover,
+.calendar-wrapper .fc .day-status-closed .fc-daygrid-day-frame:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 /* ── Near Full Day ── */
 .calendar-wrapper .fc .day-near-full .fc-daygrid-day-frame {
     background: #fffbeb;
@@ -376,6 +407,38 @@
     line-height: 1;
     letter-spacing: 0.02em;
     text-transform: uppercase;
+}
+
+.date-status-badge {
+    font-size: 6px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.date-status-badge.full_slots {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.date-status-badge.holiday {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.date-status-badge.closed {
+    color: #475569;
+    background: rgba(71, 85, 105, 0.12);
+}
+
+.dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame,
+.appointment-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
+    pointer-events: auto;
+    opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════

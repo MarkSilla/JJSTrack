@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import BookingModal from './Bookingforms'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import { appointmentApi } from '../../../services/appointmentApi'
 import { bookingApi } from '../../../services/bookingApi'
@@ -66,6 +67,13 @@ const EMPTY_SLOT_INFO = {
     jerseyOrgIsFull: false,
 }
 
+const getDateStatusClass = (status) => {
+    if (status === 'full_slots') return 'day-status-full-slots'
+    if (status === 'holiday') return 'day-status-holiday'
+    if (status === 'closed') return 'day-status-closed'
+    return ''
+}
+
 const getRepairDisplayLabel = (booking = {}) =>
     booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair'
 
@@ -85,6 +93,7 @@ const Appointment = () => {
     const [showAll, setShowAll] = useState(true)
     const [showInfo, setShowInfo] = useState(false)
     const [showViewDropdown, setShowViewDropdown] = useState(false)
+    const [showBooking, setShowBooking] = useState(false)
     const infoTimerRef = React.useRef(null)
 
     const fetchAppointmentsAndBookings = useCallback(async (silent = false) => {
@@ -117,7 +126,7 @@ const Appointment = () => {
 
             const normalizedBookings = bookingsList
                 .map((booking) => {
-                    const dateKey = normalizeDateKey(booking.createdAt || booking.orderDate || booking.date || booking.pickupDate)
+                    const dateKey = normalizeDateKey(booking.bookingDateKey || booking.pickupDate || booking.createdAt || booking.orderDate || booking.date)
                     return {
                         ...booking,
                         dateKey,
@@ -265,15 +274,12 @@ const Appointment = () => {
 
     const handleDateClick = useCallback(
         (info) => {
-            const now = new Date()
-            now.setHours(0, 0, 0, 0)
-            if (info.date < now) return
-
             const dateStr = info.dateStr
+            const slotInfo = slotInfoByDate[dateStr] || EMPTY_SLOT_INFO
             setSelectedDate(dateStr)
             setShowAll(false)
         },
-        [setShowAll]
+        [setShowAll, slotInfoByDate]
     )
 
     const handleDatesSet = useCallback((viewInfo) => {
@@ -291,6 +297,8 @@ const Appointment = () => {
             if (arg.date < now) classes.push('day-past')
 
             const slotInfo = slotInfoByDate[key]
+            const dateStatusClass = getDateStatusClass(slotInfo?.dateStatus?.status)
+            if (dateStatusClass) classes.push(dateStatusClass)
             const isNearFull = Boolean(
                 slotInfo && !slotInfo.isFull && slotInfo.used >= Math.ceil(slotInfo.max * 0.7)
             )
@@ -314,6 +322,7 @@ const Appointment = () => {
             const used = slotInfo?.used ?? 0
             const max = slotInfo?.max ?? MAX_SLOTS
             const isFull = slotInfo?.isFull ?? false
+            const dateStatus = slotInfo?.dateStatus
             const ratio = max > 0 ? used / max : 0
 
             const userOrder = bookingsByDate[key] || appointmentsByDate[key]
@@ -331,6 +340,7 @@ const Appointment = () => {
                     {userOrder && !isSelected && (
                         <span className="pickup-badge">{userOrder.source === 'order' ? 'Order' : 'Booking'}</span>
                     )}
+                    {dateStatus && dateStatus.status && <span className={`date-status-badge ${dateStatus.status}`}>{dateStatus.label}</span>}
                     {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
                     {hasSlotInfo && !isFull && used > 0 && (
                         <div className="slot-badge">
@@ -351,6 +361,9 @@ const Appointment = () => {
     const selMax = selectedSlotInfo?.max ?? MAX_SLOTS
     const selRemaining = selectedSlotInfo?.remaining ?? Math.max(0, selMax - selUsed)
     const selRatio = selMax > 0 ? selUsed / selMax : 0
+    const selectedDateBlocked = Boolean(selectedSlotInfo?.isDateBlocked)
+    const selectedDateFull = Boolean(selectedSlotInfo?.isFull)
+    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked && !selectedDateFull)
 
     return (
         <>
@@ -469,7 +482,8 @@ const Appointment = () => {
                                         { color: 'bg-[#22c55e]', label: 'Available' },
                                         { color: 'bg-[#f59e0b]', label: 'Near Full' },
                                         { color: 'bg-[#ef4444]', label: 'Fully Booked' },
-                                        { color: 'bg-[#e2e8f0]', label: 'Past Date' },
+                                        { color: 'bg-violet-500', label: 'Holiday' },
+                                        { color: 'bg-slate-500', label: 'Closed' },
                                     ].map(({ color, label }) => (
                                         <div key={label} className="flex items-center gap-3">
                                             <span className={`w-3 h-3 rounded-full ${color} shadow-sm`} />
@@ -545,6 +559,14 @@ const Appointment = () => {
                                             </div>
                                         </div>
                                     )}
+                                    <button
+                                        type="button"
+                                        disabled={!selectedDateBookable}
+                                        onClick={() => setShowBooking(true)}
+                                        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                    >
+                                        Book Now
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="text-center py-10">
@@ -699,6 +721,7 @@ const Appointment = () => {
                 </div>
             </main>
 
+            <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} initialBookingDate={selectedDate || ''} />
         </>
     )
 }

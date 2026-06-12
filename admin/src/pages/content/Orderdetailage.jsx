@@ -431,6 +431,10 @@ export default function OrderDetailPage() {
             return;
         }
 
+        if (!window.confirm(`Are you sure you want to mark step "${stepLabel}" as completed?`)) {
+            return;
+        }
+
         persistStepProgress(targetOrder, stepIndex).catch((progressError) => {
             console.error('Failed to update production progress:', progressError);
             toast.error(progressError?.response?.data?.message || 'Failed to update production progress.');
@@ -491,6 +495,14 @@ export default function OrderDetailPage() {
         }
         if (!validateAssignments(targetModalOrder, assignmentDraft)) return;
 
+        const rolesText = Object.entries(assignmentDraft)
+            .filter(([_, name]) => name)
+            .map(([role, name]) => `• ${role}: ${name}`)
+            .join('\n');
+        if (!window.confirm(`Are you sure you want to save the following team assignments?\n${rolesText}`)) {
+            return;
+        }
+
         try {
             setAssignmentSaving(true);
             const shouldPromptPickupSchedule =
@@ -533,6 +545,10 @@ export default function OrderDetailPage() {
 
         const targetOrder = orders.find((order) => (order.id || order._id) === targetOrderId);
         if (!targetOrder) return false;
+
+        if (!window.confirm(`Are you sure you want to update the pickup schedule for this booking to ${pickupDate} (${pickupSlot || 'default slot'})?`)) {
+            return false;
+        }
 
         const entityId = targetOrder._id || targetOrder.id;
         const linkedBookingId =

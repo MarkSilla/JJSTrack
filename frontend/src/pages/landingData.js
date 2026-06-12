@@ -33,7 +33,7 @@ export const faqData = [
   },
   {
     question: 'How to book appointments?',
-    answer: 'Booking an appointment is easy! Just log in to your account, head over to the dashboard, and click the "Book Now" button and choose what type of service you need.',
+    answer: 'Booking an appointment is easy! Log in to your account, go to the Appointments page, and follow the booking steps to secure a slot.',
   },
   {
     question: 'What types of services does JJSportswear offer?',

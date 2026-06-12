@@ -56,6 +56,13 @@ const EMPTY_SLOT_INFO = {
     jerseyOrgIsFull: false,
 }
 
+const getDateStatusClass = (status) => {
+    if (status === 'full_slots') return 'day-status-full-slots'
+    if (status === 'holiday') return 'day-status-holiday'
+    if (status === 'closed') return 'day-status-closed'
+    return ''
+}
+
 const getDefaultCalendarRange = () => {
     const now = new Date()
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -323,8 +330,12 @@ export default function Dashboard() {
 
     const handleDateClick = useCallback((arg) => {
         const dateKey = arg?.dateStr || toKey(arg.date)
-        navigate('/appointment', { state: { selectedDate: dateKey } })
-    }, [navigate])
+        const slotInfo = slotSummaryByDate[dateKey] || EMPTY_SLOT_INFO
+        setSelectedDate(dateKey)
+        if (!slotInfo?.isDateBlocked && !slotInfo?.isFull) {
+            setShowBooking(true)
+        }
+    }, [slotSummaryByDate])
 
     const handleDatesSet = useCallback((viewInfo) => {
         const nextRange = buildCalendarRangeFromView(viewInfo)
@@ -334,7 +345,7 @@ export default function Dashboard() {
     const userBookingDateSet = useMemo(() => {
         return new Set(
             orders
-                .map((order) => normalizeDateKey(order.createdAt || order.orderDate || order.date))
+                .map((order) => normalizeDateKey(order.bookingDateKey || order.pickupDate || order.createdAt || order.orderDate || order.date))
                 .filter(Boolean)
         )
     }, [orders])
@@ -350,6 +361,8 @@ export default function Dashboard() {
 
         const slotInfo = slotSummaryByDate[key]
         const ratio = slotInfo?.max > 0 ? slotInfo.used / slotInfo.max : 0
+        const dateStatusClass = getDateStatusClass(slotInfo?.dateStatus?.status)
+        if (dateStatusClass) classes.push(dateStatusClass)
         if (slotInfo?.isFull) classes.push('day-full')
         else if (slotInfo && ratio >= 0.7) classes.push('day-near-full')
         else if (slotInfo) classes.push('day-available')
@@ -367,6 +380,7 @@ export default function Dashboard() {
         const used = slotInfo?.used ?? 0
         const max = slotInfo?.max ?? MAX_SLOTS
         const isFull = slotInfo?.isFull ?? false
+        const dateStatus = slotInfo?.dateStatus
         const ratio = max > 0 ? used / max : 0
 
         const hasUserBooking = userBookingDateSet.has(key)
@@ -380,6 +394,7 @@ export default function Dashboard() {
                 <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
                 <div className="day-cell-spacer" />
                 {hasUserBooking && !isSelected && <span className="pickup-badge">Order</span>}
+                {dateStatus && dateStatus.status && <span className={`date-status-badge ${dateStatus.status}`}>{dateStatus.label}</span>}
                 {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
                 {hasSlotInfo && !isFull && used > 0 && !isSelected && (
                     <div className="slot-badge">
@@ -392,6 +407,14 @@ export default function Dashboard() {
             </div>
         )
     }, [slotSummaryByDate, selectedDate, userBookingDateSet])
+
+    const selectedSlotInfo = selectedDate ? (slotSummaryByDate[selectedDate] || EMPTY_SLOT_INFO) : null
+    const selectedDateBlocked = Boolean(selectedSlotInfo?.isDateBlocked)
+    const selectedDateFull = Boolean(selectedSlotInfo?.isFull)
+    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked && !selectedDateFull)
+    const selectedDateLabel = selectedDate
+        ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : ''
 
     return (
         <>
@@ -471,11 +494,9 @@ export default function Dashboard() {
                                 </h2>
                                 <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
                             </div>
-                            <button
-                                onClick={() => setShowBooking(true)}
-                                className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-[335px] sm:w-[200px]"                            >
-                                Book Now <MdAdd size={16} />
-                            </button>
+                            <div className="flex items-center justify-center gap-2 bg-white/5 text-white/90 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm w-[350px] sm:w-[300px]">
+                                Ready to Order? Book Now
+                            </div>
                         </div>
 
                         {/* Stat Cards */}
@@ -545,7 +566,8 @@ export default function Dashboard() {
                                         { color: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available' },
                                         { color: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
                                         { color: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },
-                                        { color: 'bg-gray-200', label: 'Past Date' },
+                                        { color: 'bg-violet-500', label: 'Holiday' },
+                                        { color: 'bg-slate-500', label: 'Closed' },
                                     ].map(({ color, label }) => (
                                         <div key={label} className="flex items-center gap-1.5">
                                             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
@@ -554,6 +576,24 @@ export default function Dashboard() {
                                     ))}
                                 </div>
                             </div>
+                            {selectedDate && (
+                                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Date</p>
+                                            <p className="mt-0.5 text-sm font-extrabold text-slate-800">{selectedDateLabel}</p>
+                                            <p className={`mt-1 text-[11px] font-semibold ${selectedDateBookable ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                {selectedDateBookable
+                                                    ? `${selectedSlotInfo?.remaining ?? 0} slot(s) available`
+                                                    : selectedSlotInfo?.unavailableReason || 'This date is not available.'}
+                                            </p>
+                                        </div>
+                                        <div className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-bold ${selectedDateBookable ? 'text-emerald-600' : 'text-red-600'}`}>
+                                            Book Now & Secure Your Slot
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -693,7 +733,7 @@ export default function Dashboard() {
                 </div>
             </main>
 
-            <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} />
+            <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} initialBookingDate={selectedDate || ''} />
         </>
     )
 }

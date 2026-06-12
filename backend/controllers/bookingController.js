@@ -1,4 +1,5 @@
 import bookingModel, { generateUniqueBookingId } from '../models/bookingModel.js';
+import bookingDateStatusModel from '../models/bookingDateStatusModel.js';
 import orderModel from '../models/orderModel.js';
 import invoiceModel from '../models/invoiceModel.js';
 import QRCode from 'qrcode';
@@ -338,6 +339,11 @@ const formatPickupSchedule = (pickupDate = '', pickupSlot = '') =>
 
 const REPAIR_BOOKING_DAILY_LIMIT = 7;
 const JERSEY_ORG_BOOKING_DAILY_LIMIT = 3;
+const BOOKING_DATE_STATUS_LABELS = {
+  full_slots: 'Full slots',
+  holiday: 'Holiday',
+  closed: 'Closed',
+};
 
 const formatDateKey = (date = new Date()) => {
   const year = date.getFullYear();
@@ -500,6 +506,49 @@ const countBookingsForDay = (dateKey, bookingTypeFilter) =>
     bookingType: bookingTypeFilter,
     status: { $ne: 'Cancelled' },
   });
+
+const getBookingDateStatus = (dateKey) =>
+  isDateKey(dateKey)
+    ? bookingDateStatusModel.findOne({ dateKey }).lean()
+    : null;
+
+const getBookingDateStatusMessage = (dateStatus) => {
+  if (!dateStatus?.status) return '';
+  const label = BOOKING_DATE_STATUS_LABELS[dateStatus.status] || 'Unavailable';
+  const note = String(dateStatus.note || '').trim();
+  return note
+    ? `${label}: ${note}`
+    : `This date is marked as ${label.toLowerCase()}. Please choose another date.`;
+};
+
+const serializeBookingDateStatus = (dateStatus) => {
+  if (!dateStatus) return null;
+  return {
+    dateKey: dateStatus.dateKey,
+    status: dateStatus.status,
+    label: dateStatus.status ? (BOOKING_DATE_STATUS_LABELS[dateStatus.status] || 'Unavailable') : '',
+    note: dateStatus.note || '',
+    manualRepairBooked: Number.isFinite(Number(dateStatus.manualRepairBooked))
+      ? Number(dateStatus.manualRepairBooked)
+      : null,
+    manualJerseyOrgBooked: Number.isFinite(Number(dateStatus.manualJerseyOrgBooked))
+      ? Number(dateStatus.manualJerseyOrgBooked)
+      : null,
+    updatedAt: dateStatus.updatedAt,
+  };
+};
+
+const normalizeManualBookedCount = (value, max) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(max, Math.max(0, Math.round(parsed)));
+};
+
+const resolveEffectiveBookedSlots = (actualBooked, manualBooked, maxSlots) => {
+  const normalizedManual = normalizeManualBookedCount(manualBooked, maxSlots);
+  return Math.min(maxSlots, Math.max(actualBooked, normalizedManual ?? actualBooked));
+};
 
 const getDateKeysInRange = (fromDateKey, toDateKey) => {
   const fromRange = resolveDateRangeFromKey(resolveBookingDateKey(fromDateKey));
@@ -787,6 +836,7 @@ export const createBooking = async (req, res) => {
       contact,
       pickupDate,
       pickupSlot,
+      bookingDateKey: requestedBookingDateKey,
       notes,
       items,
     } = req.body;
@@ -886,7 +936,7 @@ export const createBooking = async (req, res) => {
     }
 
     const pickupScheduleValidation = bookingType === 'repair'
-      ? validateRepairPickupSchedule(pickupDate, pickupSlot)
+      ? { valid: true, pickupDate: String(pickupDate || '').trim(), pickupSlot: String(pickupSlot || '').trim() }
       : { valid: true };
 
     if (!pickupScheduleValidation.valid) {
@@ -897,19 +947,47 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const bookingDateKey = getBookingDateKeyForNow();
+    const bookingDateKey = resolveBookingDateKey(
+      bookingType === 'repair'
+        ? (requestedBookingDateKey || pickupScheduleValidation.pickupDate)
+        : requestedBookingDateKey
+    );
 
-    // Daily booking limits are based on when the booking was created.
-    // Repair: max 7 bookings created per day
-    // Jersey + Organizational: max 3 bookings created per day combined
+    if (!isDateKey(bookingDateKey)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid booking date.',
+        received: { bookingDateKey: requestedBookingDateKey },
+      });
+    }
+
+    const dateStatus = await getBookingDateStatus(bookingDateKey);
+    if (dateStatus?.status) {
+      return res.status(400).json({
+        success: false,
+        message: getBookingDateStatusMessage(dateStatus),
+        date: bookingDateKey,
+        bookingDate: bookingDateKey,
+        dateStatus: serializeBookingDateStatus(dateStatus),
+      });
+    }
+
+    // Daily booking limits are based on the selected booking date.
+    // Repair: max 7 bookings per date
+    // Jersey + Organizational: max 3 bookings per date combined
     if (bookingType === 'repair') {
       const repairSlotsOnDate = await countBookingsForDay(bookingDateKey, 'repair');
+      const effectiveRepairSlotsOnDate = resolveEffectiveBookedSlots(
+        repairSlotsOnDate,
+        dateStatus?.manualRepairBooked,
+        REPAIR_BOOKING_DAILY_LIMIT
+      );
 
-      if (repairSlotsOnDate >= REPAIR_BOOKING_DAILY_LIMIT) {
-        console.log(`Repair booking limit reached for ${bookingDateKey}. Current repair bookings: ${repairSlotsOnDate}`);
+      if (effectiveRepairSlotsOnDate >= REPAIR_BOOKING_DAILY_LIMIT) {
+        console.log(`Repair booking limit reached for ${bookingDateKey}. Current repair bookings: ${effectiveRepairSlotsOnDate}`);
         return res.status(400).json({
           success: false,
-          message: `Repair bookings for ${bookingDateKey} are already full (max ${REPAIR_BOOKING_DAILY_LIMIT}). Please submit on another booking day.`,
+          message: `Repair bookings for ${bookingDateKey} are already full (max ${REPAIR_BOOKING_DAILY_LIMIT}). Please choose another date.`,
           date: bookingDateKey,
           availableSlots: 0,
           slotType: 'repair',
@@ -923,12 +1001,17 @@ export const createBooking = async (req, res) => {
         bookingDateKey,
         { $in: ['jersey', 'organizational'] }
       );
+      const effectiveJerseyOrgSlotsOnDate = resolveEffectiveBookedSlots(
+        jerseyOrgSlotsOnDate,
+        dateStatus?.manualJerseyOrgBooked,
+        JERSEY_ORG_BOOKING_DAILY_LIMIT
+      );
 
-      if (jerseyOrgSlotsOnDate >= JERSEY_ORG_BOOKING_DAILY_LIMIT) {
-        console.log(`Jersey/Organizational booking limit reached for ${bookingDateKey}. Current bookings: ${jerseyOrgSlotsOnDate}`);
+      if (effectiveJerseyOrgSlotsOnDate >= JERSEY_ORG_BOOKING_DAILY_LIMIT) {
+        console.log(`Jersey/Organizational booking limit reached for ${bookingDateKey}. Current bookings: ${effectiveJerseyOrgSlotsOnDate}`);
         return res.status(400).json({
           success: false,
-          message: `Team jersey and organizational bookings for ${bookingDateKey} are already full (max ${JERSEY_ORG_BOOKING_DAILY_LIMIT}). Please submit on another booking day.`,
+          message: `Team jersey and organizational bookings for ${bookingDateKey} are already full (max ${JERSEY_ORG_BOOKING_DAILY_LIMIT}). Please choose another date.`,
           date: bookingDateKey,
           availableSlots: 0,
           slotType: 'jersey_org',
@@ -1884,42 +1967,56 @@ export const getAvailableSlots = async (req, res) => {
 
     const bookingDateKey = resolveBookingDateKey(date);
 
-    // Count bookings by the day they were created, not by pickup date.
-    const repairBookedSlots = await countBookingsForDay(bookingDateKey, 'repair');
-
-    const jerseyOrgBookedSlots = await countBookingsForDay(
-      bookingDateKey,
-      { $in: ['jersey', 'organizational'] }
-    );
+    const [dateStatus, repairBookedSlots, jerseyOrgBookedSlots] = await Promise.all([
+      getBookingDateStatus(bookingDateKey),
+      countBookingsForDay(bookingDateKey, 'repair'),
+      countBookingsForDay(bookingDateKey, { $in: ['jersey', 'organizational'] }),
+    ]);
 
     const maxRepairSlots = REPAIR_BOOKING_DAILY_LIMIT;
     const maxJerseyOrgSlots = JERSEY_ORG_BOOKING_DAILY_LIMIT;
 
-    const availableRepairSlots = Math.max(0, maxRepairSlots - repairBookedSlots);
-    const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - jerseyOrgBookedSlots);
+    const effectiveRepairBookedSlots = resolveEffectiveBookedSlots(
+      repairBookedSlots,
+      dateStatus?.manualRepairBooked,
+      maxRepairSlots
+    );
+    const effectiveJerseyOrgBookedSlots = resolveEffectiveBookedSlots(
+      jerseyOrgBookedSlots,
+      dateStatus?.manualJerseyOrgBooked,
+      maxJerseyOrgSlots
+    );
+    const availableRepairSlots = Math.max(0, maxRepairSlots - effectiveRepairBookedSlots);
+    const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - effectiveJerseyOrgBookedSlots);
 
-    const repairIsFull = repairBookedSlots >= maxRepairSlots;
-    const jerseyOrgIsFull = jerseyOrgBookedSlots >= maxJerseyOrgSlots;
+    const isDateBlocked = Boolean(dateStatus?.status);
+    const repairIsFull = isDateBlocked || effectiveRepairBookedSlots >= maxRepairSlots;
+    const jerseyOrgIsFull = isDateBlocked || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
 
     res.json({
       success: true,
       date: bookingDateKey,
       bookingDate: bookingDateKey,
+      dateStatus: serializeBookingDateStatus(dateStatus),
+      isDateBlocked,
+      unavailableReason: getBookingDateStatusMessage(dateStatus),
       repair: {
-        booked: repairBookedSlots,
-        available: availableRepairSlots,
+        booked: effectiveRepairBookedSlots,
+        actualBooked: repairBookedSlots,
+        available: isDateBlocked ? 0 : availableRepairSlots,
         max: maxRepairSlots,
         isFull: repairIsFull
       },
       jerseyOrg: {
-        booked: jerseyOrgBookedSlots,
-        available: availableJerseyOrgSlots,
+        booked: effectiveJerseyOrgBookedSlots,
+        actualBooked: jerseyOrgBookedSlots,
+        available: isDateBlocked ? 0 : availableJerseyOrgSlots,
         max: maxJerseyOrgSlots,
         isFull: jerseyOrgIsFull
       },
-      totalBooked: repairBookedSlots + jerseyOrgBookedSlots,
+      totalBooked: effectiveRepairBookedSlots + effectiveJerseyOrgBookedSlots,
       totalMax: maxRepairSlots + maxJerseyOrgSlots,
-      totalAvailable: availableRepairSlots + availableJerseyOrgSlots,
+      totalAvailable: isDateBlocked ? 0 : availableRepairSlots + availableJerseyOrgSlots,
       allSlotsFull: repairIsFull && jerseyOrgIsFull
     });
 
@@ -1955,30 +2052,47 @@ export const getSlotSummary = async (req, res) => {
 
     const summaryEntries = await Promise.all(
       dateKeys.map(async (dateKey) => {
-        const [repairBookedSlots, jerseyOrgBookedSlots] = await Promise.all([
+        const [dateStatus, repairBookedSlots, jerseyOrgBookedSlots] = await Promise.all([
+          getBookingDateStatus(dateKey),
           countBookingsForDay(dateKey, 'repair'),
           countBookingsForDay(dateKey, { $in: ['jersey', 'organizational'] }),
         ]);
 
-        const availableRepairSlots = Math.max(0, maxRepairSlots - repairBookedSlots);
-        const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - jerseyOrgBookedSlots);
-        const repairIsFull = repairBookedSlots >= maxRepairSlots;
-        const jerseyOrgIsFull = jerseyOrgBookedSlots >= maxJerseyOrgSlots;
-        const used = repairBookedSlots + jerseyOrgBookedSlots;
+        const effectiveRepairBookedSlots = resolveEffectiveBookedSlots(
+          repairBookedSlots,
+          dateStatus?.manualRepairBooked,
+          maxRepairSlots
+        );
+        const effectiveJerseyOrgBookedSlots = resolveEffectiveBookedSlots(
+          jerseyOrgBookedSlots,
+          dateStatus?.manualJerseyOrgBooked,
+          maxJerseyOrgSlots
+        );
+        const availableRepairSlots = Math.max(0, maxRepairSlots - effectiveRepairBookedSlots);
+        const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - effectiveJerseyOrgBookedSlots);
+        const isDateBlocked = Boolean(dateStatus?.status);
+        const repairIsFull = isDateBlocked || effectiveRepairBookedSlots >= maxRepairSlots;
+        const jerseyOrgIsFull = isDateBlocked || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
+        const used = effectiveRepairBookedSlots + effectiveJerseyOrgBookedSlots;
 
         return [
           dateKey,
           {
             used,
-            remaining: Math.max(0, totalMax - used),
+            remaining: isDateBlocked ? 0 : Math.max(0, totalMax - used),
             max: totalMax,
             isFull: repairIsFull && jerseyOrgIsFull,
-            repairBooked: repairBookedSlots,
-            repairAvailable: availableRepairSlots,
+            isDateBlocked,
+            dateStatus: serializeBookingDateStatus(dateStatus),
+            unavailableReason: getBookingDateStatusMessage(dateStatus),
+            repairBooked: effectiveRepairBookedSlots,
+            repairActualBooked: repairBookedSlots,
+            repairAvailable: isDateBlocked ? 0 : availableRepairSlots,
             repairMax: maxRepairSlots,
             repairIsFull,
-            jerseyOrgBooked: jerseyOrgBookedSlots,
-            jerseyOrgAvailable: availableJerseyOrgSlots,
+            jerseyOrgBooked: effectiveJerseyOrgBookedSlots,
+            jerseyOrgActualBooked: jerseyOrgBookedSlots,
+            jerseyOrgAvailable: isDateBlocked ? 0 : availableJerseyOrgSlots,
             jerseyOrgMax: maxJerseyOrgSlots,
             jerseyOrgIsFull,
           },
@@ -1995,6 +2109,165 @@ export const getSlotSummary = async (req, res) => {
   } catch (error) {
     console.error('Get Slot Summary Error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch slot summary' });
+  }
+};
+
+export const getBookingDateStatuses = async (req, res) => {
+  try {
+    const fromDateKey = req.query.from ? resolveBookingDateKey(req.query.from) : null;
+    const toDateKey = req.query.to ? resolveBookingDateKey(req.query.to) : null;
+    const query = {};
+
+    if (fromDateKey && toDateKey) {
+      query.dateKey = { $gte: fromDateKey, $lte: toDateKey };
+    } else if (fromDateKey) {
+      query.dateKey = { $gte: fromDateKey };
+    } else if (toDateKey) {
+      query.dateKey = { $lte: toDateKey };
+    }
+
+    const statuses = await bookingDateStatusModel.find(query).sort({ dateKey: 1 }).lean();
+
+    res.json({
+      success: true,
+      statuses: statuses.map(serializeBookingDateStatus),
+    });
+  } catch (error) {
+    console.error('Get Booking Date Statuses Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch booking date statuses' });
+  }
+};
+
+export const upsertBookingDateStatus = async (req, res) => {
+  try {
+    const dateKey = resolveBookingDateKey(req.params.date);
+    const status = String(req.body?.status || '').trim();
+    const note = String(req.body?.note || '').trim().slice(0, 500);
+    const manualRepairBooked = normalizeManualBookedCount(
+      req.body?.manualRepairBooked,
+      REPAIR_BOOKING_DAILY_LIMIT
+    );
+    const manualJerseyOrgBooked = normalizeManualBookedCount(
+      req.body?.manualJerseyOrgBooked,
+      JERSEY_ORG_BOOKING_DAILY_LIMIT
+    );
+    const validStatuses = Object.keys(BOOKING_DATE_STATUS_LABELS);
+
+    if (!isDateKey(dateKey)) {
+      return res.status(400).json({ success: false, message: 'Please select a valid date.' });
+    }
+
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid date status. Choose one of: ${validStatuses.join(', ')}`,
+      });
+    }
+
+    if (status && ['full_slots', 'holiday', 'closed'].includes(status)) {
+      const activeBookingsCount = await bookingModel.countDocuments({
+        ...buildBookingDayQuery(dateKey),
+        status: { $in: ['Pending', 'Approved', 'In Progress'] },
+      });
+      if (activeBookingsCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot close or block this date because there are active bookings. Please reschedule them first.',
+        });
+      }
+    }
+
+    const setFields = {
+      note,
+      manualRepairBooked,
+      manualJerseyOrgBooked,
+      updatedBy: req.userId || '',
+    };
+    if (status) setFields.status = status;
+
+    const dateStatus = await bookingDateStatusModel.findOneAndUpdate(
+      { dateKey },
+      { $set: setFields },
+      { new: true, upsert: true, runValidators: true }
+    ).lean();
+
+    res.json({
+      success: true,
+      message: 'Booking date status saved successfully.',
+      dateStatus: serializeBookingDateStatus(dateStatus),
+    });
+  } catch (error) {
+    console.error('Upsert Booking Date Status Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save booking date status' });
+  }
+};
+
+// Save only manual booked counts (no status label required)
+export const saveManualBookedCounts = async (req, res) => {
+  try {
+    const dateKey = resolveBookingDateKey(req.params.date);
+    const note = String(req.body?.note || '').trim().slice(0, 500);
+    const manualRepairBooked = normalizeManualBookedCount(
+      req.body?.manualRepairBooked,
+      REPAIR_BOOKING_DAILY_LIMIT
+    );
+    const manualJerseyOrgBooked = normalizeManualBookedCount(
+      req.body?.manualJerseyOrgBooked,
+      JERSEY_ORG_BOOKING_DAILY_LIMIT
+    );
+
+    if (!isDateKey(dateKey)) {
+      return res.status(400).json({ success: false, message: 'Please select a valid date.' });
+    }
+
+    const existing = await bookingDateStatusModel.findOne({ dateKey }).lean();
+
+    const setFields = {
+      manualRepairBooked,
+      manualJerseyOrgBooked,
+      updatedBy: req.userId || '',
+    };
+    // Only update note if provided
+    if (note !== '') setFields.note = note;
+
+    // Preserve existing status if present; otherwise don't set one
+    if (existing?.status) setFields.status = existing.status;
+
+    const dateStatus = await bookingDateStatusModel.findOneAndUpdate(
+      { dateKey },
+      { $set: setFields },
+      { new: true, upsert: true, runValidators: false }
+    ).lean();
+
+    res.json({
+      success: true,
+      message: 'Manual booked counts saved successfully.',
+      dateStatus: serializeBookingDateStatus(dateStatus),
+    });
+  } catch (error) {
+    console.error('Save Manual Booked Counts Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save manual booked counts' });
+  }
+};
+
+export const deleteBookingDateStatus = async (req, res) => {
+  try {
+    const dateKey = resolveBookingDateKey(req.params.date);
+
+    if (!isDateKey(dateKey)) {
+      return res.status(400).json({ success: false, message: 'Please select a valid date.' });
+    }
+
+    await bookingDateStatusModel.deleteOne({ dateKey });
+
+    res.json({
+      success: true,
+      message: 'Booking date status cleared successfully.',
+      dateKey,
+    });
+  } catch (error) {
+    console.error('Delete Booking Date Status Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to clear booking date status' });
   }
 };
 

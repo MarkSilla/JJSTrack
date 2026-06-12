@@ -42,8 +42,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Get all inventory items
   getAllInventory: async () => {
     try {
       const response = await api.get('/inventory');
@@ -53,8 +51,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Get recent inventory activity
   getInventoryActivity: async (limit = 20) => {
     try {
       const response = await api.get(`/inventory/activity?limit=${limit}`);
@@ -64,8 +60,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Get inventory by ID
   getInventoryById: async (id) => {
     try {
       const response = await api.get(`/inventory/${id}`);
@@ -75,8 +69,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Get inventory by category
   getInventoryByCategory: async (category) => {
     try {
       const response = await api.get(`/inventory/category/${category}`);
@@ -86,8 +78,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Create new inventory item
   createInventory: async (data) => {
     try {
       const response = await api.post('/inventory', data);
@@ -97,8 +87,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Update inventory item
   updateInventory: async (id, data) => {
     try {
       const response = await api.put(`/inventory/${id}`, data);
@@ -108,8 +96,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Adjust stock (increase or decrease)
   adjustStock: async (id, type, amount, options = {}) => {
     try {
       const response = await api.patch(`/inventory/${id}/adjust`, {
@@ -135,8 +121,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Archive inventory item
   archiveInventory: async (id) => {
     try {
       const response = await api.patch(`/inventory/${id}/archive`);
@@ -146,8 +130,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Restore inventory item
   restoreInventory: async (id) => {
     try {
       const response = await api.patch(`/inventory/${id}/restore`);
@@ -157,8 +139,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Get inventory statistics
   getInventoryStats: async () => {
     try {
       const response = await api.get('/inventory/stats');
@@ -168,8 +148,6 @@ export const inventoryApi = {
       throw error;
     }
   },
-
-  // Search inventory
   searchInventory: async (query, category, status) => {
     try {
       const params = new URLSearchParams();
