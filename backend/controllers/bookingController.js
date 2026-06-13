@@ -20,6 +20,7 @@ import {
   maybeCreateBookingReadyForPickupNotification,
   maybeCreateBookingReleasedNotification,
   maybeCreateBookingRescheduleNotification,
+  maybeCreateBookingApprovedDropoffNotification,
 } from '../utils/userNotificationEvents.js';
 import { getPrimaryRepairOptionName } from '../utils/repairDisplay.js';
 import {
@@ -1494,6 +1495,11 @@ export const updateBooking = async (req, res) => {
       booking,
       previousStatus,
     });
+    await maybeCreateBookingApprovedDropoffNotification({
+      req,
+      booking,
+      previousStatus,
+    });
     await maybeCreateBookingAssignmentNotification({
       req,
       booking,
@@ -1617,6 +1623,11 @@ export const updateBookingStatus = async (req, res) => {
       previousStatus,
     });
     await maybeCreateBookingReadyForPickupNotification({
+      req,
+      booking,
+      previousStatus,
+    });
+    await maybeCreateBookingApprovedDropoffNotification({
       req,
       booking,
       previousStatus,

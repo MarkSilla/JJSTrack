@@ -497,3 +497,52 @@ export const maybeCreateBookingRescheduleNotification = async ({
     req,
   });
 };
+
+export const maybeCreateBookingApprovedDropoffNotification = async ({
+  req,
+  booking,
+  previousStatus = '',
+}) => {
+  const nextStatus = normalizeWorkflowStatus(booking?.status);
+  const normalizedPreviousStatus = normalizeWorkflowStatus(previousStatus);
+  const recipientId = normalizeEntityId(booking?.userId);
+
+  if (
+    nextStatus !== 'Approved' ||
+    normalizedPreviousStatus === 'Approved' ||
+    !recipientId
+  ) {
+    return null;
+  }
+
+  const bookingReference = getBookingReferenceLabel(booking);
+  const bookingTypeLabel = getBookingTypeLabel(booking?.bookingType);
+  const subjectLabel = getBookingSubjectLabel(booking);
+
+  const pickupSchedule = [booking?.pickupDate, booking?.pickupSlot]
+    .filter(Boolean)
+    .join(' at ');
+  const pickupSuffix = pickupSchedule
+    ? ` Your scheduled pickup is on ${pickupSchedule}.`
+    : '';
+
+  return createNotification({
+    audience: 'user',
+    recipientId,
+    type: 'booking',
+    title: 'Booking approved — please drop off your item',
+    message: `Great news! Your ${bookingTypeLabel} booking for ${subjectLabel} (${bookingReference}) has been approved. Please drop off the item(s) for ${bookingTypeLabel} at JJS Sportswear at your earliest convenience, ideally before end of business today, so we can begin working on it right away.${pickupSuffix}`,
+    route: resolveUserTrackingRoute(booking?._id),
+    entityId: booking?._id,
+    entityModel: 'Booking',
+    metadata: {
+      event: 'approved_dropoff_reminder',
+      bookingId: bookingReference,
+      bookingType: booking?.bookingType || '',
+      service: booking?.service || '',
+      pickupDate: booking?.pickupDate || '',
+      pickupSlot: booking?.pickupSlot || '',
+    },
+    req,
+  });
+};

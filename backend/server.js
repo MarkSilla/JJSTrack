@@ -19,6 +19,7 @@ import chatConversationModel from './models/chatConversationModel.js';
 import { attachInventorySocketServer } from './utils/inventorySocketServer.js';
 import { attachNotificationSocketServer } from './utils/notificationSocketServer.js';
 import { startRepairPickupReminderScheduler } from './utils/repairPickupReminderNotifications.js';
+import { startDropoffReminderScheduler } from './utils/bookingDropoffReminderNotifications.js';
 import { syncPendingReadyForPickupNotifications } from './utils/userNotificationEvents.js';
 
 import dns from 'dns';
@@ -97,6 +98,7 @@ const startServer = async () => {
   attachNotificationSocketServer(server);
   await syncPendingReadyForPickupNotifications();
   startRepairPickupReminderScheduler();
+  startDropoffReminderScheduler();
   server.listen(port, () => console.log('Server started on Port: ' + port));
 };
 
