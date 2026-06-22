@@ -61,6 +61,20 @@ const staffAssignmentsSchema = new mongoose.Schema({
   layoutArtist: { type: String, default: '' },
 }, { _id: false });
 
+const capacitySnapshotSchema = new mongoose.Schema({
+  bookingDateKey: String,
+  slotGroup: String,
+  bookedBefore: { type: Number, default: 0 },
+  actualBookedBefore: { type: Number, default: 0 },
+  max: { type: Number, default: 0 },
+  totalBookedBefore: { type: Number, default: 0 },
+  totalActualBookedBefore: { type: Number, default: 0 },
+  totalMax: { type: Number, default: 10 },
+  repairBookedBefore: { type: Number, default: 0 },
+  jerseyOrgBookedBefore: { type: Number, default: 0 },
+  reason: { type: String, default: '' },
+}, { _id: false });
+
 const BOOKING_TIME_ZONE = process.env.BOOKING_TIME_ZONE || 'Asia/Manila';
 
 const getBookingDateParts = (date = new Date()) => {
@@ -209,6 +223,19 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Approved', 'In Progress', 'Completed', 'Released', 'Cancelled'],
     default: 'Pending',
+  },
+  isOverCapacity: {
+    type: Boolean,
+    default: false,
+  },
+  capacityWarning: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  capacitySnapshot: {
+    type: capacitySnapshotSchema,
+    default: null,
   },
   cancellationReason: {
     type: String,

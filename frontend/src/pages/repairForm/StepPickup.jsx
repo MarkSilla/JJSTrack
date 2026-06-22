@@ -13,7 +13,7 @@ const DATE_STATUS_STYLES = {
     closed: 'bg-slate-100 border-slate-300 text-slate-700',
 }
 
-const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSlot, bookingType = 'repair' }) => {
+const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSlot }) => {
     const today = new Date()
     const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
     const [isTimeModalOpen, setIsTimeModalOpen] = useState(false)
@@ -41,11 +41,8 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
 
     const handleDateSelection = (dateStr) => {
         const daySummary = slotSummary[dateStr]
-        const isRepairFull = Boolean(daySummary?.repairIsFull)
-        const isJerseyOrgFull = Boolean(daySummary?.jerseyOrgIsFull)
-        const isCapacityFull = bookingType === 'repair' ? isRepairFull : isJerseyOrgFull
         const isDateBlocked = Boolean(daySummary?.isDateBlocked)
-        if (isCapacityFull || isDateBlocked) return
+        if (isDateBlocked) return
 
         setSelectedDate(dateStr)
         setSelectedSlot('')
@@ -63,21 +60,31 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
             cells.push(<div key={`pad-${i}`} className="aspect-square" />)
         }
 
+        const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toKey(year, month, d)
             const daySummary = slotSummary[dateStr]
-            const isRepairFull = Boolean(daySummary?.repairIsFull)
-            const isJerseyOrgFull = Boolean(daySummary?.jerseyOrgIsFull)
-            const isCapacityFull = bookingType === 'repair' ? isRepairFull : isJerseyOrgFull
             const isDateBlocked = Boolean(daySummary?.isDateBlocked)
-            const isUnavailable = isCapacityFull || isDateBlocked
+            const dateObj = new Date(year, month, d)
+            const isPast = dateObj < todayDate
+            const isUnavailable = isDateBlocked || isPast
             const isSelected = selectedDate === dateStr
             const unavailableLabel = isDateBlocked
                 ? (daySummary?.dateStatus?.label || 'Unavailable')
-                : isCapacityFull
-                    ? 'Full'
-                    : ''
+                : ''
             const statusStyle = DATE_STATUS_STYLES[daySummary?.dateStatus?.status]
+
+            let buttonClass = ''
+            if (isDateBlocked) {
+                buttonClass = `${statusStyle || 'bg-gray-100 border-gray-200 text-gray-500'} cursor-not-allowed`
+            } else if (isPast) {
+                // blur past dates visually but keep them visible
+                buttonClass = 'bg-white border-gray-100 text-gray-400 opacity-80 cursor-not-allowed'
+            } else if (isSelected) {
+                buttonClass = 'bg-blue-600 border-blue-600 text-white shadow-lg z-10 scale-105 cursor-pointer'
+            } else {
+                buttonClass = 'bg-white border-gray-100 text-gray-700 hover:border-blue-400 hover:shadow-md cursor-pointer'
+            }
 
             cells.push(
                 <div key={d} className="relative">
@@ -87,11 +94,7 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                         onClick={() => handleDateSelection(dateStr)}
                         className={`
                             relative w-full aspect-square flex flex-col items-center justify-center rounded-lg border transition-all duration-300
-                            ${isDateBlocked ? `${statusStyle || 'bg-gray-100 border-gray-200 text-gray-500'} cursor-not-allowed` :
-                                isCapacityFull ? 'bg-red-50 border-red-200 text-red-600 cursor-not-allowed' :
-                                isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg z-10 scale-105 cursor-pointer' :
-                                    'bg-white border-gray-100 text-gray-700 hover:border-blue-400 hover:shadow-md cursor-pointer'
-                            }
+                            ${buttonClass}
                         `}
                     >
                         <span className="text-[11px] sm:text-xs font-bold">{d}</span>
@@ -165,7 +168,6 @@ const StepPickup = ({ selectedDate, setSelectedDate, selectedSlot, setSelectedSl
                     <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-50">
                         {[
                             { color: 'bg-green-500', label: 'Available' },
-                            { color: 'bg-red-500', label: 'Full Slots' },
                             { color: 'bg-violet-500', label: 'Holiday' },
                             { color: 'bg-slate-500', label: 'Closed' },
                         ].map(({ color, label }) => (

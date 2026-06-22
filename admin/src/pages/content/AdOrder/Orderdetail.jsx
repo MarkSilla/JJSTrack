@@ -123,6 +123,43 @@ export default function OrderDetail({
         return activeOrder.displayId || activeOrder.orderId || activeOrder.id || activeOrder._id || '';
     }, [activeOrder, bookingExtras]);
 
+    const isOverCapacity = Boolean(activeOrder?.isOverCapacity || bookingExtras?.isOverCapacity);
+    const capacitySnapshot = bookingExtras?.capacitySnapshot || activeOrder?.capacitySnapshot || null;
+    const capacityLabel = capacitySnapshot
+        ? `${capacitySnapshot.totalBookedBefore || capacitySnapshot.bookedBefore || 0}/${capacitySnapshot.totalMax || capacitySnapshot.max || 10}`
+        : '';
+    const overCapacityStatusText = String(activeOrder?.status || bookingExtras?.status || '').toLowerCase();
+    const canDecideOverCapacity =
+        Boolean(activeOrder?.isOverCapacity || bookingExtras?.isOverCapacity) &&
+        (overCapacityStatusText.includes('for approval') || overCapacityStatusText.includes('pending'));
+
+    const handleOverCapacityDecision = async (nextStatus) => {
+        const bookingId = activeOrder?._id || activeOrder?.id || activeOrder?.orderId;
+        if (!bookingId) return;
+
+        try {
+            const [{ bookingApi }, { toast }] = await Promise.all([
+                import('../../../services/bookingApi'),
+                import('sonner'),
+            ]);
+
+            await bookingApi.updateBooking(
+                bookingId,
+                nextStatus === 'Cancelled'
+                    ? { status: 'Cancelled', cancellationReason: 'Declined by admin (over capacity)' }
+                    : { status: 'Approved' }
+            );
+
+            toast.success(nextStatus === 'Cancelled' ? 'Booking declined.' : 'Booking approved.');
+            window.location.reload();
+        } catch (err) {
+            console.error('Failed to update over-capacity booking:', err);
+            const message = err?.response?.data?.message || 'Failed to update booking.';
+            const { toast } = await import('sonner');
+            toast.error(message);
+        }
+    };
+
     const imageUrls = useMemo(() => {
         const urls = [];
         const append = (value) => {
@@ -302,6 +339,14 @@ export default function OrderDetail({
                         {activeOrder.isBooking && (
                             <span className="text-[11px] lg:text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-lg tracking-wider">BOOKING</span>
                         )}
+                        {isOverCapacity && (
+                            <span
+                                className="text-[11px] lg:text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg tracking-wider"
+                                title={capacityLabel ? `Capacity: ${capacityLabel} full` : 'Over recommended capacity'}
+                            >
+                                OVER CAPACITY
+                            </span>
+                        )}
                         {activeOrder.priority === 'Rush' && (
                             <span className="flex items-center gap-1 text-[11px] lg:text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg tracking-wider">
                                 <AlertCircle size={14} /> RUSH
@@ -381,6 +426,40 @@ export default function OrderDetail({
                         <h4 className="text-[11px] font-black tracking-wider uppercase text-amber-600 mb-1">Client Notes</h4>
                         <p className="text-sm font-semibold text-amber-900 leading-relaxed italic">
                             "{activeOrder.notes}"
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {isOverCapacity && (
+                <div className="mx-4 lg:mx-6 mb-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4">
+                    <div className="bg-amber-100 p-2 rounded-xl shrink-0">
+                        <AlertCircle size={20} className="text-amber-600" />
+                    </div>
+                    <div>
+                        <h4 className="text-[11px] font-black tracking-wider uppercase text-amber-700 mb-1">
+                            {capacityLabel ? `Capacity: ${capacityLabel} Full` : 'Over Recommended Capacity'}
+                            {canDecideOverCapacity && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOverCapacityDecision('Cancelled')}
+                                        className="h-9 rounded-lg border border-amber-300 bg-white px-4 text-[11px] font-black uppercase tracking-wide text-amber-700 transition-colors hover:bg-amber-100"
+                                    >
+                                        Decline
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOverCapacityDecision('Approved')}
+                                        className="h-9 rounded-lg border border-emerald-500 bg-emerald-600 px-4 text-[11px] font-black uppercase tracking-wide text-white transition-colors hover:bg-emerald-700"
+                                    >
+                                        Approve
+                                    </button>
+                                </div>
+                            )}
+                        </h4>
+                        <p className="text-sm font-semibold text-amber-900 leading-relaxed">
+                            Customer request was still accepted as pending. Approve if the shop can handle it, reject if not, or reschedule the pickup date.
                         </p>
                     </div>
                 </div>

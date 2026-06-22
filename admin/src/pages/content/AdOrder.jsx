@@ -144,7 +144,7 @@ export default function AdOrder() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState('All');
+    const [filterStatus, setFilterStatus] = useState(location.state?.filterStatus || 'All');
     const [sortOption, setSortOption] = useState('date-newest');
     const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -299,6 +299,7 @@ export default function AdOrder() {
         );
 
         if (filterStatus === 'All Records') result = result;
+        else if (filterStatus === 'Over Capacity') result = result.filter(o => Boolean(o?.isOverCapacity));
         else if (filterStatus === 'In Progress') result = result.filter(o => getDerivedStatus(o) === 'In Progress');
         else if (filterStatus === 'Released') result = result.filter(o => getDerivedStatus(o) === 'Released');
         else if (filterStatus === 'Overdue') result = result.filter(o => getDerivedStatus(o) === 'Overdue');
@@ -336,10 +337,11 @@ export default function AdOrder() {
     }, [searchQuery, filterStatus, orders, serviceTypeFilter, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, 'All Records': orders.length, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, Overdue: 0, Completed: 0, Cancelled: 0 };
+        const c = { All: 0, 'All Records': orders.length, 'For Approval': 0, Pending: 0, 'In Progress': 0, Released: 0, 'Over Capacity': 0, Overdue: 0, Completed: 0, Cancelled: 0 };
         orders.forEach(o => {
             const s = getDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
+            if (o?.isOverCapacity) c['Over Capacity']++;
             if (s !== 'Cancelled' && s !== 'Released') c.All++;
         });
         return c;

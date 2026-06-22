@@ -129,8 +129,8 @@ function formatMovement(activity) {
   const amount = delta !== 0 ? Math.abs(delta) : fallbackAmount
   const unitLabel = activity?.unit ? ` ${activity.unit}` : ""
 
-  if (delta > 0) return `+${formatQty(amount)}${unitLabel}`
-  if (delta < 0) return `-${formatQty(amount)}${unitLabel}`
+  if (delta > 0) return `Added ${formatQty(amount)}${unitLabel}`
+  if (delta < 0) return `Deducted ${formatQty(amount)}${unitLabel}`
   if (activity?.actionType === "archive") return "Archived"
   if (activity?.actionType === "restore") return "Restored"
   return amount > 0 ? `${formatQty(amount)}${unitLabel}` : "No stock change"

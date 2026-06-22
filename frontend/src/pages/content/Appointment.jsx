@@ -4,7 +4,9 @@ import BookingModal from './Bookingforms'
 import CalendarComponent, { toKey, MAX_SLOTS } from '../../components/calendar'
 import { appointmentApi } from '../../../services/appointmentApi'
 import { bookingApi } from '../../../services/bookingApi'
+import { orderApi } from '../../../services/orderApi'
 import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
+import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
 import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 import { MdClose, MdCalendarToday, MdAccessTime, MdInfo, MdCheckCircle, MdPending, MdEventAvailable, MdExpandMore } from 'react-icons/md'
 import { GiSewingMachine } from 'react-icons/gi'
@@ -26,6 +28,44 @@ const normalizeDateKey = (value) => {
     }
     const parsed = new Date(value)
     return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
+}
+
+const getPickupDateKey = (entry) => normalizeDateKey(entry?.pickupDate || entry?.estimatedCompletion)
+
+const getResponseList = (response, key) => {
+    if (Array.isArray(response)) return response
+    if (Array.isArray(response?.[key])) return response[key]
+    if (Array.isArray(response?.data)) return response.data
+    return []
+}
+
+const getDocumentId = (entry) => String(entry?._id || entry?.id || '')
+
+const getLinkedOrderId = (booking) => {
+    const linkedOrder = booking?.orderId
+    if (!linkedOrder) return ''
+    if (typeof linkedOrder === 'object') {
+        return String(linkedOrder?._id || linkedOrder?.id || '')
+    }
+    return String(linkedOrder)
+}
+
+const getLinkedBookingId = (order) => {
+    const linkedBooking = order?.bookingId
+    if (!linkedBooking) return ''
+    if (typeof linkedBooking === 'object') {
+        return String(linkedBooking?._id || linkedBooking?.id || '')
+    }
+    return String(linkedBooking)
+}
+
+const isConvertedBooking = (booking, orderIds, orderBookingIds) => {
+    const linkedOrderId = getLinkedOrderId(booking)
+    const bookingId = getDocumentId(booking)
+    return Boolean(
+        (linkedOrderId && orderIds.has(linkedOrderId)) ||
+        (bookingId && orderBookingIds.has(bookingId))
+    )
 }
 
 const getDefaultCalendarRange = () => {
@@ -77,7 +117,13 @@ const getDateStatusClass = (status) => {
 const getRepairDisplayLabel = (booking = {}) =>
     booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair'
 
+const getAppointmentDisplayName = (entry = {}, fallback = 'Booking') => {
+    const displayName = getTrackingDisplayName(entry)
+    return displayName && displayName !== 'Booking' ? displayName : fallback
+}
+
 const LIVE_REFRESH_MS = 5000
+const CAPACITY_WARNING = 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
 
 
 const Appointment = () => {
@@ -103,9 +149,10 @@ const Appointment = () => {
                 setError(null)
             }
 
-            const [appointmentsRes, bookingsRes] = await Promise.allSettled([
+            const [appointmentsRes, bookingsRes, ordersRes] = await Promise.allSettled([
                 appointmentApi.getAppointments(),
                 bookingApi.getBookings(),
+                orderApi.getOrders(),
             ])
 
             const appointmentsList =
@@ -117,28 +164,52 @@ const Appointment = () => {
 
             const bookingsList =
                 bookingsRes.status === 'fulfilled'
-                    ? (Array.isArray(bookingsRes.value?.bookings)
-                        ? bookingsRes.value.bookings
-                        : Array.isArray(bookingsRes.value?.data)
-                            ? bookingsRes.value.data
-                            : [])
+                    ? getResponseList(bookingsRes.value, 'bookings')
                     : []
 
+            const ordersList =
+                ordersRes.status === 'fulfilled'
+                    ? getResponseList(ordersRes.value, 'orders')
+                    : []
+
+            const orderIds = new Set(ordersList.map(getDocumentId).filter(Boolean))
+            const orderBookingIds = new Set(ordersList.map(getLinkedBookingId).filter(Boolean))
+
+            const normalizedOrders = ordersList
+                .map((order) => {
+                    const dateKey = getPickupDateKey(order)
+                    return {
+                        ...order,
+                        dateKey,
+                        date: dateKey ? formatDateForUi(dateKey) : 'N/A',
+                        time: getPickupSlotDisplay(order.pickupSlot, 'Not specified'),
+                        service: getAppointmentDisplayName(order),
+                        status: order.status || 'Pending',
+                        source: 'order',
+                    }
+                })
+
             const normalizedBookings = bookingsList
+                .filter((booking) => !isConvertedBooking(booking, orderIds, orderBookingIds))
                 .map((booking) => {
-                    const dateKey = normalizeDateKey(booking.bookingDateKey || booking.pickupDate || booking.createdAt || booking.orderDate || booking.date)
+                    const dateKey = getPickupDateKey(booking)
                     return {
                         ...booking,
                         dateKey,
                         date: dateKey ? formatDateForUi(dateKey) : 'N/A',
                         time: getPickupSlotDisplay(booking.pickupSlot, 'Not specified'),
-                        service:
+                        service: getAppointmentDisplayName(
+                            booking,
                             booking.bookingType === 'repair'
                                 ? getRepairDisplayLabel(booking)
-                                : booking.service || booking.bookingType || 'Booking',
+                                : booking.service || booking.bookingType || 'Booking'
+                        ),
                         status: booking.status || 'Pending',
+                        source: 'booking',
                     }
                 })
+
+            const normalizedRecords = [...normalizedOrders, ...normalizedBookings]
                 .sort((a, b) => {
                     const at = new Date(a.createdAt || 0).getTime()
                     const bt = new Date(b.createdAt || 0).getTime()
@@ -146,14 +217,14 @@ const Appointment = () => {
                 })
 
             setAppointments(appointmentsList)
-            setBookings(normalizedBookings)
+            setBookings(normalizedRecords)
 
-            if (!silent && appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected') {
+            if (!silent && appointmentsRes.status === 'rejected' && bookingsRes.status === 'rejected' && ordersRes.status === 'rejected') {
                 setError('Failed to load appointments and bookings.')
             } else if (!silent && appointmentsRes.status === 'rejected') {
                 setError('Some data failed to load (appointments).')
-            } else if (!silent && bookingsRes.status === 'rejected') {
-                setError('Some data failed to load (bookings).')
+            } else if (!silent && bookingsRes.status === 'rejected' && ordersRes.status === 'rejected') {
+                setError('Some data failed to load (bookings and orders).')
             }
         } catch (err) {
             console.error('Failed to fetch appointments/bookings:', err)
@@ -216,11 +287,9 @@ const Appointment = () => {
     const bookingsByDate = useMemo(() => {
         const map = {}
         bookings.forEach((booking) => {
-            if (!booking.dateKey || map[booking.dateKey]) return
-            map[booking.dateKey] = {
-                ...booking,
-                source: 'order',
-            }
+            if (!booking.dateKey) return
+            if (!map[booking.dateKey]) map[booking.dateKey] = []
+            map[booking.dateKey].push(booking)
         })
         return map
     }, [bookings])
@@ -230,7 +299,8 @@ const Appointment = () => {
     }, [appointmentsByDate, bookingsByDate])
     useEffect(() => {
         if (location.state?.selectedDate && highlightedDateSet.has(location.state.selectedDate)) {
-            const entry = bookingsByDate[location.state.selectedDate] || appointmentsByDate[location.state.selectedDate]
+            const entries = bookingsByDate[location.state.selectedDate] || []
+            const entry = entries[0] || appointmentsByDate[location.state.selectedDate]
             if (entry) {
                 navigate(location.pathname, { replace: true, state: {} })
             }
@@ -246,7 +316,7 @@ const Appointment = () => {
                     ...apt,
                     dateKey,
                     date: dateKey ? formatDateForUi(dateKey) : apt.date || 'N/A',
-                    service: apt.service || 'Appointment',
+                    service: getAppointmentDisplayName(apt, apt.service || 'Appointment'),
                     time: apt.time || 'Not specified',
                     status: apt.status || 'Pending',
                 }
@@ -325,7 +395,9 @@ const Appointment = () => {
             const dateStatus = slotInfo?.dateStatus
             const ratio = max > 0 ? used / max : 0
 
-            const userOrder = bookingsByDate[key] || appointmentsByDate[key]
+            const userOrders = bookingsByDate[key] || []
+            const userAppointment = appointmentsByDate[key]
+            const userEntryCount = userOrders.length + (userAppointment ? 1 : 0)
             const isSelected = selectedDate === key
 
             let fillColor = 'green'
@@ -337,8 +409,10 @@ const Appointment = () => {
                 <div className="day-cell-inner">
                     <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
                     <div className="day-cell-spacer" />
-                    {userOrder && !isSelected && (
-                        <span className="pickup-badge">{userOrder.source === 'order' ? 'Order' : 'Booking'}</span>
+                    {userEntryCount > 0 && !isSelected && (
+                        <span className="pickup-badge">
+                            {userEntryCount > 1 ? `${userEntryCount} Pickups` : 'Pickup'}
+                        </span>
                     )}
                     {dateStatus && dateStatus.status && <span className={`date-status-badge ${dateStatus.status}`}>{dateStatus.label}</span>}
                     {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
@@ -363,7 +437,8 @@ const Appointment = () => {
     const selRatio = selMax > 0 ? selUsed / selMax : 0
     const selectedDateBlocked = Boolean(selectedSlotInfo?.isDateBlocked)
     const selectedDateFull = Boolean(selectedSlotInfo?.isFull)
-    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked && !selectedDateFull)
+    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked)
+    const selectedPickupRecords = selectedDate ? (bookingsByDate[selectedDate] || []) : []
 
     return (
         <>
@@ -478,7 +553,7 @@ const Appointment = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8">
                                     {[
                                         { color: 'bg-[#3b82f6]', label: 'Selected Date' },
-                                        { color: 'bg-[#dbeafe]', label: 'Your Booking' },
+                                        { color: 'bg-[#dbeafe]', label: 'Pickup Date' },
                                         { color: 'bg-[#22c55e]', label: 'Available' },
                                         { color: 'bg-[#f59e0b]', label: 'Near Full' },
                                         { color: 'bg-[#ef4444]', label: 'Fully Booked' },
@@ -510,21 +585,27 @@ const Appointment = () => {
                                         {new Date(`${selectedDate}T00:00:00`).getFullYear()}
                                     </p>
 
-                                    <div className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border ${selectedSlotInfo?.isFull
+                                    <div className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full border ${selectedDateBlocked
                                         ? 'bg-red-50 border-red-100'
-                                        : 'bg-green-50 border-green-100'
+                                        : selectedDateFull
+                                            ? 'bg-amber-50 border-amber-100'
+                                            : 'bg-green-50 border-green-100'
                                         }`}>
                                         <MdAccessTime
                                             size={14}
-                                            className={selectedSlotInfo?.isFull ? 'text-red-500' : 'text-green-500'}
+                                            className={selectedDateBlocked ? 'text-red-500' : selectedDateFull ? 'text-amber-600' : 'text-green-500'}
                                         />
-                                        <span className={`text-xs font-bold ${selectedSlotInfo?.isFull ? 'text-red-600' : 'text-green-600'}`}>
-                                            {selectedSlotInfo?.isFull ? 'Fully booked' : `${selRemaining} slot(s) available`}
+                                        <span className={`text-xs font-bold ${selectedDateBlocked ? 'text-red-600' : selectedDateFull ? 'text-amber-700' : 'text-green-600'}`}>
+                                            {selectedDateBlocked ? 'Date unavailable' : selectedDateFull ? 'Recommended capacity reached' : `${selRemaining} slot(s) available`}
                                         </span>
                                     </div>
 
-                                    <p className="text-[11px] text-gray-400 mt-4 font-medium">
-                                        {selRemaining} slot(s) remaining out of {selMax}
+                                    <p className={`text-[11px] mt-4 font-medium ${selectedDateFull && !selectedDateBlocked ? 'text-amber-700' : 'text-gray-400'}`}>
+                                        {selectedDateBlocked
+                                            ? selectedSlotInfo?.unavailableReason || 'This date is not available.'
+                                            : selectedDateFull
+                                                ? selectedSlotInfo?.capacityWarning || CAPACITY_WARNING
+                                                : `${selRemaining} slot(s) remaining out of ${selMax}`}
                                     </p>
                                     <div className="mt-3 mx-auto max-w-[200px]">
                                         <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
@@ -557,6 +638,36 @@ const Appointment = () => {
                                                     {selectedSlotInfo.jerseyOrgAvailable} slot(s) available
                                                 </p>
                                             </div>
+                                        </div>
+                                    )}
+                                    {selectedPickupRecords.length > 0 && (
+                                        <div className="mt-5 space-y-2 border-t border-slate-100 pt-4 text-left">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                                                {selectedPickupRecords.length > 1 ? 'Pickups' : 'Pickup'}
+                                            </p>
+                                            {selectedPickupRecords.map((record) => (
+                                                <button
+                                                    key={record._id || record.orderId || record.bookingId}
+                                                    type="button"
+                                                    onClick={() => navigate(`/order/${record._id}`)}
+                                                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/40 px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50"
+                                                >
+                                                    <span className="min-w-0">
+                                                        <span className="block truncate text-xs font-extrabold text-slate-800">
+                                                            {getAppointmentDisplayName(record, record.service || 'Booking')}
+                                                        </span>
+                                                        <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-400">
+                                                            {getTrackingReferenceCode(record, { includeHash: false })}
+                                                        </span>
+                                                        <span className="mt-0.5 block truncate text-[10px] font-semibold text-blue-500">
+                                                            Pickup: {formatDateForUi(selectedDate)}{record.time ? ` | ${record.time}` : ''}
+                                                        </span>
+                                                    </span>
+                                                    <span className="shrink-0 rounded-lg border border-blue-100 bg-white px-2.5 py-1 text-[10px] font-bold text-blue-600">
+                                                        {record.status || 'Pending'}
+                                                    </span>
+                                                </button>
+                                            ))}
                                         </div>
                                     )}
                                     <button
@@ -653,7 +764,7 @@ const Appointment = () => {
                                                     </div>
                                                     <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
                                                         Calendar slots reflect all users who booked on that date.
-                                                        Highlighted cells show dates where you already have a booking or order.
+                                                        Highlighted cells show your pickup dates.
                                                     </p>
                                                 </div>
                                                 <div className="absolute -top-1.5 right-3 w-3 h-3 bg-white border-t border-l border-blue-100 rotate-45" />
@@ -701,9 +812,12 @@ const Appointment = () => {
                                                     <MdCalendarToday size={16} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-semibold text-[#0f172a]">{b.service || 'Booking'}</p>
+                                                    <p className="text-sm font-semibold text-[#0f172a]">{getAppointmentDisplayName(b, b.service || 'Booking')}</p>
                                                     <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                                                        {(b.date || formatDateForUi(b.dateKey))} | {getTrackingReferenceCode(b, { includeHash: false })}
+                                                        Pickup: {b.date || formatDateForUi(b.dateKey)}
+                                                        {b.time ? ` | ${b.time}` : ''}
+                                                        {' | '}
+                                                        {getTrackingReferenceCode(b, { includeHash: false })}
                                                     </p>
                                                 </div>
                                                 <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 ${sc}`}>

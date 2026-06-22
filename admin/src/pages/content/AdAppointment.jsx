@@ -275,7 +275,7 @@ const AdAppointment = () => {
     const saveSelectedDateStatus = async (status) => {
         const label = DATE_STATUS_CONFIG[status]?.label || status;
 
-        if (status && ['full_slots', 'holiday', 'closed'].includes(status)) {
+        if (status && ['holiday', 'closed'].includes(status)) {
             const activeBookings = selectedAppointments.filter(
                 app => ['pending', 'ready', 'in progress'].includes(app.status)
             );

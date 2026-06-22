@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, X, SlidersHorizontal, ChevronDown, RefreshCw } from 'lucide-react';
 
-const STATUS_TABS = ['All', 'Pending', 'Overdue', 'In Progress', 'Completed', 'Released'];
+const STATUS_TABS = ['All', 'Pending', 'Overdue', 'Over Capacity', 'In Progress', 'Completed', 'Released'];
 
 const SORT_OPTIONS = [
     { value: 'date-newest', label: 'Date: Newest' },

@@ -55,7 +55,7 @@ const Section = ({ title, icon: Icon, children }) => (
 );
 
 const ProfilePanel = ({ emp, onClose, onDeactivate, onReactivate, onResetPassword }) => {
-    const tabs = ["Overview", "Employment", "System"];
+    const tabs = ["Overview", "Performance", "Employment", "System"];
     const [tab, setTab] = useState("Overview");
 
     return (
@@ -138,6 +138,26 @@ const ProfilePanel = ({ emp, onClose, onDeactivate, onReactivate, onResetPasswor
                                 <InfoRow icon={User} label="Relationship" value={emp.emergencyContact?.relationship || "—"} />
                                 <InfoRow icon={Phone} label="Number" value={emp.emergencyContact?.contact || "—"} />
                             </Section>
+                        </div>
+                    )}
+                    {tab === "Performance" && (
+                        <div className="space-y-5">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-emerald-50 rounded-xl px-3 py-2.5 border border-emerald-100">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <CheckCircle2 size={12} style={{ color: "#10B981" }} />
+                                        <span className="text-[10px] text-emerald-600 font-medium">Completed</span>
+                                    </div>
+                                    <div className="text-[17px] font-bold text-emerald-900">{emp.completedBookings || 0}</div>
+                                </div>
+                                <div className="bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <Clock size={12} style={{ color: "#F59E0B" }} />
+                                        <span className="text-[10px] text-amber-600 font-medium">In Progress</span>
+                                    </div>
+                                    <div className="text-[17px] font-bold text-amber-900">{emp.activeBookings || 0}</div>
+                                </div>
+                            </div>
                             <Section title="Recent Tasks" icon={Activity}>
                                 {emp.tasks.length > 0 ? emp.tasks.map((t, i) => (
                                     <div key={i} className="flex items-center gap-2 py-1.5">

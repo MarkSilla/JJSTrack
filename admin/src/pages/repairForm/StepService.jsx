@@ -9,6 +9,8 @@ const SERVICES = [
 const getCapacityForService = (id, bookingCapacity) =>
     id === 'repair' ? bookingCapacity?.repair : bookingCapacity?.jerseyOrg
 
+const CAPACITY_WARNING = 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
+
 const StepService = ({ service, setService, bookingCapacity, capacityLoading = false }) => (
     <section>
         <div className="text-center mb-5 font-inter">
@@ -25,11 +27,12 @@ const StepService = ({ service, setService, bookingCapacity, capacityLoading = f
                     <button
                         key={id}
                         type="button"
-                        disabled={isFull}
-                        onClick={() => !isFull && setService(id)}
+                        onClick={() => setService(id)}
                         className={`group relative p-7 rounded-2xl text-left transition-all duration-300 overflow-hidden
                 ${isFull
-                                ? 'bg-gray-50 border border-gray-200 opacity-70 cursor-not-allowed'
+                                ? selected
+                                    ? 'bg-amber-50 border-2 border-amber-400 shadow-lg shadow-amber-100 cursor-pointer'
+                                    : 'bg-white border border-amber-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100 cursor-pointer'
                                 : selected
                                     ? 'bg-blue-50 border-2 border-blue-500/70 shadow-xl shadow-blue-100 cursor-pointer'
                                     : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-lg hover:shadow-gray-100 cursor-pointer'
@@ -51,10 +54,15 @@ const StepService = ({ service, setService, bookingCapacity, capacityLoading = f
                                 ? 'Checking slots...'
                                 : capacity
                                     ? isFull
-                                        ? 'Fully booked today'
+                                        ? 'Recommended capacity reached'
                                         : `${capacity.available} / ${capacity.max} slots left today`
                                     : 'Slots checked on submit'}
                         </p>
+                        {isFull && (
+                            <p className="relative mt-2 text-[11px] font-semibold leading-snug text-amber-700">
+                                {CAPACITY_WARNING}
+                            </p>
+                        )}
                     </button>
                 )
             })}

@@ -259,6 +259,14 @@ function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) 
               >
                 {appt.status}
               </span>
+              {appt.isOverCapacity && (
+                <span
+                  className="text-[9px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap bg-amber-100 text-amber-700 border border-amber-200"
+                  title={appt.capacityLabel ? `Capacity: ${appt.capacityLabel} full` : "Over recommended capacity"}
+                >
+                  Over Capacity
+                </span>
+              )}
             </div>
             <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
               <User size={9} className="shrink-0" /> <span className="truncate">{appt.customer}</span>
@@ -269,6 +277,12 @@ function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) 
               <Clock size={9} className="shrink-0" /> {appt.time}
               <span className="text-gray-300 ml-1">{appt.date}</span>
             </div>
+            {appt.isOverCapacity && (
+              <div className="text-[10px] text-amber-700 flex items-center gap-1 mt-1 font-semibold">
+                <AlertTriangle size={9} className="shrink-0" />
+                {appt.capacityLabel ? `Capacity: ${appt.capacityLabel} Full` : "Recommended capacity reached"}
+              </div>
+            )}
           </div>
           <div className="flex text-center items-center justify-center ">
             {showView && (
@@ -348,6 +362,10 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               orderId: linkedOrderId,
               bookingType: booking.bookingType,
               createdAtValue: parseDateValue(booking.createdAt),
+              isOverCapacity: Boolean(booking.isOverCapacity),
+              capacityLabel: booking.capacitySnapshot
+                ? `${booking.capacitySnapshot.totalBookedBefore || booking.capacitySnapshot.bookedBefore || 0}/${booking.capacitySnapshot.totalMax || booking.capacitySnapshot.max || 10}`
+                : "",
             };
           })
           .sort(
@@ -449,6 +467,18 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             parseTime(a.time) - parseTime(b.time)
         ),
     [appointments, todayDate, overdueFilter]
+  );
+
+  const overCapacityRequests = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.isOverCapacity && !CLOSED_APPOINTMENT_STATUSES.has(a.status))
+        .sort(
+          (a, b) =>
+            (b.createdAtValue?.getTime?.() || 0) -
+            (a.createdAtValue?.getTime?.() || 0)
+        ),
+    [appointments]
   );
 
   const filteredAllAppts = useMemo(() => {
@@ -1056,6 +1086,31 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </div>
         </div>
+
+        {overCapacityRequests.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <div>
+                <p className="m-0 text-xs font-black uppercase tracking-wider text-amber-700">Over Capacity</p>
+                <p className="mt-0.5 text-xs font-normal text-amber-800">
+                  {overCapacityRequests.length} request{overCapacityRequests.length !== 1 ? "s" : ""} pending approval
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-2xl font-black text-amber-600">{overCapacityRequests.length}</span>
+              <button
+                onClick={() => {
+                  navigate('/admin/orders', { state: { filterStatus: 'Over Capacity' } });
+                }}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg transition-colors border-none cursor-pointer"
+              >
+                View
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col">

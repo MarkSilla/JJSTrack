@@ -23,6 +23,7 @@ const EMPTY_SLOT_INFO = {
     jerseyOrgMax: 3,
     jerseyOrgIsFull: false,
 }
+const CAPACITY_WARNING = 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
 
 const getCapacity = (summary, bookingType) =>
     bookingType === 'repair'
@@ -73,16 +74,15 @@ const StepBookingDate = ({ bookingType = 'jersey', bookingDate, setBookingDate, 
     const selectedSummary = bookingDate ? (slotSummary[bookingDate] || EMPTY_SLOT_INFO) : null
     const selectedCapacity = selectedSummary ? getCapacity(selectedSummary, bookingType) : null
     const selectedBlocked = Boolean(selectedSummary?.isDateBlocked)
-    const selectedAvailable = Boolean(bookingDate && selectedSummary && !selectedBlocked && !selectedCapacity?.isFull)
+    const selectedBookable = Boolean(bookingDate && selectedSummary && !selectedBlocked)
 
     useEffect(() => {
         if (typeof onAvailabilityChange !== 'function') return
-        onAvailabilityChange(selectedAvailable)
-    }, [onAvailabilityChange, selectedAvailable])
+        onAvailabilityChange(selectedBookable)
+    }, [onAvailabilityChange, selectedBookable])
 
     const handleSelectDate = (dateKey, summary) => {
-        const capacity = getCapacity(summary || EMPTY_SLOT_INFO, bookingType)
-        if (summary?.isDateBlocked || capacity.isFull) return
+        if (summary?.isDateBlocked) return
         setBookingDate(dateKey)
     }
 
@@ -102,7 +102,7 @@ const StepBookingDate = ({ bookingType = 'jersey', bookingDate, setBookingDate, 
             const isBlocked = Boolean(summary?.isDateBlocked)
             const statusConfig = DATE_STATUS_CONFIG[summary?.dateStatus?.status]
             const isSelected = bookingDate === dateKey
-            const isUnavailable = isBlocked || capacity.isFull
+            const isUnavailable = isBlocked
             const label = isBlocked
                 ? (summary?.dateStatus?.label || statusConfig?.label || 'Blocked')
                 : capacity.isFull
@@ -121,7 +121,7 @@ const StepBookingDate = ({ bookingType = 'jersey', bookingDate, setBookingDate, 
                             : isBlocked
                                 ? `${statusConfig?.cell || DATE_STATUS_CONFIG.closed.cell} cursor-not-allowed`
                                 : capacity.isFull
-                                    ? 'cursor-not-allowed border-red-200 bg-red-50 text-red-600'
+                                    ? 'cursor-pointer border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:shadow-md'
                                     : 'cursor-pointer border-slate-100 bg-white text-slate-700 hover:border-blue-300 hover:shadow-md'
                     }`}
                 >
@@ -192,13 +192,15 @@ const StepBookingDate = ({ bookingType = 'jersey', bookingDate, setBookingDate, 
 
                 {bookingDate && selectedCapacity && (
                     <div className={`mt-5 rounded-2xl border p-4 ${
-                        selectedAvailable ? 'border-green-100 bg-green-50 text-green-700' : 'border-red-100 bg-red-50 text-red-700'
+                        selectedBlocked ? 'border-red-100 bg-red-50 text-red-700' : selectedCapacity.isFull ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-green-100 bg-green-50 text-green-700'
                     }`}>
                         <p className="text-sm font-black">{selectedDateLabel}</p>
                         <p className="mt-1 text-xs font-semibold">
-                            {selectedAvailable
-                                ? `${selectedCapacity.available} of ${selectedCapacity.max} slots available`
-                                : selectedSummary?.unavailableReason || 'This date is unavailable.'}
+                            {selectedBlocked
+                                ? selectedSummary?.unavailableReason || 'This date is unavailable.'
+                                : selectedCapacity.isFull
+                                    ? selectedSummary?.capacityWarning || CAPACITY_WARNING
+                                    : `${selectedCapacity.available} of ${selectedCapacity.max} slots available`}
                         </p>
                     </div>
                 )}

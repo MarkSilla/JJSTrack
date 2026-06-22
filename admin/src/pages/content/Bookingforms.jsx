@@ -316,13 +316,14 @@ const BookingModal = ({ isOpen, onClose }) => {
             ? bookingCapacity?.jerseyOrg
             : null
     const isSelectedServiceFull = Boolean(selectedServiceCapacity?.isFull)
+    const capacityWarning = bookingCapacity?.capacityWarning || selectedServiceCapacity?.capacityWarning || 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
 
     const isRepairDetailsComplete = () => {
         return [details.name, details.email, details.phone, details.address].every((field) => field && field.trim().length > 0)
     }
 
     const canNext = () => {
-        if (step === 1) return !!service && !isSelectedServiceFull
+        if (step === 1) return !!service
 
         if (isRepair) {
             if (step === 2) return selectedOptions.length > 0
@@ -350,11 +351,6 @@ const BookingModal = ({ isOpen, onClose }) => {
     }
 
     const getNextErrorMessage = () => {
-        if (step === 1 && isSelectedServiceFull) {
-            return service === 'repair'
-                ? 'Repair booking slots for today are already full. Please try again on another booking day.'
-                : 'Team jersey and organization booking slots for today are already full. Please try again on another booking day.'
-        }
         if (step === 1) return 'Please select a service before continuing.'
         if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
         if (isRepair && step === 4) return 'Please complete all your delivery details before continuing.'
@@ -624,6 +620,11 @@ const BookingModal = ({ isOpen, onClose }) => {
                                 {nextError && (
                                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                         <p className="text-sm text-amber-700">{nextError}</p>
+                                    </div>
+                                )}
+                                {step === 1 && isSelectedServiceFull && (
+                                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <p className="text-sm font-semibold text-amber-800">{capacityWarning}</p>
                                     </div>
                                 )}
 

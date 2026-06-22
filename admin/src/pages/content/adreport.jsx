@@ -27,12 +27,13 @@ import api, { bookingApi } from "../../services/bookingApi.js";
 import { exportToPDF, exportChartToPDF } from "../../components/Export.js";
 import { StatCardsSkeleton, TableSkeleton, SkeletonBlock } from "../../components/SkeletonLoaders.jsx";
 
-const TIME_RANGES = ["Daily", "Weekly", "Monthly", "Quarterly"];
+const TIME_RANGES = ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"];
 const RANGE_LIMITS = {
   Daily: 14,
   Weekly: 12,
   Monthly: 12,
   Quarterly: 8,
+  Yearly: 5,
 };
 
 const STATUS_COLORS = {
@@ -139,6 +140,14 @@ const getBucketMeta = (date, timeRange) => {
       key: `${year}-Q${quarter}`,
       label: `Q${quarter} ${year}`,
       sortValue: new Date(year, (quarter - 1) * 3, 1).getTime(),
+    };
+  }
+
+  if (timeRange === "Yearly") {
+    return {
+      key: String(year),
+      label: String(year),
+      sortValue: new Date(year, 0, 1).getTime(),
     };
   }
 
@@ -543,63 +552,69 @@ export default function AdAnalytics() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        <select
-          value={timeRange}
-          onChange={(event) => setTimeRange(event.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
-        >
-          {TIME_RANGES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={() => fetchReportData(false)}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          Refresh
-        </button>
-        <div className="relative">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div />
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowExportMenu((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+            onClick={() => fetchReportData(false)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Download size={13} />
-            Export PDF
+            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Refresh
           </button>
-          {showExportMenu && (
-            <div
-              className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
-              style={{ top: "100%" }}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
             >
-              <button
-                onClick={handleExport}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              <Download size={13} />
+              Export PDF
+            </button>
+            {showExportMenu && (
+              <div
+                className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                style={{ top: "100%" }}
               >
-                <FileText size={14} className="text-slate-500" />
-                Export Table
-              </button>
-              <div className="mx-3 border-t border-slate-100" />
-              <button
-                onClick={handleExportChart}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                <BarChart4Icon size={14} className="text-slate-500" />
-                Export Chart
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={handleExport}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <FileText size={14} className="text-slate-500" />
+                  Export Table
+                </button>
+                <div className="mx-3 border-t border-slate-100" />
+                <button
+                  onClick={handleExportChart}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <BarChart4Icon size={14} className="text-slate-500" />
+                  Export Chart
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-12">
         <div className="rounded-xl border border-slate-200 bg-white p-3 lg:col-span-8">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900">Financial Timeline</h2>
-            <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-500">{timeRange}</span>
+            <div className="flex flex-wrap gap-1.5">
+              {TIME_RANGES.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setTimeRange(option)}
+                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
+                    timeRange === option
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="h-72">
             {chartData.length > 0 ? (

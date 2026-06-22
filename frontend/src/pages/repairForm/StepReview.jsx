@@ -30,6 +30,9 @@ const StepReview = ({
     contact,
     notes,
     repairOptions = REPAIR_OPTIONS,
+    isBulkMode = false,
+    bulkItems = [],
+    bulkSharedNotes = '',
 }) => {
     const isRepair = service === 'repair'
     const isJersey = service === 'jersey'
@@ -122,6 +125,56 @@ const StepReview = ({
                     </ReviewBlock>
                 )}
 
+                {isRepair && isBulkMode && bulkItems.length > 0 && (
+                    <ReviewBlock title="Bulk Repairs (1 Slot)">
+                        <div className="space-y-4">
+                            {bulkItems.map((bulkItem, idx) => {
+                                const itemTotal = (bulkItem.selectedOptions || []).reduce((sum, optId) => {
+                                    const opt = repairOptions.find((o) => o.id === optId)
+                                    const qty = bulkItem.quantities?.[optId] || 1
+                                    return sum + (opt?.price || 0) * qty
+                                }, 0)
+
+                                return (
+                                    <div key={bulkItem.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                        <p className="text-gray-800 font-semibold text-sm mb-2">
+                                            {bulkItem.name || `Item ${idx + 1}`}
+                                        </p>
+                                        <div className="divide-y divide-gray-200 space-y-1.5">
+                                            {(bulkItem.selectedOptions || []).map((optId) => {
+                                                const opt = repairOptions.find((o) => o.id === optId)
+                                                const qty = bulkItem.quantities?.[optId] || 1
+                                                return (
+                                                    <div key={optId} className="flex justify-between gap-2 py-1.5 first:pt-0 text-xs">
+                                                        <span className="text-gray-600">{opt?.label} {qty > 1 && <span className="text-gray-400">×{qty}</span>}</span>
+                                                        <span className="text-blue-600 font-semibold tabular-nums">₱{opt?.price * qty}</span>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between text-sm">
+                                            <span className="text-gray-700 font-semibold">Item Total</span>
+                                            <span className="text-blue-600 font-bold">₱{itemTotal}</span>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        <div className="border-t border-gray-200 mt-4 pt-4 flex justify-between items-center">
+                            <span className="text-gray-800 font-bold text-sm">Grand Total</span>
+                            <span className="text-blue-600 font-extrabold text-xl tabular-nums">
+                                ₱{bulkItems.reduce((sum, item) => {
+                                    return sum + ((item.selectedOptions || []).reduce((itemSum, optId) => {
+                                        const opt = repairOptions.find((o) => o.id === optId)
+                                        const qty = item.quantities?.[optId] || 1
+                                        return itemSum + (opt?.price || 0) * qty
+                                    }, 0))
+                                }, 0)}
+                            </span>
+                        </div>
+                    </ReviewBlock>
+                )}
+
                 {isRepair && photos.length > 0 && (
                     <ReviewBlock title={`Photos (${photos.length})`}>
                         <div className="flex gap-2 flex-wrap">
@@ -162,6 +215,12 @@ const StepReview = ({
                 {notes && (
                     <ReviewBlock title="Additional Instructions">
                         <p className="text-gray-700 text-sm italic">"{notes}"</p>
+                    </ReviewBlock>
+                )}
+
+                {bulkSharedNotes && isBulkMode && (
+                    <ReviewBlock title="Shared Notes">
+                        <p className="text-gray-700 text-sm italic">"{bulkSharedNotes}"</p>
                     </ReviewBlock>
                 )}
 

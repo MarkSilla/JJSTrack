@@ -187,6 +187,7 @@ const mapStaffToEmployee = (staff, index = 0) => {
     const id = staff.employeeId || `EMP-${sequence}`;
     const fullName = staff.fullName || `${staff.firstName || ""} ${staff.lastName || ""}`.replace(/\s+/g, " ").trim();
     const safeName = fullName || "Unnamed Staff";
+
     return {
         ...staff,
         _id: staff._id,

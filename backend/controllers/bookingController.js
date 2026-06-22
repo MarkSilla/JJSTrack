@@ -340,6 +340,10 @@ const formatPickupSchedule = (pickupDate = '', pickupSlot = '') =>
 
 const REPAIR_BOOKING_DAILY_LIMIT = 7;
 const JERSEY_ORG_BOOKING_DAILY_LIMIT = 3;
+const TOTAL_BOOKING_DAILY_LIMIT = REPAIR_BOOKING_DAILY_LIMIT + JERSEY_ORG_BOOKING_DAILY_LIMIT;
+const RECOMMENDED_CAPACITY_WARNING =
+  'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.';
+const BLOCKING_DATE_STATUSES = new Set(['holiday', 'closed']);
 const BOOKING_DATE_STATUS_LABELS = {
   full_slots: 'Full slots',
   holiday: 'Holiday',
@@ -513,8 +517,15 @@ const getBookingDateStatus = (dateKey) =>
     ? bookingDateStatusModel.findOne({ dateKey }).lean()
     : null;
 
+const isBlockingDateStatus = (status = '') => BLOCKING_DATE_STATUSES.has(String(status || '').trim());
+const isRecommendedFullDateStatus = (status = '') => String(status || '').trim() === 'full_slots';
+
 const getBookingDateStatusMessage = (dateStatus) => {
   if (!dateStatus?.status) return '';
+  if (isRecommendedFullDateStatus(dateStatus.status)) {
+    const note = String(dateStatus.note || '').trim();
+    return note || RECOMMENDED_CAPACITY_WARNING;
+  }
   const label = BOOKING_DATE_STATUS_LABELS[dateStatus.status] || 'Unavailable';
   const note = String(dateStatus.note || '').trim();
   return note
@@ -549,6 +560,52 @@ const normalizeManualBookedCount = (value, max) => {
 const resolveEffectiveBookedSlots = (actualBooked, manualBooked, maxSlots) => {
   const normalizedManual = normalizeManualBookedCount(manualBooked, maxSlots);
   return Math.min(maxSlots, Math.max(actualBooked, normalizedManual ?? actualBooked));
+};
+
+const resolveBookingCapacitySnapshot = async ({ bookingDateKey, bookingType, dateStatus }) => {
+  const [repairActualBooked, jerseyOrgActualBooked] = await Promise.all([
+    countBookingsForDay(bookingDateKey, 'repair'),
+    countBookingsForDay(bookingDateKey, { $in: ['jersey', 'organizational'] }),
+  ]);
+
+  const repairBooked = resolveEffectiveBookedSlots(
+    repairActualBooked,
+    dateStatus?.manualRepairBooked,
+    REPAIR_BOOKING_DAILY_LIMIT
+  );
+  const jerseyOrgBooked = resolveEffectiveBookedSlots(
+    jerseyOrgActualBooked,
+    dateStatus?.manualJerseyOrgBooked,
+    JERSEY_ORG_BOOKING_DAILY_LIMIT
+  );
+
+  const isRepair = bookingType === 'repair';
+  const slotGroup = isRepair ? 'repair' : 'jersey_organizational';
+  const bookedBefore = isRepair ? repairBooked : jerseyOrgBooked;
+  const actualBookedBefore = isRepair ? repairActualBooked : jerseyOrgActualBooked;
+  const max = isRepair ? REPAIR_BOOKING_DAILY_LIMIT : JERSEY_ORG_BOOKING_DAILY_LIMIT;
+  const totalBookedBefore = Math.min(TOTAL_BOOKING_DAILY_LIMIT, repairBooked + jerseyOrgBooked);
+  const totalActualBookedBefore = repairActualBooked + jerseyOrgActualBooked;
+  const isManualFull = isRecommendedFullDateStatus(dateStatus?.status);
+  const isOverCapacity = isManualFull || bookedBefore >= max;
+
+  return {
+    isOverCapacity,
+    warning: isOverCapacity ? RECOMMENDED_CAPACITY_WARNING : '',
+    snapshot: {
+      bookingDateKey,
+      slotGroup,
+      bookedBefore,
+      actualBookedBefore,
+      max,
+      totalBookedBefore,
+      totalActualBookedBefore,
+      totalMax: TOTAL_BOOKING_DAILY_LIMIT,
+      repairBookedBefore: repairBooked,
+      jerseyOrgBookedBefore: jerseyOrgBooked,
+      reason: isManualFull ? 'manual_full_slots' : bookedBefore >= max ? 'recommended_capacity_reached' : '',
+    },
+  };
 };
 
 const getDateKeysInRange = (fromDateKey, toDateKey) => {
@@ -790,6 +847,31 @@ const maybeCreateBookingCapacityNotification = async ({ req, booking }) => {
   return null;
 };
 
+const maybeCreateBookingOverCapacityNotification = async ({ req, booking }) => {
+  if (!booking?.isOverCapacity) {
+    return null;
+  }
+
+  const bookingDateKey = booking?.capacitySnapshot?.bookingDateKey ||
+    resolveBookingDateKey(booking?.bookingDateKey || booking?.createdAt || new Date());
+  const totalBooked = booking?.capacitySnapshot?.totalBookedBefore ?? TOTAL_BOOKING_DAILY_LIMIT;
+  const totalMax = booking?.capacitySnapshot?.totalMax ?? TOTAL_BOOKING_DAILY_LIMIT;
+
+  return createBookingAdminNotification({
+    req,
+    booking,
+    title: 'Over-capacity booking request',
+    message: `${getBookingLabel(booking)} was submitted for ${bookingDateKey} after recommended capacity was reached.`,
+    route: resolveBookingNotificationRoute(booking),
+    metadata: {
+      event: 'booking_over_capacity',
+      bookingDateKey,
+      capacity: `${totalBooked}/${totalMax}`,
+      capacitySnapshot: booking.capacitySnapshot || null,
+    },
+  });
+};
+
 const createBookingConvertedNotification = async ({
   req,
   booking,
@@ -837,7 +919,6 @@ export const createBooking = async (req, res) => {
       contact,
       pickupDate,
       pickupSlot,
-      bookingDateKey: requestedBookingDateKey,
       notes,
       items,
     } = req.body;
@@ -948,22 +1029,18 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const bookingDateKey = resolveBookingDateKey(
-      bookingType === 'repair'
-        ? (requestedBookingDateKey || pickupScheduleValidation.pickupDate)
-        : requestedBookingDateKey
-    );
+    const bookingDateKey = getBookingDateKeyForNow();
 
     if (!isDateKey(bookingDateKey)) {
       return res.status(400).json({
         success: false,
         message: 'Please select a valid booking date.',
-        received: { bookingDateKey: requestedBookingDateKey },
+        received: { bookingDateKey },
       });
     }
 
     const dateStatus = await getBookingDateStatus(bookingDateKey);
-    if (dateStatus?.status) {
+    if (isBlockingDateStatus(dateStatus?.status)) {
       return res.status(400).json({
         success: false,
         message: getBookingDateStatusMessage(dateStatus),
@@ -973,52 +1050,16 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // Daily booking limits are based on the selected booking date.
-    // Repair: max 7 bookings per date
-    // Jersey + Organizational: max 3 bookings per date combined
-    if (bookingType === 'repair') {
-      const repairSlotsOnDate = await countBookingsForDay(bookingDateKey, 'repair');
-      const effectiveRepairSlotsOnDate = resolveEffectiveBookedSlots(
-        repairSlotsOnDate,
-        dateStatus?.manualRepairBooked,
-        REPAIR_BOOKING_DAILY_LIMIT
-      );
+    // Daily booking capacity is advisory. Customers may still submit requests
+    // after the recommended workload is full; admin decides whether to approve.
+    const capacityCheck = await resolveBookingCapacitySnapshot({
+      bookingDateKey,
+      bookingType,
+      dateStatus,
+    });
 
-      if (effectiveRepairSlotsOnDate >= REPAIR_BOOKING_DAILY_LIMIT) {
-        console.log(`Repair booking limit reached for ${bookingDateKey}. Current repair bookings: ${effectiveRepairSlotsOnDate}`);
-        return res.status(400).json({
-          success: false,
-          message: `Repair bookings for ${bookingDateKey} are already full (max ${REPAIR_BOOKING_DAILY_LIMIT}). Please choose another date.`,
-          date: bookingDateKey,
-          availableSlots: 0,
-          slotType: 'repair',
-          bookingDate: bookingDateKey,
-        });
-      }
-    }
-
-    if (bookingType === 'jersey' || bookingType === 'organizational') {
-      const jerseyOrgSlotsOnDate = await countBookingsForDay(
-        bookingDateKey,
-        { $in: ['jersey', 'organizational'] }
-      );
-      const effectiveJerseyOrgSlotsOnDate = resolveEffectiveBookedSlots(
-        jerseyOrgSlotsOnDate,
-        dateStatus?.manualJerseyOrgBooked,
-        JERSEY_ORG_BOOKING_DAILY_LIMIT
-      );
-
-      if (effectiveJerseyOrgSlotsOnDate >= JERSEY_ORG_BOOKING_DAILY_LIMIT) {
-        console.log(`Jersey/Organizational booking limit reached for ${bookingDateKey}. Current bookings: ${effectiveJerseyOrgSlotsOnDate}`);
-        return res.status(400).json({
-          success: false,
-          message: `Team jersey and organizational bookings for ${bookingDateKey} are already full (max ${JERSEY_ORG_BOOKING_DAILY_LIMIT}). Please choose another date.`,
-          date: bookingDateKey,
-          availableSlots: 0,
-          slotType: 'jersey_org',
-          bookingDate: bookingDateKey,
-        });
-      }
+    if (capacityCheck.isOverCapacity) {
+      console.log(`Over-capacity ${bookingType} booking request for ${bookingDateKey}:`, capacityCheck.snapshot);
     }
 
     console.log('Validation passed, creating booking document...');
@@ -1150,6 +1191,9 @@ export const createBooking = async (req, res) => {
       notes,
       totalPrice,
       bookingDateKey,
+      isOverCapacity: capacityCheck.isOverCapacity,
+      capacityWarning: capacityCheck.warning,
+      capacitySnapshot: capacityCheck.snapshot,
     };
 
     // Only add pickup for repair
@@ -1168,13 +1212,17 @@ export const createBooking = async (req, res) => {
     await createBookingAdminNotification({
       req,
       booking,
-      title: 'New booking submitted',
-      message: `${contact.fullName} submitted a ${bookingType} booking for ${service}.`,
+      title: booking.isOverCapacity ? 'New over-capacity booking submitted' : 'New booking submitted',
+      message: booking.isOverCapacity
+        ? `${contact.fullName} submitted an over-capacity ${bookingType} booking for ${service}.`
+        : `${contact.fullName} submitted a ${bookingType} booking for ${service}.`,
       route: resolveBookingNotificationRoute(booking),
       metadata: {
-        event: 'submitted',
+        event: booking.isOverCapacity ? 'submitted_over_capacity' : 'submitted',
+        isOverCapacity: booking.isOverCapacity,
       },
     });
+    await maybeCreateBookingOverCapacityNotification({ req, booking });
     await maybeCreateBookingCapacityNotification({ req, booking });
 
     res.status(201).json({
@@ -2000,9 +2048,13 @@ export const getAvailableSlots = async (req, res) => {
     const availableRepairSlots = Math.max(0, maxRepairSlots - effectiveRepairBookedSlots);
     const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - effectiveJerseyOrgBookedSlots);
 
-    const isDateBlocked = Boolean(dateStatus?.status);
-    const repairIsFull = isDateBlocked || effectiveRepairBookedSlots >= maxRepairSlots;
-    const jerseyOrgIsFull = isDateBlocked || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
+    const isDateBlocked = isBlockingDateStatus(dateStatus?.status);
+    const isDateAtRecommendedCapacity = isRecommendedFullDateStatus(dateStatus?.status);
+    const repairIsFull = isDateBlocked || isDateAtRecommendedCapacity || effectiveRepairBookedSlots >= maxRepairSlots;
+    const jerseyOrgIsFull = isDateBlocked || isDateAtRecommendedCapacity || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
+    const capacityWarning = (repairIsFull || jerseyOrgIsFull) && !isDateBlocked
+      ? RECOMMENDED_CAPACITY_WARNING
+      : '';
 
     res.json({
       success: true,
@@ -2010,24 +2062,26 @@ export const getAvailableSlots = async (req, res) => {
       bookingDate: bookingDateKey,
       dateStatus: serializeBookingDateStatus(dateStatus),
       isDateBlocked,
+      isDateAtRecommendedCapacity,
       unavailableReason: getBookingDateStatusMessage(dateStatus),
+      capacityWarning,
       repair: {
         booked: effectiveRepairBookedSlots,
         actualBooked: repairBookedSlots,
-        available: isDateBlocked ? 0 : availableRepairSlots,
+        available: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : availableRepairSlots,
         max: maxRepairSlots,
         isFull: repairIsFull
       },
       jerseyOrg: {
         booked: effectiveJerseyOrgBookedSlots,
         actualBooked: jerseyOrgBookedSlots,
-        available: isDateBlocked ? 0 : availableJerseyOrgSlots,
+        available: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : availableJerseyOrgSlots,
         max: maxJerseyOrgSlots,
         isFull: jerseyOrgIsFull
       },
       totalBooked: effectiveRepairBookedSlots + effectiveJerseyOrgBookedSlots,
       totalMax: maxRepairSlots + maxJerseyOrgSlots,
-      totalAvailable: isDateBlocked ? 0 : availableRepairSlots + availableJerseyOrgSlots,
+      totalAvailable: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : availableRepairSlots + availableJerseyOrgSlots,
       allSlotsFull: repairIsFull && jerseyOrgIsFull
     });
 
@@ -2081,29 +2135,35 @@ export const getSlotSummary = async (req, res) => {
         );
         const availableRepairSlots = Math.max(0, maxRepairSlots - effectiveRepairBookedSlots);
         const availableJerseyOrgSlots = Math.max(0, maxJerseyOrgSlots - effectiveJerseyOrgBookedSlots);
-        const isDateBlocked = Boolean(dateStatus?.status);
-        const repairIsFull = isDateBlocked || effectiveRepairBookedSlots >= maxRepairSlots;
-        const jerseyOrgIsFull = isDateBlocked || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
+        const isDateBlocked = isBlockingDateStatus(dateStatus?.status);
+        const isDateAtRecommendedCapacity = isRecommendedFullDateStatus(dateStatus?.status);
+        const repairIsFull = isDateBlocked || isDateAtRecommendedCapacity || effectiveRepairBookedSlots >= maxRepairSlots;
+        const jerseyOrgIsFull = isDateBlocked || isDateAtRecommendedCapacity || effectiveJerseyOrgBookedSlots >= maxJerseyOrgSlots;
         const used = effectiveRepairBookedSlots + effectiveJerseyOrgBookedSlots;
+        const capacityWarning = (repairIsFull || jerseyOrgIsFull) && !isDateBlocked
+          ? RECOMMENDED_CAPACITY_WARNING
+          : '';
 
         return [
           dateKey,
           {
             used,
-            remaining: isDateBlocked ? 0 : Math.max(0, totalMax - used),
+            remaining: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : Math.max(0, totalMax - used),
             max: totalMax,
             isFull: repairIsFull && jerseyOrgIsFull,
             isDateBlocked,
+            isDateAtRecommendedCapacity,
             dateStatus: serializeBookingDateStatus(dateStatus),
             unavailableReason: getBookingDateStatusMessage(dateStatus),
+            capacityWarning,
             repairBooked: effectiveRepairBookedSlots,
             repairActualBooked: repairBookedSlots,
-            repairAvailable: isDateBlocked ? 0 : availableRepairSlots,
+            repairAvailable: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : availableRepairSlots,
             repairMax: maxRepairSlots,
             repairIsFull,
             jerseyOrgBooked: effectiveJerseyOrgBookedSlots,
             jerseyOrgActualBooked: jerseyOrgBookedSlots,
-            jerseyOrgAvailable: isDateBlocked ? 0 : availableJerseyOrgSlots,
+            jerseyOrgAvailable: (isDateBlocked || isDateAtRecommendedCapacity) ? 0 : availableJerseyOrgSlots,
             jerseyOrgMax: maxJerseyOrgSlots,
             jerseyOrgIsFull,
           },
@@ -2175,7 +2235,7 @@ export const upsertBookingDateStatus = async (req, res) => {
       });
     }
 
-    if (status && ['full_slots', 'holiday', 'closed'].includes(status)) {
+    if (status && ['holiday', 'closed'].includes(status)) {
       const activeBookingsCount = await bookingModel.countDocuments({
         ...buildBookingDayQuery(dateKey),
         status: { $in: ['Pending', 'Approved', 'In Progress'] },

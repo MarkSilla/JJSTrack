@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ClipboardList, Scissors, Shirt, Sparkles, X } from 'lucide-react';
 
 const ROLE_CONFIG = {
@@ -58,9 +58,11 @@ export default function ProductionAssignmentModal({
         }, {}),
     [orderedRoles, staffList]);
 
-    if (!isOpen || !order) return null;
+        const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const isStartMode = mode === 'start';
+        if (!isOpen || !order) return null;
+
+        const isStartMode = mode === 'start';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
@@ -73,12 +75,12 @@ export default function ProductionAssignmentModal({
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-200">Production Assignment</p>
                             <h2 className="mt-1 text-xl font-black text-white">
-                                {isStartMode ? 'Assign Team Before Work Starts' : 'Update Production Team'}
+                                {isStartMode ? 'Assign Team Before Work Starts' : 'Assign Production Team'}
                             </h2>
                             <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-blue-100/90">
                                 {isStartMode
                                     ? 'Complete the production role assignments below. Once confirmed, this order will officially start its work progress.'
-                                    : 'Update the assigned production staff for each workflow responsibility.'}
+                                    : 'Assign the production staff for each workflow responsibility.'}
                             </p>
                         </div>
                     </div>
@@ -164,6 +166,7 @@ export default function ProductionAssignmentModal({
                     </div>
                 </div>
 
+                {/* Footer actions */}
                 <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
                     <button
                         onClick={onClose}
@@ -173,15 +176,51 @@ export default function ProductionAssignmentModal({
                         Cancel
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={() => setConfirmOpen(true)}
                         disabled={isSaving}
                         className="rounded-2xl border-none bg-slate-900 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
                     >
                         {isSaving
-                            ? (isStartMode ? 'Starting Work Progress...' : 'Saving Assignments...')
-                            : (isStartMode ? 'Start Work Progress' : 'Save Assignments')}
+                            ? (isStartMode ? 'Starting Work Progress...' : 'Assigning Staff...')
+                            : (isStartMode ? 'Start Work Progress' : 'Assign Staff')}
                     </button>
                 </div>
+
+                {/* Confirmation overlay (in-app) */}
+                {confirmOpen && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+                        <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="px-6 py-5">
+                                <h3 className="text-lg font-black text-slate-900">Confirm Assignments</h3>
+                                <p className="mt-2 text-sm text-slate-700">Please confirm the following team assignments before saving:</p>
+                                <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-800 whitespace-pre-wrap">
+                                    {Object.entries(value || {})
+                                        .filter(([_, name]) => name)
+                                        .map(([role, name]) => `• ${ROLE_CONFIG[role]?.label || role}: ${name}`)
+                                        .join('\n') || 'No assignments selected.'}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
+                                <button
+                                    onClick={() => setConfirmOpen(false)}
+                                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setConfirmOpen(false);
+                                        onConfirm && onConfirm();
+                                    }}
+                                    disabled={isSaving}
+                                    className="rounded-2xl border-none bg-slate-900 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                                >
+                                    Assign
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

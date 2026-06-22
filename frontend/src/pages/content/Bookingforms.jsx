@@ -26,11 +26,10 @@ import TeamStepConfirm from '../teamForm/TeamStepConfirm.jsx'
 import OrgStepDetails from '../OrgTeam/OrgStepDetails.jsx'
 import OrgStepContact from '../OrgTeam/OrgStepContact.jsx'
 import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
-import StepBookingDate from '../bookingDate/StepBookingDate.jsx'
 
 const REPAIR_LABELS = ['Service', 'Options', 'Photo', 'Details', 'Pickup', 'Confirm']
-const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Booking Date', 'Confirm']
-const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Booking Date', 'Confirm']
+const TEAM_LABELS = ['Service', 'Team & Players', 'Design', 'Contact', 'Confirm']
+const ORG_LABELS = ['Service', 'Details', 'Design', 'Contact', 'Confirm']
 const BOOKING_TIME_ZONE = 'Asia/Manila'
 
 const getBookingDateKey = (date = new Date()) => {
@@ -148,14 +147,17 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const [selectedSlot, setSelectedSlot] = useState('')
     const [notes, setNotes] = useState('')
 
+    // Bulk repair state
+    const [isBulkMode, setIsBulkMode] = useState(false)
+    const [bulkItems, setBulkItems] = useState([])
+    const [bulkSharedNotes, setBulkSharedNotes] = useState('')
+
     // Team state
     const [teamName, setTeamName] = useState('')
     const [players, setPlayers] = useState([])
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
     const [contact, setContact] = useState(() => buildContactFromUser(getStoredUser()))
-    const [teamBookingDate, setTeamBookingDate] = useState('')
-    const [teamBookingDateAvailable, setTeamBookingDateAvailable] = useState(false)
 
     // Org state
     const [orgName, setOrgName] = useState('')
@@ -163,8 +165,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState(() => buildContactFromUser(getStoredUser()))
-    const [orgBookingDate, setOrgBookingDate] = useState('')
-    const [orgBookingDateAvailable, setOrgBookingDateAvailable] = useState(false)
     const repairOptions = REPAIR_OPTIONS.map((option) => ({
         ...option,
         price: Number(servicePricing.repair?.repairOptions?.[option.id] ?? option.price),
@@ -178,14 +178,10 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setDetails(buildRepairDetailsFromUser(user))
         setContact(buildContactFromUser(user))
         setOrgContact(buildContactFromUser(user))
-        setRepairBookingDate(initialBookingDate || getBookingDateKey())
+        setRepairBookingDate(getBookingDateKey())
         setSelectedDate(null)
-        setTeamBookingDate(initialBookingDate || '')
-        setOrgBookingDate(initialBookingDate || '')
-        setTeamBookingDateAvailable(false)
-        setOrgBookingDateAvailable(false)
 
-        const capacityDate = initialBookingDate || getBookingDateKey()
+        const capacityDate = getBookingDateKey()
         pricingApi.getAllPricing()
             .then((response) => setServicePricing(mergeServicePricing(response.data || response.pricing)))
             .catch((err) => console.error('Error loading service pricing:', err))
@@ -220,14 +216,17 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setSelectedSlot('')
         setNotes('')
 
+        // Reset bulk repair state
+        setIsBulkMode(false)
+        setBulkItems([])
+        setBulkSharedNotes('')
+
         // Reset team state
         setTeamName('')
         setPlayers([])
         setDesignFile(null)
         setDriveLink('')
         setContact(buildContactFromUser(getStoredUser()))
-        setTeamBookingDate('')
-        setTeamBookingDateAvailable(false)
 
         // Reset org state
         setOrgName('')
@@ -235,8 +234,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setOrgDesignFile(null)
         setOrgDriveLink('')
         setOrgContact(buildContactFromUser(getStoredUser()))
-        setOrgBookingDate('')
-        setOrgBookingDateAvailable(false)
     }
 
     // Handle modal close
@@ -258,22 +255,70 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const setQuantity = (id, qty) => setQuantities((p) => ({ ...p, [id]: qty }))
     const setRepairNote = (id, note) => setRepairNotes((p) => ({ ...p, [id]: note }))
     const setDetail = (k, v) => setDetails((p) => ({ ...p, [k]: v }))
+
+    // Bulk repair helpers
+    const addBulkItem = () => {
+        const newItem = {
+            id: Date.now(),
+            name: '',
+            selectedOptions: [],
+            quantities: {},
+            repairDescription: '',
+        }
+        setBulkItems((p) => [...p, newItem])
+    }
+
+    const removeBulkItem = (itemId) => {
+        setBulkItems((p) => p.filter((item) => item.id !== itemId))
+    }
+
+    const updateBulkItem = (itemId, updates) => {
+        setBulkItems((p) =>
+            p.map((item) =>
+                item.id === itemId ? { ...item, ...updates } : item
+            )
+        )
+    }
+
+    const toggleBulkItemOption = (itemId, optionId) => {
+        updateBulkItem(itemId, {
+            selectedOptions: (bulkItems.find((i) => i.id === itemId)?.selectedOptions || []).includes(optionId)
+                ? bulkItems.find((i) => i.id === itemId)?.selectedOptions.filter((x) => x !== optionId)
+                : [...(bulkItems.find((i) => i.id === itemId)?.selectedOptions || []), optionId],
+        })
+    }
+
+    const setBulkItemQuantity = (itemId, optionId, qty) => {
+        updateBulkItem(itemId, {
+            quantities: { ...(bulkItems.find((i) => i.id === itemId)?.quantities || {}), [optionId]: qty },
+        })
+    }
+
     const selectedServiceCapacity = service === 'repair'
         ? bookingCapacity?.repair
         : service
             ? bookingCapacity?.jerseyOrg
             : null
     const isSelectedServiceFull = Boolean(selectedServiceCapacity?.isFull)
+    const capacityWarning = bookingCapacity?.capacityWarning || selectedServiceCapacity?.capacityWarning || 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
 
     const isRepairDetailsComplete = () => {
         return [details.name, details.email, details.phone, details.address].every((field) => field && field.trim().length > 0)
     }
 
     const canNext = () => {
-        if (step === 1) return !!service && !isSelectedServiceFull
+        if (step === 1) return !!service
 
         if (isRepair) {
-            if (step === 2) return selectedOptions.length > 0
+            if (step === 2) {
+                if (isBulkMode) {
+                    // In bulk mode, need at least one bulk item with repair options
+                    return bulkItems.length > 0 && bulkItems.some(item => item.selectedOptions && item.selectedOptions.length > 0)
+                } else {
+                    // Normal mode, need at least one repair option selected
+                    return selectedOptions.length > 0
+                }
+            }
             if (step === 3) return true // Photo is optional, can skip or add
             if (step === 4) return isRepairDetailsComplete()
             if (step === 5) return !!selectedDate && !!selectedSlot
@@ -284,7 +329,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
             if (step === 2) return players.length > 0
             if (step === 3) return true // Design is optional, can skip or add
             if (step === 4) return [contact.fullName, contact.phone, contact.email, contact.address].every((field) => field && field.trim().length > 0)
-            if (step === 5) return !!teamBookingDate && teamBookingDateAvailable
             return true
         }
 
@@ -292,7 +336,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
             if (step === 2) return members.length > 0
             if (step === 3) return true // Design is optional, can skip or add
             if (step === 4) return [orgContact.fullName, orgContact.phone, orgContact.email, orgContact.address].every((field) => field && field.trim().length > 0)
-            if (step === 5) return !!orgBookingDate && orgBookingDateAvailable
             return true
         }
 
@@ -300,23 +343,21 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     }
 
     const getNextErrorMessage = () => {
-        if (step === 1 && isSelectedServiceFull) {
-            return service === 'repair'
-                ? 'Repair booking slots for today are already full. Please try again on another booking day.'
-                : 'Team jersey and organization booking slots for today are already full. Please try again on another booking day.'
-        }
         if (step === 1) return 'Please select a service before continuing.'
-        if (isRepair && step === 2) return 'Please select at least one repair option to continue.'
+        if (isRepair && step === 2) {
+            if (isBulkMode) {
+                return 'Please add at least one item with repair options to continue.'
+            }
+            return 'Please select at least one repair option to continue.'
+        }
         if (isRepair && step === 4) return 'Please complete your profile details first before continuing.'
         if (isRepair && step === 5) return 'Please select a pickup date and time slot.'
 
         if (isJersey && step === 2) return 'Please add at least one player first.'
         if (isJersey && step === 4) return 'Please complete your profile contact details first before continuing.'
-        if (isJersey && step === 5) return 'Please select an available booking date.'
 
         if (isOrg && step === 2) return 'Please add at least one member first.'
         if (isOrg && step === 4) return 'Please complete your profile contact details first before continuing.'
-        if (isOrg && step === 5) return 'Please select an available booking date.'
 
         return 'Please complete the required fields before continuing.'
     }
@@ -399,21 +440,45 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
             }
 
             if (isRepair) {
-                // Repair booking
-                const optionsArray = selectedOptions.map(optId => {
-                    const repairOption = repairOptions.find(option => option.id === optId)
-                    const quantity = quantities[optId] || 1
-                    const displayName = optId === 'others'
-                        ? (repairDescription.trim() || repairOption?.label || 'Other Repair')
-                        : (repairOption?.label || optId)
+                // Repair booking - handle both normal and bulk mode
+                let optionsArray = []
+                
+                if (isBulkMode) {
+                    // Bulk repair mode: combine all items into one booking
+                    optionsArray = bulkItems.flatMap((bulkItem) => {
+                        return (bulkItem.selectedOptions || []).map((optId) => {
+                            const repairOption = repairOptions.find((option) => option.id === optId)
+                            const quantity = bulkItem.quantities?.[optId] || 1
+                            const displayName = bulkItem.name ? `${bulkItem.name} - ${repairOption?.label || optId}` : (repairOption?.label || optId)
+                            return {
+                                name: displayName,
+                                quantity,
+                                price: Number(repairOption?.price) || 0,
+                                notes: '',
+                            }
+                        })
+                    })
+                    bookingData.isBulkRepair = true
+                    bookingData.bulkItems = bulkItems
+                    bookingData.notes = bulkSharedNotes
+                } else {
+                    // Normal mode
+                    optionsArray = selectedOptions.map(optId => {
+                        const repairOption = repairOptions.find(option => option.id === optId)
+                        const quantity = quantities[optId] || 1
+                        const displayName = optId === 'others'
+                            ? (repairDescription.trim() || repairOption?.label || 'Other Repair')
+                            : (repairOption?.label || optId)
 
-                    return {
-                        name: displayName,
-                        quantity,
-                        price: Number(repairOption?.price) || 0,
-                        notes: (repairNotes[optId] || '').trim(),
-                    }
-                })
+                        return {
+                            name: displayName,
+                            quantity,
+                            price: Number(repairOption?.price) || 0,
+                            notes: (repairNotes[optId] || '').trim(),
+                        }
+                    })
+                    bookingData.repairDescription = repairDescription
+                }
 
                 bookingData.selectedOptions = optionsArray
                 bookingData.service = optionsArray[0]?.name || service
@@ -426,14 +491,13 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                     addOnPrice: 0,
                     notes: option.notes,
                 }))
-                bookingData.repairDescription = repairDescription
                 bookingData.photos = Array.isArray(uploadedPhotos)
                     ? uploadedPhotos.map((url) => (typeof url === 'string' ? url.trim() : '')).filter(Boolean)
                     : []
                 bookingData.contact = contactToUse
                 bookingData.pickupDate = selectedDate
                 bookingData.pickupSlot = selectedSlot
-                bookingData.bookingDateKey = repairBookingDate || initialBookingDate || getBookingDateKey()
+                bookingData.bookingDateKey = repairBookingDate || getBookingDateKey()
             } else if (isJersey) {
                 // Team jersey booking
                 bookingData.teamName = teamName
@@ -473,7 +537,7 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                 bookingData.designFile = uploadedDesignFile
                 bookingData.driveLink = driveLink
                 bookingData.contact = contact
-                bookingData.bookingDateKey = teamBookingDate
+                bookingData.bookingDateKey = getBookingDateKey()
             } else if (isOrg) {
                 // Organizational booking
                 bookingData.orgName = orgName
@@ -481,7 +545,7 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                 bookingData.orgDesignFile = uploadedOrgDesignFile
                 bookingData.orgDriveLink = orgDriveLink
                 bookingData.contact = orgContact
-                bookingData.bookingDateKey = orgBookingDate
+                bookingData.bookingDateKey = getBookingDateKey()
             }
 
             console.log('Submitting booking data:', bookingData)
@@ -540,11 +604,11 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
 
         if (isRepair) {
             switch (step) {
-                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} repairNotes={repairNotes} setRepairNote={setRepairNote} notes={notes} setNotes={setNotes} repairOptions={repairOptions} />
+                case 2: return <StepOptions selectedOptions={selectedOptions} toggleOption={toggleOption} quantities={quantities} setQuantity={setQuantity} repairDescription={repairDescription} setRepairDescription={setRepairDescription} repairNotes={repairNotes} setRepairNote={setRepairNote} notes={notes} setNotes={setNotes} repairOptions={repairOptions} isBulkMode={isBulkMode} setIsBulkMode={setIsBulkMode} bulkItems={bulkItems} addBulkItem={addBulkItem} removeBulkItem={removeBulkItem} updateBulkItem={updateBulkItem} toggleBulkItemOption={toggleBulkItemOption} setBulkItemQuantity={setBulkItemQuantity} bulkSharedNotes={bulkSharedNotes} setBulkSharedNotes={setBulkSharedNotes} />
                 case 3: return <StepPhoto photos={photos} setPhotos={setPhotos} skipPhoto={() => setStep(4)} />
                 case 4: return <StepDetails details={details} setDetail={setDetail} readOnly />
                 case 5: return <StepPickup selectedDate={selectedDate} setSelectedDate={setSelectedDate} selectedSlot={selectedSlot} setSelectedSlot={setSelectedSlot} />
-                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} repairNotes={repairNotes} notes={notes} repairOptions={repairOptions} />
+                case 6: return <StepReview service={service} selectedOptions={selectedOptions} details={details} selectedDate={selectedDate} selectedSlot={selectedSlot} photos={photos} quantities={quantities} repairDescription={repairDescription} repairNotes={repairNotes} notes={notes} repairOptions={repairOptions} isBulkMode={isBulkMode} bulkItems={bulkItems} bulkSharedNotes={bulkSharedNotes} />
                 default: return null
             }
         }
@@ -554,8 +618,7 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                 case 2: return <TeamStepPlayers teamName={teamName} setTeamName={setTeamName} players={players} setPlayers={setPlayers} contact={contact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.jersey} />
                 case 3: return <TeamStepDesign designFile={designFile} setDesignFile={setDesignFile} driveLink={driveLink} setDriveLink={setDriveLink} />
                 case 4: return <TeamStepContact contact={contact} setContact={setContact} readOnly />
-                case 5: return <StepBookingDate bookingType="jersey" bookingDate={teamBookingDate} setBookingDate={setTeamBookingDate} onAvailabilityChange={setTeamBookingDateAvailable} />
-                case 6: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly pricing={servicePricing.jersey} />
+                case 5: return <TeamStepConfirm teamName={teamName} players={players} designFile={designFile} driveLink={driveLink} contact={contact} goToStep={goToStep} contactReadOnly pricing={servicePricing.jersey} />
                 default: return null
             }
         }
@@ -565,8 +628,7 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                 case 2: return <OrgStepDetails orgName={orgName} setOrgName={setOrgName} members={members} setMembers={setMembers} contact={orgContact} onSizeGuideChange={setSizeGuideOpen} pricing={servicePricing.organizational} />
                 case 3: return <TeamStepDesign designFile={orgDesignFile} setDesignFile={setOrgDesignFile} driveLink={orgDriveLink} setDriveLink={setOrgDriveLink} />
                 case 4: return <OrgStepContact contact={orgContact} setContact={setOrgContact} readOnly />
-                case 5: return <StepBookingDate bookingType="organizational" bookingDate={orgBookingDate} setBookingDate={setOrgBookingDate} onAvailabilityChange={setOrgBookingDateAvailable} />
-                case 6: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly pricing={servicePricing.organizational} />
+                case 5: return <OrgStepConfirm orgName={orgName} members={members} designFile={orgDesignFile} driveLink={orgDriveLink} contact={orgContact} goToStep={goToStep} contactReadOnly pricing={servicePricing.organizational} />
                 default: return null
             }
         }
@@ -617,6 +679,11 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
                                 {nextError && (
                                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                                         <p className="text-sm text-amber-700">{nextError}</p>
+                                    </div>
+                                )}
+                                {step === 1 && isSelectedServiceFull && (
+                                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <p className="text-sm font-semibold text-amber-800">{capacityWarning}</p>
                                     </div>
                                 )}
 

@@ -10,11 +10,14 @@ import {
     Inbox, Monitor, Printer, Scissors, Truck, Shirt
 } from 'lucide-react'
 import { bookingApi } from '../../../services/bookingApi'
+import { orderApi } from '../../../services/orderApi'
 import useTrackingUpdatesSocket from '../../hooks/useTrackingUpdatesSocket.js'
 import { getTrackingReferenceCode } from '../../utils/trackingReference.js'
 import { getTrackingDisplayName } from '../../utils/trackingDisplay.js'
+import { getPickupSlotDisplay } from '../../utils/pickupSlot.js'
 import { SkeletonBlock } from '../../components/SkeletonLoaders.jsx'
 import '../../styles/calendar.css'
+import '../../styles/dashboard.css'
 
 const useUser = () => {
     const [user, setUser] = useState(null)
@@ -39,6 +42,44 @@ const normalizeDateKey = (value) => {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
     const parsed = new Date(value)
     return Number.isNaN(parsed.getTime()) ? null : toKey(parsed)
+}
+
+const getOrderPickupDateKey = (order) => normalizeDateKey(order?.pickupDate || order?.estimatedCompletion)
+
+const getResponseList = (response, key) => {
+    if (Array.isArray(response)) return response
+    if (Array.isArray(response?.[key])) return response[key]
+    if (Array.isArray(response?.data)) return response.data
+    return []
+}
+
+const getDocumentId = (entry) => String(entry?._id || entry?.id || '')
+
+const getLinkedOrderId = (booking) => {
+    const linkedOrder = booking?.orderId
+    if (!linkedOrder) return ''
+    if (typeof linkedOrder === 'object') {
+        return String(linkedOrder?._id || linkedOrder?.id || '')
+    }
+    return String(linkedOrder)
+}
+
+const getLinkedBookingId = (order) => {
+    const linkedBooking = order?.bookingId
+    if (!linkedBooking) return ''
+    if (typeof linkedBooking === 'object') {
+        return String(linkedBooking?._id || linkedBooking?.id || '')
+    }
+    return String(linkedBooking)
+}
+
+const isConvertedBooking = (booking, orderIds, orderBookingIds) => {
+    const linkedOrderId = getLinkedOrderId(booking)
+    const bookingId = getDocumentId(booking)
+    return Boolean(
+        (linkedOrderId && orderIds.has(linkedOrderId)) ||
+        (bookingId && orderBookingIds.has(bookingId))
+    )
 }
 
 const EMPTY_SLOT_INFO = {
@@ -88,6 +129,7 @@ const isSameCalendarRange = (left, right) =>
     left?.from === right?.from && left?.to === right?.to
 
 const TRACKING_REFRESH_DEBOUNCE_MS = 250
+const CAPACITY_WARNING = 'This date has already reached its recommended capacity. Your booking request may be delayed and is subject to approval.'
 const ACTIVE_TRACKING_STATUSES = new Set(['pending', 'approved', 'in progress', 'in-progress'])
 
 const normalizeTrackingStatus = (status = '') => String(status || '').trim().toLowerCase()
@@ -204,13 +246,38 @@ export default function Dashboard() {
     const user = useUser()
     const navigate = useNavigate()
     const [showBooking, setShowBooking] = useState(false)
+    const [bookingFormRequested, setBookingFormRequested] = useState(false)
+    const [bookingInitialDate, setBookingInitialDate] = useState('')
+
+    const openBookingForm = useCallback((initialDate = '') => {
+        setBookingInitialDate(initialDate)
+        setBookingFormRequested(true)
+        setShowBooking(true)
+    }, [])
+
+    useEffect(() => {
+        const handleDashboardBookNowClick = (event) => {
+            const button = event.target.closest?.('button')
+            if (!button?.querySelector?.('.dashboard-book-now-label')) return
+
+            openBookingForm()
+        }
+
+        document.addEventListener('click', handleDashboardBookNowClick)
+        return () => document.removeEventListener('click', handleDashboardBookNowClick)
+    }, [openBookingForm])
+
     const [selectedDate, setSelectedDate] = useState(null)
+    const [hoveredDate, setHoveredDate] = useState(null)
     const [orders, setOrders] = useState([])
+    const [pickupOrders, setPickupOrders] = useState([])
     const [slotSummaryByDate, setSlotSummaryByDate] = useState({})
     const [calendarRange, setCalendarRange] = useState(() => getDefaultCalendarRange())
     const [stats, setStats] = useState({ active: 0, pickupReady: 0, total: 0 })
     const [loading, setLoading] = useState(true)
     const refreshTimeoutRef = useRef(null)
+    const detailHoverTimeoutRef = useRef(null)
+    const selectedDateDetailsRef = useRef(null)
     const [activeFilter, setActiveFilter] = useState('All')
     const [showFilterDropdown, setShowFilterDropdown] = useState(false)
 
@@ -246,14 +313,15 @@ export default function Dashboard() {
                 setLoading(true)
             }
 
-            const [bookingsRes, statsRes, slotSummaryRes] = await Promise.allSettled([
+            const [bookingsRes, ordersRes, statsRes, slotSummaryRes] = await Promise.allSettled([
                 bookingApi.getBookings(),
+                orderApi.getOrders(),
                 bookingApi.getBookingStats ? bookingApi.getBookingStats() : Promise.resolve({ success: false }),
                 bookingApi.getSlotSummary(calendarRange.from, calendarRange.to),
             ])
 
             if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.success) {
-                const data = bookingsRes.value.bookings || bookingsRes.value.data || []
+                const data = getResponseList(bookingsRes.value, 'bookings')
                 setOrders(data)
                 // Compute stats from bookings if no stats API
                 setStats({
@@ -261,6 +329,15 @@ export default function Dashboard() {
                     pickupReady: data.filter(b => isPickupReadyTrackingStatus(b.status)).length,
                     total: data.length,
                 })
+            }
+
+            if (ordersRes.status === 'fulfilled' && ordersRes.value?.success) {
+                setPickupOrders(getResponseList(ordersRes.value, 'orders'))
+            } else if (ordersRes.status === 'fulfilled') {
+                setPickupOrders([])
+            } else if (ordersRes.status === 'rejected') {
+                console.error('Error fetching user orders:', ordersRes.reason)
+                setPickupOrders([])
             }
 
             if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
@@ -326,29 +403,74 @@ export default function Dashboard() {
         if (refreshTimeoutRef.current) {
             clearTimeout(refreshTimeoutRef.current)
         }
+        if (detailHoverTimeoutRef.current) {
+            clearTimeout(detailHoverTimeoutRef.current)
+        }
     }, [])
 
-    const handleDateClick = useCallback((arg) => {
-        const dateKey = arg?.dateStr || toKey(arg.date)
-        const slotInfo = slotSummaryByDate[dateKey] || EMPTY_SLOT_INFO
-        setSelectedDate(dateKey)
-        if (!slotInfo?.isDateBlocked && !slotInfo?.isFull) {
-            setShowBooking(true)
+    const clearDetailHoverTimeout = useCallback(() => {
+        if (detailHoverTimeoutRef.current) {
+            clearTimeout(detailHoverTimeoutRef.current)
+            detailHoverTimeoutRef.current = null
         }
-    }, [slotSummaryByDate])
+    }, [])
+
+    const showDateDetails = useCallback((dateKey) => {
+        clearDetailHoverTimeout()
+        setHoveredDate(dateKey)
+    }, [clearDetailHoverTimeout])
+
+    const hideDateDetails = useCallback((dateKey) => {
+        clearDetailHoverTimeout()
+        detailHoverTimeoutRef.current = window.setTimeout(() => {
+            setHoveredDate((currentDate) => (currentDate === dateKey ? null : currentDate))
+            detailHoverTimeoutRef.current = null
+        }, 180)
+    }, [clearDetailHoverTimeout])
+
+    const handleDateClick = useCallback((arg) => {
+        const nextDate = arg?.dateStr || (arg?.date ? toKey(arg.date) : null)
+        if (!nextDate) return
+
+        clearDetailHoverTimeout()
+        setSelectedDate((currentDate) => (currentDate === nextDate ? null : nextDate))
+
+        // Auto-scroll to date details
+        setTimeout(() => {
+            if (selectedDateDetailsRef.current) {
+                selectedDateDetailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+        }, 0)
+    }, [clearDetailHoverTimeout])
 
     const handleDatesSet = useCallback((viewInfo) => {
         const nextRange = buildCalendarRangeFromView(viewInfo)
         setCalendarRange((prev) => (isSameCalendarRange(prev, nextRange) ? prev : nextRange))
     }, [])
 
-    const userBookingDateSet = useMemo(() => {
-        return new Set(
-            orders
-                .map((order) => normalizeDateKey(order.bookingDateKey || order.pickupDate || order.createdAt || order.orderDate || order.date))
-                .filter(Boolean)
-        )
-    }, [orders])
+    const calendarPickupEntries = useMemo(() => {
+        const orderIds = new Set(pickupOrders.map(getDocumentId).filter(Boolean))
+        const orderBookingIds = new Set(pickupOrders.map(getLinkedBookingId).filter(Boolean))
+        const orderEntries = pickupOrders.map((order) => ({ ...order, calendarSource: 'order' }))
+        const bookingEntries = orders
+            .filter((booking) => !isConvertedBooking(booking, orderIds, orderBookingIds))
+            .map((booking) => ({ ...booking, calendarSource: 'booking' }))
+
+        return [...orderEntries, ...bookingEntries]
+    }, [pickupOrders, orders])
+
+    const ordersByPickupDate = useMemo(() => {
+        return calendarPickupEntries.reduce((map, order) => {
+            const pickupDateKey = getOrderPickupDateKey(order)
+            if (!pickupDateKey) return map
+
+            if (!map[pickupDateKey]) map[pickupDateKey] = []
+            map[pickupDateKey].push(order)
+            return map
+        }, {})
+    }, [calendarPickupEntries])
+
+    const userPickupDateSet = useMemo(() => new Set(Object.keys(ordersByPickupDate)), [ordersByPickupDate])
 
     const name = user?.fullName || 'Guest'
 
@@ -367,10 +489,11 @@ export default function Dashboard() {
         else if (slotInfo && ratio >= 0.7) classes.push('day-near-full')
         else if (slotInfo) classes.push('day-available')
 
-        if (userBookingDateSet.has(key)) classes.push('day-user-booking')
+        if (userPickupDateSet.has(key)) classes.push('day-user-booking')
+        if (hoveredDate === key) classes.push('day-preview')
         if (selectedDate === key) classes.push('day-selected')
         return classes
-    }, [slotSummaryByDate, selectedDate, userBookingDateSet])
+    }, [slotSummaryByDate, hoveredDate, selectedDate, userPickupDateSet])
 
     const dayCellContent = useCallback((arg) => {
         const key = toKey(arg.date)
@@ -383,17 +506,38 @@ export default function Dashboard() {
         const dateStatus = slotInfo?.dateStatus
         const ratio = max > 0 ? used / max : 0
 
-        const hasUserBooking = userBookingDateSet.has(key)
+        const pickupOrders = ordersByPickupDate[key] || []
+        const hasUserPickup = pickupOrders.length > 0
         const isSelected = selectedDate === key
+        const remaining = slotInfo?.remaining ?? Math.max(0, max - used)
+        const dateLabel = new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        const availabilityText = slotInfo?.isDateBlocked
+            ? (slotInfo?.unavailableReason || 'This date is not available.')
+            : isFull
+                ? 'Fully booked'
+                : hasSlotInfo
+                    ? `${remaining} slot(s) available`
+                    : 'No slot data'
         let fillColor = 'green'
         if (ratio >= 1) fillColor = 'red'
         else if (ratio >= 0.7) fillColor = 'orange'
         else if (ratio >= 0.5) fillColor = 'yellow'
         return (
-            <div className="day-cell-inner">
+            <div
+                className="day-cell-inner"
+                onMouseEnter={() => showDateDetails(key)}
+                onMouseLeave={() => hideDateDetails(key)}
+                onFocus={() => showDateDetails(key)}
+                onBlur={() => hideDateDetails(key)}
+                tabIndex={0}
+            >
                 <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
                 <div className="day-cell-spacer" />
-                {hasUserBooking && !isSelected && <span className="pickup-badge">Order</span>}
+                {hasUserPickup && !isSelected && (
+                    <span className="pickup-badge">
+                        {pickupOrders.length > 1 ? `${pickupOrders.length} Pickups` : 'Pickup'}
+                    </span>
+                )}
                 {dateStatus && dateStatus.status && <span className={`date-status-badge ${dateStatus.status}`}>{dateStatus.label}</span>}
                 {hasSlotInfo && isFull && <span className="full-badge">Full</span>}
                 {hasSlotInfo && !isFull && used > 0 && !isSelected && (
@@ -404,74 +548,65 @@ export default function Dashboard() {
                         <span className="slot-text">{used}/{max}</span>
                     </div>
                 )}
+                <div className="dashboard-date-bubble">
+                    <p className="bubble-date">{dateLabel}</p>
+                    <p className={`bubble-availability ${slotInfo?.isDateBlocked || isFull ? 'is-unavailable' : 'is-available'}`}>
+                        {availabilityText}
+                    </p>
+                    {hasSlotInfo && (
+                        <p className="bubble-slots">
+                            Slots: {used}/{max}
+                        </p>
+                    )}
+                    {hasUserPickup && (
+                        <div className="bubble-pickups">
+                            <p className="bubble-section-label">
+                                {pickupOrders.length > 1 ? 'Pickups' : 'Pickup'}
+                            </p>
+                            {pickupOrders.slice(0, 2).map((order) => {
+                                const pickupTime = getPickupSlotDisplay(order.pickupSlot, '')
+                                return (
+                                    <button
+                                        key={order._id || order.orderId || order.bookingId}
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation()
+                                            navigate(`/order/${order._id}`)
+                                        }}
+                                        className="bubble-pickup-item"
+                                    >
+                                        <span className="bubble-pickup-title">{getTrackingDisplayName(order)}</span>
+                                        <span className="bubble-pickup-meta">
+                                            {getTrackingReferenceCode(order, { includeHash: false })}
+                                            {pickupTime ? ` | ${pickupTime}` : ''}
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                            {pickupOrders.length > 2 && (
+                                <p className="bubble-more">+{pickupOrders.length - 2} more pickups</p>
+                            )}
+                        </div>
+                    )}
+                    {!hasUserPickup && (
+                        <p className="bubble-no-pickup">No pickup scheduled</p>
+                    )}
+                </div>
             </div>
         )
-    }, [slotSummaryByDate, selectedDate, userBookingDateSet])
+    }, [slotSummaryByDate, selectedDate, ordersByPickupDate, showDateDetails, hideDateDetails, navigate])
 
     const selectedSlotInfo = selectedDate ? (slotSummaryByDate[selectedDate] || EMPTY_SLOT_INFO) : null
     const selectedDateBlocked = Boolean(selectedSlotInfo?.isDateBlocked)
     const selectedDateFull = Boolean(selectedSlotInfo?.isFull)
-    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked && !selectedDateFull)
+    const selectedDateBookable = Boolean(selectedDate && !selectedDateBlocked)
     const selectedDateLabel = selectedDate
         ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : ''
+    const selectedPickupOrders = selectedDate ? (ordersByPickupDate[selectedDate] || []) : []
 
     return (
         <>
-            <style>{`
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame {
-                    background-color: #f8fafc !important;
-                    cursor: pointer !important;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-number {
-                    color: #94a3b8 !important;
-                    opacity: 0.6;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day-frame {
-                    cursor: pointer;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past .fc-daygrid-day-frame:hover {
-                    background: #f3f4f6 !important;
-                    transform: none !important;
-                    box-shadow: none !important;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame {
-                    background: linear-gradient(135deg, #ecfdf5, #dcfce7);
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-available:not(.day-selected) .fc-daygrid-day-frame:hover {
-                    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-available:not(.day-selected) .fc-daygrid-day-frame {
-                    background: linear-gradient(135deg, #ecfdf5, #dcfce7);
-                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-near-full:not(.day-selected) .fc-daygrid-day-frame {
-                    background: linear-gradient(135deg, #fffbeb, #fef3c7);
-                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-user-booking.day-full:not(.day-selected) .fc-daygrid-day-frame {
-                    background: linear-gradient(135deg, #fef2f2, #fee2e2);
-                    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .fc-daygrid-day-number,
-                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .fc-daygrid-day-number:hover {
-                    color: #ffffff !important;
-                    background: transparent !important;
-                    opacity: 1 !important;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past.day-selected .fc-daygrid-day-number,
-                .dashboard-interactive-past .calendar-wrapper .fc .fc-day-past.day-selected .fc-daygrid-day-number:hover {
-                    color: #ffffff !important;
-                    background: transparent !important;
-                    opacity: 1 !important;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .slot-text {
-                    color: #e2e8f0;
-                }
-                .dashboard-interactive-past .calendar-wrapper .fc .day-selected .slot-bar {
-                    background: rgba(255, 255, 255, 0.35);
-                }
-            `}</style>
             <main className="dashboard-interactive-past p-3 sm:p-4 md:p-6 lg:p-8">
 
                 {/* ── Hero Banner ── */}
@@ -486,58 +621,75 @@ export default function Dashboard() {
                         <div className="w-32 h-32 sm:w-44 sm:h-44 rounded-full border-[14px] sm:border-[18px] border-current" />
                     </div>
 
-                    <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6">
-                        <div className="flex flex-col gap-2 sm:gap-3">
-                            <div>
-                                <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1">
-                                    {getGreeting()}, <span className="text-blue-300">{name}</span>
-                                </h2>
-                                <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
-                            </div>
-                            <div className="flex items-center justify-center gap-2 bg-white/5 text-white/90 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm w-[350px] sm:w-[300px]">
-                                Ready to Order? Book Now
-                            </div>
-                        </div>
-
-                        {/* Stat Cards */}
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full lg:w-auto">
-                            {[
-                                { label: 'My Orders', value: stats.active, sub: 'Active', icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
-                                { label: 'Pickup Ready', value: stats.pickupReady || 0, sub: 'Awaiting', icon: MdCheckCircle, bg: 'bg-green-400/20', text: 'text-green-300' },
-                                { label: 'Total Orders', value: stats.total || 0, sub: 'Lifetime', icon: MdInventory, bg: 'bg-orange-400/20', text: 'text-orange-300' },
-                            ].map(({ label, value, sub, icon: Icon, bg, text }) => (
-                                <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all">
-                                    {/* Mobile: icon + label on top */}
-                                    <div className="flex items-center gap-1.5 sm:hidden">
-                                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
-                                            <Icon size={13} className={text} />
-                                        </div>
-                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
-                                    </div>
-                                    {loading ? (
-                                        <SkeletonBlock className="h-6 w-10 bg-white/15 sm:hidden" />
-                                    ) : (
-                                        <p className="text-white text-xl font-bold leading-tight sm:hidden">{value}</p>
-                                    )}
-                                    <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
-                                        <Icon size={18} className={text} />
-                                    </div>
-                                    <div className="hidden sm:block">
-                                        <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                                        {loading ? (
-                                            <>
-                                                <SkeletonBlock className="my-1 h-5 w-12 bg-white/15" />
-                                                <SkeletonBlock className="h-2.5 w-14 bg-white/10" />
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p className="text-white text-xl font-bold leading-tight">{value}</p>
-                                                <p className="text-slate-500 text-[10px]">{sub}</p>
-                                            </>
-                                        )}
-                                    </div>
+                    <div className="relative z-10 flex flex-col gap-4 sm:gap-6">
+                        {/* Greeting + Button + Stat Cards Row */}
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
+                            {/* Left Column: Greeting + Button */}
+                            <div className="flex flex-col items-start gap-3 sm:gap-4">
+                                {/* Greeting Text */}
+                                <div className="flex flex-col gap-1">
+                                    <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1">
+                                        {getGreeting()}, <span className="text-blue-300">{name}</span>
+                                    </h2>
+                                    <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
                                 </div>
-                            ))}
+
+
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation()
+                                        openBookingForm()
+                                    }}
+                                    className="flex items-center justify-start gap-2 bg-white text-[#0F172A] font-semibold py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:bg-slate-50 transition-colors border border-slate-200"
+                                >
+                                    <MdAdd size={18} className="shrink-0 text-[#0f172a]" />
+                                    <span className="dashboard-book-now-label">
+                                        Book Now
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Right: Stat Cards */}
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full sm:w-auto">
+                                {[
+                                    { label: 'My Orders', value: stats.active, sub: 'Active', icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                                    { label: 'Pickup Ready', value: stats.pickupReady || 0, sub: 'Awaiting', icon: MdCheckCircle, bg: 'bg-green-400/20', text: 'text-green-300' },
+                                    { label: 'Total Orders', value: stats.total || 0, sub: 'Lifetime', icon: MdInventory, bg: 'bg-orange-400/20', text: 'text-orange-300' },
+                                ].map(({ label, value, sub, icon: Icon, bg, text }) => (
+                                    <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all">
+                                        {/* Mobile: icon + label on top */}
+                                        <div className="flex items-center gap-1.5 sm:hidden">
+                                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
+                                                <Icon size={13} className={text} />
+                                            </div>
+                                            <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide">{label}</p>
+                                        </div>
+                                        {loading ? (
+                                            <SkeletonBlock className="h-6 w-10 bg-white/15 sm:hidden" />
+                                        ) : (
+                                            <p className="text-white text-xl font-bold leading-tight sm:hidden">{value}</p>
+                                        )}
+                                        <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
+                                            <Icon size={18} className={text} />
+                                        </div>
+                                        <div className="hidden sm:block">
+                                            <p className="text-slate-400 text-[10px] font-medium">{label}</p>
+                                            {loading ? (
+                                                <>
+                                                    <SkeletonBlock className="my-1 h-5 w-12 bg-white/15" />
+                                                    <SkeletonBlock className="h-2.5 w-14 bg-white/10" />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-white text-xl font-bold leading-tight">{value}</p>
+                                                    <p className="text-slate-500 text-[10px]">{sub}</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -561,8 +713,8 @@ export default function Dashboard() {
                             <div className="mt-4 pt-3 border-t border-gray-100">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
                                     {[
-                                        { color: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Selected Date' },
-                                        { color: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-1 ring-blue-300/40', label: 'Your Booking' },
+                                        { color: 'bg-gradient-to-r from-blue-500 to-blue-600', label: 'Date Details' },
+                                        { color: 'bg-gradient-to-r from-blue-100 to-blue-200 ring-1 ring-blue-300/40', label: 'Pickup Date' },
                                         { color: 'bg-gradient-to-r from-green-400 to-green-500', label: 'Available' },
                                         { color: 'bg-gradient-to-r from-amber-300 to-orange-400', label: 'Near Full' },
                                         { color: 'bg-gradient-to-r from-red-400 to-red-500', label: 'Fully Booked' },
@@ -577,21 +729,54 @@ export default function Dashboard() {
                                 </div>
                             </div>
                             {selectedDate && (
-                                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Date</p>
-                                            <p className="mt-0.5 text-sm font-extrabold text-slate-800">{selectedDateLabel}</p>
-                                            <p className={`mt-1 text-[11px] font-semibold ${selectedDateBookable ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                {selectedDateBookable
-                                                    ? `${selectedSlotInfo?.remaining ?? 0} slot(s) available`
-                                                    : selectedSlotInfo?.unavailableReason || 'This date is not available.'}
-                                            </p>
-                                        </div>
-                                        <div className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-bold ${selectedDateBookable ? 'text-emerald-600' : 'text-red-600'}`}>
-                                            Book Now & Secure Your Slot
-                                        </div>
+                                <div
+                                    ref={selectedDateDetailsRef}
+                                    className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3"
+                                    onMouseEnter={() => showDateDetails(selectedDate)}
+                                    onMouseLeave={() => hideDateDetails(selectedDate)}
+                                >
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date Details</p>
+                                        <p className="mt-0.5 text-sm font-extrabold text-slate-800">{selectedDateLabel}</p>
+                                        <p className={`mt-1 text-[11px] font-semibold ${selectedDateBlocked ? 'text-red-600' : selectedDateFull ? 'text-amber-700' : 'text-emerald-600'}`}>
+                                            {selectedDateBlocked
+                                                ? selectedSlotInfo?.unavailableReason || 'This date is not available.'
+                                                : selectedDateFull
+                                                    ? selectedSlotInfo?.capacityWarning || CAPACITY_WARNING
+                                                    : `${selectedSlotInfo?.remaining ?? 0} slot(s) available`}
+                                        </p>
                                     </div>
+                                    {selectedPickupOrders.length > 0 && (
+                                        <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                                                {selectedPickupOrders.length > 1 ? 'Pickups' : 'Pickup'}
+                                            </p>
+                                            {selectedPickupOrders.map((order) => {
+                                                const pickupTime = getPickupSlotDisplay(order.pickupSlot, '')
+                                                return (
+                                                    <button
+                                                        key={order._id || order.orderId || order.bookingId}
+                                                        type="button"
+                                                        onClick={() => navigate(`/order/${order._id}`)}
+                                                        className="flex w-full items-center justify-between gap-3 rounded-lg border border-blue-100 bg-white px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40"
+                                                    >
+                                                        <span className="min-w-0">
+                                                            <span className="block truncate text-xs font-extrabold text-slate-800">
+                                                                {getTrackingDisplayName(order)}
+                                                            </span>
+                                                            <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-400">
+                                                                {getTrackingReferenceCode(order, { includeHash: false })}
+                                                            </span>
+                                                            <span className="mt-0.5 block truncate text-[10px] font-semibold text-blue-500">
+                                                                Pickup: {selectedDateLabel}{pickupTime ? ` | ${pickupTime}` : ''}
+                                                            </span>
+                                                        </span>
+                                                        <StatusBadge status={order.status} />
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -722,8 +907,11 @@ export default function Dashboard() {
                                 <p className="text-gray-400 font-semibold text-sm">No active orders</p>
                                 <p className="text-gray-300 text-xs mt-1">Book a service to get started</p>
                                 <button
-                                    onClick={() => setShowBooking(true)}
-                                    className="mt-4 flex items-center gap-1.5 bg-[#0F172A] text-white text-xs font-bold px-4 py-2 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors"
+                                    onClick={() => {
+                                        setBookingFormRequested(true)
+                                        setShowBooking(true)
+                                    }}
+                                    className="mt-4 w-full lg:w-auto lg:max-w-max inline-flex items-center justify-center gap-1.5 bg-[#0F172A] text-white text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors whitespace-nowrap"
                                 >
                                     <MdAdd size={14} /> Book Now
                                 </button>
@@ -733,9 +921,16 @@ export default function Dashboard() {
                 </div>
             </main>
 
-            <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} initialBookingDate={selectedDate || ''} />
+            <BookingModal
+                isOpen={showBooking && bookingFormRequested}
+                onClose={() => {
+                    setShowBooking(false)
+                    setBookingFormRequested(false)
+                    setBookingInitialDate('')
+                }}
+                initialBookingDate={bookingInitialDate}
+            />
         </>
     )
 }
-
 

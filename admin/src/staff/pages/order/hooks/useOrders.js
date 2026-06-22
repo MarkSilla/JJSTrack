@@ -135,7 +135,11 @@ const useOrders = () => {
         );
 
         if (filterStatus !== 'All') {
-            result = result.filter(o => getStaffDerivedStatus(o) === filterStatus);
+            if (filterStatus === 'Over Capacity') {
+                result = result.filter(o => Boolean(o?.isOverCapacity));
+            } else {
+                result = result.filter(o => getStaffDerivedStatus(o) === filterStatus);
+            }
         }
 
         return [...result].sort((a, b) => {
@@ -146,10 +150,11 @@ const useOrders = () => {
     }, [searchQuery, filterStatus, staffOrders, sortOption]);
 
     const counts = useMemo(() => {
-        const c = { All: 0, Pending: 0, Overdue: 0, 'In Progress': 0, Completed: 0, Released: 0 };
+        const c = { All: 0, Pending: 0, Overdue: 0, 'Over Capacity': 0, 'In Progress': 0, Completed: 0, Released: 0 };
         staffOrders.forEach(o => {
             const s = getStaffDerivedStatus(o);
             if (c[s] !== undefined) c[s]++;
+            if (o?.isOverCapacity) c['Over Capacity']++;
             c.All++;
         });
         return c;

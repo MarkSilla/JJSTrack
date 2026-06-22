@@ -130,6 +130,14 @@ export default function OrderDetailPage() {
     });
     const [pickupScheduleRequest, setPickupScheduleRequest] = useState(null);
 
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        confirmText: 'Confirm',
+    });
+
     const [orderTracking, setOrderTracking] = useState(() => {
         try {
             const savedTracking = localStorage.getItem('orderTracking');
@@ -431,14 +439,20 @@ export default function OrderDetailPage() {
             return;
         }
 
-        if (!window.confirm(`Are you sure you want to mark step "${stepLabel}" as completed?`)) {
-            return;
-        }
-
-        persistStepProgress(targetOrder, stepIndex).catch((progressError) => {
-            console.error('Failed to update production progress:', progressError);
-            toast.error(progressError?.response?.data?.message || 'Failed to update production progress.');
+        setConfirmDialog({
+            open: true,
+            title: 'Mark step completed',
+            message: `Are you sure you want to mark step "${stepLabel}" as completed?`,
+            confirmText: 'Yes, mark completed',
+            onConfirm: () => {
+                setConfirmDialog((d) => ({ ...d, open: false }));
+                persistStepProgress(targetOrder, stepIndex).catch((progressError) => {
+                    console.error('Failed to update production progress:', progressError);
+                    toast.error(progressError?.response?.data?.message || 'Failed to update production progress.');
+                });
+            },
         });
+        return;
     }, [orders, persistStepProgress]);
 
     const handleManageAssignments = useCallback((targetOrderId) => {
@@ -495,13 +509,6 @@ export default function OrderDetailPage() {
         }
         if (!validateAssignments(targetModalOrder, assignmentDraft)) return;
 
-        const rolesText = Object.entries(assignmentDraft)
-            .filter(([_, name]) => name)
-            .map(([role, name]) => `• ${role}: ${name}`)
-            .join('\n');
-        if (!window.confirm(`Are you sure you want to save the following team assignments?\n${rolesText}`)) {
-            return;
-        }
 
         try {
             setAssignmentSaving(true);
@@ -546,55 +553,60 @@ export default function OrderDetailPage() {
         const targetOrder = orders.find((order) => (order.id || order._id) === targetOrderId);
         if (!targetOrder) return false;
 
-        if (!window.confirm(`Are you sure you want to update the pickup schedule for this booking to ${pickupDate} (${pickupSlot || 'default slot'})?`)) {
-            return false;
-        }
+        setConfirmDialog({
+            open: true,
+            title: 'Confirm pickup schedule',
+            message: `Are you sure you want to set the pickup schedule to ${pickupDate} (${pickupSlot || 'default slot'})?`,
+            confirmText: 'Confirm',
+            onConfirm: async () => {
+                setConfirmDialog((d) => ({ ...d, open: false }));
+                const entityId = targetOrder._id || targetOrder.id;
+                const linkedBookingId =
+                    targetOrder?.bookingId?._id ||
+                    targetOrder?.bookingId?.id ||
+                    targetOrder?.bookingId ||
+                    null;
 
-        const entityId = targetOrder._id || targetOrder.id;
-        const linkedBookingId =
-            targetOrder?.bookingId?._id ||
-            targetOrder?.bookingId?.id ||
-            targetOrder?.bookingId ||
-            null;
-
-        try {
-            if (targetOrder.isBooking) {
-                await bookingApi.updateBooking(entityId, {
-                    pickupDate,
-                    status: 'Pending',
-                    ...(pickupSlot ? { pickupSlot } : {}),
-                });
-            } else {
-                const updates = [
-                    orderApi.updateOrder(entityId, {
-                        pickupDate,
-                        ...(pickupSlot ? { pickupSlot } : {}),
-                        estimatedCompletion: pickupDate,
-                        status: 'Pending',
-                    }),
-                ];
-
-                if (linkedBookingId) {
-                    updates.push(
-                        bookingApi.updateBooking(linkedBookingId, {
+                try {
+                    if (targetOrder.isBooking) {
+                        await bookingApi.updateBooking(entityId, {
                             pickupDate,
                             status: 'Pending',
                             ...(pickupSlot ? { pickupSlot } : {}),
-                        })
-                    );
+                        });
+                    } else {
+                        const updates = [
+                            orderApi.updateOrder(entityId, {
+                                pickupDate,
+                                ...(pickupSlot ? { pickupSlot } : {}),
+                                estimatedCompletion: pickupDate,
+                                status: 'Pending',
+                            }),
+                        ];
+
+                        if (linkedBookingId) {
+                            updates.push(
+                                bookingApi.updateBooking(linkedBookingId, {
+                                    pickupDate,
+                                    status: 'Pending',
+                                    ...(pickupSlot ? { pickupSlot } : {}),
+                                })
+                            );
+                        }
+
+                        await Promise.all(updates);
+                    }
+
+                    await fetchAll(true);
+                    toast.success('Pickup schedule updated successfully.');
+                } catch (scheduleError) {
+                    console.error('Failed to update pickup schedule:', scheduleError);
+                    toast.error(scheduleError?.response?.data?.message || 'Failed to update schedule. Please try again.');
                 }
+            },
+        });
 
-                await Promise.all(updates);
-            }
-
-            await fetchAll(true);
-            toast.success('Pickup schedule updated successfully.');
-            return true;
-        } catch (scheduleError) {
-            console.error('Failed to update pickup schedule:', scheduleError);
-            toast.error(scheduleError?.response?.data?.message || 'Failed to update schedule. Please try again.');
-            return false;
-        }
+        return false;
     };
 
     if (loading) {
@@ -701,6 +713,41 @@ export default function OrderDetailPage() {
                 onClose={closeAssignmentModal}
                 onConfirm={handleAssignmentModalConfirm}
             />
+
+            {confirmDialog.open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+                    <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+                        <div className="px-6 py-5">
+                            <h3 className="text-lg font-black text-slate-900">{confirmDialog.title || 'Confirm'}</h3>
+                            <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">{confirmDialog.message}</p>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
+                            <button
+                                onClick={() => setConfirmDialog((d) => ({ ...d, open: false }))}
+                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    try {
+                                        const result = confirmDialog.onConfirm && confirmDialog.onConfirm();
+                                        if (result && result.then) {
+                                            // If promise returned, let it run without awaiting here
+                                        }
+                                    } finally {
+                                        // ensure the dialog closes immediately
+                                        setConfirmDialog((d) => ({ ...d, open: false }));
+                                    }
+                                }}
+                                className="rounded-2xl border-none bg-slate-900 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                            >
+                                {confirmDialog.confirmText || 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

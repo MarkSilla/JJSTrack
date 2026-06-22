@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { bookingApi } from '../../../services/bookingApi';
+import { toast } from 'sonner';
 import { STATUS_CONFIG, TYPE_CONFIG, PRIORITY_CONFIG, SERVICE_STEPS, EMPLOYEE_POOL } from './Constants.js';
 import { getDerivedStatus, getActiveStepIndex } from '../../../utils/helpers.js';
 
@@ -121,17 +123,50 @@ export default function OrderList({
     assignments,
     fullWidth = false,
 }) {
+    const [processingIds, setProcessingIds] = useState({});
+    const [completedIds, setCompletedIds] = useState({});
+
+    const setProcessing = (id, v) => setProcessingIds((s) => ({ ...s, [id]: v }));
+
+    const handleApprove = async (orderId) => {
+        try {
+            setProcessing(orderId, true);
+            await bookingApi.updateBooking(orderId, { status: 'Approved' });
+            toast.success('Booking approved.');
+            // Mark as completed to hide buttons and order immediately
+            setCompletedIds((s) => ({ ...s, [orderId]: true }));
+        } catch (err) {
+            console.error('Failed to approve booking:', err);
+            toast.error(err?.response?.data?.message || 'Failed to approve booking.');
+            setProcessing(orderId, false);
+        }
+    };
+
+    const handleDecline = async (orderId) => {
+        try {
+            setProcessing(orderId, true);
+            await bookingApi.updateBooking(orderId, { status: 'Cancelled', cancellationReason: 'Declined by admin (over capacity)' });
+            toast.success('Booking declined.');
+            // Mark as completed to hide buttons and order immediately
+            setCompletedIds((s) => ({ ...s, [orderId]: true }));
+        } catch (err) {
+            console.error('Failed to decline booking:', err);
+            toast.error(err?.response?.data?.message || 'Failed to decline booking.');
+            setProcessing(orderId, false);
+        }
+    };
     const [showSort, setShowSort] = useState(false);
     const [showServiceTypeSort, setShowServiceTypeSort] = useState(false);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
     const [activeMobileMenu, setActiveMobileMenu] = useState(null);
-    const statusTabs = ['All Records', 'For Approval', 'Pending', 'In Progress', 'Released', 'Completed', 'Overdue', 'Cancelled'];
+    const statusTabs = ['All Records', 'For Approval', 'Pending', 'In Progress', 'Released', 'Completed', 'Over Capacity', 'Overdue', 'Cancelled'];
     const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortOption)?.label || 'Sort by';
     const currentServiceTypeLabel = SERVICE_TYPE_OPTIONS.find(o => o.value === serviceTypeFilter)?.label || 'Service: All';
     const quickStatusFilters = [
         { label: 'All', value: 'All' },
         { label: 'Pending Approval', value: 'For Approval' },
         { label: 'Completed', value: 'Completed' },
+        { label: 'Over Capacity', value: 'Over Capacity' },
         { label: 'Overdue', value: 'Overdue' },
         { label: 'Cancelled', value: 'Cancelled' },
     ];
@@ -333,7 +368,7 @@ export default function OrderList({
                     {quickStatusFilters.map((status) => {
                         const isActive = filterStatus === status.value;
                         const count = counts[status.value] ?? 0;
-                        const showCount = (status.value === 'For Approval' || status.value === 'Overdue') && count > 0;
+                        const showCount = (status.value === 'For Approval' || status.value === 'Overdue' || status.value === 'Over Capacity') && count > 0;
 
                         return (
                             <button
@@ -372,7 +407,7 @@ export default function OrderList({
                 {filteredOrders.length === 0 ? (
                     <div className="text-center py-10 text-gray-400 text-sm font-medium">No orders found</div>
                 ) : (
-                    filteredOrders.map(order => {
+                    filteredOrders.filter(order => !completedIds[order.id || order._id]).map(order => {
                         const orderId = order.id || order._id;
                         const orderDisplayId = order.displayId || order.orderId || order.bookingId || orderId;
                         const isSelected = activeOrderId === orderId;
@@ -420,6 +455,14 @@ export default function OrderList({
                         const secondaryLabel = isNamedGroupBooking
                             ? (order.customer || order.customerName || 'Unknown')
                             : (order.item || order.itemType || 'Item');
+                        const isOverCapacity = Boolean(order.isOverCapacity);
+                        const capacityLabel = order.capacitySnapshot
+                            ? `${order.capacitySnapshot.totalBookedBefore || order.capacitySnapshot.bookedBefore || 0}/${order.capacitySnapshot.totalMax || order.capacitySnapshot.max || 10}`
+                            : '';
+                        const canDecideOverCapacity =
+                            isOverCapacity &&
+                            (derivedStatus === 'For Approval' || rawStatus.includes('pending'));
+                        const isProcessingDecision = Boolean(processingIds[orderId]);
 
                         return (
                             <div
@@ -446,17 +489,22 @@ export default function OrderList({
                                                     Booking
                                                 </span>
                                             )}
-                                            {priorityConf && order.priority === 'Rush' && (
-                                                <span className={`flex items-center text-[9px] font-black uppercase px-2 py-1 rounded border tracking-wider ${priorityConf.color}`}>
-                                                    {PriorityIcon && <PriorityIcon size={12} className="mr-1" />}
-                                                    {order.priority}
+                                            {isOverCapacity && (
+                                                <span
+                                                    className="text-[9px] font-black uppercase px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700 tracking-wider"
+                                                    title={capacityLabel ? `Capacity: ${capacityLabel} full` : 'Over recommended capacity'}
+                                                >
+                                                    Over Capacity
                                                 </span>
                                             )}
+
+                                        </div>
+                                    </div>
+
+                                            {/* status badges (priority and status) */}
                                             <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
                                                 {statusConf.label}
                                             </span>
-                                        </div>
-                                    </div>
 
                                     <h3 className="text-sm font-bold text-gray-900 mb-1 leading-tight truncate" title={primaryLabel}>
                                         {primaryLabel}
@@ -493,6 +541,47 @@ export default function OrderList({
                                                     </span>
                                                 </div>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {isOverCapacity && (
+                                        <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                                        {capacityLabel ? `Capacity: ${capacityLabel} Full` : 'Recommended capacity reached'}
+                                                    </p>
+                                                    <p className="mt-0.5 text-[10px] font-semibold text-amber-800">
+                                                        Admin approval required before accepting extra workload.
+                                                    </p>
+                                                </div>
+                                                {canDecideOverCapacity && !completedIds[orderId] && (
+                                                    <div className="flex gap-2 shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            disabled={isProcessingDecision}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleDecline(orderId);
+                                                            }}
+                                                            className="h-8 rounded-lg border border-amber-300 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
+                                                        >
+                                                            {isProcessingDecision ? 'Saving...' : 'Decline'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={isProcessingDecision}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleApprove(orderId);
+                                                            }}
+                                                            className="h-8 rounded-lg border border-emerald-500 bg-emerald-600 px-3 text-[10px] font-black uppercase tracking-wide text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
+                                                        >
+                                                            {isProcessingDecision ? 'Saving...' : 'Approve'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
