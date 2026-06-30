@@ -625,28 +625,25 @@ export default function Dashboard() {
                         {/* Greeting + Button + Stat Cards Row */}
                         <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
                             {/* Left Column: Greeting + Button */}
-                            <div className="flex flex-col items-start gap-3 sm:gap-4">
-                                {/* Greeting Text */}
-                                <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-2 sm:gap-3">
+                                <div>
                                     <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-white mb-1">
                                         {getGreeting()}, <span className="text-blue-300">{name}</span>
                                     </h2>
-                                    <p className="text-slate-400 text-xs sm:text-sm">Here's what's happening with your orders.</p>
+                                    <p className="text-slate-400 text-xs sm:text-sm">
+                                        Here's what's happening with your orders.
+                                    </p>
                                 </div>
-
 
                                 <button
                                     type="button"
                                     onClick={(event) => {
-                                        event.stopPropagation()
-                                        openBookingForm()
+                                        event.stopPropagation();
+                                        openBookingForm();
                                     }}
-                                    className="flex items-center justify-start gap-2 bg-white text-[#0F172A] font-semibold py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:bg-slate-50 transition-colors border border-slate-200"
+                                    className="flex items-center justify-center gap-2 bg-white text-[#0F172A] hover:bg-blue-50 font-semibold py-2 sm:py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm transition-colors cursor-pointer shadow-lg w-[335px] sm:w-[200px]"
                                 >
-                                    <MdAdd size={18} className="shrink-0 text-[#0f172a]" />
-                                    <span className="dashboard-book-now-label">
-                                        Book Now
-                                    </span>
+                                    Book Now <MdAdd size={16} />
                                 </button>
                             </div>
 

@@ -3,11 +3,11 @@ import notificationModel from '../models/notificationModel.js';
 import { createNotification } from './notificationHelpers.js';
 import { getPrimaryRepairOptionName } from './repairDisplay.js';
 
-const USE_TEST_MODE = false;          
-const TEST_DELAY_MS  = 10 * 1000;   
-const PROD_LEAD_DAYS = 1;            
-const DAY_MS         = 24 * 60 * 60 * 1000;
-const SYNC_INTERVAL_MS = 30 * 1000; 
+const USE_TEST_MODE = false;
+const TEST_DELAY_MS = 10 * 1000;
+const PROD_LEAD_DAYS = 1;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SYNC_INTERVAL_MS = 30 * 1000;
 let dropoffReminderInterval = null;
 let dropoffReminderSyncPromise = null;
 
@@ -55,11 +55,11 @@ const formatPickupDate = (pickupDate) =>
 const buildDropoffReminderMessage = (booking, pickupDate) => {
   const bookingReference = getBookingReferenceLabel(booking);
   const bookingTypeLabel = getBookingTypeLabel(booking?.bookingType);
-  const subjectLabel     = getBookingSubjectLabel(booking);
-  const pickupDateLabel  = formatPickupDate(pickupDate);
-  const slotSuffix       = booking?.pickupSlot ? ` at ${String(booking.pickupSlot).trim()}` : '';
+  const subjectLabel = getBookingSubjectLabel(booking);
+  const pickupDateLabel = formatPickupDate(pickupDate);
+  const slotSuffix = booking?.pickupSlot ? ` at ${String(booking.pickupSlot).trim()}` : '';
 
-  return `Reminder: Please drop off your item(s) for your ${bookingTypeLabel} booking — ${subjectLabel} (${bookingReference}) — at JJS Sportswear as soon as possible. Your scheduled pickup is on ${pickupDateLabel}${slotSuffix}.`;
+  return `Reminder: Please drop off your item(s) for your ${bookingTypeLabel} booking — ${subjectLabel} (${bookingReference}) — at JJSportswear as soon as possible. Your scheduled pickup is on ${pickupDateLabel}${slotSuffix}.`;
 };
 
 const syncDropoffReminderNotificationsInternal = async () => {
@@ -213,8 +213,8 @@ export const startDropoffReminderScheduler = () => {
   );
 
   const interval = USE_TEST_MODE
-    ? SYNC_INTERVAL_MS           
-    : 60 * 60 * 1000;           
+    ? SYNC_INTERVAL_MS
+    : 60 * 60 * 1000;
 
   dropoffReminderInterval = setInterval(() => {
     syncDropoffReminderNotifications().catch((err) =>
