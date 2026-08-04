@@ -15,6 +15,7 @@ import pricingRoutes from './routes/pricingRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import pageViewRoutes from './routes/pageViewRoutes.js';
 import chatConversationModel from './models/chatConversationModel.js';
 import { attachInventorySocketServer } from './utils/inventorySocketServer.js';
 import { attachNotificationSocketServer } from './utils/notificationSocketServer.js';
@@ -89,6 +90,9 @@ app.use('/api/chat', chatRoutes);
 
 // Notification Routes
 app.use('/api/notifications', notificationRoutes);
+
+// Page View Routes
+app.use('/api/page-views', pageViewRoutes);
 
 const startServer = async () => {
   await connectDB();

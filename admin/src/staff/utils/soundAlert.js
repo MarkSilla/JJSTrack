@@ -2,7 +2,7 @@ let sharedAudioContext = null;
 let unlockHandlersAttached = false;
 let pendingAlertType = null;
 
-const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'touchstart'];
+const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'click', 'mousemove', 'scroll', 'focus'];
 
 const getAudioContext = () => {
   if (typeof window === 'undefined') return null;
@@ -27,48 +27,56 @@ const detachUnlockListeners = () => {
   unlockHandlersAttached = false;
 };
 
-const playBeep = (audioContext, frequency, duration, delay = 0) => {
+// Ultra-clean crystal glass pop notification sound (iOS / macOS style)
+const playGlassPop = (audioContext, startFreq = 880, endFreq = 1174.66, delay = 0, volume = 0.05) => {
   const startTime = audioContext.currentTime + delay;
+  const duration = 0.08;
+
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
+
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(startFreq, startTime);
+  oscillator.frequency.exponentialRampToValueAtTime(endFreq, startTime + 0.04);
+
+  // Soft 4ms attack curve to eliminate any click/pop artifacts, followed by smooth decay
+  gainNode.gain.setValueAtTime(0.0001, startTime);
+  gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.004);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
   oscillator.connect(gainNode);
   gainNode.connect(audioContext.destination);
 
-  oscillator.frequency.setValueAtTime(frequency, startTime);
-  oscillator.type = 'sine';
-
-  gainNode.gain.setValueAtTime(0.0001, startTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.28, startTime + 0.01);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
   oscillator.start(startTime);
-  oscillator.stop(startTime + duration);
+  oscillator.stop(startTime + duration + 0.01);
 };
 
 const runAlertPattern = (audioContext, type = 'warning') => {
   try {
+    // Ultra-clean, modern, subtle glass notification sounds
+    if (type === 'lowStock' || type === 'dueSoon') {
+      // Soft double glass tap
+      playGlassPop(audioContext, 783.99, 1046.50, 0, 0.05); // G5 -> C6
+      playGlassPop(audioContext, 1046.50, 1318.51, 0.07, 0.05); // C6 -> E6
+      return true;
+    }
+
+    if (type === 'outOfStock' || type === 'overdue') {
+      // Crystal 3-tap cascade
+      playGlassPop(audioContext, 659.25, 880.00, 0, 0.05); // E5 -> A5
+      playGlassPop(audioContext, 880.00, 1174.66, 0.06, 0.05); // A5 -> D6
+      playGlassPop(audioContext, 1174.66, 1567.98, 0.12, 0.05); // D6 -> G6
+      return true;
+    }
+
     if (type === 'workflow') {
-      playBeep(audioContext, 680, 0.2, 0);
-      playBeep(audioContext, 860, 0.22, 0.2);
-      playBeep(audioContext, 1040, 0.26, 0.42);
+      // Crisp single glass chime
+      playGlassPop(audioContext, 880.00, 1318.51, 0, 0.06); // A5 -> E6
       return true;
     }
 
-    if (type === 'dueSoon') {
-      playBeep(audioContext, 760, 0.24, 0);
-      playBeep(audioContext, 920, 0.24, 0.24);
-      return true;
-    }
-
-    if (type === 'overdue') {
-      playBeep(audioContext, 920, 0.28, 0);
-      playBeep(audioContext, 1120, 0.28, 0.22);
-      playBeep(audioContext, 920, 0.36, 0.48);
-      return true;
-    }
-
-    playBeep(audioContext, 900, 0.3, 0);
+    // Default clean single pop notification
+    playGlassPop(audioContext, 880.00, 1174.66, 0, 0.05); // A5 -> D6
     return true;
   } catch (error) {
     console.error('Error creating alert sound:', error);
@@ -110,6 +118,12 @@ export const initAlertSound = () => {
   unlockHandlersAttached = true;
 };
 
+// Auto-initialize on import so listeners are registered immediately
+if (typeof window !== 'undefined') {
+  initAlertSound();
+}
+
+// Sound Alert Utility for inventory and order notifications
 export const playAlertSound = async (type = 'warning') => {
   try {
     const audioContext = getAudioContext();
@@ -128,13 +142,13 @@ export const playAlertSound = async (type = 'warning') => {
       }
     }
 
-    if (audioContext.state !== 'running') {
-      pendingAlertType = type;
-      return false;
+    if (audioContext.state === 'running') {
+      pendingAlertType = null;
+      return runAlertPattern(audioContext, type);
     }
 
     pendingAlertType = null;
-    return runAlertPattern(audioContext, type);
+    return false;
   } catch (error) {
     console.error('Error playing alert sound:', error);
     return false;

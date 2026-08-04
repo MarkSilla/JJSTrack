@@ -4,7 +4,8 @@ import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 import { AuthContext } from '../context/Context'
 import { RouteSkeleton } from '../components/SkeletonLoaders'
-import { ArrowRight, ClipboardList, Clock, Download, Mail, MapPin, Navigation, Package, Phone, Ruler, Users } from 'lucide-react'
+import { ArrowRight, ClipboardList, Clock, Download, Eye, Mail, MapPin, Navigation, Package, Phone, Ruler, Users } from 'lucide-react'
+import { pageViewApi } from '../../services/pageViewApi.js'
 import shop from '../assets/shop_result.png'
 import jjsLogo from '../assets/jjs_result.png'
 import panorama from '../assets/panoramajjs_result.webp'
@@ -30,6 +31,40 @@ const LandingPage = () => {
   })
   const { loading } = useContext(AuthContext)
   const navigate = useNavigate()
+  const [pageViews, setPageViews] = useState(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const trackPageVisit = async () => {
+      try {
+        const hasViewedInSession = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('jjstrack_landing_viewed')
+        let res
+        if (hasViewedInSession) {
+          res = await pageViewApi.getPageViewCount()
+        } else {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('jjstrack_landing_viewed', '1')
+          }
+          res = await pageViewApi.recordPageView()
+        }
+
+        if (isMounted && res?.success && typeof res.count === 'number') {
+          setPageViews(res.count)
+        } else {
+          const fetchRes = await pageViewApi.getPageViewCount()
+          if (isMounted && fetchRes?.success && typeof fetchRes.count === 'number') {
+            setPageViews(fetchRes.count)
+          }
+        }
+      } catch (err) {
+        console.error('Error tracking page view:', err)
+      }
+    }
+    trackPageVisit()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {
@@ -104,8 +139,9 @@ const LandingPage = () => {
             }
 
             .hero-services-track {
-              animation: heroServicesMarquee 24s linear infinite;
+              animation: heroServicesMarquee 60s linear infinite;
             }
+              
           `}</style>
           <div className="absolute inset-0 bg-[#020617]">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
@@ -151,12 +187,12 @@ const LandingPage = () => {
               </button>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-white/10 bg-[#020617]/70 py-3 backdrop-blur-md sm:py-4">
+          <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-white/10 bg-[#020617]/70 py-2 backdrop-blur-md sm:py-1">
             <div className="hero-services-track flex w-max whitespace-nowrap">
               {[...Array(4)].map((_, index) => (
                 <span
                   key={index}
-                  className="px-6 text-[11px] font-black uppercase tracking-[0.24em] text-white/80 sm:px-8 sm:text-xs"
+                  className="px-2 text-[11px] font-black uppercase tracking-[0.32em] text-white/40 sm:px-4 sm:text-[9px]"
                 >
                   {heroServices}
                 </span>
@@ -360,7 +396,16 @@ const LandingPage = () => {
         </Suspense>
       </main>
       <Footer />
-    </div >
+      <div className="absolute bottom-10 right-4 lg:bottom-8 lg:right-4 lg:group flex flex-col items-end">
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0000000]/90 border border-slate-700/60 text-slate-300 backdrop-blur-md shadow-lg shadow-black/40 text-[11px] font-semibold tracking-wide transition-all duration-300 group-hover:scale-105 group-hover:border-white/30 group-hover:text-white cursor-default"
+          title="Viewers Count"
+        >
+          <Eye className="w-3.5 h-3.5 text-white transition-transform group-hover:scale-105" />
+          <span>{typeof pageViews === 'number' ? pageViews.toLocaleString() : 0}</span>
+        </div>
+      </div>
+    </div>
   )
 }
 

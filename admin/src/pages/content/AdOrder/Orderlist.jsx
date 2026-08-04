@@ -364,41 +364,6 @@ export default function OrderList({
                     </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {quickStatusFilters.map((status) => {
-                        const isActive = filterStatus === status.value;
-                        const count = counts[status.value] ?? 0;
-                        const showCount = (status.value === 'For Approval' || status.value === 'Overdue' || status.value === 'Over Capacity') && count > 0;
-
-                        return (
-                            <button
-                                key={status.value}
-                                type="button"
-                                onClick={() => {
-                                    setFilterStatus(isActive ? 'All' : status.value);
-                                    setIsFilterOpen(false);
-                                    setShowSort(false);
-                                    setShowServiceTypeSort(false);
-                                    setMobileFilterOpen(false);
-                                    setActiveMobileMenu(null);
-                                }}
-                                className={`h-7 rounded-full border px-2.5 text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer
-                                    ${isActive
-                                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-blue-200 hover:text-blue-700'
-                                    }`}
-                            >
-                                <span>{status.label}</span>
-                                {showCount && (
-                                    <span className="min-w-5 h-5 px-1 rounded-full flex items-center justify-center bg-red-600 text-[9px] font-black text-white shadow-sm">
-                                        {count}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-
 
             </div>
 
@@ -501,10 +466,10 @@ export default function OrderList({
                                         </div>
                                     </div>
 
-                                            {/* status badges (priority and status) */}
-                                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
-                                                {statusConf.label}
-                                            </span>
+                                    {/* status badges (priority and status) */}
+                                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md tracking-wider ${statusConf.color}`}>
+                                        {statusConf.label}
+                                    </span>
 
                                     <h3 className="text-sm font-bold text-gray-900 mb-1 leading-tight truncate" title={primaryLabel}>
                                         {primaryLabel}

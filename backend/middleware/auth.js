@@ -5,7 +5,7 @@ import userModel from '../models/userModel.js';
 export const authMiddleware = async (req, res, next) => {
   try {
     console.log('AuthMiddleware: Checking authorization...');
-    const token = req.headers.authorization?.split(' ')[1]; 
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
       console.log('Auth Error: No token provided');
@@ -35,12 +35,12 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     console.log('Auth Success: userId =', req.userId, '| Calling next()...');
-    
+
     if (typeof next !== 'function') {
       console.error('ERROR: next is not a function in authMiddleware!');
       throw new Error('next is not a function');
     }
-    
+
     next();
   } catch (error) {
     console.error('Auth Middleware Error:', error.message);
@@ -52,7 +52,7 @@ export const authMiddleware = async (req, res, next) => {
 export const adminMiddleware = async (req, res, next) => {
   try {
     const user = await getRequestActor(req);
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -73,7 +73,7 @@ export const adminMiddleware = async (req, res, next) => {
 export const staffMiddleware = async (req, res, next) => {
   try {
     const user = await getRequestActor(req);
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -94,7 +94,7 @@ export const staffMiddleware = async (req, res, next) => {
 export const userRoleMiddleware = async (req, res, next) => {
   try {
     const user = await getRequestActor(req);
-    
+
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
