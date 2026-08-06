@@ -181,10 +181,10 @@ const LandingPage = () => {
               </button>
               <button
                 onClick={handleDownloadApp}
-                className="group relative inline-flex min-h-[44px] items-center justify-center gap-3 px-8 py-4 rounded-xl border border-slate-700 bg-slate-900/80 text-white font-bold uppercase text-xs tracking-wider backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 hover:scale-105 active:scale-95 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                className="group relative inline-flex min-h-[44px] items-center justify-center gap-3 px-4 py-4 lg:px-8 lg:py-4 rounded-xl border border-slate-700 bg-slate-900/80 text-white font-bold uppercase text-[10px] tracking-wider backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 hover:scale-105 active:scale-95 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 type="button"
               >
-                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
+                <Download className="h-4 w-4 transition-transform" />
                 Download App
               </button>
             </div>
@@ -194,7 +194,7 @@ const LandingPage = () => {
               {[...Array(4)].map((_, index) => (
                 <span
                   key={index}
-                  className="px-4 text-xs font-bold uppercase tracking-widest text-slate-300"
+                  className="px-2 text-[8px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-300"
                 >
                   {heroServices}
                 </span>
@@ -357,9 +357,6 @@ const LandingPage = () => {
                   </div>
 
                   <h3 className="text-2xl font-playfair font-bold text-white mb-4">Jennoel-Jennyl Sportswear</h3>
-                  <p className="text-xs text-slate-300/80 leading-relaxed mb-5">
-                    Also searched as JJS Track, JJSTrack, JJS-Track, and JJS Sportswear.
-                  </p>
 
                   <address className="not-italic space-y-4 mb-8">
                     <div className="flex items-start gap-3">
