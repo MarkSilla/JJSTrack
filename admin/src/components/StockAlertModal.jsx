@@ -390,7 +390,7 @@ export function StockAlertModal({
           </div>
         </div>
 
-        <div className="overflow-y-auto p-3 flex flex-col gap-2.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600/40">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2.5 custom-scrollbar scroll-smooth">
           {activeSections
             .filter((section) => section.items.length > 0)
             .map((section) => {
@@ -423,7 +423,11 @@ export function StockAlertModal({
                     />
                   </button>
 
-                  {isExpanded ? section.items.map(section.renderRow) : null}
+                  {isExpanded ? (
+                    <div className="max-h-[320px] sm:max-h-[360px] overflow-y-auto custom-scrollbar border-t border-slate-700/40 divide-y divide-white/[0.05]">
+                      {section.items.map(section.renderRow)}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}

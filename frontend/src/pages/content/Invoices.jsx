@@ -47,47 +47,39 @@ const typeBadge = (type) => {
 }
 
 const InvoiceHero = ({ paidAmount, paidCount, totalAmount, invoiceCount }) => (
-    <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
+    <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden mb-8">
         <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
             <GiSewingMachine size={140} />
         </div>
-        <div className="absolute bottom-2 left-6 opacity-[0.07] text-white -rotate-12 pointer-events-none">
+        <div className="absolute bottom-2 left-6 opacity-[0.05] text-white -rotate-12 pointer-events-none">
             <MdReceipt size={110} />
         </div>
-        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.04] text-white pointer-events-none">
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 opacity-[0.03] text-white pointer-events-none">
             <div className="w-44 h-44 rounded-full border-[18px] border-current" />
         </div>
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                    Invoices
-                </h2>
-                <p className="text-slate-400 text-sm">View and manage your receipts & invoices.</p>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
+                    Invoices & Receipts
+                </h1>
+                <p className="text-slate-300 text-sm font-medium">View and download your official receipts & order billing summaries.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full lg:w-auto">
                 {[
-                    { label: 'Paid', value: `\u20b1${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-400/20 text-emerald-300' },
-                    { label: 'Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Paid only', icon: MdReceipt, color: 'bg-amber-400/20 text-amber-300' },
-                    { label: 'Total', value: `\u20b1${totalAmount.toLocaleString('en-PH')}`, sub: `${invoiceCount} Invoices`, icon: MdReceipt, color: 'bg-blue-400/20 text-blue-300' },
+                    { label: 'Total Paid', value: `\u20b1${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-500/20 text-emerald-400' },
+                    { label: 'Paid Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Completed', icon: MdReceipt, color: 'bg-amber-500/20 text-amber-400' },
+                    { label: 'Grand Total', value: `\u20b1${totalAmount.toLocaleString('en-PH')}`, sub: `${invoiceCount} Total`, icon: MdReceipt, color: 'bg-blue-500/20 text-blue-400' },
                 ].map(({ label, value, sub, icon: Icon, color }) => (
-                    <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
-                        <div className="flex items-center gap-1.5 sm:hidden">
-                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${color.split(' ')[0]}`}>
-                                <Icon size={13} className={color.split(' ')[1]} />
-                            </div>
-                            <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
-                        </div>
-                        <p className="text-white text-base font-bold leading-tight sm:hidden">{value}</p>
-
-                        <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
+                    <div key={label} className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-3.5 flex flex-col items-start gap-1.5 hover:bg-white/15 transition-all duration-200 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color.split(' ')[0]}`}>
                             <Icon size={18} className={color.split(' ')[1]} />
                         </div>
-                        <div className="hidden sm:block">
-                            <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                            <p className="text-white text-base font-bold leading-tight">{value}</p>
-                            <p className="text-slate-500 text-[10px]">{sub}</p>
+                        <div>
+                            <p className="text-slate-400 text-xs font-medium leading-tight">{label}</p>
+                            <p className="text-white text-base sm:text-lg font-bold leading-tight mt-0.5">{value}</p>
+                            <p className="text-slate-400 text-[11px] font-medium">{sub}</p>
                         </div>
                     </div>
                 ))}

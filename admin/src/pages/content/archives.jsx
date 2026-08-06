@@ -17,6 +17,7 @@ import { bookingApi } from '../../services/bookingApi.js';
 import { orderApi } from '../../services/orderApi.js';
 import OrderRecordDetail from './OrderRecordDetail.jsx';
 import { buildArchivedRecords } from './orderRecordUtils.js';
+import { StatCard as SharedStatCard, EmptyState } from '../../components/ui';
 
 const SORT_OPTIONS = [
     { value: 'newest', label: 'Newest to Oldest' },
@@ -27,33 +28,21 @@ const SORT_OPTIONS = [
 
 const STATUS_OPTIONS = ['All', 'Released', 'Cancelled'];
 
-function StatCard({ icon: Icon, label, value, sub, color }) {
-    const colors = {
-        amber: { accent: '#D97706', bgAccent: '#FFFBEB' },
-        blue: { accent: '#2563EB', bgAccent: '#EFF6FF' },
-        rose: { accent: '#E11D48', bgAccent: '#FFF1F2' },
-        slate: { accent: '#475569', bgAccent: '#F8FAFC' },
+function StatCard({ icon, label, value, sub, color }) {
+    const colorMap = {
+        amber: '#D97706',
+        blue: '#2563EB',
+        rose: '#E11D48',
+        slate: '#475569',
     };
-    const palette = colors[color] || colors.amber;
-
     return (
-        <div
-            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)' }}
-        >
-            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: palette.accent }} />
-            <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: palette.bgAccent }}>
-                        <Icon size={13} color={palette.accent} strokeWidth={2.5} className="sm:hidden" />
-                        <Icon size={16} color={palette.accent} strokeWidth={2.2} className="hidden sm:block" />
-                    </div>
-                    <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-                </div>
-            </div>
-            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">{value}</div>
-            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
-        </div>
+        <SharedStatCard
+            icon={icon}
+            label={label}
+            value={value}
+            sub={sub}
+            accentColor={colorMap[color] || '#D97706'}
+        />
     );
 }
 
@@ -273,15 +262,11 @@ export default function ArchivedItems() {
 
             <div className="flex-1 overflow-hidden px-4 lg:px-6 py-4 flex flex-col gap-3 min-h-0">
                 {archivedItems.length === 0 && !isRefreshing && (
-                    <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 text-center p-12">
-                        <div className="w-16 h-16 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-center mb-4">
-                            <Archive size={28} className="text-amber-300" />
-                        </div>
-                        <h3 className="text-base font-bold text-gray-800 mb-1">No Archived Records Yet</h3>
-                        <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
-                            Released and cancelled records archived by admin will appear here.
-                        </p>
-                    </div>
+                    <EmptyState
+                        icon={Archive}
+                        title="No Archived Records Yet"
+                        description="Completed, released, or cancelled bookings archived by administration will automatically be preserved here."
+                    />
                 )}
 
                 {archivedItems.length > 0 && (

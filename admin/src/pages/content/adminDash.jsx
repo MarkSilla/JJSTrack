@@ -1,10 +1,18 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, } from "recharts";
-import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, } from "lucide-react";
+import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, ChevronUp, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, } from "lucide-react";
 import { bookingApi } from "../../services/bookingApi";
 import { inventoryApi } from "../../services/inventoryApi";
 import { DashboardSkeleton } from "../../components/SkeletonLoaders.jsx";
+import {
+  StatCard,
+  StatusBadge,
+  DataCard,
+  EmptyState,
+  FilterBar,
+  SectionHeader,
+} from "../../components/ui";
 import {
   getPickupSlotBucket,
   getPickupSlotDisplay,
@@ -111,19 +119,6 @@ const DAILY_BOOKING_BUCKETS = [
 const getDailyBookingBucket = (timeValue) =>
   getPickupSlotBucket(timeValue, "No Time");
 
-const BADGE_CLASSES = {
-  Confirmed: "bg-blue-100 text-blue-700",
-  Pending: "bg-amber-100 text-amber-700",
-  "In-Progress": "bg-violet-100 text-violet-700",
-  Complete: "bg-emerald-100 text-emerald-700",
-  Released: "bg-cyan-100 text-cyan-700",
-  "Cancel/Incomplete": "bg-red-100 text-red-600",
-  Overdue: "bg-rose-100 text-rose-700 border border-rose-200",
-  Repair: "bg-orange-100 text-orange-700",
-  "Team Jersey": "bg-indigo-100 text-indigo-700",
-  Organization: "bg-teal-100 text-teal-700",
-};
-
 const FILTER_OPTIONS = [
   { label: "Today", value: "time" },
   { label: "By Date", value: "date" },
@@ -169,59 +164,6 @@ const CustomDot = ({ cx, cy, fill }) => (
   <circle cx={cx} cy={cy} fill={fill} stroke="#fff" strokeWidth={2} />
 );
 
-function FilterDropdown({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const selected = FILTER_OPTIONS.find((o) => o.value === value);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-gray-600 bg-slate-100 hover:bg-slate-200 rounded-lg border-none cursor-pointer transition-colors"
-      >
-        <Filter size={11} />
-        {selected?.label}
-        <ChevronDown
-          size={11}
-          style={{
-            transition: "transform 0.2s",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-          }}
-        />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-100 z-50 min-w-[175px] py-1">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-3.5 py-2 text-[11px] font-medium transition-colors border-none cursor-pointer ${value === opt.value
-                ? "bg-blue-50 text-blue-700 font-semibold"
-                : "bg-white text-gray-700 hover:bg-slate-50"
-                }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) {
   const handleCardClick = () => {
     if (!isClickable || !onViewOrder) return;
@@ -243,60 +185,54 @@ function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) 
       onKeyDown={handleCardKeyDown}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`flex gap-3 border border-slate-100 rounded-xl px-2 py-2 transition-all duration-150 group ${isClickable ? "cursor-pointer hover:bg-blue-50/30 focus:outline-none focus-visible:outline-none" : ""}`}
+      className={`flex items-start gap-3 border border-slate-100/90 rounded-xl p-3 bg-white transition-saas ${
+        isClickable ? "cursor-pointer hover:bg-slate-50/80 hover:border-slate-200 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none" : ""
+      }`}
     >
-      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-        <CalendarDays size={13} className="text-blue-500" />
+      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+        <CalendarDays size={15} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="flex flex-col-2 gap-4 ">
-              <div className="text-[12px] font-bold text-gray-900 truncate">{appt.service}</div>
-              <span
-                className={`text-[9px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap ${BADGE_CLASSES[appt.status] ?? "bg-gray-100 text-gray-500"
-                  }`}
-              >
-                {appt.status}
-              </span>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-slate-900 truncate">{appt.service}</span>
+              <StatusBadge status={appt.status} size="xs" />
               {appt.isOverCapacity && (
-                <span
-                  className="text-[9px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap bg-amber-100 text-amber-700 border border-amber-200"
-                  title={appt.capacityLabel ? `Capacity: ${appt.capacityLabel} full` : "Over recommended capacity"}
-                >
-                  Over Capacity
-                </span>
+                <StatusBadge status="overdue" label="Over Capacity" size="xs" />
               )}
             </div>
-            <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-0.5">
-              <User size={9} className="shrink-0" /> <span className="truncate">{appt.customer}</span>
-              <span className="text-gray-300 mx-0.5 shrink-0">|</span>
-              <Scissors size={9} className="shrink-0" /> <span className="truncate">{appt.tailor}</span>
+            <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+              <span className="flex items-center gap-1">
+                <User size={11} className="text-slate-400 shrink-0" />
+                <span className="truncate">{appt.customer}</span>
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="flex items-center gap-1">
+                <Scissors size={11} className="text-slate-400 shrink-0" />
+                <span className="truncate">{appt.tailor}</span>
+              </span>
             </div>
-            <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
-              <Clock size={9} className="shrink-0" /> {appt.time}
-              <span className="text-gray-300 ml-1">{appt.date}</span>
+            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+              <Clock size={11} className="shrink-0" />
+              <span>{appt.time}</span>
+              <span className="text-slate-300">•</span>
+              <span>{appt.date}</span>
             </div>
-            {appt.isOverCapacity && (
-              <div className="text-[10px] text-amber-700 flex items-center gap-1 mt-1 font-semibold">
-                <AlertTriangle size={9} className="shrink-0" />
-                {appt.capacityLabel ? `Capacity: ${appt.capacityLabel} Full` : "Recommended capacity reached"}
-              </div>
-            )}
           </div>
-          <div className="flex text-center items-center justify-center ">
-            {showView && (
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onViewOrder && onViewOrder(appt.orderId);
-                }}
-                className="flex items-center gap-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-bold rounded-md border-none cursor-pointer transition-colors"
-              >
-                <Eye size={12} /> View
-              </button>
-            )}
-          </div>
+          {showView && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onViewOrder && onViewOrder(appt.orderId);
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg transition-saas border-none cursor-pointer"
+            >
+              <Eye size={12} />
+              <span>View</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -314,102 +250,93 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [overdueFilter, setOverdueFilter] = useState("all");
+  const [showAllMobileMetrics, setShowAllMobileMetrics] = useState(false);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [bookingResponse, inventoryResponse] = await Promise.allSettled([
+        bookingApi.getAllBookings(),
+        inventoryApi.getAllInventory(),
+      ]);
+      const rawBookings =
+        bookingResponse.status === "fulfilled"
+          ? bookingResponse.value?.bookings || bookingResponse.value?.data || []
+          : [];
+      const rawInventory =
+        inventoryResponse.status === "fulfilled"
+          ? inventoryResponse.value
+          : [];
+
+      const normalizedAppointments = (Array.isArray(rawBookings) ? rawBookings : [])
+        .map((booking) => {
+          const dateObj = parseDateValue(booking.pickupDate || booking.createdAt);
+          const linkedOrderId =
+            (typeof booking.orderId === "string"
+              ? booking.orderId
+              : booking.orderId?._id) || booking._id;
+
+          const dropStep = Array.isArray(booking.steps)
+            ? booking.steps.find(s => String(s.label || s.step || "").toLowerCase().includes("drop") && s.date)
+            : null;
+          const dropDateObj = dropStep ? parseDateValue(dropStep.date) : null;
+
+          return {
+            id: booking._id,
+            service: getBookingDisplayLabel(booking),
+            date: formatDateLabel(dateObj),
+            dateObj,
+            dropDateObj,
+            time: getPickupSlotDisplay(booking.pickupSlot, "No Time"),
+            status: normalizeAppointmentStatus(booking.status),
+            customer: booking.contact?.fullName || "Unknown Customer",
+            tailor: booking.assignedTailor || "Unassigned",
+            orderId: linkedOrderId,
+            bookingType: booking.bookingType,
+            createdAtValue: parseDateValue(booking.createdAt),
+            isOverCapacity: Boolean(booking.isOverCapacity),
+            capacityLabel: booking.capacitySnapshot
+              ? `${booking.capacitySnapshot.totalBookedBefore || booking.capacitySnapshot.bookedBefore || 0}/${booking.capacitySnapshot.totalMax || booking.capacitySnapshot.max || 10}`
+              : "",
+          };
+        })
+        .sort(
+          (a, b) =>
+            (b.createdAtValue?.getTime?.() || 0) -
+            (a.createdAtValue?.getTime?.() || 0)
+        );
+
+      setAppointments(normalizedAppointments);
+
+      const normalizedInventory = (Array.isArray(rawInventory) ? rawInventory : []).map((item) => ({
+        ...item,
+        stock: Number(item?.stock) || 0,
+        unitPrice: Number(item?.unitPrice) || 0,
+        currentStockValue: Number(item?.currentStockValue) || 0,
+      }));
+      setInventory(normalizedInventory);
+
+      const failedSources = [];
+      if (bookingResponse.status === "rejected") failedSources.push("bookings");
+      if (inventoryResponse.status === "rejected") failedSources.push("inventory");
+      if (failedSources.length > 0) {
+        setError(`Some dashboard data failed to load (${failedSources.join(", ")}).`);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard data:", err);
+      setAppointments([]);
+      setInventory([]);
+      setError("Failed to load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [bookingResponse, inventoryResponse] = await Promise.allSettled([
-          bookingApi.getAllBookings(),
-          inventoryApi.getAllInventory(),
-        ]);
-        const rawBookings =
-          bookingResponse.status === "fulfilled"
-            ? bookingResponse.value?.bookings || bookingResponse.value?.data || []
-            : [];
-        const rawInventory =
-          inventoryResponse.status === "fulfilled"
-            ? inventoryResponse.value
-            : [];
-
-        const normalizedAppointments = (Array.isArray(rawBookings) ? rawBookings : [])
-          .map((booking) => {
-            const dateObj = parseDateValue(booking.pickupDate || booking.createdAt);
-            const linkedOrderId =
-              (typeof booking.orderId === "string"
-                ? booking.orderId
-                : booking.orderId?._id) || booking._id;
-
-            const dropStep = Array.isArray(booking.steps)
-              ? booking.steps.find(s => String(s.label || s.step || "").toLowerCase().includes("drop") && s.date)
-              : null;
-            const dropDateObj = dropStep ? parseDateValue(dropStep.date) : null;
-
-            return {
-              id: booking._id,
-              service: getBookingDisplayLabel(booking),
-              date: formatDateLabel(dateObj),
-              dateObj,
-              dropDateObj,
-              time: getPickupSlotDisplay(booking.pickupSlot, "No Time"),
-              status: normalizeAppointmentStatus(booking.status),
-              customer: booking.contact?.fullName || "Unknown Customer",
-              tailor: booking.assignedTailor || "Unassigned",
-              orderId: linkedOrderId,
-              bookingType: booking.bookingType,
-              createdAtValue: parseDateValue(booking.createdAt),
-              isOverCapacity: Boolean(booking.isOverCapacity),
-              capacityLabel: booking.capacitySnapshot
-                ? `${booking.capacitySnapshot.totalBookedBefore || booking.capacitySnapshot.bookedBefore || 0}/${booking.capacitySnapshot.totalMax || booking.capacitySnapshot.max || 10}`
-                : "",
-            };
-          })
-          .sort(
-            (a, b) =>
-              (b.createdAtValue?.getTime?.() || 0) -
-              (a.createdAtValue?.getTime?.() || 0)
-          );
-
-        if (!isMounted) return;
-
-        setAppointments(normalizedAppointments);
-
-        const normalizedInventory = (Array.isArray(rawInventory) ? rawInventory : []).map((item) => ({
-          ...item,
-          stock: Number(item?.stock) || 0,
-          unitPrice: Number(item?.unitPrice) || 0,
-          currentStockValue: Number(item?.currentStockValue) || 0,
-        }));
-        setInventory(normalizedInventory);
-
-        const failedSources = [];
-        if (bookingResponse.status === "rejected") failedSources.push("bookings");
-        if (inventoryResponse.status === "rejected") failedSources.push("inventory");
-        if (failedSources.length > 0) {
-          setError(`Some dashboard data failed to load (${failedSources.join(", ")}).`);
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-        if (isMounted) {
-          setAppointments([]);
-          setInventory([]);
-          setError("Failed to load dashboard data.");
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
     fetchDashboardData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [fetchDashboardData]);
 
   const todayDate = useMemo(() => {
     const d = new Date();
@@ -676,7 +603,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     ];
   }, [appointments]);
 
-  const STAT_CARDS = [
+  const STAT_CARDS = useMemo(() => [
     {
       icon: CalendarClock,
       label: "Today's Schedule",
@@ -703,6 +630,19 @@ export default function AdminDashboard({ onNavigateToOrders }) {
       onClick: () =>
         navigateWithDashboardPreset("/admin/orders", {
           filterStatus: "In Progress",
+        }),
+    },
+    {
+      icon: AlertTriangle,
+      label: "Overdue",
+      value: apptOverdue.length,
+      sub: "Past due date",
+      accent: "#DC2626",
+      bgAccent: "#FEF2F2",
+      trend: null,
+      onClick: () =>
+        navigateWithDashboardPreset("/admin/orders", {
+          filterStatus: "Overdue",
         }),
     },
     {
@@ -744,9 +684,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           filterStatus: "All Records",
         }),
     },
-  ];
+  ], [todaySchedule, todayDateKey, inProgressCount, apptOverdue.length, completeCount, cancelIncomplete, totalOrders]);
 
-  const INVENTORY_STAT_CARDS = [
+  const INVENTORY_STAT_CARDS = useMemo(() => [
     {
       icon: Package,
       label: "Inventory Items",
@@ -817,7 +757,22 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           statFilter: "All",
         }),
     },
-  ];
+  ], [inventoryStats]);
+
+  const ALL_MOBILE_CARDS = useMemo(() => [
+    ...STAT_CARDS,
+    ...INVENTORY_STAT_CARDS,
+  ], [STAT_CARDS, INVENTORY_STAT_CARDS]);
+
+  const PRIORITY_MOBILE_CARDS = useMemo(() => [
+    STAT_CARDS[0], // Today's Schedule
+    STAT_CARDS[1], // In-Progress
+    STAT_CARDS[2], // Overdue
+    STAT_CARDS[5], // Total Orders
+    INVENTORY_STAT_CARDS[1], // Low Stock
+  ], [STAT_CARDS, INVENTORY_STAT_CARDS]);
+
+  const hiddenMetricsCount = ALL_MOBILE_CARDS.length - PRIORITY_MOBILE_CARDS.length;
 
   const handleViewOrder = (orderId) => {
     if (!orderId) {
@@ -842,8 +797,20 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
   if (error && appointments.length === 0 && inventory.length === 0) {
     return (
-      <div className="font-inter min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-sm font-semibold text-red-500">{error}</div>
+      <div className="font-inter min-h-[60vh] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
+          <AlertTriangle size={24} />
+        </div>
+        <h3 className="text-base font-extrabold text-slate-900 m-0">Unable to load dashboard data</h3>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm">{error}</p>
+        <button
+          type="button"
+          onClick={fetchDashboardData}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition-saas border-none cursor-pointer"
+        >
+          <RefreshCw size={14} />
+          <span>Try Again</span>
+        </button>
       </div>
     );
   }
@@ -852,88 +819,91 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     <div className="font-inter min-h-screen bg-slate-50">
       <div className="w-full px-2 lg:px-2 py-0">
         {error && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12px] font-medium text-amber-700">
-            {error}
+          <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchDashboardData}
+              className="text-xs font-bold text-amber-800 hover:text-amber-950 underline border-none bg-transparent cursor-pointer shrink-0"
+            >
+              Refresh
+            </button>
           </div>
         )}
 
-        <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
-          {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }, index) => (
-            <button
-              type="button"
-              key={label}
-              onClick={onClick}
-              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
-                }`}
-              style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-            >
-              <div
-                className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
-                style={{ background: accent }}
-              />
-              <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                  <div
-                    className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`}
-                    style={{ background: bgAccent }}
-                  >
-                    <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
-                    <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-                  </div>
-                  <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight ${index === 4 ? 'max-w-none' : 'max-w-none'}`}>{label}</span>
-                </div>
-                {trend !== null && (
-                  <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
-                    {trend}%
-                  </div>
-                )}
-              </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
-                }`}>
-                {value}
-              </div>
-              <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{sub}</div>
-            </button>
-          ))}
+        {/* Mobile View: Priority + Expand KPI Cards (2 grids) */}
+        <div className="block sm:hidden mb-4">
+          <div className="grid grid-cols-2 gap-2.5">
+            {(showAllMobileMetrics ? ALL_MOBILE_CARDS : PRIORITY_MOBILE_CARDS).map(
+              ({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
+                <StatCard
+                  key={label}
+                  icon={Icon}
+                  label={label}
+                  value={value}
+                  sub={sub}
+                  accentColor={accent}
+                  trend={trend}
+                  onClick={onClick}
+                />
+              )
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAllMobileMetrics((prev) => !prev)}
+            className="mt-3 w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            {showAllMobileMetrics ? (
+              <>
+                <span>Show Priority Metrics Only</span>
+                <ChevronUp size={14} className="text-slate-500" />
+              </>
+            ) : (
+              <>
+                <span>View All Metrics ({hiddenMetricsCount})</span>
+                <ChevronDown size={14} className="text-slate-500" />
+              </>
+            )}
+          </button>
         </div>
 
-        <div className="grid grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
-          {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend, onClick }, index) => (
-            <button
-              type="button"
-              key={label}
-              onClick={onClick}
-              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer border-none text-left w-full focus:outline-none focus-visible:outline-none ${index === 4 ? 'col-span-4 lg:col-span-1' : 'col-span-1 lg:col-span-1'
-                }`}
-              style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-            >
-              <div
-                className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
-                style={{ background: accent }}
+        {/* Desktop View: Full Operations & Inventory Grids */}
+        <div className="hidden sm:block">
+          {/* Operations KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+            {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
+              <StatCard
+                key={label}
+                icon={Icon}
+                label={label}
+                value={value}
+                sub={sub}
+                accentColor={accent}
+                trend={trend}
+                onClick={onClick}
               />
-              <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                  <div
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
-                    style={{ background: bgAccent }}
-                  >
-                    <Icon size={14} color={accent} strokeWidth={2.5} className="sm:hidden" />
-                    <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-                  </div>
-                  <span className="text-[10px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-                </div>
-                {trend !== null && (
-                  <div className="hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 bg-slate-100 text-slate-600">
-                    {trend}%
-                  </div>
-                )}
-              </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 mt-1 sm:mt-[-14px] text-[18px] sm:text-[22px] pl-[40px] sm:pl-[45px] text-left`}>
-                {value}
-              </div>
-              <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[40px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
-            </button>
-          ))}
+            ))}
+          </div>
+
+          {/* Inventory KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+            {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
+              <StatCard
+                key={label}
+                icon={Icon}
+                label={label}
+                value={value}
+                sub={sub}
+                accentColor={accent}
+                trend={trend}
+                onClick={onClick}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
@@ -1088,119 +1058,117 @@ export default function AdminDashboard({ onNavigateToOrders }) {
         </div>
 
         {overCapacityRequests.length > 0 && (
-          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
               <div>
-                <p className="m-0 text-xs font-black uppercase tracking-wider text-amber-700">Over Capacity</p>
-                <p className="mt-0.5 text-xs font-normal text-amber-800">
-                  {overCapacityRequests.length} request{overCapacityRequests.length !== 1 ? "s" : ""} pending approval
+                <p className="m-0 text-xs font-black uppercase tracking-wider text-amber-800">Over Capacity Warning</p>
+                <p className="mt-0.5 text-xs font-medium text-amber-700">
+                  {overCapacityRequests.length} booking request{overCapacityRequests.length !== 1 ? "s" : ""} exceed recommended capacity
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-2xl font-black text-amber-600">{overCapacityRequests.length}</span>
+            <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+              <span className="text-xl font-black text-amber-700">{overCapacityRequests.length}</span>
               <button
+                type="button"
                 onClick={() => {
                   navigate('/admin/orders', { state: { filterStatus: 'Over Capacity' } });
                 }}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg transition-colors border-none cursor-pointer"
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl transition-saas border-none cursor-pointer min-h-[44px] flex items-center"
               >
-                View
+                Review Requests
               </button>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CalendarDays size={14} className="text-blue-500" />
-                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Today's Schedule</h2>
-                </div>
-                <p className="mt-0.5 text-[10px] text-gray-400">
-                  {TODAY} - {apptToday.length} appointment{apptToday.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 rounded-full px-2.5 py-0.5">
-                Today
-              </span>
-            </div>
+          {/* Today's Schedule Card */}
+          <DataCard
+            title="Today's Schedule"
+            subtitle={`${TODAY} • ${apptToday.length} appointment${apptToday.length !== 1 ? "s" : ""}`}
+            icon={CalendarDays}
+            headerExtra={
+              <StatusBadge status="confirmed" label="Today" size="xs" />
+            }
+          >
             <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
               {apptToday.length === 0 ? (
-                <div className="text-gray-400 text-center py-8 text-[12px]">No appointments today</div>
+                <EmptyState
+                  title="No appointments today"
+                  description="There are no scheduled pickups or drop-offs for today."
+                />
               ) : (
                 apptToday.map((appt) => (
                   <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>
-          </div>
+          </DataCard>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <div>
-                <div className="flex items-center gap-2">
-                  <CalendarDays size={14} className="text-red-500" />
-                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Overdue Dates</h2>
-                </div>
-                <p className="mt-0.5 text-[10px] text-gray-400">
-                  {apptOverdue.length} pending record{apptOverdue.length !== 1 ? "s" : ""}
-                </p>
-              </div>
+          {/* Overdue Dates Card */}
+          <DataCard
+            title="Overdue Dates"
+            subtitle={`${apptOverdue.length} pending record${apptOverdue.length !== 1 ? "s" : ""}`}
+            icon={CalendarDays}
+            action={
               <select
                 value={overdueFilter}
                 onChange={(e) => setOverdueFilter(e.target.value)}
-                className="text-[10px] font-bold bg-slate-100 border-none rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-red-400"
+                className="text-xs font-bold bg-slate-100 border-none rounded-xl px-2.5 py-1 text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-rose-400"
               >
                 <option value="all">All</option>
                 <option value="yesterday">Yesterday</option>
                 <option value="week">Last Week</option>
                 <option value="month">Last Month</option>
               </select>
-            </div>
+            }
+          >
             <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
               {apptOverdue.length === 0 ? (
-                <div className="text-gray-400 text-center py-8 text-[12px]">No overdue appointments</div>
+                <EmptyState
+                  title="No overdue appointments"
+                  description="Great job! All customer pickups are up to date."
+                />
               ) : (
                 apptOverdue.map((appt) => (
                   <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>
-          </div>
+          </DataCard>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between mb-3 shrink-0">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Package size={14} className="text-emerald-500" />
-                  <h2 className="m-0 text-[14px] font-extrabold text-gray-900">Complete</h2>
-                </div>
-                <p className="mt-0.5 text-[10px] text-gray-400">{filteredAllAppts.length} ready to release</p>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-32 sm:w-52 px-2 py-1 text-[10px] bg-slate-100 border-none rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none"
-                />
-              </div>
-            </div>
+          {/* Complete Card */}
+          <DataCard
+            title="Complete"
+            subtitle={`${filteredAllAppts.length} ready to release`}
+            icon={Package}
+            action={
+              <input
+                type="text"
+                placeholder="Search complete..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-32 sm:w-44 px-2.5 py-1 text-xs bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-500 rounded-xl outline-none transition-saas"
+              />
+            }
+          >
             <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
               {filteredAllAppts.length === 0 ? (
-                <div className="text-gray-400 text-center py-8 text-[12px]">No orders ready to release</div>
+                <EmptyState
+                  title="No orders ready for release"
+                  description="Completed items ready for customer pickup will appear here."
+                />
               ) : (
                 filteredAllAppts.map((appt) => (
                   <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
                 ))
               )}
             </div>
-          </div>
+          </DataCard>
         </div>
       </div>
     </div>

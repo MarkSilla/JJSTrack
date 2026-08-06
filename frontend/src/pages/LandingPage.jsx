@@ -130,16 +130,18 @@ const LandingPage = () => {
         <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
           <style>{`
             @keyframes heroServicesMarquee {
-              from {
-                transform: translateX(0);
+              0% {
+                transform: translate3d(0, 0, 0);
               }
-              to {
-                transform: translateX(-50%);
+              100% {
+                transform: translate3d(-50%, 0, 0);
               }
             }
 
             .hero-services-track {
-              animation: heroServicesMarquee 60s linear infinite;
+              animation: heroServicesMarquee 45s linear infinite;
+              will-change: transform;
+              backface-visibility: hidden;
             }
               
           `}</style>
@@ -162,134 +164,143 @@ const LandingPage = () => {
 
           <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center">
             <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom duration-700">
-              <h1 className="text-5xl md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase italic">
-                <span className="text-white">JJS</span>
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-600">TRACK</span>
+              <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-none tracking-tight uppercase italic">
+                <span className="text-white">JJS </span>
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500">TRACK</span>
               </h1>
-              <p className="text-lg md:text-xl text-slate-100/60 max-w-2xl mx-auto font-medium leading-relaxed">
-                <br className="hidden md:block" />
-                We Create, Repair, and Elevate Team and Company Uniforms.</p>
+              <p className="text-base sm:text-lg md:text-xl text-slate-200 max-w-2xl mx-auto font-medium leading-relaxed mt-4">
+                We Create, Repair, and Elevate Team and Company Uniforms.
+              </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
               <button
                 onClick={() => navigate('/signup')}
-                className="group relative px-12 py-5 bg-white text-[#020617] rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all hover:bg-blue-500 hover:text-white hover:scale-105 active:scale-95 shadow-2xl shadow-white/10"
+                className="group relative min-h-[44px] px-8 py-4 bg-blue-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
-                Sign Up Now!
+                Sign Up Now
               </button>
               <button
                 onClick={handleDownloadApp}
-                className="group relative inline-flex items-center justify-center gap-3 px-7 py-5 rounded-2xl border border-white/20 bg-white/10 text-white font-black uppercase text-xs tracking-[0.2em] backdrop-blur-md transition-all hover:bg-blue-500 hover:border-blue-400 hover:scale-105 active:scale-95 shadow-2xl shadow-blue-950/20"
+                className="group relative inline-flex min-h-[44px] items-center justify-center gap-3 px-8 py-4 rounded-xl border border-slate-700 bg-slate-900/80 text-white font-bold uppercase text-xs tracking-wider backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 hover:scale-105 active:scale-95 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 type="button"
               >
-                <Download className="h-3 w-3 transition-transform group-hover:-translate-y-0.5" />
+                <Download className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" />
                 Download App
               </button>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-white/10 bg-[#020617]/70 py-2 backdrop-blur-md sm:py-1">
+          <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-slate-800 bg-[#020617]/80 py-2.5 backdrop-blur-md">
             <div className="hero-services-track flex w-max whitespace-nowrap">
               {[...Array(4)].map((_, index) => (
                 <span
                   key={index}
-                  className="px-2 text-[11px] font-black uppercase tracking-[0.32em] text-white/40 sm:px-4 sm:text-[9px]"
+                  className="px-4 text-xs font-bold uppercase tracking-widest text-slate-300"
                 >
                   {heroServices}
                 </span>
               ))}
             </div>
           </div>
-        </section >
-        <section id="features" className="relative px-4 px-0 py-16 md:py-20 flex items-start justify-center overflow-hidden">
-          <div className="absolute inset-0 bg-[#F1F5F9]"> </div>
-          <div className="relative z-10 text-center px-0 max-w-6xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold font-playfair text-[#0F172A] mb-6 ">Everything You Need to Scale</h1>
-            <div className="border-b-2 border-yellow-400 w-16 md:w-24 mx-auto mb-4"></div>
-            <p className="text-md md:text-lg mb-12 max-w-3xl mx-auto">
+        </section>
+        <section id="features" className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-24 flex items-start justify-center overflow-hidden bg-slate-100">
+          <div className="relative z-10 text-center max-w-6xl mx-auto">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">
+              Everything You Need to Scale
+            </h2>
+            <div className="border-b-4 border-amber-400 w-16 md:w-20 mx-auto mb-6 rounded-full"></div>
+            <p className="text-base md:text-lg text-slate-600 mb-12 max-w-3xl mx-auto font-medium">
               Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
               {[
                 { icon: ClipboardList, title: 'Order Tracking', desc: 'Track every order from measurement to delivery with real-time status updates.' },
                 { icon: Users, title: 'Client Management', desc: 'Build lasting relationships with detailed client profiles and history.' },
                 { icon: Ruler, title: 'Measurements Database', desc: 'Store and access precise measurements instantly. Never lose a detail.' },
                 { icon: Package, title: 'Inventory Control', desc: 'Monitor fabric stock and supplies in real-time to prevent shortages.' }
               ].map((f, i) => (
-                <div key={i} className="group bg-white rounded-[2rem] p-10 text-left border border-gray-100 shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-20px_rgba(37,99,235,0.1)] transition-all duration-500 cursor-pointer">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-blue-600 transition-colors duration-500">
-                    <f.icon className="text-blue-600 group-hover:text-white transition-colors duration-500" size={24} />
+                <article
+                  key={i}
+                  tabIndex={0}
+                  role="article"
+                  className="group bg-white rounded-2xl p-8 text-left border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                >
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors duration-300">
+                    <f.icon className="text-blue-600 group-hover:text-white transition-colors duration-300" size={22} />
                   </div>
-                  <h3 className="text-md font-black text-[#0F172A] mb-4 tracking-tight uppercase">{f.title}</h3>
-                  <p className="text-[#64748b] text-sm font-medium leading-relaxed">{f.desc}</p>
-                </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2 tracking-tight uppercase">{f.title}</h3>
+                  <p className="text-slate-600 text-sm font-normal leading-relaxed">{f.desc}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
         <section id="services" className="relative py-16 md:py-24 overflow-hidden bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-4">
-            <div className="text-center mb-5 md:mb-12">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Our Expertise</h1>
-              <div className="border-b-2 border-yellow-400 w-16 md:w-24 mx-auto"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Our Expertise</h2>
+              <div className="border-b-4 border-amber-400 w-16 md:w-20 mx-auto rounded-full"></div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-3">
-              <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[300px] md:min-h-[350px] group cursor-pointer" onClick={() => navigate('/designs')}>
-                <div className="absolute inset-0 bg-[#0F172A]/90 ">
-                  <img src={featuredSportswear} alt="Custom Sportswear" width="1200" height="900" loading="lazy" decoding="async" className=" w-full h-full object-cover opacity-60 group-hover:opacity-80" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0F172A] via-[#0F172A]/40 to-transparent" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div
+                tabIndex={0}
+                role="button"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/designs'); } }}
+                onClick={() => navigate('/designs')}
+                className="md:col-span-2 relative rounded-2xl overflow-hidden min-h-[320px] md:min-h-[360px] group cursor-pointer border border-slate-200/60 shadow-md hover:shadow-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                <div className="absolute inset-0 bg-slate-950">
+                  <img src={featuredSportswear} alt="Custom Sportswear" width="1200" height="900" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-60 group-hover:opacity-75 group-hover:scale-105 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/60 to-transparent" />
                 </div>
                 <div className="relative z-10 p-8 md:p-12 flex flex-col justify-center h-full text-left text-white max-w-xl">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-1px bg-yellow-400" />
-                    <span className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-400">Elite Collections</span>
+                    <div className="w-8 h-0.5 bg-amber-400" />
+                    <span className="text-xs uppercase font-bold tracking-widest text-blue-400">Elite Collections</span>
                   </div>
-                  <h3 className="text-4xl md:text-6xl font-extrabold font-playfair   mb-4 leading-none uppercase tracking-tight">
-                    JJS <br /> <span className="text-blue-400">Sportswear</span> Design
+                  <h3 className="text-4xl md:text-6xl font-extrabold font-playfair mb-4 leading-none uppercase tracking-tight">
+                    JJS <span className="text-blue-400">Sportswear</span> Design
                   </h3>
-                  <p className="text-sm md:text-base text-white/80 font-medium mb-8 leading-relaxed">
+                  <p className="text-sm md:text-base text-slate-200 font-normal mb-6 leading-relaxed">
                     Elevate your team's presence with professional-grade jerseys. Fully customizable colors, logos, and elite spandex fabrics.
                   </p>
                   <div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); navigate('/designs'); }}
-                      className="inline-flex items-center gap-3 bg-blue-400 text-white px-8 py-3.5 rounded-full font-black uppercase text-xs tracking-widest hover:bg-blue-300 hover:scale-105 transition-all shadow-xl shadow-blue-400/20"
-                    >
+                    <span className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-wider group-hover:bg-blue-500 transition-colors shadow-md">
                       Explore Our Designs
                       <ArrowRight size={16} />
-                    </button>
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="relative bg-[#0F172A] rounded-none overflow-hidden min-h-[280px] md:min-h-[350px] group">
+              <div className="relative bg-slate-900 rounded-2xl overflow-hidden min-h-[280px] md:min-h-[360px] group border border-slate-800 shadow-md">
                 <div className="absolute inset-0">
-                  <img src={fit} alt="Fit Profiles" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity" />
+                  <img src={fit} alt="Fit Profiles" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-35 group-hover:opacity-50 transition-opacity" />
                 </div>
                 <div className="relative z-10 p-8 flex flex-col justify-center h-full text-left text-white">
-                  <h3 className="text-xl md:text-2xl font-bold font-playfair mb-3">Personalized <br /> Fit Profiles</h3>
-                  <p className="text-white/60 font-medium text-xs md:text-sm leading-relaxed mb-6">
+                  <h3 className="text-xl md:text-2xl font-bold font-playfair mb-3">Personalized Fit Profiles</h3>
+                  <p className="text-slate-300 font-normal text-sm leading-relaxed">
                     We securely store your measurements and style preferences to ensure every piece fits perfectly, every time you order.
                   </p>
                 </div>
               </div>
-              <div className="relative rounded-none overflow-hidden min-h-[250px] md:min-h-[320px] group">
-                <div className="absolute inset-0 bg-[#0F172A]">
-                  <img src={desi} alt="Repair" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A] to-transparent opacity-60" />
+              <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md">
+                <div className="absolute inset-0 bg-slate-900">
+                  <img src={desi} alt="Repair" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-40 group-hover:opacity-55 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent opacity-70" />
                 </div>
-                <div className="relative z-10 p-8 md:p-10 flex flex-col justify-center h-full text-left text-white">
+                <div className="relative z-10 p-8 flex flex-col justify-center h-full text-left text-white">
                   <h3 className="text-xl md:text-2xl font-bold font-playfair text-white mb-3">Clothing Repair & Alterations</h3>
-                  <p className="text-white/70 font-light text-sm md:text-base leading-relaxed">
+                  <p className="text-slate-300 font-normal text-sm leading-relaxed">
                     From resizing and hemming to zipper replacement and repairs, we restore and adjust your clothes to look and feel just right.
                   </p>
                 </div>
               </div>
-              <div className="md:col-span-2 relative rounded-none overflow-hidden min-h-[280px] md:min-h-[320px] group">
-                <div className="absolute inset-0 bg-[#0F172A]">
-                  <img src={jersey} alt="jersey" width="1200" height="800" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-opacity" />
+              <div className="md:col-span-2 relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md">
+                <div className="absolute inset-0 bg-slate-900">
+                  <img src={jersey} alt="jersey" width="1200" height="800" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
                 </div>
-                <div className="relative z-10 p-6 md:p-8 flex flex-col justify-center h-full text-left text-white">
-                  <h3 className="text-3xl md:text-5xl font-black italic mb-2">Quality You Can Trust</h3>
-                  <p className="text-sm md:text-base text-white">Every stitch matters. We focus on clean finishes, strong seams, and long-lasting materials—because details make the design stand out.</p>
+                <div className="relative z-10 p-8 flex flex-col justify-center h-full text-left text-white">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase italic mb-3 tracking-tight">Quality You Can Trust</h3>
+                  <p className="text-sm md:text-base text-slate-200 font-normal max-w-2xl leading-relaxed">Every stitch matters. We focus on clean finishes, strong seams, and long-lasting materials—because details make the design stand out.</p>
                 </div>
               </div>
             </div>

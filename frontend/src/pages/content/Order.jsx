@@ -417,7 +417,7 @@ const DetailsModal = ({ order, onClose }) => {
 
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
-    const [activeTab, setActiveTab] = useState('list')
+    const [activeTab, setActiveTab] = useState('details')
     const [copied, setCopied] = useState(false)
 
 
@@ -511,8 +511,24 @@ const DetailsModal = ({ order, onClose }) => {
     ].filter(f => f.value)
 
     const items = order.items || []
-    const steps = order.steps || []
+    const rawSteps = order.steps || []
     const hasItems = items.length > 0
+
+    const effectiveSteps = useMemo(() => {
+        if (rawSteps && rawSteps.length > 0) return rawSteps
+        const status = String(order.status || 'Pending').toLowerCase()
+        const isReleased = status === 'released'
+        const isCompleted = status === 'completed' || isReleased
+        const isInProgress = status === 'in progress' || status === 'in-progress' || isCompleted
+        const isApproved = status === 'approved' || isInProgress
+
+        return [
+            { label: 'Drop Off', done: true, active: false, date: order.createdAt || order.date },
+            { label: 'Layout & Prep', done: isApproved, active: status === 'approved', date: null },
+            { label: 'Production', done: isCompleted, active: isInProgress && !isCompleted, date: null },
+            { label: 'Pick-up Ready', done: isCompleted, active: false, date: order.pickupDate || order.estimatedCompletion }
+        ]
+    }, [rawSteps, order])
 
     const grandTotal = useMemo(() => {
         if (order.totalAmount || order.totalPrice) {
@@ -531,7 +547,7 @@ const DetailsModal = ({ order, onClose }) => {
                 onClick={onClose}
             />
             <div
-                className="fixed  bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+                className="fixed bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
             >
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -553,11 +569,11 @@ const DetailsModal = ({ order, onClose }) => {
                     </button>
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="flex items-center gap-0 px-5 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter">
+                {/* Tab Navigation (Horizontally Scrollable) */}
+                <div className="flex items-center gap-1 px-4 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter overflow-x-auto scrollbar-none">
                     <button
                         onClick={() => setActiveTab('details')}
-                        className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                        className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
                         ${activeTab === 'details'
                                 ? 'text-blue-600 border-b-blue-600'
                                 : 'text-gray-400 border-b-transparent hover:text-gray-600'
@@ -568,7 +584,7 @@ const DetailsModal = ({ order, onClose }) => {
                     </button>
                     <button
                         onClick={() => setActiveTab('list')}
-                        className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                        className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
                         ${activeTab === 'list'
                                 ? 'text-blue-600 border-b-blue-600'
                                 : 'text-gray-400 border-b-transparent hover:text-gray-600'
@@ -580,7 +596,7 @@ const DetailsModal = ({ order, onClose }) => {
                     {order.status !== 'Cancelled' && (
                         <button
                             onClick={() => setActiveTab('qr')}
-                            className={`flex items-center gap-2 px-4 py-3 font-bold text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap
+                            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
                             ${activeTab === 'qr'
                                     ? 'text-blue-600 border-b-blue-600'
                                     : 'text-gray-400 border-b-transparent hover:text-gray-600'
@@ -591,11 +607,21 @@ const DetailsModal = ({ order, onClose }) => {
                         </button>
                     )}
                 </div>
-                <div className="overflow-y-auto p-5 pb-10 flex-1 space-y-5 font-inter">
+                <div className="overflow-y-auto p-4 sm:p-5 pb-20 flex-1 min-h-0 space-y-6 font-inter">
                     {activeTab === 'details' ? (
-                        <div>
+                        <div className="space-y-6">
+                            {/* Order Progress (Prominent Top Section) */}
+                            {effectiveSteps.length > 0 && (
+                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                                        <MdCheckCircle size={15} /> Order Progress
+                                    </p>
+                                    <OrderTimelineVertical steps={effectiveSteps} />
+                                </div>
+                            )}
+
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Details</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Specs & Info</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     {fields.map(({ label, value }) => {
                                         const Icon = iconMap[label]
@@ -612,12 +638,6 @@ const DetailsModal = ({ order, onClose }) => {
                                     })}
                                 </div>
                             </div>
-                            {steps.length > 0 && (
-                                <div className="border-t border-gray-100 pt-5 md:hidden mt-5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-5">Order Progress</p>
-                                    <OrderTimelineVertical steps={steps} />
-                                </div>
-                            )}
                         </div>
                     ) : activeTab === 'list' ? (
                         <div className="space-y-5">

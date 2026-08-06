@@ -1,0 +1,33 @@
+
+#Agent folders 
+.impeccable/
+.impecable/
+.gemini/
+.codex/
+codex/
+.claude/
+claude/
+cluade/
+.agents/
+.agents/skills/
+agent/skills/
+agents/skills/
+PRODUCT.md
+
+# Dependencies & Build Outputs
+node_modules/
+**/node_modules/
+dist/
+build/
+*.log
+
+# Environment variables & sensitive files
+.env
+.env.*
+!.env.example
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

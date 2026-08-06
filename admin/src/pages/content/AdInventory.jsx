@@ -11,6 +11,7 @@ import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/in
 import { useStockAlert } from "../../context/StockAlertContext";
 import { fmt } from "../../utils/helpers.js";
 import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx";
+import { StatusBadge, StatCard } from "../../components/ui";
 
 const numberInputStyle = `../../services/inventoryApi.js
   input[type="number"]::-webkit-outer-spin-button,
@@ -206,21 +207,6 @@ function getPct(item) {
   return Math.min(100, Math.max(0, pct));
 }
 
-// STATUS BADGE 
-function StatusBadge({ status }) {
-  const cfg = {
-    "In Stock": { cls: "bg-emerald-50 text-emerald-700 border border-emerald-200", Icon: CheckCircle2 },
-    "Low Stock": { cls: "bg-amber-50 text-amber-700 border border-amber-200", Icon: AlertCircle },
-    "Out of Stock": { cls: "bg-red-50 text-red-700 border border-red-200", Icon: XCircle },
-  };
-  const { cls, Icon } = cfg[status];
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
-      <Icon size={11} /> {status}
-    </span>
-  );
-}
-
 // PROGRESS BAR 
 function StockBar({ item }) {
   const pct = getPct(item);
@@ -232,30 +218,6 @@ function StockBar({ item }) {
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs text-slate-500 tabular-nums w-8 text-right">{pct}%</span>
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub, icon: Icon, accent, bgAccent }) {
-  return (
-    <div
-      className="bg-white rounded-2xl py-2 px-3 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-      style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-    >
-      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-      <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-            <Icon size={14} color={accent} strokeWidth={2.2} className="sm:hidden" />
-            <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-          </div>
-          <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-        </div>
-      </div>
-      <div className="mt-[-10px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-extrabold text-gray-900 leading-none tracking-tight pl-0 sm:pl-[45px] text-center sm:text-left">
-        {value}
-      </div>
-      <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[45px]">{sub}</div>
     </div>
   );
 }
@@ -1944,86 +1906,86 @@ function InventorySystemContent() {
                   </tr>
                 ))
                 : filtered.length === 0
-                ? <tr><td colSpan={12} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
-                : filtered.map(item => (
-                  <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-bold text-gray-900">{item.name}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}
-                        {getOldestBatch(item) ? ` • oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : ""}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
-                        {item.sku || "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                        <Tag size={10} /> {item.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(getAverageUnitCost(item))}</span>
-                      <p className="text-[10px] text-slate-400 mt-1">Default {fmt(item.unitPrice || 0)}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-gray-900 tabular-nums">{formatQty(item.stock)}/{formatQty(getMaxStock(item))}</span>
-                      <span className="text-slate-400 text-xs"> {item.unit}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-blue-600 tabular-nums">{getBatchCount(item)}</span>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {getOldestBatch(item) ? `Oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : "No batches"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt(getCurrentValue(item))}</span>
-                    </td>
+                  ? <tr><td colSpan={12} className="text-center py-12 text-slate-400"><ShoppingBag size={24} className="mx-auto mb-2 opacity-30" />No items found.</td></tr>
+                  : filtered.map(item => (
+                    <tr key={item._id} className="border-b border-slate-50 hover:bg-blue-50/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-gray-900">{item.name}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {getBatchCount(item)} batch{getBatchCount(item) === 1 ? "" : "es"}
+                          {getOldestBatch(item) ? ` • oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : ""}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
+                          {item.sku || "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                          <Tag size={10} /> {item.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-semibold text-gray-900 tabular-nums">{fmt(getAverageUnitCost(item))}</span>
+                        <p className="text-[10px] text-slate-400 mt-1">Default {fmt(item.unitPrice || 0)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-gray-900 tabular-nums">{formatQty(item.stock)}/{formatQty(getMaxStock(item))}</span>
+                        <span className="text-slate-400 text-xs"> {item.unit}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-bold text-blue-600 tabular-nums">{getBatchCount(item)}</span>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {getOldestBatch(item) ? `Oldest ${formatShortDate(getOldestBatch(item).receivedAt)}` : "No batches"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-bold text-emerald-600 tabular-nums">{fmt(getCurrentValue(item))}</span>
+                      </td>
 
-                    <td className="px-4 py-3"><StatusBadge status={getStatus(item)} /></td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs text-slate-500">
-                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs text-slate-500">
-                        {item.lastActivityDate ? formatActivityTime(new Date(item.lastActivityDate)) : "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {!showArchived ? (
-                          <>
-                            <button onClick={() => setAdjModal({ item, type: "increase" })}
-                              className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Receive Batch">
-                              <ArrowUpCircle size={14} />
+                      <td className="px-4 py-3"><StatusBadge status={getStatus(item)} /></td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-slate-500">
+                          {item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-slate-500">
+                          {item.lastActivityDate ? formatActivityTime(new Date(item.lastActivityDate)) : "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {!showArchived ? (
+                            <>
+                              <button onClick={() => setAdjModal({ item, type: "increase" })}
+                                className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Receive Batch">
+                                <ArrowUpCircle size={14} />
+                              </button>
+                              <button onClick={() => setAdjModal({ item, type: "decrease" })}
+                                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Use Stock">
+                                <ArrowDownCircle size={14} />
+                              </button>
+                              <button onClick={() => setUpdateModal(item)}
+                                className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => handleArchive(item._id, false)}
+                                className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Archive">
+                                <Archive size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleArchive(item._id, true)}
+                              className="flex-1 p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-semibold flex items-center justify-center gap-1" title="Restore">
+                              <RotateCcw size={14} /> Restore
                             </button>
-                            <button onClick={() => setAdjModal({ item, type: "decrease" })}
-                              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Use Stock">
-                              <ArrowDownCircle size={14} />
-                            </button>
-                            <button onClick={() => setUpdateModal(item)}
-                              className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="Edit">
-                              <Pencil size={14} />
-                            </button>
-                            <button onClick={() => handleArchive(item._id, false)}
-                              className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Archive">
-                              <Archive size={14} />
-                            </button>
-                          </>
-                        ) : (
-                          <button onClick={() => handleArchive(item._id, true)}
-                            className="flex-1 p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-semibold flex items-center justify-center gap-1" title="Restore">
-                            <RotateCcw size={14} /> Restore
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
               }
             </tbody>
           </table>

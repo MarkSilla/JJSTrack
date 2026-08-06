@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { bookingApi } from '../../../services/bookingApi';
 import { toast } from 'sonner';
+import { EmptyState } from '../../../components/ui';
 import { STATUS_CONFIG, TYPE_CONFIG, PRIORITY_CONFIG, SERVICE_STEPS, EMPLOYEE_POOL } from './Constants.js';
 import { getDerivedStatus, getActiveStepIndex } from '../../../utils/helpers.js';
 
@@ -370,7 +371,26 @@ export default function OrderList({
             {/* ── Order rows ─────────────────────────────────────────────── */}
             <div className="flex-1 overflow-y-auto p-2 lg:p-3 space-y-2 custom-scrollbar">
                 {filteredOrders.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400 text-sm font-medium">No orders found</div>
+                    <EmptyState
+                        title="No orders match your criteria"
+                        description={
+                            searchQuery || filterStatus !== 'All' || serviceTypeFilter !== 'all'
+                                ? "Try adjusting your search query, status filters, or service type to find what you're looking for."
+                                : "There are currently no active production orders in the pipeline."
+                        }
+                        primaryAction={
+                            searchQuery || filterStatus !== 'All' || serviceTypeFilter !== 'all'
+                                ? {
+                                    label: 'Clear Filters',
+                                    onClick: () => {
+                                        setSearchQuery('');
+                                        setFilterStatus('All');
+                                        setServiceTypeFilter('all');
+                                    },
+                                }
+                                : undefined
+                        }
+                    />
                 ) : (
                     filteredOrders.filter(order => !completedIds[order.id || order._id]).map(order => {
                         const orderId = order.id || order._id;

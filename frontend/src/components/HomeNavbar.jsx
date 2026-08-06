@@ -515,14 +515,17 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-1 pr-3 transition-colors"
+              aria-label="User Profile Menu"
+              aria-expanded={showDropdown}
+              aria-haspopup="true"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 rounded-lg p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               {/* Profile Picture */}
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs sm:text-sm font-semibold shadow-sm overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm overflow-hidden">
                 {user?.photoURL ? (
                   <img 
                     src={user.photoURL} 
-                    alt={user.fullName || 'User'}
+                    alt={user.fullName || 'User Profile'}
                     className="w-full h-full object-cover"
                   />
                 ) : (

@@ -88,7 +88,7 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
         {/* Nav Items */}
         <nav className="flex-1 py-4 overflow-y-auto">
-          <ul className={`space-y-1 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
+          <ul className={`space-y-1.5 ${isDesktopCollapsed && !isSmallScreen ? 'px-2.5' : 'px-3'}`}>
             {navItems.map((item) => {
               const isActive = location.pathname === item.path
               return (
@@ -101,17 +101,17 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                   <Link
                     to={item.path}
                     onClick={() => isSmallScreen && setMobileExpanded(false)}
-                    className={`flex items-center gap-3 w-full rounded-lg transition-all duration-200 group
-                      ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
-                      ${isActive ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                    className={`flex items-center gap-3 w-full rounded-xl transition-all duration-200 ease-out group
+                      ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-3.5 py-2.5'}
+                      ${isActive ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-600/25' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
                   >
                     <item.icon
                       size={20}
-                      className={`transition-all duration-300 flex-shrink-0 group-hover:scale-110 ${isActive ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
+                      className={`transition-transform duration-200 flex-shrink-0 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
                     />
                     <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
                       <span className="font-medium text-sm leading-tight">{item.label}</span>
-                      <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-white' : 'text-gray-500'}`}>
+                      <span className={`text-[11px] leading-tight mt-0.5 ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
                         {item.description}
                       </span>
                     </div>

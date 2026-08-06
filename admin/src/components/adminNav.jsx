@@ -476,7 +476,7 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 </div>
             </div>
 
-            <div className={`overflow-y-auto ${isMobileViewport ? 'flex-1' : 'max-h-80'}`}>
+            <div className={`overflow-y-auto custom-scrollbar scroll-smooth ${isMobileViewport ? 'flex-1' : 'max-h-80'}`}>
                 {notificationsLoading ? (
                     <div className="px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-gray-700">Loading notifications...</p>
@@ -514,23 +514,23 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 w-full shrink-0">
             <div className="flex items-center justify-between h-16 px-4 md:px-6">
 
-                {/* Left — hamburger + page title ← BINAGO ITO */}
+                {/* Left — hamburger + page title */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
                         onClick={onToggleSidebar}
-                        className="p-2 rounded-lg hover:bg-gray-100 lg:hidden transition-colors text-gray-600 shrink-0"
-                        aria-label="Toggle sidebar"
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg hover:bg-slate-100 lg:hidden transition-colors text-slate-600 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        aria-label="Toggle sidebar navigation"
                     >
                         <Menu size={22} />
                     </button>
 
                     {/* Page Title */}
                     <div className="min-w-0">
-                        <h1 className="text-sm font-bold text-gray-900 leading-tight truncate">
+                        <h1 className="text-sm font-bold text-slate-900 leading-tight truncate">
                             {currentPage.title}
                         </h1>
                         {currentPage.subtitle && (
-                            <p className="text-[11px] text-gray-400 hidden sm:block truncate">
+                            <p className="text-xs text-slate-500 hidden sm:block truncate">
                                 {currentPage.subtitle}
                             </p>
                         )}
@@ -540,20 +540,20 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                 {/* Right — date, bell, avatar */}
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                     <div className="hidden sm:flex flex-col items-end mr-2">
-                        <p className="text-xs font-bold text-gray-900 leading-tight">{dayStr}</p>
-                        <p className="text-[10px] text-gray-400 font-medium">{dateStr}</p>
+                        <p className="text-xs font-bold text-slate-900 leading-tight">{dayStr}</p>
+                        <p className="text-xs text-slate-500 font-medium">{dateStr}</p>
                     </div>
 
                     <div className="relative" ref={notifRef}>
                         <button
                             onClick={toggleNotifications}
-                            className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                             aria-label="Open notifications"
                             aria-expanded={showNotifications}
                         >
-                            <Bell size={20} className="text-gray-500" />
+                            <Bell size={20} className="text-slate-600" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 rounded-full border-2 border-white text-[10px] font-semibold text-white flex items-center justify-center leading-none">
+                                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-red-600 rounded-full border-2 border-white text-[10px] font-bold text-white flex items-center justify-center leading-none">
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             )}

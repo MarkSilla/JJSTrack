@@ -256,9 +256,16 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                     </ul>
                 </nav>
 
-                {/* Footer with Settings and Logout */}
-                <div className={`border-t border-gray-800 py-3 shrink-0 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
-
+                {/* Footer with App Info */}
+                <div className={`border-t border-gray-800/80 py-3 shrink-0 ${isDesktopCollapsed && !isSmallScreen ? 'px-2 text-center' : 'px-4'}`}>
+                    {showLabel ? (
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                            <span className="font-semibold text-gray-400">JJS-Track</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">v1.0</span>
+                        </div>
+                    ) : (
+                        <span className="text-[9px] font-mono text-gray-600">v1.0</span>
+                    )}
                 </div>
             </aside>
 

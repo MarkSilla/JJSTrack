@@ -644,12 +644,12 @@ const ChatLauncher = ({ onClick, unreadCount }) => (
   <button
     onClick={onClick}
     aria-label="Toggle chat"
-    className="fixed bottom-6 right-8 md:bottom-6 md:right-8 z-[9999] flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl ring-8 ring-blue-600/10 transition-all hover:scale-110 hover:bg-blue-700 active:scale-95 group"
+    className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/30 ring-4 ring-blue-600/15 transition-all duration-200 ease-out hover:scale-105 hover:bg-blue-700 active:scale-95 group cursor-pointer"
     type="button"
   >
-    <MessageCircle className="h-8 w-8 group-hover:rotate-12 transition-transform" />
+    <MessageCircle className="h-6 w-6 group-hover:rotate-12 transition-transform duration-200" />
     {unreadCount > 0 && (
-      <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[10px] font-black text-white shadow-md animate-bounce">
+      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-[10px] font-black text-white shadow-md">
         {unreadCount}
       </span>
     )}

@@ -1,16 +1,168 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Titillium+Web:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,200;1,300;1,400;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Brand & Layout Colors */
+    --color-admin-bg: #f8fafc;
+    --color-admin-card: #ffffff;
+    --color-admin-primary: #2563eb;
+    --color-admin-primary-hover: #1d4ed8;
+    --color-admin-text: #0f172a;
+    --color-admin-text-muted: #64748b;
+    --color-admin-border: #e2e8f0;
+
+    /* Status Tokens - Neutral/Default */
+    --status-default-bg: #f1f5f9;
+    --status-default-text: #475569;
+    --status-default-border: #cbd5e1;
+
+    /* Status Tokens - Specific States */
+    --status-pending-bg: #fffbe6;
+    --status-pending-text: #b45309;
+    --status-pending-border: #fde68a;
+
+    --status-progress-bg: #f5f3ff;
+    --status-progress-text: #6d28d9;
+    --status-progress-border: #ddd6fe;
+
+    --status-completed-bg: #ecfdf5;
+    --status-completed-text: #047857;
+    --status-completed-border: #a7f3d0;
+
+    --status-released-bg: #ecfeff;
+    --status-released-text: #0e7490;
+    --status-released-border: #a5f3fc;
+
+    --status-overdue-bg: #fff1f2;
+    --status-overdue-text: #be123c;
+    --status-overdue-border: #fecdd3;
+
+    --status-cancelled-bg: #fef2f2;
+    --status-cancelled-text: #b91c1c;
+    --status-cancelled-border: #fca5a5;
+
+    --status-confirmed-bg: #eff6ff;
+    --status-confirmed-text: #1d4ed8;
+    --status-confirmed-border: #bfdbfe;
+
+    --status-repair-bg: #ffedd5;
+    --status-repair-text: #c2410c;
+    --status-repair-border: #fed7aa;
+
+    --status-jersey-bg: #e0e7ff;
+    --status-jersey-text: #3730a3;
+    --status-jersey-border: #c7d2fe;
+
+    --status-org-bg: #ccfbf1;
+    --status-org-text: #0f766e;
+    --status-org-border: #99f6e4;
+
+    /* Radius Design Tokens */
+    --radius-sm: 0.375rem; /* 6px */
+    --radius-md: 0.5rem;   /* 8px */
+    --radius-lg: 0.75rem;  /* 12px */
+    --radius-xl: 1rem;     /* 16px */
+    --radius-2xl: 1.25rem; /* 20px */
+    --radius-full: 9999px;
+
+    /* Spacing Tokens */
+    --space-xs: 0.25rem;  /* 4px */
+    --space-sm: 0.5rem;   /* 8px */
+    --space-md: 1rem;     /* 16px */
+    --space-lg: 1.5rem;   /* 24px */
+    --space-xl: 2rem;     /* 32px */
+
+    /* Typography Scale Tokens */
+    --text-xs: 0.75rem;   /* 12px */
+    --text-sm: 0.875rem;  /* 14px */
+    --text-base: 1rem;    /* 16px */
+    --text-lg: 1.125rem;  /* 18px */
+    --text-xl: 1.25rem;   /* 20px */
+    --text-2xl: 1.5rem;   /* 24px */
+
+    /* Shadow Tokens */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.03);
+    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.06);
+
+    /* Motion Tokens */
+    --motion-duration-fast: 150ms;
+    --motion-duration-normal: 200ms;
+    --motion-duration-slow: 250ms;
+    --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   html {
-    @apply bg-white text-gray-800;
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    scroll-behavior: smooth;
   }
 }
 
+/* ── Custom Black Scrollbars ────────────────────────────────────────── */
+html, body {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0f172a;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 @layer utilities {
-  .font-playfair {
-    font-family: 'Playfair Display', serif;
+  .font-brand {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .transition-saas {
+    transition-property: all;
+    transition-duration: var(--motion-duration-normal);
+    transition-timing-function: var(--motion-ease);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

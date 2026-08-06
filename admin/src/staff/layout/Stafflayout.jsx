@@ -29,7 +29,7 @@ const StaffLayout = () => {
                 setIsMobileExpanded={setIsMobileExpanded}
             />
 
-            <div className={`min-w-0 flex-1 transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen min-w-0">
                     <StaffNav
                         onToggleSidebar={handleBurgerClick}

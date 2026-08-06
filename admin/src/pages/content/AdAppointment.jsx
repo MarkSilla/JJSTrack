@@ -18,6 +18,7 @@ import {
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
 import { CalendarPageSkeleton } from '../../components/SkeletonLoaders.jsx';
+import { StatusBadge } from '../../components/ui';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -100,9 +101,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-gray-100">
                             <span className="text-xs font-semibold text-gray-400 flex items-center gap-1.5"><CheckCircle size={14} /> Status</span>
-                            <span className={`text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-full tracking-wider ${statusBadge.color}`}>
-                                {booking.status}
-                            </span>
+                            <StatusBadge status={booking.status} size="sm" />
                         </div>
                     </div>
                 </div>

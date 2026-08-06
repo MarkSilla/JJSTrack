@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-    ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon
+    ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { bookingApi } from '../services/bookingApi';
 import { orderApi } from '../services/orderApi.js';
@@ -14,6 +14,7 @@ import useOrderFeedSocket from '../hooks/useOrderFeedSocket.js';
 import { getPickupSlotDisplay } from '../utils/pickupSlot.js';
 import { getStaffDerivedStatus } from '../utils/orderStatus.js';
 import { StaffDashboardSkeleton } from '../../components/SkeletonLoaders.jsx';
+import { StatCard, StatusBadge, DataCard, EmptyState } from '../../components/ui';
 
 const FALLBACK_REFRESH_MS = 60000;
 
@@ -134,6 +135,7 @@ const Dashboard = () => {
     const [alerts, setAlerts] = useState([]);
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showAllMobileMetrics, setShowAllMobileMetrics] = useState(false);
     const upcomingScheduleRef = useRef(null);
 
     const fetchTasks = useCallback(async (silent = false) => {
@@ -223,13 +225,16 @@ const Dashboard = () => {
     };
 
     const summaryCards = [
-        { label: 'Total Tasks', value: summaryStats.totalTasks, icon: ClipboardList, accent: "#3B82F6", bgAccent: "#EFF6FF", sub: '12 Applicants to process', filterStatus: 'All' },
         { label: 'Pending', value: summaryStats.pending, icon: Clock, accent: "#F59E0B", bgAccent: "#FFFBEB", sub: 'Documents pending approval', filterStatus: 'Pending' },
         { label: 'Overdue', value: summaryStats.overdue, icon: AlertTriangle, accent: "#DC2626", bgAccent: "#FEF2F2", sub: 'Tasks past due date', filterStatus: 'Overdue' },
         { label: 'In Progress', value: summaryStats.inProgress, icon: Loader, accent: "#7C3AED", bgAccent: "#F5F3FF", sub: 'Deployment tasks ongoing', filterStatus: 'In Progress' },
+        { label: 'Total Tasks', value: summaryStats.totalTasks, icon: ClipboardList, accent: "#3B82F6", bgAccent: "#EFF6FF", sub: '12 Applicants to process', filterStatus: 'All' },
         { label: 'Completed', value: summaryStats.completed, icon: CheckCircle, accent: "#059669", bgAccent: "#ECFDF5", sub: 'Ready for release', filterStatus: 'Completed' },
         { label: 'Released', value: summaryStats.released, icon: CheckCircle2, accent: "#06B6D4", bgAccent: "#ECFEFF", sub: 'Claimed by client', filterStatus: 'Released' },
     ];
+
+    const prioritySummaryCards = [summaryCards[0], summaryCards[1], summaryCards[2], summaryCards[3]];
+    const hiddenSummaryCount = summaryCards.length - prioritySummaryCards.length;
 
     const upcomingSchedules = useMemo(() => schedules.slice(0, 5), [schedules]);
 
@@ -322,32 +327,52 @@ const Dashboard = () => {
                     </button>
                 </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Mobile View: Priority + Expand (2 columns) */}
+            <div className="block sm:hidden">
+                <div className="grid grid-cols-2 gap-2.5">
+                    {(showAllMobileMetrics ? summaryCards : prioritySummaryCards).map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
+                        <StatCard
+                            key={idx}
+                            icon={icon}
+                            label={label}
+                            value={value}
+                            sub={value === 0 ? 'No records today' : sub}
+                            accentColor={accent}
+                            onClick={() => openOrdersPage(filterStatus)}
+                        />
+                    ))}
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setShowAllMobileMetrics((prev) => !prev)}
+                    className="mt-3 w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                    {showAllMobileMetrics ? (
+                        <>
+                            <span>Show Priority Metrics Only</span>
+                            <ChevronUp size={14} className="text-slate-500" />
+                        </>
+                    ) : (
+                        <>
+                            <span>View All Metrics ({hiddenSummaryCount})</span>
+                            <ChevronDown size={14} className="text-slate-500" />
+                        </>
+                    )}
+                </button>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                 {summaryCards.map(({ icon, label, value, sub, accent, filterStatus }, idx) => (
-                    <button
+                    <StatCard
                         key={idx}
-                        type="button"
+                        icon={icon}
+                        label={label}
+                        value={value}
+                        sub={value === 0 ? 'No records today' : sub}
+                        accentColor={accent}
                         onClick={() => openOrdersPage(filterStatus)}
-                        className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none"
-                        style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                    >
-                        <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div
-                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
-                                style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}
-                            >
-                                {React.createElement(icon, { size: 20, color: accent, strokeWidth: 2.2 })}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5">{label}</div>
-                                <div className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1">{value}</div>
-                                <div className="text-[10px] text-gray-400 font-bold truncate leading-none uppercase tracking-tighter opacity-80">
-                                    {value === 0 ? 'No records today' : sub}
-                                </div>
-                            </div>
-                        </div>
-                    </button>
+                    />
                 ))}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">

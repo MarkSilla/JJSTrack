@@ -70,7 +70,7 @@ const LandingNavbar = () => {
         .nav-link {
           position: relative;
           display: inline-block;
-          transition: color 0.4s ease;
+          transition: color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         
         .nav-link::after {
@@ -79,9 +79,10 @@ const LandingNavbar = () => {
           bottom: -4px;
           left: 0;
           width: 0;
-          height: 2px;
+          height: 2.5px;
+          border-radius: 9999px;
           background: linear-gradient(to right, #2563eb, #3b82f6);
-          transition: width 0.4s ease;
+          transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         
         .nav-link:hover::after {
@@ -89,7 +90,7 @@ const LandingNavbar = () => {
         }
         
         .nav-link.nav-light:hover {
-          color: #bfdbfe;
+          color: #93c5fd;
         }
         
         .nav-link.nav-dark:hover {
@@ -99,7 +100,7 @@ const LandingNavbar = () => {
         .mobile-nav-link {
           position: relative;
           display: inline-block;
-          transition: all 0.4s ease;
+          transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
           padding-left: 0;
         }
         
@@ -112,7 +113,7 @@ const LandingNavbar = () => {
           width: 0;
           height: 2px;
           background: linear-gradient(to right, #2563eb, #3b82f6);
-          transition: width 0.4s ease;
+          transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         
         .mobile-nav-link:hover::before {

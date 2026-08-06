@@ -1,45 +1,71 @@
-import React from 'react';
-import { CheckCircle2, Clock, Check, AlertCircle, Package } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Clock, Check, AlertCircle, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { StatCard } from '../../../components/ui';
 
-export default function KPICards({ counts }) {
-    const cards = [
-        { label: 'In Progress', value: counts['In Progress'], icon: Clock, color: '#D97706', sub: 'Currently active' },
-        { label: 'Released', value: counts.Released, icon: Package, color: '#06B6D4', sub: 'Ready to ship' },
-        { label: 'Ready', value: counts.Completed, icon: Check, color: '#059669', sub: 'Finished orders' },
-        { label: 'Overdue', value: counts.Overdue, icon: AlertCircle, color: '#DC2626', sub: 'Past due date' },
-        { label: 'Total Orders', value: counts.All, icon: CheckCircle2, color: '#2563EB', sub: 'All appointments' },
-    ];
+export default function KPICards({ counts, onFilterClick }) {
+  const [showAllMobile, setShowAllMobile] = useState(false);
 
-    return (
-        <div className="mb-4">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-                {cards.map((card, index) => (
-                    <div
-                        key={card.label}
-                        className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50
-                            ${index === 4 ? 'col-span-2 lg:col-span-1' : 'col-span-1 lg:col-span-1'}
-                        `}
-                        style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                    >
-                        <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: card.color }} />
-                        <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
-                            <div
-                                className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`}
-                                style={{ background: card.color + "1A" }}
-                            >
-                                <card.icon size={index === 4 ? 14 : 13} color={card.color} strokeWidth={2.5} className="sm:hidden" />
-                                <card.icon size={16} color={card.color} strokeWidth={2.2} className="hidden sm:block" />
-                            </div>
-                            <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight max-w-none`}>{card.label}</span>
-                        </div>
-                        <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
-                            }`}>
-                            {card.value}
-                        </div>
-                        <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{card.sub}</div>
-                    </div>
-                ))}
-            </div>
+  const cards = [
+    { label: 'In Progress', value: counts['In Progress'], icon: Clock, color: '#D97706', sub: 'Currently active', filter: 'In Progress' },
+    { label: 'Overdue', value: counts.Overdue, icon: AlertCircle, color: '#DC2626', sub: 'Past due date', filter: 'Overdue' },
+    { label: 'Ready', value: counts.Completed, icon: Check, color: '#059669', sub: 'Finished orders', filter: 'Completed' },
+    { label: 'Released', value: counts.Released, icon: Package, color: '#06B6D4', sub: 'Ready to ship', filter: 'Released' },
+    { label: 'Total Orders', value: counts.All, icon: CheckCircle2, color: '#2563EB', sub: 'All appointments', filter: 'All Records' },
+  ];
+
+  const priorityCards = [cards[0], cards[1], cards[2], cards[4]]; // 4 Priority KPIs
+  const hiddenCount = cards.length - priorityCards.length;
+
+  return (
+    <div className="mb-4">
+      {/* Mobile View: 2 Grids with Priority + Expand */}
+      <div className="block sm:hidden">
+        <div className="grid grid-cols-2 gap-2.5">
+          {(showAllMobile ? cards : priorityCards).map((card) => (
+            <StatCard
+              key={card.label}
+              icon={card.icon}
+              label={card.label}
+              value={card.value}
+              sub={card.sub}
+              accentColor={card.color}
+              onClick={onFilterClick ? () => onFilterClick(card.filter) : undefined}
+            />
+          ))}
         </div>
-    );
-}
+        <button
+          type="button"
+          onClick={() => setShowAllMobile((prev) => !prev)}
+          className="mt-3 w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+        >
+          {showAllMobile ? (
+            <>
+              <span>Show Priority Metrics Only</span>
+              <ChevronUp size={14} className="text-slate-500" />
+            </>
+          ) : (
+            <>
+              <span>View All Metrics ({hiddenCount})</span>
+              <ChevronDown size={14} className="text-slate-500" />
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Desktop / Tablet View */}
+      <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {cards.map((card) => (
+          <StatCard
+            key={card.label}
+            icon={card.icon}
+            label={card.label}
+            value={card.value}
+            sub={card.sub}
+            accentColor={card.color}
+            onClick={onFilterClick ? () => onFilterClick(card.filter) : undefined}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
