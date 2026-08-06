@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, X, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -8,12 +8,92 @@ import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
 import { regions, provinces, cities, barangays } from 'select-philippines-address';
 
+// Smooth Alert Component with CSS Grid height animation & fade-in/out transitions
+const SmoothAlert = ({ show, onClose, type = 'error', title, children }) => {
+  const [shouldRender, setShouldRender] = useState(show)
+  const [isAnimated, setIsAnimated] = useState(false)
+
+  useEffect(() => {
+    if (show) {
+      setShouldRender(true)
+      const rAF = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsAnimated(true))
+      })
+      return () => cancelAnimationFrame(rAF)
+    } else {
+      setIsAnimated(false)
+      const timer = setTimeout(() => setShouldRender(false), 300)
+      return () => clearTimeout(timer)
+    }
+  }, [show])
+
+  if (!shouldRender) return null
+
+  const colorStyles = {
+    error: 'border-red-200/90 bg-red-50/90 text-red-700',
+    success: 'border-green-200/90 bg-green-50/90 text-green-700',
+    amber: 'border-amber-200/90 bg-amber-50/90 text-amber-700',
+  }
+
+  const iconColors = {
+    error: 'text-red-500',
+    success: 'text-green-500',
+    amber: 'text-amber-500',
+  }
+
+  const IconComponent =
+    type === 'success' ? CheckCircle : type === 'amber' ? AlertTriangle : AlertCircle
+
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className={`grid transition-all duration-300 ease-out ${
+        isAnimated ? 'grid-rows-[1fr] opacity-100 mb-5' : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
+      }`}
+    >
+      <div className="overflow-hidden">
+        <div
+          className={`flex items-start gap-3 rounded-xl border p-3.5 text-sm shadow-sm transition-all duration-300 ${
+            colorStyles[type] || colorStyles.error
+          } ${isAnimated ? 'translate-y-0 scale-100' : '-translate-y-1 scale-[0.98]'}`}
+        >
+          <IconComponent size={18} className={`mt-0.5 shrink-0 ${iconColors[type]}`} />
+          <div className="flex-1 min-w-0">
+            {title && <p className="font-semibold text-sm mb-0.5">{title}</p>}
+            <div className="font-medium text-xs sm:text-sm leading-relaxed">{children}</div>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Dismiss message"
+              className="shrink-0 p-0.5 opacity-70 hover:opacity-100 transition-opacity rounded-md"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const TOTAL_STEPS = 2;
 const DEFAULT_VERIFICATION_CODE_TTL_SECONDS = 10 * 60;
 const NAME_REGEX = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s]+$/;
 
 const SignupPage = () => {
   const [step, setStep] = useState(1);
+  const [isExiting, setIsExiting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleTabSwitch = (path) => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate(path);
+    }, 260);
+  };
 
   const [formData, setFormData] = useState({
     email: '',
@@ -47,7 +127,6 @@ const SignupPage = () => {
   const [showConfirmedPassword, setConfirmedPassword] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
 
-  const navigate = useNavigate();
   useEffect(() => {
     regions().then(res => setRegionList(res || []));
   }, []);
@@ -283,15 +362,34 @@ const SignupPage = () => {
   return (
     <div className="flex min-h-screen">
       <style>{`
-        @keyframes slideInFromRight {
-          from { opacity: 0; transform: translateX(30px); }
-          to   { opacity: 1; transform: translateX(0); }
+        @keyframes tabEnter {
+          0% {
+            opacity: 0;
+            transform: translate3d(0, 14px, 0) scale(0.985);
+          }
+          100% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
         }
-        .animate-slide-in { animation: slideInFromRight 0.35s ease-out; }
+        
+        .animate-tab-enter {
+          animation: tabEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          will-change: transform, opacity;
+          backface-visibility: hidden;
+        }
+
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down {
+          animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
       `}</style>
 
-      {/* Left Panel */}
-      <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
+      {/* Left Panel - Fixed h-screen & sticky to prevent logo shifting */}
+      <div className="hidden md:flex sticky top-0 h-screen w-[60%] shrink-0 flex-col items-center justify-center overflow-hidden text-white">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.front})` }} />
         <div className="absolute inset-0 bg-slate-900/90" />
         <img src={img.line1} alt="" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none" />
@@ -302,10 +400,9 @@ const SignupPage = () => {
         <Link to="/" className="absolute top-6 left-6 z-10 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/25 bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 hover:border-white/40 transition-all no-underline">
           ← Back
         </Link>
-
         <div className="relative z-10 flex flex-col items-center text-center px-8">
           <img src={img.jjslogo1} alt="JJS Logo" className="w-50 h-44 rounded-full object-contain mb-6 drop-shadow-2xl" />
-          <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5" />
           <p className="text-sm font-thin opacity-70 tracking-wide">Where Every Stitch Reflects Quality and Craftsmanship.</p>
         </div>
@@ -314,20 +411,34 @@ const SignupPage = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-8">
-        <div className="w-full max-w-[420px]">
+      <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-8 min-h-screen overflow-y-auto">
+        <div className={`w-full max-w-[420px] my-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${
+          isExiting ? 'opacity-0 translate-y-3 scale-[0.985] pointer-events-none' : 'animate-tab-enter'
+        }`}>
 
           {/* Mobile back */}
-          <div className="mb-6 xl:hidden md:hidden">
-            <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-400 hover:text-blue-800 transition-colors">
-              ← Back to Landing
+          <div className="mb-6 md:hidden">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              aria-label="Back to landing page"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:ring-offset-1 transition-all duration-200"
+            >
+              <ArrowLeft size={16} className="text-slate-500 shrink-0" />
+              <span>Back to Landing</span>
             </button>
           </div>
 
           {/* Tabs */}
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8">
-            <Link to="/login" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Login</Link>
-            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Register</button>
+            <button
+              type="button"
+              onClick={() => handleTabSwitch('/login')}
+              className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-all duration-200 cursor-pointer"
+            >
+              Login
+            </button>
+            <button type="button" className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800 transition-all duration-200">Register</button>
           </div>
 
           {/* Step indicator */}
@@ -353,23 +464,21 @@ const SignupPage = () => {
             ))}
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+          {/* Smooth Error Alert */}
+          <SmoothAlert show={Boolean(error)} onClose={() => setError('')} type="error">
+            {error}
+          </SmoothAlert>
 
           {/* STEP 1 */}
           {step === 1 && (
             <div className="animate-slide-in">
-              <h2 className="text-3xl font-bold text-slate-900 mb-1 font-playfair">Personal Info</h2>
-              <p className="text-sm text-slate-400 mb-6">Tell us a bit about yourself.</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-1.5">Personal Info</h2>
+              <p className="text-xs lg:text-sm text-slate-500 mb-6">Tell us a bit about yourself.</p>
 
               <form onSubmit={handleNext}>
                 <div className="flex gap-3 mb-4">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">First Name</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">First Name</label>
                     <input
                       type="text"
                       name="firstName"
@@ -384,7 +493,7 @@ const SignupPage = () => {
                     )}
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Last Name</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Last Name</label>
                     <input
                       type="text"
                       name="lastName"
@@ -401,7 +510,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Phone Number</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Number</label>
                   <input type="text" name="phone" value={formData.phone} onChange={handleChange}
                     placeholder="09XXXXXXXXX" disabled={loading} maxLength={11}
                     onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, ''); }}
@@ -409,13 +518,13 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Email Address</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
                   <input type="email" name="email" value={formData.email} onChange={handleChange}
                     placeholder="Enter your email" disabled={loading} className={inputCls} />
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
                   <div className="relative">
                     <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password}
                       onChange={handleChange} placeholder="Min 8 characters" disabled={loading} className={inputCls} />
@@ -427,7 +536,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Confirm Password</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Confirm Password</label>
                   <div className="relative">
                     <input type={showConfirmedPassword ? 'text' : 'password'} name="confirmPassword"
                       value={formData.confirmPassword} onChange={handleChange}
@@ -461,18 +570,18 @@ const SignupPage = () => {
           {/* STEP 2 */}
           {step === 2 && (
             <div className="animate-slide-in lg:pb-40">
-              <h2 className="text-3xl font-bold text-slate-900 mb-1 font-playfair">Your Address</h2>
-              <p className="text-sm text-slate-400 mb-6">Where should we deliver your orders?</p>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-1.5">Your Address</h2>
+              <p className="text-sm text-slate-500 mb-6">Where should we deliver your orders?</p>
 
               <form onSubmit={handleSignup}>
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Street / Building No.</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Street / Building No.</label>
                   <input type="text" name="street" value={formData.street} onChange={handleChange}
                     placeholder="e.g. 123 Rizal St." disabled={loading} className={inputCls} />
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Region</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Region</label>
                   <select value={formData.regionCode} onChange={handleRegionChange}
                     disabled={loading} className={inputCls}>
                     <option value="">Select Region</option>
@@ -483,7 +592,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Province</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Province</label>
                   <select value={formData.provinceCode} onChange={handleProvinceChange}
                     disabled={loading || !formData.regionCode} className={inputCls}>
                     <option value="">{formData.regionCode ? 'Select Province' : 'Select a region first'}</option>
@@ -494,7 +603,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">City / Municipality</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">City / Municipality</label>
                   <select value={formData.cityCode} onChange={handleCityChange}
                     disabled={loading || !formData.provinceCode} className={inputCls}>
                     <option value="">{formData.provinceCode ? 'Select City / Municipality' : 'Select a province first'}</option>
@@ -505,7 +614,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Barangay</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Barangay</label>
                   <select
                     value={formData.brgyCode}
                     onChange={handleBarangayChange}
@@ -524,7 +633,7 @@ const SignupPage = () => {
                 </div>
 
                 <div className="mb-5">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">ZIP Code</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">ZIP Code</label>
                   <input
                     type="text"
                     name="zipCode"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, X, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { toast } from 'sonner';
@@ -8,6 +8,77 @@ import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
 import GoogleProfileModal from '../components/GoogleProfileModal.jsx';
 import { AuthContext } from '../context/Context.jsx';
+
+// Smooth Alert Component with CSS Grid height animation & fade-in/out transitions
+const SmoothAlert = ({ show, onClose, type = 'error', title, children }) => {
+  const [shouldRender, setShouldRender] = useState(show)
+  const [isAnimated, setIsAnimated] = useState(false)
+
+  useEffect(() => {
+    if (show) {
+      setShouldRender(true)
+      const rAF = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsAnimated(true))
+      })
+      return () => cancelAnimationFrame(rAF)
+    } else {
+      setIsAnimated(false)
+      const timer = setTimeout(() => setShouldRender(false), 300)
+      return () => clearTimeout(timer)
+    }
+  }, [show])
+
+  if (!shouldRender) return null
+
+  const colorStyles = {
+    error: 'border-red-200/90 bg-red-50/90 text-red-700',
+    success: 'border-green-200/90 bg-green-50/90 text-green-700',
+    amber: 'border-amber-200/90 bg-amber-50/90 text-amber-700',
+  }
+
+  const iconColors = {
+    error: 'text-red-500',
+    success: 'text-green-500',
+    amber: 'text-amber-500',
+  }
+
+  const IconComponent =
+    type === 'success' ? CheckCircle : type === 'amber' ? AlertTriangle : AlertCircle
+
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className={`grid transition-all duration-300 ease-out ${
+        isAnimated ? 'grid-rows-[1fr] opacity-100 mb-5' : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
+      }`}
+    >
+      <div className="overflow-hidden">
+        <div
+          className={`flex items-start gap-3 rounded-xl border p-3.5 text-sm shadow-sm transition-all duration-300 ${
+            colorStyles[type] || colorStyles.error
+          } ${isAnimated ? 'translate-y-0 scale-100' : '-translate-y-1 scale-[0.98]'}`}
+        >
+          <IconComponent size={18} className={`mt-0.5 shrink-0 ${iconColors[type]}`} />
+          <div className="flex-1 min-w-0">
+            {title && <p className="font-semibold text-sm mb-0.5">{title}</p>}
+            <div className="font-medium text-xs sm:text-sm leading-relaxed">{children}</div>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Dismiss message"
+              className="shrink-0 p-0.5 opacity-70 hover:opacity-100 transition-opacity rounded-md"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -22,9 +93,17 @@ const LoginPage = () => {
   const [loggedOut, setLoggedOut] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useContext(AuthContext);
+
+  const handleTabSwitch = (path) => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate(path);
+    }, 260);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -109,32 +188,34 @@ const LoginPage = () => {
   return (
     <div className="flex min-h-screen">
       <style>{`
-        @keyframes slideInFromLeft {
-          from {
+        @keyframes tabEnter {
+          0% {
             opacity: 0;
-            transform: translateX(-30px);
+            transform: translate3d(0, 14px, 0) scale(0.985);
           }
-          to {
+          100% {
             opacity: 1;
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0) scale(1);
           }
         }
         
-        .animate-slide-in {
-          animation: slideInFromLeft 0.4s ease-out;
+        .animate-tab-enter {
+          animation: tabEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          will-change: transform, opacity;
+          backface-visibility: hidden;
         }
 
         @keyframes fadeInDown {
-          from { opacity: 0; transform: translateY(-8px); }
+          from { opacity: 0; transform: translateY(-4px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in-down {
-          animation: fadeInDown 0.35s ease-out;
+          animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
 
-      {/* Left Panel */}
-      <div className="hidden md:flex relative w-[60%] flex-col items-center justify-center overflow-hidden text-white">
+      {/* Left Panel - Fixed h-screen & sticky to prevent logo shifting */}
+      <div className="hidden md:flex sticky top-0 h-screen w-[60%] shrink-0 flex-col items-center justify-center overflow-hidden text-white">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${img.front})` }} />
         <div className="absolute inset-0 bg-slate-900/90" />
         <img src={img.line1} alt="lineTop" className="absolute top-20 w-full h-auto object-cover opacity-40 pointer-events-none " />
@@ -147,7 +228,7 @@ const LoginPage = () => {
 
         <div className="relative z-10 flex flex-col items-center text-center px-8">
           <img src={img.jjslogo1} alt="JJS Logo" className="w-50 h-44 rounded-full object-contain mb-6  drop-shadow-2xl" />
-          <h1 className="text-4xl font-extrabold tracking-wide mb-2 font-playfair">JJS-Track</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">JJS-Track</h1>
           <div className="w-16 border-b border-yellow-400 mb-5 mt-5"></div>
           <p className="text-sm text-thin font-thin opacity-70 tracking-wide ">Where Every Stitch Reflects Quality and Craftsmanship.</p>
         </div>
@@ -156,86 +237,58 @@ const LoginPage = () => {
       </div>
 
 
-      {/* Right Panel */}
-      <div className="relative  flex-1 flex items-center justify-center bg-white px-6 py-12">
-        <div className="w-full max-w-[420px] animate-slide-in">
-          <div className="mb-8 xl:hidden md:hidden ">
+      {/* Right Panel - Scrollable container */}
+      <div className="relative flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 min-h-screen overflow-y-auto">
+        <div className={`w-full max-w-[420px] my-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${
+          isExiting ? 'opacity-0 translate-y-3 scale-[0.985] pointer-events-none' : 'animate-tab-enter'
+        }`}>
+          <div className="mb-6 md:hidden">
             <button
+              type="button"
               onClick={() => navigate('/')}
-              className="text-sm font-medium text-gray-400 hover:text-blue-800 transition-colors"
+              aria-label="Back to landing page"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-600/30 focus:ring-offset-1 transition-all duration-200"
             >
-              ← Back to Landing
+              <ArrowLeft size={16} className="text-slate-500 shrink-0" />
+              <span>Back to Landing</span>
             </button>
           </div>
+
+          {/* Tabs */}
           <div className="flex justify-center gap-16 border-b border-gray-200 mb-8 relative">
-            <button className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800">Login</button>
-            <Link to="/signup" className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-colors no-underline">Register</Link>
+            <button type="button" className="pb-3 text-sm font-semibold text-blue-800 border-b-2 border-blue-800 transition-all duration-200">Login</button>
+            <button
+              type="button"
+              onClick={() => handleTabSwitch('/signup')}
+              className="pb-3 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-blue-800 transition-all duration-200 cursor-pointer"
+            >
+              Register
+            </button>
           </div>
 
-          <h2 className="text-5xl sm:text-4xl xl:text-3xl font-bold text-slate-900 mb-1 font-playfair">Welcome back</h2>
-          <p className="text-md xl:text-sm text-slate-400 mb-7">Access your account to manage your appointment schedule.</p>
-          {loggedOut && (
-            <div className="mb-5 p-4 bg-green-50 border border-green-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
-              <span className="text-green-500 text-lg mt-0.5">✓</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-green-700">Logged out successfully</p>
-                <p className="text-xs text-green-600 mt-0.5 leading-relaxed">
-                  You have been signed out. Sign in again to continue.
-                </p>
-              </div>
-              <button
-                onClick={() => setLoggedOut(false)}
-                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-green-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-green-500 hover:after:text-green-700"
-                aria-label="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-          {sessionExpired && (
-            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-700">Session Expired</p>
-                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
-                  Your session has expired due to inactivity. Please sign in again to continue.
-                </p>
-              </div>
-              <button
-                onClick={() => setSessionExpired(false)}
-                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
-                aria-label="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-          {sessionReplaced && (
-            <div className="mb-5 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-3 animate-fade-in-down">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-700">Signed out from this device</p>
-                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
-                  This account was signed in on another device. Please sign in again to continue here.
-                </p>
-              </div>
-              <button
-                onClick={() => setSessionReplaced(false)}
-                className="relative w-7 h-7 rounded-full flex items-center justify-center text-[0px] text-transparent hover:bg-amber-100 transition-colors shrink-0 after:content-['X'] after:text-sm after:font-semibold after:text-amber-500 hover:after:text-amber-700"
-                aria-label="Dismiss"
-              >
-                âœ•
-              </button>
-            </div>
-          )}
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-1.5">Welcome back</h2>
+          <p className="text-xs lg:text-sm text-slate-500 mb-6">Access your account to manage your appointment schedule.</p>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border-l-[3px] border-red-500 text-red-600 rounded-md text-sm">
-              {error}
-            </div>
-          )}
+          {/* Smooth Alert Notifications */}
+          <SmoothAlert show={loggedOut} onClose={() => setLoggedOut(false)} type="success" title="Logged out successfully">
+            You have been signed out. Sign in again to continue.
+          </SmoothAlert>
+
+          <SmoothAlert show={sessionExpired} onClose={() => setSessionExpired(false)} type="amber" title="Session Expired">
+            Your session has expired due to inactivity. Please sign in again to continue.
+          </SmoothAlert>
+
+          <SmoothAlert show={sessionReplaced} onClose={() => setSessionReplaced(false)} type="amber" title="Signed out from this device">
+            This account was signed in on another device. Please sign in again to continue here.
+          </SmoothAlert>
+
+          <SmoothAlert show={Boolean(error)} onClose={() => setError('')} type="error">
+            {error}
+          </SmoothAlert>
 
           <form onSubmit={handleLogin}>
             <div className="mb-5">
-              <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Email Address</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
               <input
                 type="email"
                 name="email"
@@ -248,7 +301,7 @@ const LoginPage = () => {
             </div>
 
             <div className="mb-6">
-              <label className="block text-xs md:text-md font-medium text-gray-600 mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
