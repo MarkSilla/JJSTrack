@@ -55,10 +55,10 @@ const Footer = () => {
                 </div>
               </div>
             </div>
-            <div className="order-3 text-center md:order-2 md:text-left">
+            <div className="order-3 col-span-2 text-center md:col-span-1 md:order-2 md:text-left">
               <div>
-                <h3 className="mb-4 text-center text-lg font-bold md:text-left">Quick Links</h3>
-                <ul className="space-y-2 text-gray-400">
+                <h3 className="mb-3 text-center text-lg font-bold md:mb-4 md:text-left">Quick Links</h3>
+                <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-gray-400 md:flex-col md:items-start md:space-y-2 md:gap-0 md:text-base">
                   <li><a href="#home" className="hover:text-blue-400">Home</a></li>
                   <li><a href="#features" className="hover:text-blue-400">Features</a></li>
                   <li><a href="#about" className="hover:text-blue-400">About</a></li>
@@ -78,10 +78,10 @@ const Footer = () => {
                 </ul>
               </div>
             </div>
-            <div className="order-4 text-center md:text-left">
+            <div className="order-4 col-span-2 text-center md:col-span-1 md:order-4 md:text-left pt-2 md:pt-0">
               <div>
                 <h3 className="mb-2 text-center text-lg font-bold md:text-left">Follow Us</h3>
-                <ul className="flex justify-center space-x-4 text-gray-400 md:justify-start">
+                <ul className="flex justify-center space-x-5 text-gray-400 md:justify-start">
                   <li><a href="https://www.facebook.com/JennoelJennyl" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 " aria-label="Facebook"><Facebook className="text-blue-400" size={20} /></a></li>
                   <li><a href="https://www.instagram.com/jjsportswearph?igsh=MXNka3JiZXNtZ3NqNw==" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400" aria-label="Instagram"><Instagram className="text-blue-400" size={20} /></a></li>
                 </ul>
