@@ -635,14 +635,14 @@ export default function Dashboard() {
                                     </p>
                                 </div>
 
-                                <div>
+                                <div className="w-full sm:w-auto">
                                     <button
                                         type="button"
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             openBookingForm();
                                         }}
-                                        className="saas-btn-primary shadow-lg shadow-blue-600/30"
+                                        className="saas-btn-primary w-full sm:w-auto shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
                                     >
                                         <MdAdd size={18} />
                                         <span>Book New Order</span>
@@ -680,7 +680,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
 
                     {/* Calendar */}
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 reveal-item stagger-1">
                         <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-5 shadow-sm">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-3 sm:mb-4">Calendar</h3>
                             <div className="calendar-wrapper" style={{ padding: 0, boxShadow: 'none', border: 'none' }}>
@@ -765,7 +765,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Order Tracker */}
-                    <div className="lg:col-span-3 bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
+                    <div className="lg:col-span-3 bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 reveal-item stagger-2">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800">Order Tracker</h3>
                             <div className="flex items-center gap-2 relative">

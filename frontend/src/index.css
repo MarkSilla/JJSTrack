@@ -4,69 +4,182 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* ═══════════════════════════════════════════════════════════
+   JJS Track — Design System Tokens
+   Single source of truth for the authenticated experience.
+   ═══════════════════════════════════════════════════════════ */
+
 :root {
-  --color-bg-dark: #020617;
-  --color-surface-dark: #0f172a;
-  --color-brand-primary: #2563eb;
-  --color-brand-hover: #1d4ed8;
-  --color-text-dark-muted: #94a3b8;
+  /* ── Color: Surfaces ── */
+  --surface-ground: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --surface-dark: #0f172a;
+  --surface-dark-deep: #070d1b;
+  --surface-border: rgba(226, 232, 240, 0.8);
+  --surface-border-hover: #cbd5e1;
+
+  /* ── Color: Brand ── */
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-primary-light: rgba(37, 99, 235, 0.15);
+
+  /* ── Color: Text ── */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  /* ── Color: Status — semantic palette ── */
+  --status-completed-bg: #ecfdf5;
+  --status-completed-fg: #047857;
+  --status-completed-border: #a7f3d0;
+
+  --status-active-bg: #eff6ff;
+  --status-active-fg: #1d4ed8;
+  --status-active-border: #bfdbfe;
+
+  --status-pending-bg: #fffbeb;
+  --status-pending-fg: #b45309;
+  --status-pending-border: #fde68a;
+
+  --status-cancelled-bg: #fef2f2;
+  --status-cancelled-fg: #dc2626;
+  --status-cancelled-border: #fecaca;
+
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-fg: #475569;
+  --status-neutral-border: #e2e8f0;
+
+  /* ── Radius ── */
+  --radius-sm: 0.5rem;
+  /* 8px  — badges, small controls */
+  --radius-md: 0.75rem;
+  /* 12px — buttons, inputs, list items */
+  --radius-lg: 1rem;
+  /* 16px — cards, panels */
+  --radius-xl: 1.25rem;
+  /* 20px — hero sections, modals */
+  --radius-full: 9999px;
+  /* pills, avatars */
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-pop: 0 20px 40px -10px rgba(15, 23, 42, 0.12);
+  --shadow-brand: 0 2px 4px 0 rgba(37, 99, 235, 0.2);
+  --shadow-brand-hover: 0 4px 12px 0 rgba(37, 99, 235, 0.3);
+
+  /* ── Elevation aliases ── */
+  --elevation-card: var(--shadow-sm);
+  --elevation-card-hover: var(--shadow-lg);
+  --elevation-dropdown: var(--shadow-pop);
+  --elevation-modal: var(--shadow-pop);
+
+  /* ── Timing ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* ── Focus ── */
+  --focus-ring: 0 0 0 3px var(--brand-primary-light);
+
+  /* ── Spacing: control height ── */
+  --control-height: 42px;
+  --control-height-sm: 36px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════ */
 
 html {
   scroll-behavior: smooth;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--surface-ground);
+  color: var(--text-primary);
 }
 
 .font-playfair {
   font-family: 'Playfair Display', Georgia, serif;
 }
 
-/* Premium SaaS Card Surface */
+
+/* ═══════════════════════════════════════════════════════════
+   Cards
+   ═══════════════════════════════════════════════════════════ */
+
 .saas-card {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: var(--surface-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--elevation-card);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .saas-card-interactive {
-  background-color: #ffffff;
-  border-radius: 1rem;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: var(--surface-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--elevation-card);
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: pointer;
 }
+
 .saas-card-interactive:hover {
-  border-color: rgba(203, 213, 225, 1);
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  border-color: var(--surface-border-hover);
+  box-shadow: var(--elevation-card-hover);
   transform: translateY(-2px);
 }
 
-/* Premium SaaS Buttons */
+.saas-card-interactive:active {
+  transform: translateY(-1px) scale(0.992);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════════════════════ */
+
 .saas-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 42px;
+  min-height: var(--control-height);
   padding: 0.5rem 1.25rem;
-  background-color: #2563eb;
+  background-color: var(--brand-primary);
   color: #ffffff;
   font-size: 0.875rem;
   font-weight: 600;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 4px 0 rgba(37, 99, 235, 0.2);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-brand);
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: pointer;
 }
+
 .saas-btn-primary:hover {
-  background-color: #1d4ed8;
-  box-shadow: 0 4px 12px 0 rgba(37, 99, 235, 0.3);
+  background-color: var(--brand-primary-hover);
+  box-shadow: var(--shadow-brand-hover);
 }
+
 .saas-btn-primary:active {
   transform: scale(0.98);
+}
+
+.saas-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.saas-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .saas-btn-secondary {
@@ -74,74 +187,494 @@ html {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 42px;
+  min-height: var(--control-height);
   padding: 0.5rem 1.25rem;
-  background-color: #ffffff;
-  color: #334155;
+  background-color: var(--surface-card);
+  color: var(--text-secondary);
   font-size: 0.875rem;
   font-weight: 600;
-  border-radius: 0.75rem;
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border-hover);
+  box-shadow: var(--shadow-xs);
+  transition: all var(--duration-normal) var(--ease-out);
+  cursor: pointer;
 }
+
 .saas-btn-secondary:hover {
-  background-color: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background-color: var(--surface-ground);
+  border-color: var(--text-faint);
+  color: var(--text-primary);
 }
+
 .saas-btn-secondary:active {
   transform: scale(0.98);
 }
 
-/* Premium Inputs */
+.saas-btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.saas-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--control-height-sm);
+  padding: 0.375rem 0.75rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  transition: all var(--duration-fast) var(--ease-out);
+  cursor: pointer;
+}
+
+.saas-btn-ghost:hover {
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.saas-btn-ghost:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.saas-btn-ghost:active {
+  transform: scale(0.975);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Inputs
+   ═══════════════════════════════════════════════════════════ */
+
 .saas-input {
   width: 100%;
-  min-height: 42px;
+  min-height: var(--control-height);
   padding: 0.5rem 0.875rem;
-  background-color: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--surface-border-hover);
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
-  color: #0f172a;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  transition: all 200ms ease-out;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--duration-normal) ease-out,
+    box-shadow var(--duration-normal) ease-out;
 }
+
+.saas-input::placeholder {
+  color: var(--text-faint);
+}
+
 .saas-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--brand-primary);
+  box-shadow: var(--focus-ring);
 }
+
+.saas-input:disabled {
+  background-color: var(--surface-subtle);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Status Badges — semantic, single source of truth
+   Used across Dashboard, Order, Appointment, Invoices.
+   ═══════════════════════════════════════════════════════════ */
+
+[class^="badge-"],
+[class*=" badge-"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  line-height: 1.6;
+}
+
+.badge-completed {
+  background-color: var(--status-completed-bg);
+  color: var(--status-completed-fg);
+  border-color: var(--status-completed-border);
+}
+
+.badge-in-progress {
+  background-color: var(--status-active-bg);
+  color: var(--status-active-fg);
+  border-color: var(--status-active-border);
+}
+
+.badge-pending {
+  background-color: var(--status-pending-bg);
+  color: var(--status-pending-fg);
+  border-color: var(--status-pending-border);
+}
+
+.badge-cancelled {
+  background-color: var(--status-cancelled-bg);
+  color: var(--status-cancelled-fg);
+  border-color: var(--status-cancelled-border);
+}
+
+.badge-neutral {
+  background-color: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
+  border-color: var(--status-neutral-border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Hero Banner — dark header section used on
+   Dashboard, Appointments, Invoices, Orders.
+   ═══════════════════════════════════════════════════════════ */
+
+.hero-banner {
+  background-color: var(--surface-dark);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid #1e293b;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .hero-banner {
+    padding: 2rem;
+  }
+}
+
+.hero-stat-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  transition: background var(--duration-normal) var(--ease-out);
+  min-width: 0;
+}
+
+.hero-stat-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.hero-stat-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-stat-label {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.hero-stat-value {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-top: 0.125rem;
+}
+
+@media (min-width: 640px) {
+  .hero-stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Page Container — standardized authenticated page padding
+   ═══════════════════════════════════════════════════════════ */
+
+.page-container {
+  padding: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .page-container {
+    padding: 2rem;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Section Label — uppercase kicker above card sections
+   ═══════════════════════════════════════════════════════════ */
+
+.section-label {
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Empty State — centered placeholder for zero-data screens
+   ═══════════════════════════════════════════════════════════ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.empty-state-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-subtle);
+  border: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: var(--text-faint);
+}
+
+.empty-state-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.empty-state-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  max-width: 18rem;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Dashboard-specific legacy classes (preserved)
+   ═══════════════════════════════════════════════════════════ */
 
 .dashboard-book-now-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background-color: #ffffff;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background-color: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--surface-border);
   cursor: pointer;
   width: max-content;
   margin-left: auto;
-  transition: background-color 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color var(--duration-slow) var(--ease-out);
 }
 
 .dashboard-book-now-btn:hover {
-  background-color: #f8fafc;
+  background-color: var(--surface-ground);
 }
 
 .dashboard-book-now-label {
-  color: #0f172a;
+  color: var(--text-primary);
   cursor: pointer;
   font-weight: 500;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Progressive Content Reveal
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes revealFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-item {
+  opacity: 0;
+  animation: revealFadeInUp 280ms var(--ease-out) forwards;
+}
+
+.stagger-1 {
+  animation-delay: 50ms;
+}
+
+.stagger-2 {
+  animation-delay: 100ms;
+}
+
+.stagger-3 {
+  animation-delay: 150ms;
+}
+
+.stagger-4 {
+  animation-delay: 200ms;
+}
+
+.stagger-5 {
+  animation-delay: 250ms;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Seamless Route Transitions
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes routeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdownEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-dropdown-enter {
+  animation: dropdownEnter var(--duration-fast) var(--ease-out) forwards;
+  transform-origin: top right;
+}
+
+.animate-modal-enter {
+  animation: modalEnter var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-fade-in {
+  animation: routeFadeIn 220ms var(--ease-out) forwards;
+}
+
+
+@keyframes scissorSnipTop {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(-24deg);
+  }
+}
+
+@keyframes scissorSnipBottom {
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(24deg);
+  }
+}
+
+.scissor-top {
+  animation: scissorSnipTop 0.28s ease-in-out infinite;
+}
+
+.scissor-bottom {
+  animation: scissorSnipBottom 0.28s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   Reduced Motion
+   ═══════════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
+
   .hero-services-track {
     animation-play-state: paused;
+  }
+
+  .saas-card-interactive:hover {
+    transform: none;
+  }
+
+  .saas-btn-primary:active,
+  .saas-btn-secondary:active,
+  .saas-btn-ghost:active,
+  .saas-card-interactive:active {
+    transform: none;
+  }
+
+  .reveal-item {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-dropdown-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-modal-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

@@ -1,10 +1,18 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useContext } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Context from './context/Context'
+import Context, { AuthContext } from './context/Context'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
 import LandingPage from './pages/LandingPage'
-import { RouteSkeleton } from './components/SkeletonLoaders'
+import { AuthLoadingScreen } from './components/AuthLoadingScreen'
+import {
+  RouteSkeleton,
+  DashboardSkeleton,
+  OrdersSkeleton,
+  AppointmentsSkeleton,
+  ProfileSkeleton,
+  InvoicesSkeleton
+} from './components/SkeletonLoaders'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const SignupPage = lazy(() => import('./pages/SignupPage'))
@@ -24,11 +32,67 @@ const Order = lazy(() => import('./pages/content/Order'))
 const BookingForms = lazy(() => import('./pages/content/Bookingforms'))
 const Profile = lazy(() => import('./pages/content/Profile'))
 
-const PageFallback = () => (
-  <div aria-label="Loading page">
-    <RouteSkeleton />
-  </div>
-)
+const PageFallback = () => {
+  // Safe location access in case router is initializing
+  let pathname = ''
+  try {
+    pathname = window.location.pathname
+  } catch (_) {}
+
+  // Avoid showing authenticated skeleton shell on public pages
+  const isPublicPath = [
+    '/',
+    '/login',
+    '/signup',
+    '/verify-email',
+    '/forgot-password',
+    '/reset-password',
+    '/terms-of-use',
+    '/privacy-policy',
+    '/designs'
+  ].includes(pathname)
+
+  if (isPublicPath) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center" />
+  }
+
+  let contentSkeleton = <DashboardSkeleton />
+  if (pathname.includes('/order')) {
+    contentSkeleton = <OrdersSkeleton />
+  } else if (pathname.includes('/appointment')) {
+    contentSkeleton = <AppointmentsSkeleton />
+  } else if (pathname.includes('/invoices')) {
+    contentSkeleton = <InvoicesSkeleton />
+  } else if (pathname.includes('/profile')) {
+    contentSkeleton = <ProfileSkeleton />
+  }
+
+  return (
+    <div className="relative min-h-[60vh]" aria-label="Loading page">
+      <RouteSkeleton>{contentSkeleton}</RouteSkeleton>
+
+      {/* Mobile Scissor Blur Loading Overlay */}
+      <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-50/60 backdrop-blur-md animate-fade-in sm:hidden">
+        <div className="relative flex flex-col items-center justify-center p-5 bg-[#0F172A] rounded-2xl border border-white/10 shadow-2xl max-w-[240px]">
+          <div className="w-14 h-14 flex items-center justify-center relative mb-2">
+            <svg viewBox="0 0 48 48" className="w-12 h-12 text-blue-500 filter drop-shadow-[0_2px_8px_rgba(59,130,246,0.3)]">
+              <g className="scissor-top" style={{ transformOrigin: '18px 24px' }}>
+                <circle cx="12" cy="17" r="5.5" stroke="currentColor" strokeWidth="3" fill="none" />
+                <path d="M16 19.5 L40 23.5 L18 25.5 Z" fill="currentColor" />
+              </g>
+              <g className="scissor-bottom" style={{ transformOrigin: '18px 24px' }}>
+                <circle cx="12" cy="31" r="5.5" stroke="currentColor" strokeWidth="3" fill="none" />
+                <path d="M16 28.5 L40 24.5 L18 22.5 Z" fill="currentColor" />
+              </g>
+              <circle cx="18" cy="24" r="2.5" fill="currentColor" stroke="white" strokeWidth="1" />
+            </svg>
+          </div>
+          <p className="text-[10px] uppercase tracking-widest font-black text-slate-200">Preparing view...</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const withSuspense = (element) => (
   <Suspense fallback={<PageFallback />}>
@@ -36,9 +100,11 @@ const withSuspense = (element) => (
   </Suspense>
 )
 
-const App = () => {
+const AppContent = () => {
+  const { isLoggingIn, setIsLoggingIn } = useContext(AuthContext)
+
   return (
-    <Context>
+    <>
       <Router>
         <Routes>
           <Route path="/" element={withSuspense(<LandingPage />)} />
@@ -64,6 +130,17 @@ const App = () => {
           </Route>
         </Routes>
       </Router>
+      {isLoggingIn && (
+        <AuthLoadingScreen onComplete={() => setIsLoggingIn(false)} />
+      )}
+    </>
+  )
+}
+
+const App = () => {
+  return (
+    <Context>
+      <AppContent />
     </Context>
   )
 }

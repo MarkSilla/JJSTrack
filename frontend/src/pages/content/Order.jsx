@@ -323,21 +323,21 @@ const OrderTimelineVertical = ({ steps }) => {
     )
 }
 
-// ─── Status Badge ─────────────────────────────
 const StatusBadge = ({ status }) => {
-    const map = {
-        'Pending': 'bg-yellow-50 text-yellow-600 border-yellow-200',
-        'Approved': 'bg-blue-50 text-blue-600 border-blue-200',
-        'In Progress': 'bg-orange-50 text-orange-600 border-orange-200',
-        'Completed': 'bg-green-50 text-green-600 border-green-200',
-        'Released': 'bg-cyan-50 text-cyan-700 border-cyan-200',
-        'Cancelled': 'bg-red-50 text-red-500 border-red-200',
+    const normalized = String(status || '').trim().toLowerCase()
+    if (['completed', 'released', 'paid', 'approved'].includes(normalized)) {
+        return <span className="badge-completed">{status}</span>
     }
-    return (
-        <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border ${map[status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-            {status}
-        </span>
-    )
+    if (['in progress', 'in-progress', 'printing', 'sewing'].includes(normalized)) {
+        return <span className="badge-in-progress">{status}</span>
+    }
+    if (['pending', 'awaiting', 'deposit'].includes(normalized)) {
+        return <span className="badge-pending">{status}</span>
+    }
+    if (['cancelled', 'overdue', 'failed'].includes(normalized)) {
+        return <span className="badge-cancelled">{status}</span>
+    }
+    return <span className="badge-neutral">{status || 'Draft'}</span>
 }
 
 const CancellationReasonModal = ({ order, onClose }) => {
@@ -547,7 +547,7 @@ const DetailsModal = ({ order, onClose }) => {
                 onClick={onClose}
             />
             <div
-                className="fixed bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform duration-300 ease-out rounded-t-3xl sm:rounded-none"
+                className="fixed bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform transition-opacity var(--duration-slow) var(--ease-out) rounded-t-3xl sm:rounded-none"
             >
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -1392,41 +1392,32 @@ const Order = () => {
         <main ref={mainRef} className="p-3 sm:p-5 lg:p-8 w-full overflow-y-auto max-h-screen" onScroll={handleScroll}>
 
             {/* ── Hero Banner ── */}
-            <div className="bg-[#0F172A] rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-5 sm:mb-7">
-                <div className="absolute -top-4 right-3 opacity-10 text-white pointer-events-none">
-                    <Scissors size={120} />
+            <div className="hero-banner mb-6 sm:mb-8">
+                <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
+                    <GiSewingMachine size={120} />
                 </div>
-                <div className="absolute bottom-2 left-5 opacity-[0.07] text-white -rotate-12 pointer-events-none">
+                <div className="absolute bottom-2 left-6 opacity-[0.05] text-white -rotate-12 pointer-events-none">
                     <Printer size={90} />
                 </div>
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                     <div>
-                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-0.5">My Orders</h2>
-                        <p className="text-slate-400 text-xs sm:text-sm">Track and manage your tailoring orders.</p>
+                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight mb-0.5">My Orders</h2>
+                        <p className="text-slate-300 text-xs sm:text-sm font-medium">Track and manage your tailoring orders.</p>
                     </div>
                     {/* Stats — full width grid, no scroll */}
                     <div className="grid w-full grid-cols-3 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
                         {[
                             { label: 'Total Orders', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
                             { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
-                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-green-400/20', text: 'text-green-300' },
+                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-emerald-400/20', text: 'text-emerald-300' },
                         ].map(({ label, value, icon: Icon, bg, text }) => (
-                            <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-center sm:items-start gap-1.5 sm:gap-2 hover:bg-white/15 transition-all min-w-0">
-                                {/* Mobile: icon + label on top */}
-                                <div className="flex items-center gap-0.5 sm:hidden">
-                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${bg}`}>
-                                        <Icon size={13} className={text} />
-                                    </div>
-                                    <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-wide truncate">{label}</p>
-                                </div>
-                                <p className="text-white text-xl font-bold leading-tight sm:hidden">{toStatCount(value)}</p>
-                                {/* Desktop/Tablet */}
-                                <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0 ${bg}`}>
+                            <div key={label} className="hero-stat-card">
+                                <div className={`hero-stat-icon ${bg}`}>
                                     <Icon size={18} className={text} />
                                 </div>
-                                <div className="hidden sm:block">
-                                    <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                                    <p className="text-white text-xl font-bold leading-tight">{toStatCount(value)}</p>
+                                <div>
+                                    <p className="hero-stat-label">{label}</p>
+                                    <p className="hero-stat-value">{toStatCount(value)}</p>
                                 </div>
                             </div>
                         ))}
@@ -1450,7 +1441,7 @@ const Order = () => {
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-100 rounded-xl text-sm shadow-sm focus:ring-4 focus:ring-blue-500/5 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
+                        className="saas-input pl-10"
                     />
                 </div>
 
@@ -1528,7 +1519,7 @@ const Order = () => {
             )}
 
             {/* ── Orders List ── */}
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-4 reveal-item stagger-1">
                 {error && (
                     <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-center">
                         <p className="text-red-500 font-semibold text-sm">{error}</p>

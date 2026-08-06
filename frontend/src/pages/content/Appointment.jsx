@@ -496,8 +496,8 @@ const Appointment = () => {
                     background: rgba(255, 255, 255, 0.35);
                 }
             `}</style>
-            <main className="appointment-interactive-past p-6 lg:p-8">
-                <div className="bg-[#0F172A] rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-8">
+            <main className={`appointment-interactive-past p-6 lg:p-8 ${selectedDate && selectedDateBookable ? 'pb-24 xl:pb-8' : ''}`}>
+                <div className="hero-banner mb-8">
                     <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
                         <GiSewingMachine size={140} />
                     </div>
@@ -510,25 +510,23 @@ const Appointment = () => {
 
                     <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                         <div>
-                            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">My Appointments</h2>
-                            <p className="text-slate-400 text-sm">View availability and manage your bookings.</p>
+                            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">My Appointments</h2>
+                            <p className="text-slate-300 text-sm font-medium">View availability and manage your bookings.</p>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
+                        <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:min-w-[390px] lg:w-auto">
                             {[
-                                { label: 'Total', value: totalBookings, sub: 'Bookings', icon: MdCalendarToday, color: 'bg-blue-400/20 text-blue-300' },
-                                { label: 'Approved', value: approvedBookings, sub: 'Confirmed', icon: MdCheckCircle, color: 'bg-green-400/20 text-green-300' },
-                                { label: 'Pending', value: pendingBookings, sub: 'Awaiting', icon: MdPending, color: 'bg-amber-400/20 text-amber-300' },
-                                { label: 'Completed', value: completedBookings, sub: 'Done', icon: MdEventAvailable, color: 'bg-indigo-400/20 text-indigo-300' },
-                            ].map(({ label, value, sub, icon: Icon, color }) => (
-                                <div key={label} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 flex items-center gap-3 hover:bg-white/15 transition-all">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color.split(' ')[0]}`}>
-                                        <Icon size={20} className={color.split(' ')[1]} />
+                                { label: 'Approved', value: approvedBookings, icon: MdCheckCircle, color: 'bg-emerald-400/20 text-emerald-300' },
+                                { label: 'Pending', value: pendingBookings, icon: MdPending, color: 'bg-amber-400/20 text-amber-300' },
+                                { label: 'Completed', value: completedBookings, icon: MdEventAvailable, color: 'bg-indigo-400/20 text-indigo-300' },
+                            ].map(({ label, value, icon: Icon, color }) => (
+                                <div key={label} className="hero-stat-card">
+                                    <div className={`hero-stat-icon ${color.split(' ')[0]}`}>
+                                        <Icon size={18} className={color.split(' ')[1]} />
                                     </div>
                                     <div>
-                                        <p className="text-slate-400 text-[10px] font-medium">{label}</p>
-                                        <p className="text-white text-xl font-bold leading-tight">{value}</p>
-                                        <p className="text-slate-500 text-[10px]">{sub}</p>
+                                        <p className="hero-stat-label">{label}</p>
+                                        <p className="hero-stat-value">{value}</p>
                                     </div>
                                 </div>
                             ))}
@@ -537,7 +535,7 @@ const Appointment = () => {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div className="xl:col-span-2">
+                    <div className="xl:col-span-2 reveal-item stagger-1">
                         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                             <h3 className="text-sm font-semibold text-gray-800 mb-4">Calendar</h3>
                             <div className="calendar-wrapper" style={{ padding: 0, boxShadow: 'none', border: 'none' }}>
@@ -570,7 +568,7 @@ const Appointment = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-5 reveal-item stagger-2">
                         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                             <h3 className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-blue-600/60 mb-4 flex items-center gap-2">
                                 <span className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 inline-block" />
@@ -834,6 +832,28 @@ const Appointment = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Sticky Mobile Bottom Booking Bar */}
+            {selectedDate && selectedDateBookable && (
+                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 flex items-center justify-between shadow-[0_-8px_24px_rgba(0,0,0,0.06)] sm:px-6 xl:hidden animate-modal-enter">
+                    <div className="min-w-0 flex-1 pr-4">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Selected Booking Date</p>
+                        <p className="text-sm font-extrabold text-slate-800 leading-tight mt-0.5">
+                            {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                            {selectedDateFull ? 'Recommended capacity reached' : 'Slot available'}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowBooking(true)}
+                        className="shrink-0 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs uppercase tracking-wider px-5 py-3 rounded-xl shadow-md transition-all duration-150"
+                    >
+                        Book Now
+                    </button>
+                </div>
+            )}
 
             <BookingModal isOpen={showBooking} onClose={() => setShowBooking(false)} initialBookingDate={selectedDate || ''} />
         </>

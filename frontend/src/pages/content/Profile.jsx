@@ -147,10 +147,10 @@ const Profile = () => {
   }, [navigate])
 
   const inputCls = (field) =>
-    `w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 bg-white ${
+    `saas-input ${
       errors[field]
-        ? 'border-red-400 focus:border-red-500 focus:ring-[3px] focus:ring-red-500/10'
-        : 'border-slate-200 focus:border-blue-500 focus:ring-[3px] focus:ring-blue-500/10 hover:border-slate-300'
+        ? '!border-red-400 !focus:border-red-500'
+        : ''
     }`
 
   const clearFeedback = () => setMessage({ type: '', text: '' })
@@ -718,7 +718,7 @@ const Profile = () => {
           </div>
 
           {/* ── Main Form Card ── */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden reveal-item stagger-1">
             {/* Card header */}
             <div className="px-6 py-4 sm:px-8 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
               <div>

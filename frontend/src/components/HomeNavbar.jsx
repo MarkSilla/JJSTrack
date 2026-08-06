@@ -64,7 +64,7 @@ const resolveNotificationRoute = (notification = {}) => {
   return baseRoute
 }
 
-const HomeNavbar = ({ collapsed, setCollapsed }) => {
+const HomeNavbar = ({ collapsed, setCollapsed, isMobileExpanded }) => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
@@ -193,7 +193,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    
+
     return () => {
       isMountedRef.current = false
       document.removeEventListener('mousedown', handleClickOutside)
@@ -413,10 +413,15 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
         <div className="flex items-center gap-3">
           <button
             id="jjs-toggle-btn"
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 lg:hidden transition-colors cursor-pointer text-gray-600"
+            onClick={setCollapsed}
+            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 active:bg-gray-200 lg:hidden transition-colors cursor-pointer text-gray-600"
+            aria-label="Toggle navigation menu"
           >
-            {collapsed ? <MdMenu size={22} /> : <MdClose size={22} />}
+            <div className="w-5 h-3.5 flex flex-col justify-between relative">
+              <span className={`w-full h-0.5 bg-gray-600 rounded-full transition-all duration-300 ${isMobileExpanded ? 'rotate-45 translate-y-[6px]' : ''}`} />
+              <span className={`w-full h-0.5 bg-gray-600 rounded-full transition-all duration-200 ${isMobileExpanded ? 'opacity-0' : 'opacity-100'}`} />
+              <span className={`w-full h-0.5 bg-gray-600 rounded-full transition-all duration-300 ${isMobileExpanded ? '-rotate-45 -translate-y-[6px]' : ''}`} />
+            </div>
           </button>
         </div>
 
@@ -443,7 +448,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
                   className="fixed inset-0 top-14 bg-slate-900/10 backdrop-blur-[1px] sm:hidden"
                   aria-hidden="true"
                 />
-                <div className="fixed inset-x-3 top-16 z-40 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl animate-in fade-in zoom-in duration-200 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:max-h-[28rem] sm:w-96">
+                <div className="fixed inset-x-3 top-16 z-40 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl animate-dropdown-enter sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:max-h-[28rem] sm:w-96">
                   <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-900">Notifications</p>
@@ -478,15 +483,13 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
                         <button
                           key={notification._id}
                           onClick={() => handleNotificationClick(notification)}
-                          className={`w-full border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${
-                            notification.isRead ? 'bg-white' : 'bg-blue-50/60'
-                          }`}
+                          className={`w-full border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${notification.isRead ? 'bg-white' : 'bg-blue-50/60'
+                            }`}
                         >
                           <div className="flex items-start gap-3">
                             <span
-                              className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                                notification.isRead ? 'bg-gray-200' : 'bg-blue-500'
-                              }`}
+                              className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${notification.isRead ? 'bg-gray-200' : 'bg-blue-500'
+                                }`}
                             />
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -523,8 +526,8 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
               {/* Profile Picture */}
               <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold shadow-sm overflow-hidden">
                 {user?.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
+                  <img
+                    src={user.photoURL}
                     alt={user.fullName || 'User Profile'}
                     className="w-full h-full object-cover"
                   />
@@ -536,7 +539,7 @@ const HomeNavbar = ({ collapsed, setCollapsed }) => {
 
             {/* Dropdown Menu */}
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-56 sm:w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 sm:py-3 animate-in fade-in zoom-in duration-200 max-h-96 overflow-y-auto">
+              <div className="absolute right-0 mt-2 w-56 sm:w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 sm:py-3 animate-dropdown-enter max-h-96 overflow-y-auto">
                 {/* User Info Header */}
                 <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100">
                   <p className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-1">

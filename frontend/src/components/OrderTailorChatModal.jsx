@@ -281,8 +281,8 @@ export default function OrderTailorChatModal({ order, onClose, targetStaffName }
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-x-0 bottom-0 top-auto z-[101] flex h-[88dvh] max-h-[720px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-[calc(100dvh-4rem)] sm:w-[440px] sm:max-w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px]">
+      <div className="fixed inset-0 z-[100] bg-black/45 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="fixed inset-x-0 bottom-0 top-auto z-[101] flex h-[88dvh] max-h-[720px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:h-[calc(100dvh-4rem)] sm:w-[440px] sm:max-w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] animate-modal-enter">
         <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3.5 sm:gap-3 sm:px-5 sm:py-4">
           <button
             type="button"

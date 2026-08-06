@@ -500,16 +500,16 @@ const GoogleProfileModal = ({ isOpen, onClose, onSuccess, fixedFirstName = '' })
       `}</style>
 
       <div
-        className={`fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+        className={`fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-all var(--duration-normal) var(--ease-out) ${isOpen ? 'opacity-100' : 'opacity-0'
           }`}
       />
 
       <div
-        className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-2 sm:p-4 pointer-events-none transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'
+        className={`fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-2 sm:p-4 pointer-events-none transition-all var(--duration-normal) var(--ease-out) ${isOpen ? 'opacity-100' : 'opacity-0'
           }`}
       >
         <div
-          className={`bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xl max-h-[98vh] sm:max-h-[92vh] shadow-2xl relative pointer-events-auto transition-all duration-500 flex flex-col ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-12'
+          className={`bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-xl max-h-[98vh] sm:max-h-[92vh] shadow-2xl relative pointer-events-auto transition-all var(--duration-slow) var(--ease-out) flex flex-col ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.985] translate-y-4'
             }`}
         >
           <div className="relative bg-gradient-to-br from-slate-800 via-slate-800 to-slate-700 rounded-t-3xl px-4 py-5 sm:p-6 overflow-hidden flex-shrink-0">

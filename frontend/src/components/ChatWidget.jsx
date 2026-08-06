@@ -597,7 +597,7 @@ const ActiveConversation = ({ conversation, messages, onSendMessage, isTyping, q
 
 const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendMessage, isTyping, quickReplies, isLoading, errorText, adminConversations, tailorConversations, layoutArtistConversations, selectedConversation, onSelectConversation, currentUserId, onEdit, onDeleteForEveryone, onDeleteForMe, onImageClick }) => (
   <div
-    className={`fixed z-[9999] flex overflow-hidden bg-white shadow-2xl transition-all duration-500 ${isFullScreen
+    className={`fixed z-[9999] flex overflow-hidden bg-white shadow-2xl transition-all duration-500 animate-modal-enter ${isFullScreen
       ? "inset-0 md:inset-4 md:rounded-[32px]"
       : `inset-0 md:inset-auto ${CHAT_POSITION} ${CHAT_SIZE} md:rounded-[32px] shadow-[0_30px_100px_rgba(0,0,0,0.25)]`
       }`}

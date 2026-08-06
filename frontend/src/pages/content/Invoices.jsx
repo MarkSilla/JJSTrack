@@ -18,36 +18,31 @@ const getGreeting = () => {
     return 'Good evening'
 }
 
-const statusStyle = (status) => {
+const statusBadgeClass = (status) => {
     const s = status?.toLowerCase()
-    if (s === 'paid') return 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    if (s === 'pending') return 'bg-amber-50 text-amber-700 border border-amber-200'
-    if (s === 'overdue') return 'bg-red-50 text-red-700 border border-red-200'
-    return 'bg-gray-100 text-gray-600'
+    if (s === 'paid' || s === 'completed') return 'badge-completed'
+    if (s === 'pending') return 'badge-pending'
+    if (s === 'overdue' || s === 'cancelled') return 'badge-cancelled'
+    return 'badge-neutral'
 }
 
 const statusIcon = (status) => {
     const s = status?.toLowerCase()
-    if (s === 'paid') return <MdCheckCircle size={14} className="text-emerald-500" />
-    if (s === 'pending') return <MdAccessTime size={14} className="text-amber-500" />
+    if (s === 'paid') return <MdCheckCircle size={12} className="text-emerald-600" />
+    if (s === 'pending') return <MdAccessTime size={12} className="text-amber-600" />
     return null
 }
 
 const typeBadge = (type) => {
-    const colors = {
-        Service: 'bg-blue-50 text-blue-700 border border-blue-200',
-        Custom: 'bg-purple-50 text-purple-700 border border-purple-200',
-        Repair: 'bg-orange-50 text-orange-700 border border-orange-200',
-    }
     return (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${colors[type] || 'bg-gray-100 text-gray-600'}`}>
+        <span className="badge-neutral font-semibold">
             {type}
         </span>
     )
 }
 
 const InvoiceHero = ({ paidAmount, paidCount, totalAmount, invoiceCount }) => (
-    <div className="bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden mb-8">
+    <div className="hero-banner mb-8">
         <div className="absolute -top-3 right-4 opacity-10 text-white pointer-events-none">
             <GiSewingMachine size={140} />
         </div>
@@ -63,23 +58,22 @@ const InvoiceHero = ({ paidAmount, paidCount, totalAmount, invoiceCount }) => (
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
                     Invoices & Receipts
                 </h1>
-                <p className="text-slate-300 text-sm font-medium">View and download your official receipts & order billing summaries.</p>
+                <p className="text-slate-300 text-xs lg:text-sm font-medium">View and download your official receipts & order billing summaries.</p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full lg:w-auto">
                 {[
-                    { label: 'Total Paid', value: `\u20b1${paidAmount.toLocaleString('en-PH')}`, sub: 'Settled', icon: MdCheckCircle, color: 'bg-emerald-500/20 text-emerald-400' },
-                    { label: 'Paid Invoices', value: paidCount.toLocaleString('en-PH'), sub: 'Completed', icon: MdReceipt, color: 'bg-amber-500/20 text-amber-400' },
-                    { label: 'Grand Total', value: `\u20b1${totalAmount.toLocaleString('en-PH')}`, sub: `${invoiceCount} Total`, icon: MdReceipt, color: 'bg-blue-500/20 text-blue-400' },
-                ].map(({ label, value, sub, icon: Icon, color }) => (
-                    <div key={label} className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-3.5 flex flex-col items-start gap-1.5 hover:bg-white/15 transition-all duration-200 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color.split(' ')[0]}`}>
+                    { label: 'Total Paid', value: `\u20b1${paidAmount.toLocaleString('en-PH')}`, icon: MdCheckCircle, color: 'bg-emerald-500/20 text-emerald-400' },
+                    { label: 'Invoices', value: paidCount.toLocaleString('en-PH'), icon: MdReceipt, color: 'bg-amber-500/20 text-amber-400' },
+                    { label: 'Grand Total', value: `\u20b1${totalAmount.toLocaleString('en-PH')}`, icon: MdReceipt, color: 'bg-blue-500/20 text-blue-400' },
+                ].map(({ label, value, icon: Icon, color }) => (
+                    <div key={label} className="hero-stat-card">
+                        <div className={`hero-stat-icon ${color.split(' ')[0]}`}>
                             <Icon size={18} className={color.split(' ')[1]} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-xs font-medium leading-tight">{label}</p>
-                            <p className="text-white text-base sm:text-lg font-bold leading-tight mt-0.5">{value}</p>
-                            <p className="text-slate-400 text-[11px] font-medium">{sub}</p>
+                            <p className="hero-stat-label">{label}</p>
+                            <p className="hero-stat-value">{value}</p>
                         </div>
                     </div>
                 ))}
@@ -216,8 +210,8 @@ const InvoiceDetail = ({ invoice, subtotal, tax, discount, total }) => {
                             </div>
                         </div>
                         <div className="mt-4 flex justify-center md:justify-end">
-                            <span className={`inline-flex items-center gap-1.5 text-[10px] px-4 py-1.5 rounded-xl font-black uppercase tracking-widest shadow-sm ${statusStyle(invoice.status)}`}>
-                                {invoice.status === 'Paid' ? <MdCheckCircle size={14} /> : null}
+                            <span className={`inline-flex items-center gap-1.5 ${statusBadgeClass(invoice.status)}`}>
+                                {invoice.status === 'Paid' ? <MdCheckCircle size={12} /> : null}
                                 {invoice.status}
                             </span>
                         </div>
@@ -270,10 +264,10 @@ const InvoiceDetail = ({ invoice, subtotal, tax, discount, total }) => {
                                     <td className="py-3.5 px-4 text-center">{typeBadge(item.type)}</td>
                                     <td className="py-3.5 px-4 text-center text-gray-600">{item.qty}</td>
                                     <td className="py-3.5 px-4 text-right text-gray-600">
-                                        <div>₱ {item.unitPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
-                                        {item.addOnPrice > 0 && <div className="text-[10px] text-gray-400">+₱ {item.addOnPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>}
+                                        <div>₱{item.unitPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
+                                        {item.addOnPrice > 0 && <div className="text-[10px] text-gray-400">+₱{item.addOnPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>}
                                     </td>
-                                    <td className="py-3.5 px-4 text-right font-semibold text-gray-800">₱ {(item.qty * (item.unitPrice + (item.addOnPrice || 0))).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                                    <td className="py-3.5 px-4 text-right font-semibold text-gray-800">₱{(item.qty * (item.unitPrice + (item.addOnPrice || 0))).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -452,14 +446,14 @@ const Invoices = () => {
 
     if (loading) {
         return (
-            <main className="p-4 sm:p-6 lg:p-8 pb-0 font-inter">
+            <main className="p-3 sm:p-5 lg:p-8 w-full overflow-y-auto max-h-screen font-inter pb-20">
                 <InvoicePageSkeleton />
             </main>
         )
     }
 
     return (
-        <main className="p-4 sm:p-6 lg:p-8 pb-0 font-inter">
+        <main className="p-3 sm:p-5 lg:p-8 w-full overflow-y-auto max-h-screen font-inter pb-20">
             <InvoiceHero
                 paidAmount={paidAmount}
                 paidCount={paidCount}
@@ -516,12 +510,12 @@ const Invoices = () => {
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div className="lg:col-span-2 space-y-4">
+                        <div className="lg:col-span-2 space-y-4 reveal-item stagger-1">
                             <div className="flex items-center justify-between mb-2 px-1">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Select Invoice</h3>
                                 <span className="text-[10px] font-bold text-blue-500 uppercase px-2 py-0.5 bg-blue-50 rounded-full">{invoices.length} Total</span>
                             </div>
-                            <div className="space-y-3 max-h-[752px] overflow-y-auto pr-2 scrollbar-hide">
+                            <div className="space-y-3 lg:max-h-[752px] lg:overflow-y-auto pr-2 custom-scrollbar">
                                 {invoices.map((inv, i) => {
                                     const invSubtotal = inv.items.reduce((sum, item) => sum + item.qty * (item.unitPrice + (item.addOnPrice || 0)), 0)
                                     const isActive = i === selectedIdx
@@ -540,7 +534,7 @@ const Invoices = () => {
                                         >
                                             <div className="flex items-center justify-between mb-3">
                                                 <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>{inv.referenceId || 'N/A'}</span>
-                                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 uppercase tracking-wider ${statusStyle(inv.status)}`}>
+                                                <span className={`flex items-center gap-1 ${statusBadgeClass(inv.status)}`}>
                                                     {statusIcon(inv.status)}
                                                     {inv.status}
                                                 </span>
@@ -557,7 +551,7 @@ const Invoices = () => {
                         </div>
 
                         {/* Invoice Preview — desktop */}
-                        <div className="hidden lg:block lg:col-span-3 sticky top-24">
+                        <div className="hidden lg:block lg:col-span-3 sticky top-24 reveal-item stagger-2">
                             {invoice ? (
                                 <InvoiceDetail invoice={invoice} subtotal={subtotal} tax={tax} discount={discount} total={total} />
                             ) : (

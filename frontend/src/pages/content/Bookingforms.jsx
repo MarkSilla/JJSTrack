@@ -641,9 +641,9 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-2 sm:p-4">
-            <div className={`relative w-full ${isExpandedEntryStep ? 'max-w-6xl' : 'max-w-2xl'} max-h-[96vh] flex flex-col transition-all duration-300`}>
-                <div className="bg-[#F8FAFC] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
+        <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm overflow-hidden p-0 sm:p-4 animate-fade-in">
+            <div className={`relative w-full ${isExpandedEntryStep ? 'max-w-6xl' : 'max-w-2xl'} h-[92dvh] sm:h-auto sm:max-h-[96vh] flex flex-col transition-all duration-300 animate-modal-enter`}>
+                <div className="bg-[#F8FAFC] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full w-full">
                     <button
                         onClick={handleClose}
                         className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/5 hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-600 transition-all cursor-pointer"

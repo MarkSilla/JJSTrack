@@ -8,6 +8,7 @@ import { userApi } from '../../services/userApi.js';
 import img from '../assets/img.js';
 import GoogleProfileModal from '../components/GoogleProfileModal.jsx';
 import { AuthContext } from '../context/Context.jsx';
+import { AuthLoadingScreen } from '../components/AuthLoadingScreen.jsx';
 
 // Smooth Alert Component with CSS Grid height animation & fade-in/out transitions
 const SmoothAlert = ({ show, onClose, type = 'error', title, children }) => {
@@ -94,6 +95,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [showAuthLoader, setShowAuthLoader] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useContext(AuthContext);
@@ -143,7 +145,7 @@ const LoginPage = () => {
       if (response.success && response.token) {
         login(response.user, response.token, formData.remember);
         toast.success('Login successful!');
-        navigate('/home', { replace: true });
+        setShowAuthLoader(true);
       } else {
         setError(response.message || 'Login failed');
       }
@@ -168,7 +170,7 @@ const LoginPage = () => {
 
       if (response.success && response.token) {
         login(response.user, response.token);
-        navigate('/home', { replace: true });
+        setShowAuthLoader(true);
       } else {
         setError(response.message || 'Google login failed');
       }
@@ -182,7 +184,7 @@ const LoginPage = () => {
 
   const handleProfileSuccess = () => {
     toast.success('Profile completed successfully!');
-    navigate('/home', { replace: true });
+    setShowAuthLoader(true);
   };
 
   return (
@@ -377,6 +379,10 @@ const LoginPage = () => {
         onClose={() => setShowProfileModal(false)}
         onSuccess={handleProfileSuccess}
       />
+
+      {showAuthLoader && (
+        <AuthLoadingScreen onComplete={() => navigate('/home', { replace: true })} />
+      )}
     </div>
   );
 };

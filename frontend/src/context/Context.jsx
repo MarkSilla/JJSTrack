@@ -49,6 +49,7 @@ const Context = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
   const expiryIntervalRef = useRef(null)
 
   const syncAuthFromStorage = useCallback(() => {
@@ -202,6 +203,7 @@ const Context = ({ children }) => {
     }
 
     persistAuth(userData, authToken, remember)
+    setIsLoggingIn(true)
     setIsAuthenticated(true)
     setUser(userData)
     startExpiryTimer()
@@ -252,6 +254,8 @@ const Context = ({ children }) => {
     login,
     logout,
     loading,
+    isLoggingIn,
+    setIsLoggingIn,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

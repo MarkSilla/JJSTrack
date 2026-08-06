@@ -13,6 +13,7 @@ cluade/
 agent/skills/
 agents/skills/
 PRODUCT.md
+DESIGN.md
 
 # Dependencies & Build Outputs
 node_modules/

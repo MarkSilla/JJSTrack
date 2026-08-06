@@ -41,17 +41,17 @@ const Footer = () => {
 
   return (
     <>
-      <footer className="relative bg-gray-800 py-8 text-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-8 md:grid-cols-4">
+      <footer className="relative bg-gray-800 py-10 text-white">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-16">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-8 md:grid-cols-4 md:gap-x-8 lg:gap-x-12">
             <div className="col-span-2 order-1 md:col-span-1 md:order-1">
               <div className="text-center md:text-left">
-                <div className="flex items-center justify-center gap-3 md:justify-start">
-                  <img src={jjsLogo} alt="jjs logo" width="40" height="40" loading="lazy" decoding="async" className="h-10 w-10 object-contain" />
-                  <h3 className="mb-1 text-lg font-bold">JJS Track</h3>
+                <div className="flex flex-col items-center justify-center gap-1.5 mb-2 md:flex-row md:justify-start md:gap-3">
+                  <img src={jjsLogo} alt="jjs logo" width="44" height="44" loading="lazy" decoding="async" className="h-11 w-11 object-contain" />
+                  <h3 className="text-lg font-bold">JJS Track</h3>
                 </div>
                 <div className="relative z-10 p-1 md:p-2 mr-0 xl:mr-10 mb-4 xl:mb-0">
-                  <p className="text-gray-400">Custom full sublimation sportswear and repairs, tailored for teams, events, and individuals. Quality design matters.</p>
+                  <p className="text-sm text-gray-400 leading-relaxed text-center md:text-left">Custom full sublimation sportswear and repairs, tailored for teams, events, and individuals. Quality design matters.</p>
                 </div>
               </div>
             </div>
