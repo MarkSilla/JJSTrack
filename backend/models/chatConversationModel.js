@@ -83,7 +83,7 @@ chatConversationSchema.index(
   { userId: 1, scope: 1, subjectType: 1, subjectId: 1, assignedStaffId: 1 },
   {
     unique: true,
-    partialFilterExpression: { scope: 'order', assignedStaffId: { $ne: null } },
+    partialFilterExpression: { scope: 'order', assignedStaffId: { $exists: true } },
   }
 );
 

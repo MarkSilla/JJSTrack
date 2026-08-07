@@ -7,7 +7,7 @@ import {
 import {
     FileText, QrCode, Package, Zap, Download, AlertCircle, Eye, EyeOff, Copy, Check, MessageCircle,
     Inbox, Monitor, Printer, Scissors, Truck,
-    Package2, ArrowLeft, ChevronRight, Users
+    Package2, ArrowLeft, ChevronRight, Users, MoreHorizontal, X
 } from 'lucide-react'
 import { GiSewingMachine } from 'react-icons/gi'
 import { toast } from 'sonner'
@@ -181,6 +181,21 @@ const matchesActiveFilter = (order, filter) => {
     return status === filter
 }
 
+// ─── Responsive helper ───────────────────────────
+const useIsMobile = (breakpoint = 640) => {
+    const [isMobile, setIsMobile] = useState(
+        typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+    )
+    useEffect(() => {
+        const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+        const handler = (e) => setIsMobile(e.matches)
+        setIsMobile(mq.matches)
+        mq.addEventListener('change', handler)
+        return () => mq.removeEventListener('change', handler)
+    }, [breakpoint])
+    return isMobile
+}
+
 // ─── Step Icon ───────────────────────────────
 const StepIcon = ({ step, size = 'md' }) => {
     const isDone = step.done
@@ -205,9 +220,9 @@ const StepIcon = ({ step, size = 'md' }) => {
 const StepLabel = ({ step, size = 'md' }) => {
     const isDone = step.done
     const isActive = !step.done && step.active
-    const textSize = size === 'sm' ? 'text-[10px]' : 'text-[11px]'
+    const textSize = size === 'sm' ? 'text-[11px]' : 'text-xs'
     return (
-        <span className={`${textSize} mt-1 whitespace-nowrap font-medium
+        <span className={`${textSize} mt-1 font-medium leading-tight text-center
             ${isDone ? 'text-blue-600' : ''}
             ${isActive ? 'text-blue-500' : ''}
             ${!isDone && !isActive ? 'text-gray-400' : ''}
@@ -217,62 +232,97 @@ const StepLabel = ({ step, size = 'md' }) => {
     )
 }
 
-// ─── Progress Tracker (Horizontal) ─────────────
+// ─── Progress Tracker (Horizontal — Desktop Only) ─────────────
+const OrderProgressTrackerDesktop = ({ steps }) => {
+    if (!steps || steps.length === 0) return null
+    return (
+        <div className="hidden sm:flex items-center w-full mt-2 overflow-x-auto pb-1 gap-0">
+            {steps.map((step, i) => (
+                <React.Fragment key={step.label + i}>
+                    <div className="flex flex-col items-center min-w-[95px]">
+                        <StepIcon step={step} />
+                        <StepLabel step={step} />
+                        <div className="flex flex-col items-center mt-1 text-center min-h-[35px]">
+                            {step.active ? (
+                                <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wide animate-pulse">
+                                    Active
+                                </span>
+                            ) : step.done ? (
+                                <>
+                                    <span className="text-[11px] text-gray-800 font-bold uppercase tracking-tight leading-tight">
+                                        {formatDateSmall(step.date)}
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 font-semibold">
+                                        {step.time || formatTimeSmall(step.date)}
+                                    </span>
+
+                                </>
+                            ) : (
+                                <span className="text-[10px] text-gray-300 font-semibold uppercase tracking-tight">
+                                    Pending
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {i < steps.length - 1 && (
+                        <div className={`h-[1px] flex-1 min-w-[12px] -mt-12 mx-1 rounded transition-all
+                            ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
+                        />
+                    )}
+                </React.Fragment>
+            ))}
+        </div>
+    )
+}
+
+// ─── Mobile Compact Progress ─────────────────────────
+// Shows a horizontal fill bar + current step label instead of forcing all labels inline
+const OrderProgressMobile = ({ steps }) => {
+    if (!steps || steps.length === 0) return null
+
+    const totalSteps = steps.length
+    const completedCount = steps.filter(s => s.done).length
+    const activeStep = steps.find(s => s.active && !s.done)
+    const allDone = completedCount === totalSteps
+    const progressPercent = allDone
+        ? 100
+        : Math.round(((completedCount + (activeStep ? 0.5 : 0)) / totalSteps) * 100)
+
+    const currentLabel = activeStep
+        ? activeStep.label
+        : allDone
+            ? steps[totalSteps - 1]?.label || 'Complete'
+            : steps[completedCount]?.label || 'Pending'
+
+    return (
+        <div className="sm:hidden mt-3 space-y-2">
+            {/* Progress bar */}
+            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                />
+            </div>
+            {/* Step indicator */}
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-gray-500">
+                    Step {Math.min(completedCount + 1, totalSteps)} of {totalSteps}
+                </span>
+                <span className={`text-[11px] font-bold ${allDone ? 'text-emerald-600' : activeStep ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {currentLabel}
+                </span>
+            </div>
+        </div>
+    )
+}
+
+// ─── Combined Progress Component ───────────────────
 const OrderProgressTracker = ({ steps }) => {
     if (!steps || steps.length === 0) return null
     return (
         <>
-            <div className="hidden sm:flex items-center w-full mt-2 overflow-x-auto pb-1 gap-0">
-                {steps.map((step, i) => (
-                    <React.Fragment key={step.label + i}>
-                        <div className="flex flex-col items-center min-w-[95px]">
-                            <StepIcon step={step} />
-                            <StepLabel step={step} />
-                            <div className="flex flex-col items-center mt-1 text-center min-h-[35px]">
-                                {step.active ? (
-                                    <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest animate-pulse">
-                                        Active
-                                    </span>
-                                ) : step.done ? (
-                                    <>
-                                        <span className="text-[10px] text-gray-800 font-black uppercase tracking-tighter leading-tight">
-                                            {formatDateSmall(step.date)}
-                                        </span>
-                                        <span className="text-[9px] text-gray-500 font-bold">
-                                            {step.time || formatTimeSmall(step.date)}
-                                        </span>
-
-                                    </>
-                                ) : (
-                                    <span className="text-[9px] text-gray-300 font-bold uppercase tracking-tighter">
-                                        Pending
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        {i < steps.length - 1 && (
-                            <div className={`h-[1px] flex-1 min-w-[12px] -mt-12 mx-1 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
-                            />
-                        )}
-                    </React.Fragment>
-                ))}
-            </div>
-            <div className="sm:hidden flex items-start w-full mt-3">
-                {steps.map((step, i) => (
-                    <React.Fragment key={step.label + i}>
-                        <div className="flex flex-col items-center flex-1">
-                            <StepIcon step={step} size="sm" />
-                            <StepLabel step={step} size="sm" />
-                        </div>
-                        {i < steps.length - 1 && (
-                            <div className={`h-[1px] flex-1 mt-3 mx-0.5 rounded transition-all
-                                ${steps[i + 1].done || steps[i + 1].active ? 'bg-blue-500' : 'bg-gray-100'}`}
-                            />
-                        )}
-                    </React.Fragment>
-                ))}
-            </div>
+            <OrderProgressTrackerDesktop steps={steps} />
+            <OrderProgressMobile steps={steps} />
         </>
     )
 }
@@ -301,13 +351,13 @@ const OrderTimelineVertical = ({ steps }) => {
                         </div>
                         <div className="flex-1 pb-6">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                                <h4 className={`text-[12px] font-black tracking-tight ${isDone ? 'text-gray-900' : isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                                <h4 className={`text-xs font-bold tracking-tight ${isDone ? 'text-gray-900' : isActive ? 'text-blue-600' : 'text-gray-400'}`}>
                                     {step.label}
                                 </h4>
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                                 <MdDateRange size={14} className={isDone || isActive ? 'text-blue-500' : 'text-gray-300'} />
-                                <span className={`text-[11px] font-bold uppercase tracking-tight ${isDone || isActive ? 'text-black' : 'text-gray-300'}`}>
+                                <span className={`text-[11px] font-semibold uppercase tracking-tight ${isDone || isActive ? 'text-gray-800' : 'text-gray-300'}`}>
                                     {step.date
                                         ? `${formatDateLong(step.date)}${step.time ? ` | ${step.time}` : ''}`
                                         : (isActive ? 'Phase in progress...' : 'Scheduled Phase')
@@ -348,20 +398,25 @@ const CancellationReasonModal = ({ order, onClose }) => {
     return (
         <>
             <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl">
+            <div
+                className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Cancellation reason"
+            >
                 <div className="flex items-start justify-between gap-4 border-b border-red-100 px-5 py-4">
                     <div className="flex items-start gap-3">
                         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
                             <AlertCircle size={18} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black text-gray-900">Why This Was Canceled</h3>
+                            <h3 className="text-sm font-bold text-gray-900">Why This Was Canceled</h3>
                             <p className="mt-1 text-xs text-gray-500">{getTrackingReferenceCode(order)}</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                         aria-label="Close cancellation reason"
                     >
                         <MdClose size={18} />
@@ -383,7 +438,7 @@ const CancellationReasonModal = ({ order, onClose }) => {
                 <div className="border-t border-gray-100 px-5 py-4">
                     <button
                         onClick={onClose}
-                        className="w-full rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-gray-800"
+                        className="w-full rounded-xl bg-gray-900 px-4 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-gray-800"
                     >
                         Close
                     </button>
@@ -539,6 +594,12 @@ const DetailsModal = ({ order, onClose }) => {
         }, 0)
     }, [order.totalAmount, order.totalPrice, items])
 
+    const tabs = [
+        { id: 'details', label: 'Details', icon: MdInfo },
+        { id: 'list', label: 'Items', icon: Package },
+        ...(order.status !== 'Cancelled' ? [{ id: 'qr', label: 'QR Code', icon: QrCode }] : []),
+    ]
+
     return (
         <>
             {/* Backdrop */}
@@ -547,11 +608,17 @@ const DetailsModal = ({ order, onClose }) => {
                 onClick={onClose}
             />
             <div
-                className="fixed bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col transform transition-transform transition-opacity var(--duration-slow) var(--ease-out) rounded-t-3xl sm:rounded-none"
+                className="fixed bottom-0 right-0 sm:top-0 h-[92vh] sm:h-screen z-50 w-full sm:max-w-md bg-white shadow-2xl overflow-hidden flex flex-col rounded-t-3xl sm:rounded-none"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Order details"
             >
+                {/* Swipe handle */}
                 <div className="flex justify-center pt-3 pb-1 sm:hidden">
                     <div className="w-10 h-1 bg-gray-200 rounded-full" />
                 </div>
+
+                {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0 font-inter">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
@@ -563,57 +630,54 @@ const DetailsModal = ({ order, onClose }) => {
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors shrink-0"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 bg-transparent border-none cursor-pointer transition-colors shrink-0"
+                        aria-label="Close order details"
                     >
                         <MdClose size={18} className="text-gray-400" />
                     </button>
                 </div>
 
-                {/* Tab Navigation (Horizontally Scrollable) */}
-                <div className="flex items-center gap-1 px-4 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter overflow-x-auto scrollbar-none">
-                    <button
-                        onClick={() => setActiveTab('details')}
-                        className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
-                        ${activeTab === 'details'
-                                ? 'text-blue-600 border-b-blue-600'
-                                : 'text-gray-400 border-b-transparent hover:text-gray-600'
-                            }`}
-                    >
-                        <MdInfo size={14} />
-                        Order Details
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('list')}
-                        className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
-                        ${activeTab === 'list'
-                                ? 'text-blue-600 border-b-blue-600'
-                                : 'text-gray-400 border-b-transparent hover:text-gray-600'
-                            }`}
-                    >
-                        <Package size={14} />
-                        Order List
-                    </button>
-                    {order.status !== 'Cancelled' && (
-                        <button
-                            onClick={() => setActiveTab('qr')}
-                            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-bold text-[11px] sm:text-[12px] uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
-                            ${activeTab === 'qr'
-                                    ? 'text-blue-600 border-b-blue-600'
-                                    : 'text-gray-400 border-b-transparent hover:text-gray-600'
-                                }`}
-                        >
-                            <QrCode size={14} />
-                            QR Code
-                        </button>
-                    )}
+                {/* Tab Navigation */}
+                <div
+                    className="flex items-center gap-1 px-4 pt-3 border-b border-gray-100 shrink-0 bg-white font-inter overflow-x-auto scrollbar-none"
+                    role="tablist"
+                    aria-label="Order details sections"
+                >
+                    {tabs.map(tab => {
+                        const TabIcon = tab.icon
+                        const isActive = activeTab === tab.id
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                role="tab"
+                                aria-selected={isActive}
+                                aria-controls={`tabpanel-${tab.id}`}
+                                className={`flex items-center gap-1.5 px-3.5 min-h-[44px] font-bold text-xs uppercase tracking-wider transition-all border-b-2 cursor-pointer whitespace-nowrap shrink-0
+                                ${isActive
+                                        ? 'text-blue-600 border-b-blue-600'
+                                        : 'text-gray-400 border-b-transparent hover:text-gray-600'
+                                    }`}
+                            >
+                                <TabIcon size={14} />
+                                {tab.label}
+                            </button>
+                        )
+                    })}
                 </div>
-                <div className="overflow-y-auto p-4 sm:p-5 pb-20 flex-1 min-h-0 space-y-6 font-inter">
+
+                {/* Tab Content */}
+                <div
+                    className="overflow-y-auto p-4 sm:p-5 pb-24 flex-1 min-h-0 space-y-6 font-inter"
+                    role="tabpanel"
+                    id={`tabpanel-${activeTab}`}
+                >
                     {activeTab === 'details' ? (
                         <div className="space-y-6">
-                            {/* Order Progress (Prominent Top Section) */}
+                            {/* Order Progress */}
                             {effectiveSteps.length > 0 && (
                                 <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 shadow-sm">
-                                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                                    <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wide mb-4 flex items-center gap-1.5">
                                         <MdCheckCircle size={15} /> Order Progress
                                     </p>
                                     <OrderTimelineVertical steps={effectiveSteps} />
@@ -621,7 +685,7 @@ const DetailsModal = ({ order, onClose }) => {
                             )}
 
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Order Specs & Info</p>
+                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Order Info</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     {fields.map(({ label, value }) => {
                                         const Icon = iconMap[label]
@@ -630,8 +694,8 @@ const DetailsModal = ({ order, onClose }) => {
                                             <div key={label} className={`bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl px-3.5 py-3 flex items-start gap-2.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors ${isAddress ? 'col-span-2' : ''}`}>
                                                 {Icon && <Icon size={16} className="text-blue-500 shrink-0 mt-0.5" />}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
-                                                    <p className="text-[11px] font-semibold text-gray-800 break-words">{value}</p>
+                                                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                                                    <p className="text-xs font-semibold text-gray-800 break-words">{value}</p>
                                                 </div>
                                             </div>
                                         )
@@ -644,20 +708,20 @@ const DetailsModal = ({ order, onClose }) => {
                             {/* Items Section */}
                             {hasItems && (
                                 <div>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Items Ordered</p>
+                                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Items Ordered</p>
                                     <div className="space-y-2.5 mb-8">
                                         {items.map((item, idx) => (
                                             <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-50/50 rounded-xl p-3.5 border border-gray-100/50 hover:border-blue-200/50 transition-colors">
                                                 <div className="flex items-start justify-between gap-2 mb-3">
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-bold text-gray-800">{item.description}</p>
-                                                        <p className="text-[9px] text-gray-400 font-medium mt-0.5">Type: {item.type}</p>
+                                                        <p className="text-xs font-bold text-gray-800">{item.description}</p>
+                                                        <p className="text-[11px] text-gray-400 font-medium mt-0.5">Type: {item.type}</p>
                                                     </div>
-                                                    <span className="bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
+                                                    <span className="bg-blue-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0">
                                                         ×{item.qty}
                                                     </span>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                                <div className="grid grid-cols-2 gap-2 text-[11px]">
                                                     <div className="bg-white rounded-lg p-2 border border-gray-100/50">
                                                         <p className="text-gray-400 font-medium">Unit Price</p>
                                                         <p className="text-gray-800 font-bold mt-0.5">₱{item.unitPrice?.toLocaleString() || '—'}</p>
@@ -668,10 +732,10 @@ const DetailsModal = ({ order, onClose }) => {
                                                     </div>
                                                 </div>
                                                 {item.size && (
-                                                    <p className="text-[9px] text-gray-500 mt-2">Size: <span className="font-semibold">{item.size}</span></p>
+                                                    <p className="text-[11px] text-gray-500 mt-2">Size: <span className="font-semibold">{item.size}</span></p>
                                                 )}
                                                 {item.addOn && (
-                                                    <p className="text-[9px] text-gray-500">Add-on: <span className="font-semibold">{item.addOn} (₱{item.addOnPrice || '—'})</span></p>
+                                                    <p className="text-[11px] text-gray-500">Add-on: <span className="font-semibold">{item.addOn} (₱{item.addOnPrice || '—'})</span></p>
                                                 )}
                                             </div>
                                         ))}
@@ -679,8 +743,8 @@ const DetailsModal = ({ order, onClose }) => {
                                     {/* Grand Total Section */}
                                     <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-100 flex justify-between items-center px-1">
                                         <div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Grand Total</p>
-                                            <p className="text-[11px] text-gray-500 font-medium mt-1">Total amount to pay</p>
+                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Grand Total</p>
+                                            <p className="text-xs text-gray-500 font-medium mt-1">Total amount to pay</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-2xl font-black text-blue-600 tracking-tight">₱{grandTotal.toLocaleString()}</p>
@@ -704,17 +768,18 @@ const DetailsModal = ({ order, onClose }) => {
                                     <div className="bg-white p-4 rounded-xl border-2 border-blue-200 shadow-sm">
                                         <img
                                             src={qrCode}
-                                            alt="QR Code"
+                                            alt="QR Code for order release"
                                             className="w-48 h-48 object-contain"
                                         />
                                     </div>
-                                    <p className="text-[9px] text-gray-500 text-center leading-relaxed max-w-xs">
+                                    <p className="text-[11px] text-gray-500 text-center leading-relaxed max-w-xs">
                                         Staff scans this code to release your order. Do not share with others.
                                     </p>
                                     <div className="flex gap-2 w-full">
                                         <button
                                             onClick={handleCopyQR}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5  hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-600 text-[11px] font-bold transition-colors cursor-pointer"
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 min-h-[44px] bg-white hover:bg-blue-50 border border-blue-200 rounded-xl text-blue-600 text-xs font-bold transition-colors cursor-pointer"
+                                            aria-label="Copy QR code to clipboard"
                                         >
                                             {copied ? (
                                                 <>
@@ -728,7 +793,8 @@ const DetailsModal = ({ order, onClose }) => {
                                         </button>
                                         <button
                                             onClick={handleDownloadQR}
-                                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-[11px] font-bold transition-colors cursor-pointer shadow-sm"
+                                            className="flex-1 flex items-center justify-center gap-2 px-3 min-h-[44px] bg-blue-600 hover:bg-blue-700 rounded-xl text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
+                                            aria-label="Download QR code image"
                                         >
                                             <Download size={14} /> Download
                                         </button>
@@ -740,7 +806,7 @@ const DetailsModal = ({ order, onClose }) => {
                                     <p className="text-sm text-gray-600 font-medium">Failed to load QR code</p>
                                     <button
                                         onClick={loadQRCode}
-                                        className="text-blue-600 text-[11px] font-bold hover:text-blue-700"
+                                        className="text-blue-600 text-xs font-bold hover:text-blue-700 min-h-[44px] px-4"
                                     >
                                         Try Again
                                     </button>
@@ -750,19 +816,23 @@ const DetailsModal = ({ order, onClose }) => {
                     )}
                 </div>
 
-                {/* Footer */}
-                {canViewInvoice && (
-                    <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-blue-50 to-blue-50/50 shrink-0 space-y-2">
-                        {canViewInvoice && (
-                            <button
-                                onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
-                                className="w-full text-[12px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors py-2.5 flex items-center justify-center gap-1.5"
-                            >
-                                <FileText size={14} /> View Invoice
-                            </button>
-                        )}
-                    </div>
-                )}
+                {/* Footer — always show a close/action */}
+                <div className="px-5 py-4 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white shrink-0 space-y-2">
+                    {canViewInvoice && (
+                        <button
+                            onClick={() => { navigate(bookingRefId ? `/invoices/${bookingRefId}` : '/invoices'); onClose() }}
+                            className="w-full text-xs font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider cursor-pointer transition-colors min-h-[44px] flex items-center justify-center gap-1.5"
+                        >
+                            <FileText size={14} /> View Invoice
+                        </button>
+                    )}
+                    <button
+                        onClick={onClose}
+                        className="w-full min-h-[44px] rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors sm:hidden"
+                    >
+                        Close
+                    </button>
+                </div>
             </div>
 
         </>
@@ -777,6 +847,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const [showModal, setShowModal] = useState(false)
     const [qrCode, setQrCode] = useState(null)
     const [loadingQR, setLoadingQR] = useState(false)
+    const [showOverflow, setShowOverflow] = useState(false)
+    const overflowRef = useRef(null)
     const isBooking = !!order.bookingType
     const serviceTypeLabel = getServiceTypeLabel(order)
     const referenceCode = getTrackingReferenceCode(order)
@@ -788,6 +860,18 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
     const [showCancelReason, setShowCancelReason] = useState(false)
 
     const canCancel = !isClosedTrackingStatus(order.status) && !hasReachedDropOffStep(steps)
+
+    // Close overflow menu on click outside
+    useEffect(() => {
+        if (!showOverflow) return
+        const handler = (e) => {
+            if (overflowRef.current && !overflowRef.current.contains(e.target)) {
+                setShowOverflow(false)
+            }
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [showOverflow])
 
     const loadQRCode = async () => {
         if (loadingQR || qrCode) return
@@ -818,11 +902,51 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
         document.body.removeChild(link)
     }
 
+    const handleCardKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            navigate(`/order/${order._id}`)
+        }
+    }
+
+    // Collect secondary/overflow actions
+    const overflowActions = []
+    if (hasAssignedTeam) {
+        overflowActions.push({
+            label: 'Message Team',
+            icon: MessageCircle,
+            onClick: () => {
+                sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
+                navigate('/home')
+            }
+        })
+    }
+    if (order.status !== 'Cancelled') {
+        overflowActions.push({
+            label: 'Download QR',
+            icon: Download,
+            disabled: loadingQR,
+            onClick: handleDownloadQR,
+        })
+    }
+    if (isCancelled) {
+        overflowActions.push({
+            label: 'View Why Canceled',
+            icon: AlertCircle,
+            variant: 'danger',
+            onClick: () => setShowCancelReason(true),
+        })
+    }
+
     return (
         <>
             <div
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/order/${order._id}`)}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all overflow-hidden cursor-pointer group"
+                onKeyDown={handleCardKeyDown}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-2"
+                aria-label={`Order ${displayName || referenceCode}, status ${order.status}`}
             >
 
                 {/* ── Header ── */}
@@ -830,14 +954,14 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <h3 className="text-base sm:text-lg font-black text-gray-800 tracking-tight leading-tight truncate">
+                                <h3 className="text-sm sm:text-base font-bold text-gray-800 tracking-tight leading-tight truncate">
                                     {displayName}
                                 </h3>
-                                <span className="bg-gray-100 text-gray-500 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-widest whitespace-nowrap shrink-0">
+                                <span className="bg-gray-100 text-gray-500 text-[11px] font-semibold uppercase px-2 py-0.5 rounded-md tracking-wide whitespace-nowrap shrink-0">
                                     {serviceTypeLabel || '—'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
                                 <span className="truncate">
                                     {referenceCode}
                                 </span>
@@ -859,8 +983,8 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                             { label: 'Pickup', value: formatDateLong(order.pickupDate || order.estimatedCompletion) },
                         ].map(({ label, value }) => (
                             <div key={label} className="bg-gray-50 rounded-xl px-3 py-2">
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-                                <p className="text-[11px] font-bold text-gray-800 truncate">{value || '—'}</p>
+                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                                <p className="text-xs font-bold text-gray-800 truncate">{value || '—'}</p>
                             </div>
                         ))}
                     </div>
@@ -876,77 +1000,84 @@ const OrderCard = ({ order, onCancel, onOpenDetails }) => {
                 {/* ── Footer ── */}
                 <div className="px-4 sm:px-5 py-3 bg-gray-50/60 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-1.5 min-w-0 w-full sm:w-auto">
-                        <span className="text-[12px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-                            Staff Assigned:
+                        <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide shrink-0">
+                            Staff:
                         </span>
-                        <span className="text-[12px] font-semibold text-slate-500 truncate">
-                            {assignedTeamMembers.join(' - ') || 'is not assigned'}
+                        <span className="text-xs font-semibold text-slate-500 truncate">
+                            {assignedTeamMembers.join(' · ') || 'Not assigned'}
                         </span>
                     </div>
-                    <div className="grid w-full grid-cols-2 gap-2 min-[420px]:grid-cols-4 min-[520px]:grid-cols-5 sm:flex sm:w-auto sm:items-center sm:justify-end sm:gap-2 sm:shrink-0">
 
+                    {/* Action buttons — clean hierarchy */}
+                    <div
+                        className="flex items-center gap-2 w-full sm:w-auto sm:justify-end"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                    >
+                        {/* Destructive: Cancel */}
+
+                        {overflowActions.length > 0 && (
+                            <div className="relative shrink-0" ref={overflowRef}>
+                                <button
+                                    onClick={() => setShowOverflow(!showOverflow)}
+                                    className="min-h-[40px] sm:min-h-[36px] w-10 sm:w-9 bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0"
+                                    aria-label="More actions"
+                                    aria-expanded={showOverflow}
+                                    aria-haspopup="menu"
+                                >
+                                    <MoreHorizontal size={16} />
+                                </button>
+                                {showOverflow && (
+                                    <div
+                                        className="absolute bottom-full left-0 sm:right-0 sm:left-auto mb-2 w-48 bg-white border border-gray-200/80 rounded-2xl shadow-xl z-50 py-2 animate-dropdown-enter"
+                                        role="menu"
+                                    >
+                                        {overflowActions.map((action, idx) => {
+                                            const ActionIcon = action.icon
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => {
+                                                        setShowOverflow(false)
+                                                        action.onClick()
+                                                    }}
+                                                    disabled={action.disabled}
+                                                    role="menuitem"
+                                                    className={`w-full text-left px-3.5 min-h-[40px] flex items-center gap-2.5 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${action.variant === 'danger'
+                                                        ? 'text-red-500 hover:bg-red-50'
+                                                        : 'text-gray-700 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    <ActionIcon size={14} />
+                                                    {action.label}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {canCancel && (
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onCancel(order)
-                                }}
-                                className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                                onClick={() => onCancel(order)}
+                                className="min-h-[40px] sm:min-h-[36px] bg-white border border-red-200 text-red-500 text-[11px] font-bold uppercase tracking-wide px-3 sm:px-3.5 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                aria-label="Cancel this order"
                             >
-                                Cancel
+                                <X size={13} />
+                                <span className="hidden min-[420px]:inline">Cancel</span>
                             </button>
                         )}
-                        {hasAssignedTeam && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    sessionStorage.setItem('jjstrack-open-chat-on-dashboard', '1')
-                                    navigate('/home')
-                                }}
-                                className="min-w-0 bg-white border border-green-200 text-green-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-green-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
-                                title="Message the team"
-                            >
-                                <MessageCircle size={12} />
-                                <span className="hidden sm:inline">Message Team</span>
-                                <span className="sm:hidden">Chat</span>
-                            </button>
-                        )}
-                        {order.status !== 'Cancelled' && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownloadQR()
-                                }}
-                                disabled={loadingQR}
-                                className="min-w-0 bg-white border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-purple-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0 disabled:opacity-50"
-                                title={loadingQR ? 'Loading QR...' : 'Download QR Code'}
-                            >
-                                <Download size={12} />
-                                <span className="hidden sm:inline">Download QR</span>
-                                <span className="sm:hidden">QR</span>
-                            </button>
-                        )}
-                        {isCancelled && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    setShowCancelReason(true)
-                                }}
-                                className="min-w-0 bg-white border border-red-200 text-red-500 text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl hover:bg-red-50 transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
-                            >
-                                <AlertCircle size={12} />
-                                <span className="hidden sm:inline">View Why Canceled</span>
-                                <span className="sm:hidden">Why</span>
-                            </button>
-                        )}
+
+                        {/* Secondary overflow actions */}
+
+
+                        {/* Primary: View Details */}
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                navigate(`/order/${order._id}`)
-                            }}
-                            className="min-w-0 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-2 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 sm:shrink-0"
+                            onClick={() => navigate(`/order/${order._id}`)}
+                            className="flex-1 sm:flex-none min-h-[40px] sm:min-h-[36px] bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold uppercase tracking-wide px-4 sm:px-4 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+                            aria-label={`View details for order ${displayName || referenceCode}`}
                         >
-                            <Eye size={12} />
+                            <Eye size={13} />
                             Details
                         </button>
                     </div>
@@ -997,29 +1128,109 @@ const SkeletonCard = () => (
     </div>
 )
 
-// ─── Mobile Filter Sheet ──────────────────────
-const FilterSheet = ({ active, onSelect, onClose }) => {
+const FilterSheet = ({ active, sortBy, onSelectFilter, onSelectSort, onClose }) => {
     return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:hidden" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-            <div className="relative bg-white rounded-t-3xl p-5 pb-8 shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">Filter Orders</h3>
-                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                        <MdClose size={18} />
-                    </button>
-                </div>
-                <div className="space-y-2">
-                    {ORDER_STATUS_FILTERS.map(f => (
+        <div
+            className="fixed inset-0 z-50 flex flex-col justify-end"
+            onClick={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filter and sort orders"
+        >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+            <div
+                className="relative bg-white rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-modal-enter"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="pt-3 px-5 pb-4 border-b border-gray-100 bg-white sticky top-0 z-10">
+                    <div className="flex justify-center mb-3">
+                        <div className="w-10 h-1 bg-gray-200 rounded-full" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-extrabold text-gray-900">Filter & Sort</h3>
+                            <p className="text-xs text-gray-400 font-medium mt-0.5">Refine your order list view</p>
+                        </div>
                         <button
-                            key={f}
-                            onClick={() => { onSelect(f); onClose() }}
-                            className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all
-                                ${active === f ? 'bg-[#0F172A] text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                            onClick={onClose}
+                            className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+                            aria-label="Close filter panel"
                         >
-                            {f}
+                            <MdClose size={20} />
                         </button>
-                    ))}
+                    </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 overflow-y-auto space-y-6 font-inter">
+                    {/* Status Filter Section */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status</span>
+                            {active !== 'All Orders' && (
+                                <button
+                                    onClick={() => onSelectFilter('All Orders')}
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {ORDER_STATUS_FILTERS.map(f => {
+                                const isSelected = active === f
+                                return (
+                                    <button
+                                        key={f}
+                                        onClick={() => onSelectFilter(f)}
+                                        className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                                            isSelected
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200'
+                                                : 'bg-gray-50 text-gray-700 border-gray-100 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        <span className="truncate">{f}</span>
+                                        {isSelected && <Check size={14} className="shrink-0 ml-1 text-white" />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Sort Options Section */}
+                    <div>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Sort Order</span>
+                        <div className="space-y-2">
+                            {SORT_OPTIONS.map(option => {
+                                const isSelected = sortBy === option.value
+                                return (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => onSelectSort(option.value)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                                            isSelected
+                                                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                                : 'bg-gray-50 text-gray-700 border-gray-100 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        <span>{option.label}</span>
+                                        {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-gray-100 bg-gray-50/80">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer shadow-sm"
+                    >
+                        Apply Filters
+                    </button>
                 </div>
             </div>
         </div>
@@ -1038,11 +1249,16 @@ const CancelOrderReasonModal = ({
     const referenceCode = getTrackingReferenceCode(order)
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancel order"
+        >
             <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
                     <div>
-                        <h3 className="text-base font-black text-gray-900">Cancel Order</h3>
+                        <h3 className="text-base font-bold text-gray-900">Cancel Order</h3>
                         <p className="mt-1 text-xs leading-5 text-gray-500">
                             Tell us why you need to cancel {displayName ? `"${displayName}"` : 'this order'}.
                         </p>
@@ -1050,7 +1266,7 @@ const CancelOrderReasonModal = ({
                     <button
                         onClick={onClose}
                         disabled={loading}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 cursor-pointer"
                         aria-label="Close cancel order modal"
                     >
                         <MdClose size={18} />
@@ -1077,14 +1293,14 @@ const CancelOrderReasonModal = ({
                     <button
                         onClick={onClose}
                         disabled={loading}
-                        className="flex-1 rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                        className="flex-1 rounded-xl bg-gray-100 px-4 min-h-[44px] text-xs font-bold uppercase tracking-wider text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50 cursor-pointer"
                     >
                         Keep Order
                     </button>
                     <button
                         onClick={onConfirm}
                         disabled={loading || !reason.trim()}
-                        className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                        className="flex-1 rounded-xl bg-red-600 px-4 min-h-[44px] text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-red-700 disabled:opacity-50 cursor-pointer"
                     >
                         {loading ? 'Cancelling...' : 'Cancel Order'}
                     </button>
@@ -1097,6 +1313,7 @@ const CancelOrderReasonModal = ({
 // ─── Main Page ────────────────────────────────
 const Order = () => {
     const navigate = useNavigate()
+    const isMobile = useIsMobile()
     const { orderId: selectedOrderId } = useParams()
     const [searchQuery, setSearchQuery] = useState('')
     const [activeFilter, setActiveFilter] = useState('All Orders')
@@ -1388,8 +1605,17 @@ const Order = () => {
         }
     }
 
+    // Handler for filter/sort button: mobile opens sheet, desktop opens dropdown
+    const handleFilterButtonClick = () => {
+        if (isMobile) {
+            setShowFilter(true)
+        } else {
+            setShowCombinedDropdown(!showCombinedDropdown)
+        }
+    }
+
     return (
-        <main ref={mainRef} className="p-3 sm:p-5 lg:p-8 w-full overflow-y-auto max-h-screen" onScroll={handleScroll}>
+        <main ref={mainRef} className="p-4 sm:p-5 lg:p-8 w-full overflow-y-auto max-h-screen" onScroll={handleScroll}>
 
             {/* ── Hero Banner ── */}
             <div className="hero-banner mb-6 sm:mb-8">
@@ -1404,19 +1630,23 @@ const Order = () => {
                         <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight mb-0.5">My Orders</h2>
                         <p className="text-slate-300 text-xs sm:text-sm font-medium">Track and manage your tailoring orders.</p>
                     </div>
-                    {/* Stats — full width grid, no scroll */}
-                    <div className="grid w-full grid-cols-3 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:min-w-[390px]">
+                    {/* Stats — responsive grid */}
+                    <div className="grid w-full grid-cols-3 gap-1.5 min-[390px]:gap-2 sm:w-auto sm:min-w-[390px]">
                         {[
-                            { label: 'Total Orders', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
-                            { label: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
-                            { label: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-emerald-400/20', text: 'text-emerald-300' },
-                        ].map(({ label, value, icon: Icon, bg, text }) => (
+                            { label: 'Total', valueFull: 'Total Orders', value: stats.total, icon: MdShoppingBag, bg: 'bg-blue-400/20', text: 'text-blue-300' },
+                            { label: 'Active', valueFull: 'In Progress', value: stats.inProgress, icon: MdLoop, bg: 'bg-amber-400/20', text: 'text-amber-300' },
+                            { label: 'Done', valueFull: 'Fulfilled', value: stats.fulfilled, icon: MdDoneAll, bg: 'bg-emerald-400/20', text: 'text-emerald-300' },
+                        ].map(({ label, valueFull, value, icon: Icon, bg, text }) => (
                             <div key={label} className="hero-stat-card">
                                 <div className={`hero-stat-icon ${bg}`}>
                                     <Icon size={18} className={text} />
                                 </div>
                                 <div>
-                                    <p className="hero-stat-label">{label}</p>
+                                    {/* Short label on narrow screens, full label on wider */}
+                                    <p className="hero-stat-label">
+                                        <span className="min-[420px]:hidden">{label}</span>
+                                        <span className="hidden min-[420px]:inline">{valueFull}</span>
+                                    </p>
                                     <p className="hero-stat-value">{toStatCount(value)}</p>
                                 </div>
                             </div>
@@ -1427,11 +1657,12 @@ const Order = () => {
 
             {/* ── Controls ── */}
             <div className="flex items-center gap-2 mb-6 sm:mb-8">
-                {/* Search Bar - Flex 1 */}
+                {/* Search Bar */}
                 <div className="relative flex-1 group">
                     <button
                         onClick={() => fetchData(activeFilter, searchQuery)}
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 hover:text-blue-600 transition-colors z-10"
+                        aria-label="Search orders"
                     >
                         <MdSearch size={18} />
                     </button>
@@ -1441,33 +1672,40 @@ const Order = () => {
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
-                        className="saas-input pl-10"
+                        className="saas-input !pl-10"
                     />
                 </div>
 
-                {/* Minimal Icons (Filter & Refresh) */}
+                {/* Filter & Refresh icons */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                    {/* Combined Filter/Sort Dropdown */}
+                    {/* Filter/Sort button — routes to mobile sheet or desktop dropdown */}
                     <div className="relative" ref={combinedDropdownRef}>
                         <button
-                            onClick={() => setShowCombinedDropdown(!showCombinedDropdown)}
-                            className={`w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl shadow-sm transition-all hover:bg-gray-50 active:scale-95
+                            onClick={handleFilterButtonClick}
+                            className={`w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl shadow-sm transition-all hover:bg-gray-50 active:scale-95 cursor-pointer
                                 ${showCombinedDropdown ? 'ring-4 ring-blue-500/5 border-blue-400 text-blue-600' : 'text-gray-400'}`}
-                            title="Filters & Sorting"
+                            aria-label="Filter and sort orders"
+                            aria-expanded={isMobile ? showFilter : showCombinedDropdown}
+                            aria-haspopup={isMobile ? 'dialog' : 'menu'}
                         >
                             <MdFilterList size={20} />
                         </button>
 
-                        {showCombinedDropdown && (
-                            <div className="absolute top-full right-0 mt-2 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl z-30 py-3 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                        {/* Desktop-only dropdown */}
+                        {!isMobile && showCombinedDropdown && (
+                            <div
+                                className="absolute top-full right-0 mt-2 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl z-30 py-3 overflow-hidden animate-dropdown-enter"
+                                role="menu"
+                            >
                                 <div className="px-4 pb-2">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Sort By</p>
+                                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Sort By</p>
                                     <div className="space-y-1">
                                         {SORT_OPTIONS.map(option => (
                                             <button
                                                 key={option.value}
                                                 onClick={() => { setSortBy(option.value); setShowCombinedDropdown(false) }}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
+                                                role="menuitem"
+                                                className={`w-full text- px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer
                                                     ${sortBy === option.value ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
                                             >
                                                 {option.label}
@@ -1476,14 +1714,15 @@ const Order = () => {
                                     </div>
                                 </div>
                                 <div className="border-t border-gray-50 mt-2 pt-2 px-4">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Status Filter</p>
+                                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Status</p>
                                     <div className="space-y-1">
                                         {ORDER_STATUS_FILTERS.map(filter => (
                                             <button
                                                 key={filter}
                                                 onClick={() => { setActiveFilter(filter); setShowCombinedDropdown(false) }}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all
-                                                    ${activeFilter === filter ? 'bg-[#0F172A] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                                                role="menuitem"
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer
+                                                    ${activeFilter === filter ? 'bg-slate-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
                                             >
                                                 {filter}
                                             </button>
@@ -1497,8 +1736,8 @@ const Order = () => {
                     {/* Refresh Button */}
                     <button
                         onClick={() => fetchData(activeFilter, searchQuery)}
-                        className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 text-gray-400 hover:bg-gray-50 rounded-xl shadow-sm transition-all active:scale-95 group"
-                        title="Refresh orders"
+                        className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 text-gray-400 hover:bg-gray-50 rounded-xl shadow-sm transition-all active:scale-95 group cursor-pointer"
+                        aria-label="Refresh orders"
                     >
                         <MdLoop size={20} className="group-active:rotate-180 transition-transform duration-500" />
                     </button>
@@ -1508,10 +1747,14 @@ const Order = () => {
             {/* Active filter pill on mobile */}
             {activeFilter !== 'All Orders' && (
                 <div className="sm:hidden flex items-center gap-2 mb-4">
-                    <span className="text-xs text-gray-500">Filtering by:</span>
-                    <span className="flex items-center gap-1 bg-[#0F172A] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                    <span className="text-xs text-gray-500">Filtering:</span>
+                    <span className="flex items-center gap-1 bg-slate-900 text-white text-[11px] font-semibold uppercase tracking-wide px-3 py-1 rounded-full">
                         {activeFilter}
-                        <button onClick={() => setActiveFilter('All Orders')} className="ml-1 opacity-70 hover:opacity-100">
+                        <button
+                            onClick={() => setActiveFilter('All Orders')}
+                            className="ml-1 opacity-70 hover:opacity-100 cursor-pointer"
+                            aria-label={`Clear ${activeFilter} filter`}
+                        >
                             <MdClose size={12} />
                         </button>
                     </span>
@@ -1523,7 +1766,12 @@ const Order = () => {
                 {error && (
                     <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-center">
                         <p className="text-red-500 font-semibold text-sm">{error}</p>
-                        <button onClick={() => fetchData(activeFilter, searchQuery)} className="mt-3 text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">Retry</button>
+                        <button
+                            onClick={() => fetchData(activeFilter, searchQuery)}
+                            className="mt-3 text-xs font-bold text-red-400 hover:text-red-600 uppercase tracking-wide min-h-[44px] px-4 cursor-pointer"
+                        >
+                            Retry
+                        </button>
                     </div>
                 )}
 
@@ -1543,9 +1791,9 @@ const Order = () => {
                 {!loading && !error && displayedItems.length === 0 && (
                     <div className="bg-white rounded-3xl p-12 sm:p-20 text-center border-2 border-dashed border-gray-100">
                         <GiSewingMachine size={32} className="text-gray-200 mx-auto mb-3" />
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs sm:text-sm">No orders found</p>
+                        <p className="text-gray-400 font-bold uppercase tracking-wide text-xs sm:text-sm">No orders found</p>
                         {activeFilter !== 'All Orders' && (
-                            <button onClick={() => setActiveFilter('All Orders')} className="mt-3 text-xs text-blue-400 font-bold">
+                            <button onClick={() => setActiveFilter('All Orders')} className="mt-3 text-xs text-blue-400 font-bold cursor-pointer min-h-[44px] px-4">
                                 Clear filter
                             </button>
                         )}
@@ -1557,7 +1805,9 @@ const Order = () => {
             {showFilter && (
                 <FilterSheet
                     active={activeFilter}
-                    onSelect={handleFilterSelect}
+                    sortBy={sortBy}
+                    onSelectFilter={handleFilterSelect}
+                    onSelectSort={(val) => setSortBy(val)}
                     onClose={() => setShowFilter(false)}
                 />
             )}
@@ -1573,31 +1823,19 @@ const Order = () => {
                 />
             )}
 
-            {/* ── Sticky Floating Search Bar (appears on scroll) ── */}
             {showStickySearch && (
-                <div className="fixed top-20 sm:top-22 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4 flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <MdSearch size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search orders..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && fetchData(activeFilter, searchQuery)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm shadow-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all placeholder-gray-400 font-medium"
-                        />
-                    </div>
+                <div className="fixed bottom-6 sm:top-22 sm:bottom-auto left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4 flex items-center gap-2">
                     <div className="relative group shrink-0">
                         <button
                             onClick={scrollToTop}
-                            className="bg-[#0F172A] hover:bg-slate-700 text-white text-xs font-bold w-10 h-10 rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                            className="bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold w-10 h-10 rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                            aria-label="Scroll to top"
                         >
                             ↑
                         </button>
-                        {/* Tooltip — shows below button */}
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg sm:hidden">
                             Back to top
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900" />
                         </div>
                     </div>
                 </div>

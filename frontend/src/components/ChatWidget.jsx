@@ -154,11 +154,11 @@ const InlineEditInput = ({ initialValue, onSave, onCancel }) => {
 const ImageModal = ({ imageUrl, onClose }) => {
   if (!imageUrl) return null;
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         className="absolute top-6 right-6 p-2 text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
         type="button"
@@ -166,9 +166,9 @@ const ImageModal = ({ imageUrl, onClose }) => {
         <X className="w-8 h-8" />
       </button>
       <div className="relative max-w-[90vw] max-h-[90vh] overflow-hidden rounded-xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <img 
-          src={imageUrl} 
-          alt="Full view" 
+        <img
+          src={imageUrl}
+          alt="Full view"
           className="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
       </div>
@@ -610,7 +610,7 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
       onSelect={onSelectConversation}
       onClose={onClose}
     />
-    <div className={`min-w-0 flex-1 flex-col z-0 bg-white ${!selectedConversation ? 'hidden' : 'flex sm:flex'}`}>
+    <div className={`min-w-0 flex-1 flex-col z-0 bg-white ${!selectedConversation ? 'hidden sm:flex' : 'flex'}`}>
       {selectedConversation ? (
         <>
           <ActiveConversation
@@ -628,12 +628,18 @@ const ChatWindow = ({ onClose, isFullScreen, toggleFullScreen, messages, onSendM
           />
         </>
       ) : (
-        <div className="hidden sm:flex flex-1 flex-col items-center justify-center bg-stone-50/30 p-12 text-center">
-          <div className="w-24 h-24 bg-white rounded-[40px] shadow-sm flex items-center justify-center mb-8">
-            <MessageCircle className="w-12 h-12 text-stone-200" />
+        <div className="hidden sm:flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-slate-50/50 to-white p-8 text-center relative overflow-hidden select-none">
+          <div className="absolute w-72 h-72 bg-blue-500/5 rounded-full blur-3xl -top-10 -right-10 pointer-events-none" />
+          <div className="absolute w-60 h-60 bg-blue-600/5 rounded-full blur-2xl -bottom-10 -left-10 pointer-events-none" />
+          <div className="relative z-10 w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100/60 rounded-3xl border border-blue-100 flex items-center justify-center mb-6 shadow-sm">
+            <MessageCircle className="w-10 h-10 text-blue-600" />
           </div>
-          <h3 className="text-xl font-bold text-stone-800 mb-2">Select a Conversation</h3>
-          <p className="text-[15px] text-stone-500 max-w-[280px]">Choose a team member from the left to start chatting about your orders.</p>
+          <h3 className="relative z-10 text-lg sm:text-xl font-extrabold text-slate-900 mb-2 font-inter tracking-tight">
+            Your Messages
+          </h3>
+          <p className="relative z-10 text-xs sm:text-sm font-medium text-slate-500 max-w-[320px] leading-relaxed mb-6">
+            Select a conversation from the left sidebar to chat with support or your assigned tailor about your orders.
+          </p>
         </div>
       )}
     </div>
