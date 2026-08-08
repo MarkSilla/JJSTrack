@@ -13,12 +13,15 @@ import StaffInventoryPage from './pages/inventory/StaffInventoryPage'
 import StaffInventoryHistoryPage from './pages/inventory/StaffInventoryHistoryPage'
 import StaffProfilePage from './pages/StaffProfilePage'
 import QRScanner from '../pages/content/qrscanner'
+import PageEntrance from '../components/PageEntrance'
 
 function StaffAppShell() {
     return (
         <DueDateAlertProvider>
             <GlobalDueDateAlert />
-            <StaffLayout />
+            <PageEntrance>
+                <StaffLayout />
+            </PageEntrance>
         </DueDateAlertProvider>
     )
 }
@@ -28,7 +31,7 @@ function StaffRoutes() {
         <StaffAuthProvider>
             <Routes>
                 <Route index element={<Navigate to="login" replace />} />
-                <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+                <Route path="login" element={<PublicRoute><PageEntrance><Login /></PageEntrance></PublicRoute>} />
                 <Route element={<ProtectedRoute><StaffAppShell /></ProtectedRoute>}>
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<Dashboard />} />

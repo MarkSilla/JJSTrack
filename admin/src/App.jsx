@@ -22,12 +22,15 @@ import { GlobalStockAlert } from './components/GlobalStockAlert'
 import StaffRoutes from './staff/StaffRoutes'
 import RBAC from './pages/Rbac'
 import { RouteSkeleton } from './components/SkeletonLoaders'
+import PageEntrance from './components/PageEntrance'
 
 function AdminAppShell() {
     return (
         <StockAlertProvider>
             <GlobalStockAlert />
-            <AdminLayout />
+            <PageEntrance>
+                <AdminLayout />
+            </PageEntrance>
         </StockAlertProvider>
     )
 }
@@ -43,7 +46,9 @@ function AdminLoginRoute() {
         return <LoadingScreen />
     }
 
-    return isAuthenticated ? <Navigate to='/admin/dashboard' replace /> : <Login />
+    return isAuthenticated
+        ? <Navigate to='/admin/dashboard' replace />
+        : <PageEntrance><Login /></PageEntrance>
 }
 
 function AppRoutes() {

@@ -1,52 +1,91 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Users, ChevronRight, X, ShieldCheck, Scale } from 'lucide-react'
+import { Shield, Users, ArrowRight, X, ShieldCheck, ClipboardCheck } from 'lucide-react'
 import image from '../assets/img'
 import { PrivacyContent } from './PrivacyPolicy'
 import { TermsContent } from './TermsOfUse'
 
 const LegalModal = ({ isOpen, onClose, title, ContentComponent }) => {
     const scrollRef = useRef(null);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = 'hidden';
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
+    const handleBackdropClick = (e) => {
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-[#020617]/90 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-[1.25rem] md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-                <div className="px-4 md:px-8 py-3 md:py-5 border-b border-stone-100 flex items-center justify-between bg-white shrink-0">
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div className="w-9 h-9 md:w-12 md:h-12 bg-stone-50 p-1.5 rounded-lg md:rounded-xl border border-stone-100 shadow-sm flex items-center justify-center overflow-hidden">
-                            <img src={image.JJS} alt="JJS Logo" className="w-full h-full object-contain" />
+        <div
+            onClick={handleBackdropClick}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="legal-modal-title"
+        >
+            <div
+                className="bg-white w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200"
+            >
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 p-2 shadow-xs flex items-center justify-center shrink-0">
+                            <img src={image.JJS} alt="JJSTrack Logo" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h2 className="text-sm md:text-xl font-bold text-stone-900 tracking-tight">{title}</h2>
-                            <p className="text-[10px] md:text-xs text-blue-600 font-bold tracking-[0.2em] uppercase mt-0.5 flex items-center gap-1">
-                                <span className="w-1 h-1 rounded-full bg-blue-600 inline-block"></span>
-                                JJSTrack Management Portal
+                            <h2 id="legal-modal-title" className="text-base sm:text-xl font-bold font-playfair text-slate-900 tracking-tight">
+                                {title}
+                            </h2>
+                            <p className="text-[11px] text-slate-500 font-medium font-sans tracking-wide uppercase mt-0.5">
+                                JJSTrack Management Portal Documentation
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 hover:bg-stone-100 rounded-full transition-colors text-stone-400 hover:text-stone-900"
+                        type="button"
+                        aria-label="Close legal dialog"
+                        className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400"
                     >
                         <X size={18} />
                     </button>
                 </div>
+
                 <div
                     ref={scrollRef}
-                    className="flex-1 overflow-y-auto p-4 md:p-8 bg-stone-50/40 font-inter"
+                    className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50/50 font-sans custom-scrollbar text-slate-700 leading-relaxed text-sm"
                 >
-                    <ContentComponent scrollRef={scrollRef} />
+                    {ContentComponent && <ContentComponent scrollRef={scrollRef} />}
                 </div>
-                <div className="px-4 md:px-6 py-3 border-t border-stone-100 bg-white flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 shrink-0">
-                    <p className="text-[9px] md:text-xs text-stone-400 font-medium text-center md:text-left">
-                        By continuing, you acknowledge and accept this {title}.
+
+                <div className="px-6 py-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 font-sans">
+                    <p className="text-xs text-slate-500 font-medium text-center sm:text-left">
+                        By continuing, you acknowledge and agree to this {title}.
                     </p>
                     <button
                         onClick={onClose}
-                        className="w-full md:w-auto px-6 py-2 bg-[#020617] text-white rounded-lg md:rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg active:scale-95 text-[9px] md:text-xs uppercase tracking-widest"
+                        type="button"
+                        className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-xs tracking-wide focus:outline-none focus:ring-2 focus:ring-slate-400"
                     >
-                        Accept & Continue
+                        Acknowledge & Close
                     </button>
                 </div>
             </div>
@@ -61,92 +100,149 @@ export default function RBAC() {
     const openModal = (title, component) => setModal({ open: true, title, component });
     const closeModal = () => setModal({ open: false, title: '', component: null });
 
+    const handlePortalClick = (targetPath) => {
+        navigate(targetPath);
+    };
+
     return (
-        <div className="flex min-h-screen relative overflow-hidden font-sans items-center justify-center p-3 md:p-8">
-            <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat blur-sm"
-                style={{ backgroundImage: `url(${image.jjsb})` }}
-            />
-            <div className="absolute inset-0 z-10 bg-[#020617] opacity-80" />
-            <div className="relative z-20 w-full max-w-6xl bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[1rem] p-6 md:p-10 shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-1000">
-                <header className="w-full mb-2 md:mb-10 flex flex-col items-center">
-                    <div className="mb-2 md:mb-8 p-1 rounded-full bg-white/5 border border-white/10 shadow-inner">
-                        <img src={image.JJS} alt="JJSTrack Logo" className="w-14 h-14 md:w-32 md:h-32 object-contain drop-shadow-lg" />
-                    </div>
-                </header>
-
-                <div className="w-full flex flex-col items-center">
-                    <div className="text-center mb-2 md:mb-12 max-w-2xl">
-                        <h1 className="text-xl md:text-[3.5rem] font-bold md:font-extrabold tracking-tight text-white mb-0.5 md:mb-6 drop-shadow-md">
-                            Welcome to JJSTrack
-                        </h1>
-                        <p className="text-white/90 text-[12px] md:text-xl leading-relaxed font-semibold">
-                            Choose your portal to access the system.
-                        </p>
-                    </div>
-
-
-                    <div className="flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-8 w-full max-w-5xl">
-                        <button
-                            onClick={() => navigate('/admin/login')}
-                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[0.5rem] p-6 md:p-10 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
-                        >
-                            <div className="w-8 h-8 md:w-16 md:h-16 bg-[#000821]/5 text-[#000821] rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-6 shadow-sm group-hover:bg-[#000821] group-hover:text-white transition-colors duration-500">
-                                <Shield size={18} className="md:w-8 md:h-8" strokeWidth={1.5} />
-                            </div>
-                            <h3 className="text-base md:text-2xl font-bold text-slate-900 mb-0.5 md:mb-3 tracking-tight">Admin Portal</h3>
-                            <p className="text-slate-500 leading-relaxed mb-3 md:mb-10 text-[10px] md:text-base">
-                                Full access for administrators to manage all system functions
-                            </p>
-                            <div className="flex items-center font-bold text-[#000821] gap-2 group-hover:gap-4 transition-all duration-300 uppercase text-[8px] md:text-xs tracking-[0.2em]">
-                                Continue as Administrator <ChevronRight size={12} />
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/staff/login')}
-                            className="group w-full md:w-1/2 flex flex-col bg-white rounded-[0.5rem] p-6 md:p-10 shadow-2xl transition-all duration-500 text-left relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/10"
-                        >
-                            <div className="w-8 h-8 md:w-16 md:h-16 bg-blue-50 text-blue-600 rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-6 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors duration-500">
-                                <Users size={18} className="md:w-8 md:h-8" strokeWidth={1.5} />
-                            </div>
-                            <h3 className="text-base md:text-2xl font-bold text-slate-900 mb-0.5 md:mb-3 tracking-tight">Staff Portal</h3>
-                            <p className="text-slate-500 leading-relaxed mb-3 md:mb-10 text-[10px] md:text-base">
-                                Access your personalized dashboard to monitor workflows and productivity tools.
-                            </p>
-                            <div className="flex items-center font-bold text-blue-600 gap-2 group-hover:gap-4 transition-all duration-300 uppercase text-[8px] md:text-xs tracking-[0.2em]">
-                                Continue as Staff <ChevronRight size={12} />
-                            </div>
-                        </button>
-                    </div>
-                </div>
+        <div className="relative min-h-screen h-screen w-full font-sans text-slate-100 flex flex-col justify-between overflow-hidden selection:bg-slate-700 selection:text-white">
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 blur-sm scale-105"
+                    style={{ backgroundImage: `url(${image.jjsb})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#080c17]/85 via-[#080c17]/90 to-[#080c17]" />
             </div>
 
+            <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-3 sm:py-5 flex flex-col items-center flex-1 justify-center overflow-hidden">
 
-            <footer className="absolute bottom-0 w-full py-3 md:py-8 px-4 md:px-12 flex flex-col md:flex-row items-center justify-between text-[11px] md:text-[13px] text-white/70 font-bold z-20 gap-2">
-                <div className="flex-1 hidden md:flex items-center gap-2">
-                    <span className="tracking-widest uppercase">JJSTRACK</span>
+                <header className="w-full max-w-xl text-center flex flex-col items-center mb-3 sm:mb-5 shrink-0">
+                    <div className="mb-2 sm:mb-3 p-2 backdrop-blur-xl flex items-center justify-center">
+                        <img src={image.JJS} alt="JJSTrack Logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-md" />
+                    </div>
+                    <h1 className="text-2xl sm:text-4xl md:text-4xl font-bold font-playfair tracking-tight text-white mb-1.5 text-center leading-tight drop-shadow-lg">
+                        Welcome to JJSTrack
+                    </h1>
+                    <p className="text-slate-200 text-xs sm:text-sm max-w-md text-center leading-relaxed font-sans font-normal drop-shadow-sm">
+                        Select your authorized portal scope to access your workspace.
+                    </p>
+                </header>
+
+                <main className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+
+                    <button
+                        type="button"
+                        onClick={() => handlePortalClick('/admin/login')}
+                        className="group text-left relative flex flex-col justify-between bg-neutral-950/70 hover:bg-neutral-950/85 backdrop-blur-xl border border-neutral-800/80 hover:border-blue-500/70 rounded-2xl p-5 sm:p-6 shadow-2xl transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer overflow-hidden"
+                    >
+                        <div className="pointer-events-none absolute -right-6 -bottom-6 text-blue-500/10 group-hover:text-blue-500/20 group-hover:scale-105 transition-all duration-300 transform -rotate-12 select-none">
+                            <ShieldCheck size={160} strokeWidth={1.1} />
+                        </div>
+                        <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-blue-600/10 blur-2xl group-hover:bg-blue-600/20 transition-all duration-300" />
+                        <div className="pointer-events-none absolute top-0 right-0 h-[1px] w-24 bg-gradient-to-l from-blue-500/40 to-transparent" />
+
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-4 sm:mb-5">
+                                <div className="w-10 h-10 bg-neutral-900/70 text-white border border-neutral-700/80 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-md backdrop-blur-md">
+                                    <Shield size={20} strokeWidth={2} />
+                                </div>
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-bold font-playfair text-white mb-1.5 tracking-tight group-hover:text-blue-400 transition-colors">
+                                Admin Portal
+                            </h2>
+                            <p className="text-neutral-300 text-xs leading-relaxed mb-4 font-sans font-normal">
+                                Full access for administrators to manage all system functions
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mb-5">
+                                {['Analytics & Reports', 'Staff Management', 'Services & Pricing', 'Inventory'].map((scope) => (
+                                    <span key={scope} className="text-[11px] font-medium font-sans text-neutral-300 bg-neutral-900/60 border border-neutral-800/80 px-2.5 py-1 rounded-md group-hover:border-neutral-700 transition-colors backdrop-blur-md">
+                                        {scope}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="relative z-10 pt-3 border-t border-neutral-800/80 flex items-center justify-between font-sans">
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-300 group-hover:text-blue-400 tracking-wider uppercase transition-colors">
+                                Continue as Administrator
+                            </span>
+                            <div className="w-8 h-8 rounded-full bg-neutral-900/80 text-neutral-300 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-md border border-neutral-800 group-hover:border-blue-500 backdrop-blur-md">
+                                <ArrowRight size={14} />
+                            </div>
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => handlePortalClick('/staff/login')}
+                        className="group text-left relative flex flex-col justify-between bg-white/70 hover:bg-white/90 backdrop-blur-xl border border-white/60 hover:border-blue-500/70 rounded-2xl p-5 sm:p-6 shadow-2xl shadow-black/25 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer overflow-hidden"
+                    >
+                        <div className="pointer-events-none absolute -right-6 -bottom-6 text-slate-900/10 group-hover:text-blue-600/20 group-hover:scale-105 transition-all duration-300 transform rotate-12 select-none">
+                            <ClipboardCheck size={160} strokeWidth={1.1} />
+                        </div>
+                        <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl group-hover:bg-blue-600/20 transition-all duration-300" />
+                        <div className="pointer-events-none absolute top-0 right-0 h-[1px] w-24 bg-gradient-to-l from-blue-500/40 to-transparent" />
+
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-4 sm:mb-5">
+                                <div className="w-10 h-10 bg-white/80 text-slate-800 border border-slate-200/80 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:text-white rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm backdrop-blur-xl">
+                                    <Users size={20} strokeWidth={2} />
+                                </div>
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-bold font-playfair text-slate-900 mb-1.5 tracking-tight group-hover:text-blue-600 transition-colors">
+                                Staff Portal
+                            </h2>
+                            <p className="text-slate-700 text-xs leading-relaxed mb-4 font-sans font-medium">
+                                Access your personalized dashboard to monitor workflows and productivity tools.
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mb-5">
+                                {['Order Workflows', 'QR Scanner', 'Stock Logging', 'Job Archives'].map((scope) => (
+                                    <span key={scope} className="text-[11px] font-medium font-sans text-slate-800 bg-white/70 border border-slate-200/90 px-2.5 py-1 rounded-md group-hover:border-slate-300 transition-colors backdrop-blur-md">
+                                        {scope}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="relative z-10 pt-3 border-t border-slate-200/90 flex items-center justify-between font-sans">
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-800 group-hover:text-blue-600 tracking-wider uppercase transition-colors">
+                                Continue as Staff
+                            </span>
+                            <div className="w-8 h-8 rounded-full bg-white/90 text-slate-800 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-sm border border-slate-200/90 group-hover:border-blue-500 backdrop-blur-md">
+                                <ArrowRight size={14} />
+                            </div>
+                        </div>
+                    </button>
+                </main>
+            </div>
+
+            <footer className="relative z-10 w-full border-t border-neutral-800/80 bg-black/90 backdrop-blur-md py-3 px-4 sm:px-8 md:px-12 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-400 gap-2 shrink-0 font-sans">
+                <div className="flex items-center gap-2 font-medium tracking-wide text-slate-200">
+                    <img src={image.JJS} alt=" JJSTRACK LOGO" className="w-5 h-5" />
+                    <span>JJS ADMIN & STAFF PORTAL</span>
                 </div>
 
-                <div className="flex-1 flex justify-center items-center gap-4 md:gap-8 pointer-events-auto ">
+                <div className="flex items-center gap-4 font-medium">
                     <button
+                        type="button"
                         onClick={() => openModal('Privacy Policy', PrivacyContent)}
-                        className="hover:text-white transition-colors duration-200"
+                        className="py-0.5 px-2 rounded-md hover:text-white hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center"
                     >
                         Privacy Policy
                     </button>
-                    <div className="w-px h-3 bg-white/20" />
+                    <span className="text-slate-700">|</span>
                     <button
+                        type="button"
                         onClick={() => openModal('Terms of Use', TermsContent)}
-                        className="hover:text-white transition-colors duration-200"
+                        className="py-0.5 px-2 rounded-md hover:text-white hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center"
                     >
                         Terms of Use
                     </button>
                 </div>
 
-                <div className="flex-1 md:flex justify-end opacity-60 text-center md:text-right">
+                <div className="text-slate-400 text-center sm:text-right font-normal text-[11px]">
                     &copy; 2026 JJSTRACK. All rights reserved.
                 </div>
             </footer>
+
             <LegalModal
                 isOpen={modal.open}
                 onClose={closeModal}

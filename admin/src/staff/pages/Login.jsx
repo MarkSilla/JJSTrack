@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import {
+    AuthLoginShell,
+    Lock,
+    LoginError,
+    LoginField,
+    LoginSubmitButton,
+    Mail,
+    PasswordVisibilityButton,
+} from '../../components/AuthLoginShell'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import { persistStoredStaffUser } from '../utils/staffSession'
@@ -11,6 +19,8 @@ function Login() {
     const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState({})
+    const [showHelpNotice, setShowHelpNotice] = useState(false)
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -23,12 +33,23 @@ function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
+        setFieldErrors({})
 
         const normalizedEmail = String(email).replace(/\s+/g, '').trim().toLowerCase()
         const rawPassword = String(password)
+        const nextFieldErrors = {}
 
-        if (!normalizedEmail || !rawPassword) {
-            setError('Please enter your email and password.')
+        if (!normalizedEmail) {
+            nextFieldErrors.email = 'Email address is required.'
+        }
+
+        if (!rawPassword) {
+            nextFieldErrors.password = 'Password is required.'
+        }
+
+        if (Object.keys(nextFieldErrors).length > 0) {
+            setFieldErrors(nextFieldErrors)
+            setError('Please review the highlighted fields.')
             return
         }
 
@@ -59,11 +80,11 @@ function Login() {
             localStorage.setItem('rememberStaffEmail', normalizedEmail)
             persistStoredStaffUser(data.staff)
 
-            // Notify auth context of the change
             window.dispatchEvent(new Event('staff-auth-changed'))
 
             navigate('/staff/dashboard')
         } catch (err) {
+            setFieldErrors({})
             setError(err.message || 'Unable to login right now.')
         } finally {
             setLoading(false)
@@ -71,126 +92,83 @@ function Login() {
     }
 
     return (
-        <div className="flex min-h-screen w-full font-inter bg-slate-50 overflow-hidden">
-            <div className="hidden md:flex xl:w-[50%] md:w-[50%] bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex-col justify-between p-2 md:p-12 text-white relative overflow-hidden">
-                <div className="absolute inset-0 z-0 pointer-events-none">
-                    <img
-                        src={image.Staffjjs}
-                        alt="Staff Background"
-                        className="w-full h-full object-cover opacity-30"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] to-[#1e293b]/30  backdrop-blur-[1px]"></div>
+        <AuthLoginShell
+            portalLabel="Staff Portal"
+            portalTitle="Welcome back"
+            portalDescription="Sign in to your staff account"
+            heroTitle="Quality Matters"
+            heroDescription="Easily manage and track repair and tailoring jobs to ensure accurate and timely work."
+            heroImage={image.Staffjjs}
+            logoSrc={image.JJS}
+            onBack={() => navigate('/')}
+        >
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                {error && Object.keys(fieldErrors).length === 0 && <LoginError message={error} />}
+
+                <LoginField
+                    id="staff-email"
+                    label=""
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    disabled={loading}
+                    autoComplete="email"
+                    error={fieldErrors.email}
+                    icon={Mail}
+                />
+
+                <LoginField
+                    id="staff-password"
+                    label=""
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    disabled={loading}
+                    autoComplete="current-password"
+                    error={fieldErrors.password}
+                    icon={Lock}
+                    rightControl={
+                        <PasswordVisibilityButton
+                            shown={showPassword}
+                            onClick={() => setShowPassword((current) => !current)}
+                            disabled={loading}
+                        />
+                    }
+                />
+
+                <div className="flex items-center justify-between pt-0.5">
+                    <label htmlFor="staff-remember" className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700 select-none">
+                        <input
+                            id="staff-remember"
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-1 focus:ring-blue-600 disabled:cursor-not-allowed accent-blue-600 cursor-pointer"
+                            defaultChecked
+                            disabled={loading}
+                        />
+                        <span>Remember this email</span>
+                    </label>
+
+                    <button
+                        type="button"
+                        onClick={() => setShowHelpNotice((prev) => !prev)}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors focus:outline-none focus-visible:underline"
+                    >
+                        Forgot password?
+                    </button>
                 </div>
 
-                <div className="relative z-10 flex items-center gap-3">
-                    <img src={image.JJS} alt="JJSTrack Logo" className="w-10 h-10 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <div className="text-2xl font-bold tracking-tight">JJSTrack <span className="text-sm font-normal text-slate-400 ml-2">Staff</span></div>
-                </div>
-
-                <div className="relative z-10 max-w-sm mb-12 md:mb-0 items-center ">
-                    <h1 className="text-2xl md:text-5xl  xl:text-5xl  font-playfair font-bold leading-tight mb-3 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                        Quality Matters.
-                    </h1>
-                    <p className="text-sm md:text-sm xl:text-lg text-slate-300 mb-8 leading-relaxed">
-                        Easily manage and track repair and tailoring jobs to ensure accurate and timely work.
-                    </p>
-                </div>
-
-                <div className="relative text-start z-10 text-sm text-slate-500">
-                    © 2026 JJSTrack Inc. All rights reserved.
-                </div>
-            </div>
-
-            {/* Right Login Side */}
-            <div className="flex-1 relative flex items-center justify-center md:p-12 bg-slate-100">
-                <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="absolute left-5 top-3 md:left-8 md:top-8 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-500/10"
-                >
-                    <ArrowLeft size={16} />
-                    Access Portal
-                </button>
-                <div className="w-full max-w-md px-4">
-                    <div className="rounded-2xl md:rounded-3xl p-3 md:p-8 relative">
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#0f172a] border-2 border-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)]">
-                            <img src={image.JJS} alt="Logo" className="w-13 h-13" />
-                        </div>
-                        <div className="text-start mt-12 mb-8">
-                            <h2 className="text-light text-2xl md:text-3xl mb-2 font-playfair font-bold">Welcome Back</h2>
-                            <p className="text-slate-400 text-sm md:text-xs">Enter your credentials to access your staff portal</p>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                            {error && (
-                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-                                    {error}
-                                </div>
-                            )}
-                            <div className="space-y-2">
-                                <label className="block text-slate-300 text-sm md:text-xs font-semibold">Email Address</label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Mail size={18} />
-                                    </div>
-                                    <input
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        className="w-full bg-white border border-slate-300 rounded-lg md:rounded-xl py-3 md:py-3 pl-11 pr-4 text-slate-900 text-base md:text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all placeholder:text-slate-400"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        disabled={loading}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-slate-300 text-sm md:text-xs font-semibold">Password</label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Lock size={18} />
-                                    </div>
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        placeholder="Enter your password"
-                                        className="w-full bg-white border border-slate-300 rounded-lg md:rounded-xl py-3 md:py-3 pl-11 pr-11 text-slate-900 text-base md:text-sm focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all placeholder:text-slate-400"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        disabled={loading}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                        disabled={loading}
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end mt-3 md:mt-2">
-                                <a href="#" className="text-sm md:text-xs text-blue-500 hover:text-blue-600 transition-colors font-medium">
-                                    Forgot Password?
-                                </a>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3 md:py-4 rounded-lg md:rounded-xl shadow-lg shadow-blue-500/30 transform transition-all active:scale-[0.98] mt-4 text-base md:text-base"
-                            >
-                                {loading ? 'Signing In...' : 'Sign In'}
-                            </button>
-                        </form>
-
-                        <div className="text-center mt-5 md:mt-6 pt-4 md:pt-4 border-t border-slate-800/50">
-                            <p className="text-slate-500 text-xs tracking-wider uppercase">Staff Portal</p>
-                        </div>
+                {showHelpNotice && (
+                    <div className="rounded-lg border border-blue-100 bg-blue-50/90 p-2 text-xs text-blue-950 leading-tight font-inter animate-in fade-in duration-200">
+                        <p className="font-semibold text-blue-900">Need access or reset?</p>
+                        <p className="mt-0.5 text-blue-800/90 text-[11px]">Please contact an administrator to update your credentials.</p>
                     </div>
-                </div>
-            </div>
-        </div>
+                )}
+
+                <LoginSubmitButton loading={loading}>Sign In</LoginSubmitButton>
+            </form>
+        </AuthLoginShell>
     )
 }
 

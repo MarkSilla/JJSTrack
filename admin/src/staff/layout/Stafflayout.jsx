@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { Outlet, useLocation } from 'react-router-dom'
 import StaffSidebar from '../components/staffsidenav'
 import StaffNav from '../components/staffnav'
 import StaffChatWidget from '../components/staffchat'
 import StaffCalendarDrawer from '../components/StaffCalendarDrawer'
+import PageEntrance from '../../components/PageEntrance'
 
 const StaffLayout = () => {
     const [collapsed, setCollapsed] = useState(true)
@@ -35,7 +35,9 @@ const StaffLayout = () => {
                         onToggleSidebar={handleBurgerClick}
                     />
                     <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-2 md:p-6 lg:p-4">
-                        <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
+                        <PageEntrance variant="outlet">
+                            <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
+                        </PageEntrance>
                         <StaffChatWidget />
                     </main>
                 </div>

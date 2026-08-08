@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import { Menu } from 'lucide-react'
 import HomeSidebar from '../components/adminsidebar'
 import AdminNav from '../components/adminNav'
 import AdminChatWidget from '../components/AdminChatWidget'
+import PageEntrance from '../components/PageEntrance'
 
 const PAGE_META = [
     {
@@ -103,7 +103,7 @@ const AdminLayout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex overflow-hidden">
+        <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
             <HomeSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
@@ -119,7 +119,9 @@ const AdminLayout = () => {
                         pageSubtitle={pageMeta.subtitle}
                     />
                     <main className="flex-1 min-w-0 w-full overflow-x-hidden overflow-y-auto p-0 pt-2 md:p-3 lg:p-1">
-                        <Outlet />
+                        <PageEntrance variant="outlet">
+                            <Outlet />
+                        </PageEntrance>
                     </main>
                 </div>
             </div>
