@@ -249,7 +249,7 @@ export function LoginField({
                 {rightControl}
             </div>
             {error && (
-                <p id={errorId} className="mt-1 text-xs font-medium text-red-600 flex items-center gap-1">
+                <p id={errorId} className="mt-1 text-xs font-medium text-red-600 flex items-center gap-1 animate-alert-fade">
                     <AlertCircle size={13} className="shrink-0 text-red-600" aria-hidden="true" />
                     <span>{error}</span>
                 </p>
@@ -281,7 +281,7 @@ export function LoginError({ message }) {
     if (!message) return null
 
     return (
-        <div className="rounded-xl border border-red-200 bg-red-50/90 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-red-900 flex items-start gap-2.5 shadow-2xs" role="alert">
+        <div className="rounded-xl border border-red-200 bg-red-50/90 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-red-900 flex items-start gap-2.5 shadow-2xs animate-alert-fade" role="alert">
             <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-600" aria-hidden="true" />
             <div className="leading-snug">{message}</div>
         </div>

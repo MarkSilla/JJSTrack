@@ -9,6 +9,7 @@ import {
     Mail,
     PasswordVisibilityButton,
 } from '../components/AuthLoginShell'
+import { AuthLoadingScreen } from '../components/AuthLoadingScreen'
 import image from '../assets/img'
 import { API_BASE_URL } from '../utils/apiBaseUrl'
 import { persistStoredAdminUser } from '../utils/adminSession'
@@ -18,6 +19,8 @@ function Login() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [showAuthLoader, setShowAuthLoader] = useState(false)
+    const [pendingAuthData, setPendingAuthData] = useState(null)
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState({})
     const [showPassword, setShowPassword] = useState(false)
@@ -88,95 +91,119 @@ function Login() {
             }
 
             if (data.success) {
-                localStorage.setItem('adminToken', data.token)
-                if (data.admin) {
-                    persistStoredAdminUser(data.admin)
-                }
-                if (rememberMe) {
-                    localStorage.setItem('rememberAdminEmail', email)
-                } else {
-                    localStorage.removeItem('rememberAdminEmail')
-                }
-
-                await refreshAdminSession(data.token, {
-                    showLoader: false,
-                    throwOnError: true,
+                setPendingAuthData({
+                    token: data.token,
+                    admin: data.admin,
+                    remember: rememberMe,
                 })
+                setShowAuthLoader(true)
             }
         } catch (err) {
             setFieldErrors({})
             setError(err.message || 'An error occurred during login')
             console.error('Login error:', err)
-        } finally {
             setLoading(false)
         }
     }
 
+    const handleAuthComplete = async () => {
+        if (pendingAuthData) {
+            localStorage.setItem('adminToken', pendingAuthData.token)
+            if (pendingAuthData.admin) {
+                persistStoredAdminUser(pendingAuthData.admin)
+            }
+            if (pendingAuthData.remember) {
+                localStorage.setItem('rememberAdminEmail', email)
+            } else {
+                localStorage.removeItem('rememberAdminEmail')
+            }
+
+            try {
+                await refreshAdminSession(pendingAuthData.token, {
+                    showLoader: false,
+                    throwOnError: true,
+                })
+            } catch (err) {
+                console.error('Session refresh error:', err)
+            }
+        }
+        navigate('/admin/dashboard', { replace: true })
+    }
+
     return (
-        <AuthLoginShell
-            portalLabel="Admin Portal"
-            portalTitle="Welcome back"
-            portalDescription="Sign in to your admin account"
-            heroTitle="Where every stitch tells a story."
-            heroDescription="All-in-one web application. Track orders, manage clients, and grow your business with precision and style."
-            heroImage={image.bgjjs}
-            logoSrc={image.JJS}
-            onBack={() => navigate('/')}
-        >
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                {error && Object.keys(fieldErrors).length === 0 && <LoginError message={error} />}
+        <>
+            <AuthLoginShell
+                portalLabel="Admin Portal"
+                portalTitle="Welcome back"
+                portalDescription="Sign in to your admin account"
+                heroTitle="Where every stitch tells a story."
+                heroDescription="All-in-one web application. Track orders, manage clients, and grow your business with precision and style."
+                heroImage={image.bgjjs}
+                logoSrc={image.JJS}
+                onBack={() => navigate('/')}
+            >
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                    {error && Object.keys(fieldErrors).length === 0 && <LoginError message={error} />}
 
-                <LoginField
-                    id="admin-email"
-                    label=""
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    disabled={loading}
-                    autoComplete="email"
-                    error={fieldErrors.email}
-                    icon={Mail}
+                    <LoginField
+                        id="admin-email"
+                        label=""
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        disabled={loading || showAuthLoader}
+                        autoComplete="email"
+                        error={fieldErrors.email}
+                        icon={Mail}
+                    />
+
+                    <LoginField
+                        id="admin-password"
+                        label=""
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        disabled={loading || showAuthLoader}
+                        autoComplete="current-password"
+                        error={fieldErrors.password}
+                        icon={Lock}
+                        rightControl={
+                            <PasswordVisibilityButton
+                                shown={showPassword}
+                                onClick={() => setShowPassword((current) => !current)}
+                                disabled={loading || showAuthLoader}
+                            />
+                        }
+                    />
+
+                    <div className="flex items-center justify-between pt-1">
+                        <label htmlFor="admin-remember" className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold text-slate-700 select-none">
+                            <input
+                                id="admin-remember"
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-1 focus:ring-blue-600 disabled:cursor-not-allowed accent-blue-600 cursor-pointer"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                disabled={loading || showAuthLoader}
+                            />
+                            <span>Remember this email</span>
+                        </label>
+                    </div>
+
+                    <LoginSubmitButton loading={loading || showAuthLoader}>Sign In</LoginSubmitButton>
+                </form>
+            </AuthLoginShell>
+
+            {showAuthLoader && (
+                <AuthLoadingScreen
+                    onComplete={handleAuthComplete}
                 />
-
-                <LoginField
-                    id="admin-password"
-                    label=""
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    disabled={loading}
-                    autoComplete="current-password"
-                    error={fieldErrors.password}
-                    icon={Lock}
-                    rightControl={
-                        <PasswordVisibilityButton
-                            shown={showPassword}
-                            onClick={() => setShowPassword((current) => !current)}
-                            disabled={loading}
-                        />
-                    }
-                />
-
-                <div className="flex items-center justify-between pt-1">
-                    <label htmlFor="admin-remember" className="flex cursor-pointer items-center gap-2.5 text-xs font-semibold text-slate-700 select-none">
-                        <input
-                            id="admin-remember"
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-1 focus:ring-blue-600 disabled:cursor-not-allowed accent-blue-600 cursor-pointer"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            disabled={loading}
-                        />
-                        <span>Remember this email</span>
-                    </label>
-                </div>
-
-                <LoginSubmitButton loading={loading}>Sign In</LoginSubmitButton>
-            </form>
-        </AuthLoginShell>
+            )}
+        </>
     )
 }
 
 export default Login
+
