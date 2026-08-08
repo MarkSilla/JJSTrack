@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, X, Target, Layers } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, Target, Layers } from 'lucide-react'
+import { PrivacyContent } from '../pages/PrivacyPolicy'
+import { TermsContent } from '../pages/TermsOfUse'
+import { LegalModal } from './LegalModal'
 
 export function AuthLoginShell({
     portalLabel,
@@ -13,7 +16,15 @@ export function AuthLoginShell({
     children,
 }) {
     const roleName = portalLabel?.replace(' Portal', '') || 'Portal'
-    const [legalModal, setLegalModal] = useState(null)
+    const [modalState, setModalState] = useState({ open: false, title: '', component: null })
+
+    const openLegalModal = (title, component) => {
+        setModalState({ open: true, title, component })
+    }
+
+    const closeLegalModal = () => {
+        setModalState({ open: false, title: '', component: null })
+    }
 
     return (
         <main className="min-h-screen h-screen w-full bg-slate-50 font-inter text-slate-900 antialiased selection:bg-blue-600 selection:text-white overflow-hidden">
@@ -162,16 +173,16 @@ export function AuthLoginShell({
                             <div className="mt-4 sm:mt-5 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
                                 <button
                                     type="button"
-                                    onClick={() => setLegalModal('Privacy Policy')}
-                                    className="hover:text-slate-900 hover:underline transition-colors focus:outline-none"
+                                    onClick={() => openLegalModal('Privacy Policy', PrivacyContent)}
+                                    className="hover:text-slate-900 hover:underline transition-colors focus:outline-none cursor-pointer"
                                 >
                                     Privacy Policy
                                 </button>
                                 <span className="text-slate-300">|</span>
                                 <button
                                     type="button"
-                                    onClick={() => setLegalModal('Terms of Use')}
-                                    className="hover:text-slate-900 hover:underline transition-colors focus:outline-none"
+                                    onClick={() => openLegalModal('Terms of Use', TermsContent)}
+                                    className="hover:text-slate-900 hover:underline transition-colors focus:outline-none cursor-pointer"
                                 >
                                     Terms of Use
                                 </button>
@@ -181,56 +192,12 @@ export function AuthLoginShell({
                 </section>
             </div>
 
-            {legalModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-                    <div className="relative w-full max-w-xl max-h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                            <h3 className="text-base font-bold text-slate-900">{legalModal}</h3>
-                            <button
-                                type="button"
-                                onClick={() => setLegalModal(null)}
-                                className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 text-xs sm:text-sm text-slate-600 leading-relaxed custom-scrollbar">
-                            {legalModal === 'Privacy Policy' ? (
-                                <div className="space-y-4">
-                                    <p className="font-medium text-slate-900">Privacy Policy for JJSTrack Management Portal</p>
-                                    <p>Welcome to JJSTrack. This Privacy Policy explains how we collect, use, and safeguard personal data across our Admin and Staff portals in compliance with the <strong>Philippine Data Privacy Act of 2012 (RA 10173)</strong>.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">1. Data We Collect</h4>
-                                    <p>We collect essential account details including your name, email address, role credentials, and activity logs to manage shop orders and platform security.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">2. How We Use Data</h4>
-                                    <p>Your information is strictly used for authenticating portal access, managing shop repair/tailoring workflows, and maintaining operational logs.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">3. Data Protection</h4>
-                                    <p>We implement strict access controls and encrypted authentication standards to protect system data against unauthorized access.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <p className="font-medium text-slate-900">Terms of Use for JJSTrack Management Portal</p>
-                                    <p>By logging into and using the JJSTrack Management Portal, you agree to comply with the following operational terms and security guidelines.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">1. Account Responsibility</h4>
-                                    <p>Users are responsible for maintaining the confidentiality of their login credentials and for all activities conducted under their account.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">2. Authorized Use</h4>
-                                    <p>Access is restricted strictly to authorized JJSTrack administrators and staff members for official business purposes.</p>
-                                    <h4 className="font-bold text-slate-900 pt-2">3. System Operations</h4>
-                                    <p>JJSTrack reserves the right to update features, security protocols, and system guidelines as required for operations.</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setLegalModal(null)}
-                                className="px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <LegalModal
+                isOpen={modalState.open}
+                onClose={closeLegalModal}
+                title={modalState.title}
+                ContentComponent={modalState.component}
+            />
         </main>
     )
 }
