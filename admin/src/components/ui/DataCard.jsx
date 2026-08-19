@@ -27,19 +27,21 @@ export default function DataCard({
       {/* Header */}
       {(title || subtitle || Icon || action || headerExtra) && (
         <div className="p-3.5 sm:p-4 pb-3 border-b border-slate-100 shrink-0 flex flex-col gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {Icon && <Icon size={18} className="text-blue-600 shrink-0" />}
-            {title && (
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight m-0">
-                {title}
-              </h3>
-            )}
+          <div className="flex items-center justify-between gap-2 min-w-0 w-full">
+            <div className="flex items-center gap-2 min-w-0">
+              {Icon && <Icon size={18} className="text-blue-600 shrink-0" />}
+              {title && (
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight m-0 truncate">
+                  {title}
+                </h3>
+              )}
+            </div>
+            {action && <div className="shrink-0">{action}</div>}
           </div>
 
-          {(headerExtra || action) && (
-            <div className="flex items-center justify-between gap-2 w-full flex-wrap pt-0.5">
-              <div className="shrink-0">{headerExtra}</div>
-              <div className="shrink-0">{action}</div>
+          {headerExtra && (
+            <div className="flex items-center gap-2 w-full pt-0.5">
+              {headerExtra}
             </div>
           )}
 

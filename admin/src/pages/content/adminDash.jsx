@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, } from "recharts";
-import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, ChevronUp, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, RefreshCw, } from "lucide-react";
+import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, ChevronUp, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, RefreshCw, Search, } from "lucide-react";
 import { bookingApi } from "../../services/bookingApi";
 import { inventoryApi } from "../../services/inventoryApi";
 import { DashboardSkeleton } from "../../components/SkeletonLoaders.jsx";
@@ -165,14 +165,13 @@ const CustomDot = ({ cx, cy, fill }) => (
 );
 
 function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) {
-  const handleCardClick = () => {
-    if (!isClickable || !onViewOrder) return;
-    onViewOrder(appt.orderId);
+  const handleCardClick = (event) => {
+    if (isClickable && onViewOrder) {
+      onViewOrder(appt.orderId);
+    }
   };
 
   const handleCardKeyDown = (event) => {
-    if (!isClickable || !onViewOrder) return;
-
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onViewOrder(appt.orderId);
@@ -185,54 +184,60 @@ function ApptCard({ appt, showView = false, onViewOrder, isClickable = false }) 
       onKeyDown={handleCardKeyDown}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`flex items-start gap-3 border border-slate-100/90 rounded-xl p-3 bg-white transition-saas ${
-        isClickable ? "cursor-pointer hover:bg-slate-50/80 hover:border-slate-200 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none" : ""
-      }`}
+      className={`p-3 sm:p-3.5 bg-white border border-slate-200/80 rounded-xl transition-all duration-200 ${isClickable ? "cursor-pointer hover:bg-slate-50/90 hover:border-blue-300 hover:shadow-xs focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none" : ""
+        }`}
     >
-      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-        <CalendarDays size={15} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-xs font-bold text-slate-900 truncate">{appt.service}</span>
-              <StatusBadge status={appt.status} size="xs" />
-              {appt.isOverCapacity && (
-                <StatusBadge status="overdue" label="Over Capacity" size="xs" />
-              )}
+      {/* Top Header Row: Service Title + Action Button */}
+      <div className="flex items-start justify-between gap-2 mb-2 pb-2 border-b border-slate-100">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <CalendarDays size={13} />
             </div>
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
-              <span className="flex items-center gap-1">
-                <User size={11} className="text-slate-400 shrink-0" />
-                <span className="truncate">{appt.customer}</span>
-              </span>
-              <span className="text-slate-300">|</span>
-              <span className="flex items-center gap-1">
-                <Scissors size={11} className="text-slate-400 shrink-0" />
-                <span className="truncate">{appt.tailor}</span>
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
-              <Clock size={11} className="shrink-0" />
-              <span>{appt.time}</span>
-              <span className="text-slate-300">•</span>
-              <span>{appt.date}</span>
-            </div>
+            <h4 className="text-xs font-extrabold text-slate-900 leading-snug m-0 truncate">{appt.service}</h4>
           </div>
-          {showView && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onViewOrder && onViewOrder(appt.orderId);
-              }}
-              className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg transition-saas border-none cursor-pointer"
-            >
-              <Eye size={12} />
-              <span>View</span>
-            </button>
-          )}
+          <div className="flex items-center gap-1 flex-wrap">
+            <StatusBadge status={appt.status} size="xs" />
+            {appt.isOverCapacity && (
+              <StatusBadge status="overdue" label="Over Capacity" size="xs" />
+            )}
+          </div>
+        </div>
+        {showView && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onViewOrder && onViewOrder(appt.orderId);
+            }}
+            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg transition-colors border-none cursor-pointer"
+          >
+            <Eye size={12} />
+            <span>View</span>
+          </button>
+        )}
+      </div>
+
+      {/* Metadata Section: Customer & Tailor Grid + Time & Date */}
+      <div className="space-y-1.5 text-xs pt-0.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-600">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <User size={13} className="text-slate-400 shrink-0" />
+            <span className="text-slate-400 text-[11px] font-medium shrink-0">Customer:</span>
+            <span className="font-semibold text-slate-800 truncate">{appt.customer}</span>
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Scissors size={13} className="text-slate-400 shrink-0" />
+            <span className="text-slate-400 text-[11px] font-medium shrink-0">Tailor:</span>
+            <span className="font-semibold text-slate-800 truncate">{appt.tailor || 'Unassigned'}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-1 border-t border-slate-50">
+          <Clock size={12} className="text-blue-500 shrink-0" />
+          <span className="font-semibold text-slate-700 whitespace-nowrap">{appt.time}</span>
+          <span className="text-slate-300">•</span>
+          <span className="font-medium text-slate-600 whitespace-nowrap">{appt.date}</span>
         </div>
       </div>
     </div>
@@ -867,15 +872,14 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
         {/* KPI Metrics Segmented Control Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl w-fit">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl w-full sm:w-fit">
             <button
               type="button"
               onClick={() => setKpiTab("operations")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${
-                kpiTab === "operations"
-                  ? "bg-white text-blue-700 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900 bg-transparent"
-              }`}
+              className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${kpiTab === "operations"
+                ? "bg-white text-blue-700 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900 bg-transparent"
+                }`}
             >
               <CalendarClock size={14} />
               <span>Operations Metrics</span>
@@ -883,19 +887,16 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             <button
               type="button"
               onClick={() => setKpiTab("inventory")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${
-                kpiTab === "inventory"
-                  ? "bg-white text-blue-700 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900 bg-transparent"
-              }`}
+              className={`flex-1 sm:flex-initial justify-center px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${kpiTab === "inventory"
+                ? "bg-white text-blue-700 shadow-2xs"
+                : "text-slate-600 hover:text-slate-900 bg-transparent"
+                }`}
             >
               <Package size={14} />
               <span>Inventory Metrics</span>
             </button>
           </div>
-          <span className="text-xs text-slate-500 font-medium">
-            {kpiTab === "operations" ? "Live booking volume & schedule status" : "Current stock levels & warehouse valuation"}
-          </span>
+
         </div>
 
         {/* KPI Metrics Ribbon */}
@@ -954,7 +955,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-            {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
+            {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }, index) => (
               <StatCard
                 key={label}
                 icon={Icon}
@@ -964,6 +965,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                 accentColor={accent}
                 trend={trend}
                 onClick={onClick}
+                className={index === INVENTORY_STAT_CARDS.length - 1 ? "col-span-2 md:col-span-1" : ""}
               />
             ))}
           </div>
@@ -971,8 +973,8 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
         {/* Analytics & Performance Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
-          <div className="lg:col-span-8">
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex flex-col min-h-[300px]">
+          <div className="lg:col-span-8 flex flex-col">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex flex-col h-full min-h-[300px]">
               <div className="mb-3 shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="m-0 text-sm sm:text-base font-extrabold text-slate-900">{bookingVolumeMeta.title}</h2>
@@ -1123,29 +1125,25 @@ export default function AdminDashboard({ onNavigateToOrders }) {
 
         {/* Operational Queues & Activity Panels (Hierarchy: Overdue -> Today's Schedule -> Complete) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Overdue & Attention Panel (Prioritized First for Actionable Visibility) */}
+          {/* Overdue & Action Needed Panel */}
           <DataCard
             title="Overdue & Action Needed"
             icon={AlertTriangle}
-            headerExtra={
-              apptOverdue.length > 0 ? (
-                <StatusBadge status="overdue" label={`${apptOverdue.length} Action Needed`} size="xs" />
-              ) : null
-            }
+            className="h-full flex flex-col"
             action={
               <select
                 value={overdueFilter}
                 onChange={(e) => setOverdueFilter(e.target.value)}
-                className="text-xs font-bold bg-slate-100 hover:bg-slate-200/80 border-none rounded-xl px-2.5 py-1 text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-rose-400 transition-colors"
+                className="h-7 text-xs font-bold bg-slate-100 hover:bg-slate-200/80 border-none rounded-xl px-2.5 text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-rose-400 transition-colors inline-flex items-center"
               >
-                <option value="all">All</option>
+                <option value="all">All Dates</option>
                 <option value="yesterday">Yesterday</option>
-                <option value="week">Last Week</option>
-                <option value="month">Last Month</option>
+                <option value="week">Past Week</option>
+                <option value="month">Past Month</option>
               </select>
             }
           >
-            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
+            <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[380px] min-h-[260px] pr-1 custom-scrollbar flex-1">
               {apptOverdue.length === 0 ? (
                 <EmptyState
                   title="No overdue appointments"
@@ -1163,11 +1161,9 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           <DataCard
             title="Today's Schedule"
             icon={CalendarDays}
-            headerExtra={
-              <StatusBadge status="confirmed" label="Today" size="xs" />
-            }
+            className="h-full flex flex-col"
           >
-            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
+            <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[380px] min-h-[260px] pr-1 custom-scrollbar flex-1">
               {apptToday.length === 0 ? (
                 <EmptyState
                   title="No appointments today"
@@ -1181,21 +1177,25 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </DataCard>
 
-          {/* Complete / Ready for Release Panel */}
+          {/* Ready for Release Panel */}
           <DataCard
             title="Ready for Release"
             icon={Package}
+            className="h-full flex flex-col"
             action={
-              <input
-                type="text"
-                placeholder="Search ready items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-28 sm:w-36 px-2.5 py-1 text-xs bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-500 rounded-xl outline-none transition-all"
-              />
+              <div className="relative w-[20px] min-w-[90px] sm:w-44">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search ready orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-7 w-full pl-7 pr-2.5 text-xs bg-slate-100 border border-transparent focus:bg-white focus:border-blue-500 rounded-xl outline-none transition-all"
+                />
+              </div>
             }
           >
-            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
+            <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[380px] min-h-[260px] pr-1 custom-scrollbar flex-1">
               {filteredAllAppts.length === 0 ? (
                 <EmptyState
                   title="No orders ready for release"

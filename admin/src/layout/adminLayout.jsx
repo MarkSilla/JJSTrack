@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import HomeSidebar from '../components/adminsidebar'
+import AdminSidebar from '../components/adminsidebar'
 import AdminNav from '../components/adminNav'
 import AdminChatWidget from '../components/AdminChatWidget'
 import PageEntrance from '../components/PageEntrance'
@@ -104,7 +104,7 @@ const AdminLayout = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
-            <HomeSidebar
+            <AdminSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 isMobileExpanded={isMobileExpanded}
