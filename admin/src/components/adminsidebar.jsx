@@ -124,10 +124,9 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
             <aside
                 id="jjs-sidebar"
                 className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-40 shadow-xl border-r border-gray-700 flex flex-col font-inter
-          ${isSmallScreen
-                        ? mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'
-                        : isDesktopCollapsed ? 'w-20' : 'w-64'
-                    }`}
+                    ${mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
+                    ${isDesktopCollapsed ? 'lg:w-20 lg:translate-x-0' : 'lg:w-64 lg:translate-x-0'}
+                `}
             >
                 {/* Logo Header */}
                 <div className="p-4 border-b border-gray-700 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
