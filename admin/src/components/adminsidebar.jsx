@@ -41,7 +41,7 @@ const navItems = [
 const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded }) => {
     const location = useLocation()
     const navigate = useNavigate()
-    const [isSmallScreen, setIsSmallScreen] = useState(false)
+    const [isSmallScreen, setIsSmallScreen] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false)
     const [hoveredItem, setHoveredItem] = useState(null)
     const [expandedMenus, setExpandedMenus] = useState({})
 
