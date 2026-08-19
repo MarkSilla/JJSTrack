@@ -14,7 +14,7 @@ const navItems = [
 const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout, onNavigateStart }) => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [isSmallScreen, setIsSmallScreen] = useState(false)
+  const [isSmallScreen, setIsSmallScreen] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false)
   const [hoveredItem, setHoveredItem] = useState(null)
 
   const isDesktopCollapsed = collapsed ?? true
@@ -67,10 +67,9 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
       <aside
         id="jjs-sidebar"
         className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all var(--duration-slow) var(--ease-out) z-40 shadow-xl border-r border-gray-700 flex flex-col font-inter
-          ${isSmallScreen
-            ? mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'
-            : isDesktopCollapsed ? 'w-20' : 'w-64'
-          }`}
+          ${mobileExpanded ? 'max-lg:translate-x-0 max-lg:w-64' : 'max-lg:-translate-x-full max-lg:w-64'}
+          ${isDesktopCollapsed ? 'lg:w-20 lg:translate-x-0' : 'lg:w-64 lg:translate-x-0'}
+        `}
       >
         {/* Logo */}
         <div className="p-4 pl-[24px] border-b border-gray-700 flex items-center justify-between">
