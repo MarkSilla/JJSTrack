@@ -111,7 +111,7 @@ const AdminLayout = () => {
                 setIsMobileExpanded={setIsMobileExpanded}
             />
 
-            <div className={`flex-1 min-w-0 transition-all duration-300 ease-in-out ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
                     <AdminNav
                         onToggleSidebar={handleBurgerClick}

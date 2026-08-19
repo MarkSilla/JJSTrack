@@ -29,15 +29,17 @@ const StaffLayout = () => {
                 setIsMobileExpanded={setIsMobileExpanded}
             />
 
-            <div className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`min-w-0 flex-1 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen min-w-0">
                     <StaffNav
                         onToggleSidebar={handleBurgerClick}
                     />
-                    <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-2 md:p-6 lg:p-4">
-                        <PageEntrance variant="outlet">
-                            <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
-                        </PageEntrance>
+                    <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
+                        <div className="max-w-[1400px] mx-auto w-full">
+                            <PageEntrance variant="outlet">
+                                <Outlet context={{ toggleCalendar: () => setCalendarOpen(true), setCalendarEntries }} />
+                            </PageEntrance>
+                        </div>
                         <StaffChatWidget />
                     </main>
                 </div>

@@ -48,15 +48,13 @@ const SmoothAlert = ({ show, onClose, type = 'error', title, children }) => {
     <div
       role="alert"
       aria-live="assertive"
-      className={`grid transition-all duration-300 ease-out ${
-        isAnimated ? 'grid-rows-[1fr] opacity-100 mb-5' : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
-      }`}
+      className={`grid transition-all duration-300 ease-out ${isAnimated ? 'grid-rows-[1fr] opacity-100 mb-5' : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
+        }`}
     >
       <div className="overflow-hidden">
         <div
-          className={`flex items-start gap-3 rounded-xl border p-3.5 text-sm shadow-sm transition-all duration-300 ${
-            colorStyles[type] || colorStyles.error
-          } ${isAnimated ? 'translate-y-0 scale-100' : '-translate-y-1 scale-[0.98]'}`}
+          className={`flex items-start gap-3 rounded-xl border p-3.5 text-sm shadow-sm transition-all duration-300 ${colorStyles[type] || colorStyles.error
+            } ${isAnimated ? 'translate-y-0 scale-100' : '-translate-y-1 scale-[0.98]'}`}
         >
           <IconComponent size={18} className={`mt-0.5 shrink-0 ${iconColors[type]}`} />
           <div className="flex-1 min-w-0">
@@ -412,9 +410,8 @@ const SignupPage = () => {
 
       {/* Right Panel */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-8 min-h-screen overflow-y-auto">
-        <div className={`w-full max-w-[420px] my-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${
-          isExiting ? 'opacity-0 translate-y-3 scale-[0.985] pointer-events-none' : 'animate-tab-enter'
-        }`}>
+        <div className={`w-full max-w-[420px] my-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isExiting ? 'opacity-0 translate-y-3 scale-[0.985] pointer-events-none' : 'animate-tab-enter'
+          }`}>
 
           {/* Mobile back */}
           <div className="mb-6 md:hidden">

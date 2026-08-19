@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, LogIn } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import jjsLogo from '../assets/jjs_result.png'
 import { AuthContext } from '../context/Context.jsx'
 
@@ -131,7 +132,7 @@ const LandingNavbar = () => {
           <div className="flex min-w-0 flex-1 items-center justify-end">
             <button
               onClick={handleAuthAction}
-              className={`hidden rounded-lg px-6 py-2.5 font-medium transition-all duration-500 xl:block ${scrolled
+              className={`hidden rounded-lg px-6 py-2.5 font-medium transition-all duration-500 xl:block cursor-pointer ${scrolled
                 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20'
                 : 'bg-white/20 backdrop-blur-sm text-white border border-white/30 hover:bg-white/30'
                 }`}
@@ -143,7 +144,7 @@ const LandingNavbar = () => {
               aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={isOpen}
               onClick={() => setIsOpen(!isOpen)}
-              className={`group relative z-[100] flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 xl:hidden ${isOpen
+              className={`group relative z-[100] flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 xl:hidden cursor-pointer ${isOpen
                 ? 'bg-slate-900/80 text-white border border-white/20 shadow-lg shadow-black/40 backdrop-blur-xl'
                 : scrolled
                   ? 'bg-slate-100/20 hover:bg-slate-200/90 text-slate-900 border border-slate-200/80 shadow-sm'
@@ -184,95 +185,96 @@ const LandingNavbar = () => {
         </div>
       </div>
 
-      {/* Mobile Sidebar / Premium Drawer overlay */}
-      <div
-        className={`fixed inset-0 z-[90] xl:hidden transition-all duration-500 ${isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-          }`}
-        aria-hidden={!isOpen}
-      >
-        {/* Backdrop overlay */}
-        <button
-          type="button"
-          aria-label="Close navigation menu"
-          onClick={() => setIsOpen(false)}
-          className={`absolute inset-0 bg-slate-950/75 backdrop-blur-md transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0'
-            }`}
-        />
+      {/* Mobile Sidebar / Premium Drawer overlay with Motion */}
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-[90] xl:hidden">
+            {/* Backdrop overlay */}
+            <motion.button
+              type="button"
+              aria-label="Close navigation menu"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={() => setIsOpen(false)}
+              className="absolute inset-0 bg-slate-950/75 backdrop-blur-md cursor-default"
+            />
 
-        {/* Premium Drawer Container */}
-        <aside
-          className={`absolute right-0 top-0 flex h-dvh w-[min(88vw,22rem)] flex-col overflow-hidden border-l border-white/10 bg-[#070D1B] text-white shadow-2xl backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-        >
-          {/* Subtle Ambient Lighting Overlay */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-600/15 blur-3xl" />
-          <div className="pointer-events-none absolute -left-20 bottom-10 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl" />
+            {/* Premium Drawer Container */}
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 260 }}
+              className="absolute right-0 top-0 flex h-dvh w-[min(88vw,22rem)] flex-col overflow-hidden border-l border-white/10 bg-[#070D1B] text-white shadow-2xl backdrop-blur-2xl"
+            >
+              {/* Subtle Ambient Lighting Overlay */}
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-600/15 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 bottom-10 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl" />
 
-          {/* Drawer Header */}
-          <div className="relative flex items-center gap-3  border-b border-white/[0.08] px-6 py-5">
-            <div className="flex h-12 w-12 items-center justify-center p-1.5 shadow-sm">
-              <img
-                src={jjsLogo}
-                alt="JJS logo"
-                width="40"
-                height="40"
-                decoding="async"
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-white">
-                JJS TRACK
-              </span>
+              {/* Drawer Header */}
+              <div className="relative flex items-center gap-3 border-b border-white/[0.08] px-6 py-5">
+                <div className="flex h-12 w-12 items-center justify-center p-1.5 shadow-sm">
+                  <img
+                    src={jjsLogo}
+                    alt="JJS logo"
+                    width="40"
+                    height="40"
+                    decoding="async"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold tracking-tight text-white">
+                    JJS TRACK
+                  </span>
+                </div>
+              </div>
 
-            </div>
-          </div>
+              {/* Nav Items List */}
+              <div className="relative flex flex-1 flex-col justify-between overflow-y-auto px-5 py-6">
+                <ul className="flex flex-col space-y-1">
+                  {navLinks.map(({ label, href }, index) => (
+                    <motion.li
+                      key={href}
+                      initial={{ opacity: 0, x: 16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: (index + 1) * 0.05 }}
+                    >
+                      <a
+                        href={href}
+                        onClick={() => setIsOpen(false)}
+                        className="group relative flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-300 hover:bg-white/[0.06] active:bg-white/[0.1]"
+                      >
+                        <span className="text-[15px] font-medium text-slate-200 transition-colors group-hover:text-white">
+                          {label}
+                        </span>
 
-          {/* Nav Items List */}
-          <div className="relative flex flex-1 flex-col justify-between overflow-y-auto px-5 py-6">
-            <ul className="flex flex-col space-y-1">
-              {navLinks.map(({ label, href }, index) => (
-                <li
-                  key={href}
-                  className={`transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${isOpen
-                    ? 'translate-x-0 opacity-100'
-                    : 'translate-x-8 opacity-0'
-                    }`}
-                  style={{
-                    transitionDelay: isOpen ? `${(index + 1) * 60}ms` : '0ms'
-                  }}
-                >
-                  <a
-                    href={href}
-                    onClick={() => setIsOpen(false)}
-                    className="group relative flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-300 hover:bg-white/[0.06] active:bg-white/[0.1]"
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-500 opacity-40 transition-all duration-300 group-hover:translate-x-0.5 group-hover:opacity-100 group-hover:text-white"
+                        />
+                      </a>
+                    </motion.li>
+                  ))}
+                </ul>
+
+                {/* Bottom Action Section */}
+                <div className="pt-6 border-t border-white/[0.08] mt-6">
+                  <button
+                    onClick={handleAuthAction}
+                    className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-lg shadow-blue-600/25 transition-all duration-300 hover:bg-blue-500 hover:shadow-blue-600/40 active:bg-blue-700 cursor-pointer"
                   >
-                    <span className="text-[15px] font-medium text-slate-200 transition-colors group-hover:text-white">
-                      {label}
-                    </span>
-
-                    <ChevronRight
-                      size={16}
-                      className="text-slate-500 opacity-40 transition-all duration-300 group-hover:translate-x-0.5 group-hover:opacity-100 group-hover:text-white"
-                    />
-                  </a>
-                </li>
-              ))}
-            </ul>
-
-            {/* Bottom Action Section */}
-            <div className="pt-6 border-t border-white/[0.08] mt-6">
-              <button
-                onClick={handleAuthAction}
-                className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white shadow-lg shadow-blue-600/25 transition-all duration-300 hover:bg-blue-500 hover:shadow-blue-600/40 active:bg-blue-700"
-              >
-                <LogIn size={18} strokeWidth={1.8} className="transition-transform group-hover:translate-x-0.5" />
-                <span>{isAuthenticated ? 'Go to Account' : 'Sign In'}</span>
-              </button>
-            </div>
+                    <LogIn size={18} strokeWidth={1.8} className="transition-transform group-hover:translate-x-0.5" />
+                    <span>{isAuthenticated ? 'Go to Account' : 'Sign In'}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
           </div>
-        </aside>
-      </div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

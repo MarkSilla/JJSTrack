@@ -36,10 +36,10 @@ const DEFAULT_TOKEN = {
 }
 
 const SIZE_MAP = {
-  xs: 'text-[10px] px-2 py-0.5 font-bold',
-  sm: 'text-[11px] px-2.5 py-0.5 font-semibold',
+  xs: 'text-xs px-2 py-0.5 font-semibold',
+  sm: 'text-xs px-2.5 py-0.5 font-semibold',
   md: 'text-xs px-3 py-1 font-semibold',
-  lg: 'text-sm px-3.5 py-1.5 font-bold',
+  lg: 'text-sm px-3.5 py-1.5 font-semibold',
 }
 
 export default function StatusBadge({

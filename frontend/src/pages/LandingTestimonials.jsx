@@ -1,11 +1,18 @@
 import React from 'react'
 import { Quote, Star } from 'lucide-react'
+import { motion } from 'motion/react'
 import { testimonials } from './landingData'
 
 const LandingTestimonials = () => (
   <section id="testimonials" className="relative py-16 md:py-24 bg-[#F1F5F9] overflow-hidden">
     <div className="max-w-6xl mx-auto px-4 sm:px-6">
-      <div className="text-center mb-12 md:mb-16">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-12 md:mb-16"
+      >
         <span className="inline-block text-blue-600 text-sm uppercase tracking-[0.3em] font-medium mb-3">
           Testimonials
         </span>
@@ -16,11 +23,16 @@ const LandingTestimonials = () => (
         <p className="text-[#475569] text-sm md:text-base max-w-2xl mx-auto">
           Hear from the people who trust JJSportswear with their custom sportswear
         </p>
-      </div>
+      </motion.div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         {testimonials.map((t, i) => (
-          <div
+          <motion.div
             key={i}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.4, delay: i * 0.1 }}
+            whileHover={{ y: -4 }}
             className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col justify-between relative group"
           >
             <div className="absolute -top-4 left-8">
@@ -50,7 +62,7 @@ const LandingTestimonials = () => (
                 <p className="text-[#94A3B8] text-xs">{t.role} - <span className='text-xs text-[#94A3B8]'> {t.date}</span></p>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

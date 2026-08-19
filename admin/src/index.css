@@ -5,25 +5,35 @@
 
 @layer base {
   :root {
-    --color-admin-bg: #f8fafc;
-    --color-admin-card: #ffffff;
-    --color-admin-primary: #2563eb;
-    --color-admin-primary-hover: #1d4ed8;
-    --color-admin-text: #0f172a;
-    --color-admin-text-muted: #64748b;
-    --color-admin-border: #e2e8f0;
+    /* ── Surface Hierarchy Tokens ── */
+    --surface-ground: #f8fafc;
+    --surface-card: #ffffff;
+    --surface-subtle: #f1f5f9;
+    --surface-dark: #0f172a;
+    --surface-dark-deep: #070d1b;
+    --surface-border: #e2e8f0;
+    --surface-border-subtle: #f1f5f9;
+    --surface-border-hover: #cbd5e1;
 
-    --status-default-bg: #f1f5f9;
-    --status-default-text: #475569;
-    --status-default-border: #cbd5e1;
+    /* ── Primary Brand Palette ── */
+    --brand-primary: #2563eb;
+    --brand-primary-hover: #1d4ed8;
+    --brand-primary-light: rgba(37, 99, 235, 0.08);
 
-    --status-pending-bg: #fffbe6;
+    /* ── Typography & Text Palette ── */
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --text-faint: #94a3b8;
+
+    /* ── Semantic Status System ── */
+    --status-pending-bg: #fffbeb;
     --status-pending-text: #b45309;
     --status-pending-border: #fde68a;
 
-    --status-progress-bg: #f5f3ff;
-    --status-progress-text: #6d28d9;
-    --status-progress-border: #ddd6fe;
+    --status-progress-bg: #eff6ff;
+    --status-progress-text: #1d4ed8;
+    --status-progress-border: #bfdbfe;
 
     --status-completed-bg: #ecfdf5;
     --status-completed-text: #047857;
@@ -33,13 +43,29 @@
     --status-released-text: #0e7490;
     --status-released-border: #a5f3fc;
 
-    --status-overdue-bg: #fff1f2;
-    --status-overdue-text: #be123c;
-    --status-overdue-border: #fecdd3;
+    --status-overdue-bg: #fef2f2;
+    --status-overdue-text: #dc2626;
+    --status-overdue-border: #fecaca;
 
     --status-cancelled-bg: #fef2f2;
     --status-cancelled-text: #b91c1c;
     --status-cancelled-border: #fca5a5;
+
+    --status-default-bg: #f1f5f9;
+    --status-default-text: #475569;
+    --status-default-border: #cbd5e1;
+
+    /* Legacy compatibility mappings */
+    --color-admin-bg: var(--surface-ground);
+    --color-admin-card: var(--surface-card);
+    --color-admin-primary: var(--brand-primary);
+    --color-admin-primary-hover: var(--brand-primary-hover);
+    --color-admin-text: var(--text-primary);
+    --color-admin-text-muted: var(--text-muted);
+    --color-admin-border: var(--surface-border);
+
+    --status-progress-text-alt: #6d28d9;
+    --status-progress-border-alt: #ddd6fe;
 
     --status-confirmed-bg: #eff6ff;
     --status-confirmed-text: #1d4ed8;
@@ -57,29 +83,35 @@
     --status-org-text: #0f766e;
     --status-org-border: #99f6e4;
 
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
-    --radius-2xl: 1.25rem;
+    /* ── Radius System ── */
+    --radius-sm: 0.375rem; /* 6px - Badges, small controls */
+    --radius-md: 0.5rem;   /* 8px - Inputs, action buttons */
+    --radius-lg: 0.75rem;  /* 12px - Cards, panels */
+    --radius-xl: 1rem;     /* 16px - Hero cards, modals */
     --radius-full: 9999px;
 
+    /* ── Controlled Spacing Scale ── */
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
     --space-md: 1rem;
     --space-lg: 1.5rem;
     --space-xl: 2rem;
 
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-base: 1rem;
-    --text-lg: 1.125rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
+    /* ── Controlled Typography Scale ── */
+    --text-xs: 0.75rem;   /* 12px - Caption floor minimum */
+    --text-sm: 0.875rem;  /* 14px - Body / Controls */
+    --text-base: 1rem;    /* 16px - Titles */
+    --text-lg: 1.125rem;  /* 18px - Card Headings */
+    --text-xl: 1.25rem;   /* 20px - Section Headings */
+    --text-2xl: 1.5rem;   /* 24px - Page Headings */
 
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.03);
-    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.06);
+    /* ── Restrained Elevation & Depth ── */
+    --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
+    --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+    --shadow-card-hover: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --shadow-dropdown: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
 
+    /* ── Timing & Motion ── */
     --motion-duration-fast: 150ms;
     --motion-duration-normal: 200ms;
     --motion-duration-slow: 250ms;
@@ -88,6 +120,11 @@
     --motion-page-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
     --motion-mobile-enter-duration: 500ms;
     --motion-mobile-stagger: 70ms;
+
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-fast: 200ms;
+    --duration-normal: 250ms;
+    --duration-slow: 400ms;
   }
 
   html {
@@ -305,4 +342,13 @@ body,
 
 .animate-alert-fade {
   animation: alertFadeDown 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

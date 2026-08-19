@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, } from "recharts";
-import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, ChevronUp, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, } from "lucide-react";
+import { CalendarClock, Loader2, CheckCircle2, ShoppingBag, XCircle, Eye, CalendarDays, ChevronDown, ChevronUp, User, Scissors, Clock, Filter, Package, AlertTriangle, Archive, RefreshCw, } from "lucide-react";
 import { bookingApi } from "../../services/bookingApi";
 import { inventoryApi } from "../../services/inventoryApi";
 import { DashboardSkeleton } from "../../components/SkeletonLoaders.jsx";
@@ -250,7 +250,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [overdueFilter, setOverdueFilter] = useState("all");
-  const [showAllMobileMetrics, setShowAllMobileMetrics] = useState(false);
+  const [kpiTab, setKpiTab] = useState("operations");
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -816,80 +816,143 @@ export default function AdminDashboard({ onNavigateToOrders }) {
   }
 
   return (
-    <div className="font-inter min-h-screen bg-slate-50">
-      <div className="w-full px-2 lg:px-2 py-0">
+    <div className="font-inter min-h-screen bg-slate-50 space-y-4">
+      <div className="w-full px-2 lg:px-3 py-1">
+        {/* Priority Attention / Urgent Alert Banner (Top Hierarchy) */}
+        {overCapacityRequests.length > 0 && (
+          <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 sm:p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                    Attention Required
+                  </span>
+                  <span className="text-xs font-bold text-amber-900">Over Capacity Requests</span>
+                </div>
+                <p className="mt-0.5 text-xs text-amber-800 font-medium m-0">
+                  {overCapacityRequests.length} booking request{overCapacityRequests.length !== 1 ? "s" : ""} exceed recommended slot capacity
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigate('/admin/orders', { state: { filterStatus: 'Over Capacity' } });
+              }}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl transition-all border-none cursor-pointer shrink-0 self-end sm:self-auto shadow-2xs"
+            >
+              Review Requests ({overCapacityRequests.length})
+            </button>
+          </div>
+        )}
+
         {error && (
-          <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-center justify-between gap-3">
+          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+              <AlertTriangle size={15} className="text-rose-600 shrink-0" />
               <span>{error}</span>
             </div>
             <button
               type="button"
               onClick={fetchDashboardData}
-              className="text-xs font-bold text-amber-800 hover:text-amber-950 underline border-none bg-transparent cursor-pointer shrink-0"
+              className="text-xs font-bold text-rose-800 hover:text-rose-950 underline border-none bg-transparent cursor-pointer shrink-0"
             >
-              Refresh
+              Refresh Data
             </button>
           </div>
         )}
 
-        {/* Mobile View: Priority + Expand KPI Cards (2 grids) */}
-        <div className="block sm:hidden mb-4">
-          <div className="grid grid-cols-2 gap-2.5">
-            {(showAllMobileMetrics ? ALL_MOBILE_CARDS : PRIORITY_MOBILE_CARDS).map(
-              ({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
-                <StatCard
-                  key={label}
-                  icon={Icon}
-                  label={label}
-                  value={value}
-                  sub={sub}
-                  accentColor={accent}
-                  trend={trend}
-                  onClick={onClick}
-                />
-              )
-            )}
+        {/* KPI Metrics Segmented Control Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl w-fit">
+            <button
+              type="button"
+              onClick={() => setKpiTab("operations")}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${
+                kpiTab === "operations"
+                  ? "bg-white text-blue-700 shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 bg-transparent"
+              }`}
+            >
+              <CalendarClock size={14} />
+              <span>Operations Metrics</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setKpiTab("inventory")}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer flex items-center gap-1.5 ${
+                kpiTab === "inventory"
+                  ? "bg-white text-blue-700 shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900 bg-transparent"
+              }`}
+            >
+              <Package size={14} />
+              <span>Inventory Metrics</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAllMobileMetrics((prev) => !prev)}
-            className="mt-3 w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-          >
-            {showAllMobileMetrics ? (
-              <>
-                <span>Show Priority Metrics Only</span>
-                <ChevronUp size={14} className="text-slate-500" />
-              </>
-            ) : (
-              <>
-                <span>View All Metrics ({hiddenMetricsCount})</span>
-                <ChevronDown size={14} className="text-slate-500" />
-              </>
-            )}
-          </button>
+          <span className="text-xs text-slate-500 font-medium">
+            {kpiTab === "operations" ? "Live booking volume & schedule status" : "Current stock levels & warehouse valuation"}
+          </span>
         </div>
 
-        {/* Desktop View: Full Operations & Inventory Grids */}
-        <div className="hidden sm:block">
-          {/* Operations KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-            {STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
-              <StatCard
-                key={label}
-                icon={Icon}
-                label={label}
-                value={value}
-                sub={sub}
-                accentColor={accent}
-                trend={trend}
-                onClick={onClick}
-              />
-            ))}
+        {/* KPI Metrics Ribbon */}
+        {kpiTab === "operations" ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <StatCard
+              icon={CalendarClock}
+              label="Today's Schedule"
+              value={todaySchedule}
+              sub="Pickups & drop-offs today"
+              accentColor="#3B82F6"
+              onClick={() =>
+                navigateWithDashboardPreset("/admin/appointment", {
+                  selectedDateStr: todayDateKey,
+                  showSchedule: true,
+                  activeFilter: "all",
+                })
+              }
+            />
+            <StatCard
+              icon={Loader2}
+              label="In-Progress"
+              value={inProgressCount}
+              sub="Active production orders"
+              accentColor="#7C3AED"
+              onClick={() =>
+                navigateWithDashboardPreset("/admin/orders", {
+                  filterStatus: "In Progress",
+                })
+              }
+            />
+            <StatCard
+              icon={AlertTriangle}
+              label="Overdue"
+              value={apptOverdue.length}
+              sub="Past due target date"
+              accentColor="#DC2626"
+              onClick={() =>
+                navigateWithDashboardPreset("/admin/orders", {
+                  filterStatus: "Overdue",
+                })
+              }
+            />
+            <StatCard
+              icon={ShoppingBag}
+              label="Total Orders"
+              value={totalOrders}
+              sub="All system bookings"
+              accentColor="#0891B2"
+              onClick={() =>
+                navigateWithDashboardPreset("/admin/orders", {
+                  filterStatus: "All Records",
+                })
+              }
+            />
           </div>
-
-          {/* Inventory KPI Cards */}
+        ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
             {INVENTORY_STAT_CARDS.map(({ icon: Icon, label, value, sub, accent, trend, onClick }) => (
               <StatCard
@@ -904,24 +967,25 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               />
             ))}
           </div>
-        </div>
+        )}
 
+        {/* Analytics & Performance Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
-          <div className="lg:col-span-9">
-            <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col" style={{ minHeight: 290 }}>
-              <div className="mb-2 shrink-0 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="lg:col-span-8">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex flex-col min-h-[300px]">
+              <div className="mb-3 shrink-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="m-0 text-[15px] font-extrabold text-gray-900">{bookingVolumeMeta.title}</h2>
-                  <p className="mt-0.5 text-[11px] text-gray-400">{bookingVolumeMeta.subtitle}</p>
+                  <h2 className="m-0 text-sm sm:text-base font-extrabold text-slate-900">{bookingVolumeMeta.title}</h2>
+                  <p className="mt-0.5 text-xs text-slate-500 m-0">{bookingVolumeMeta.subtitle}</p>
                 </div>
                 <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 flex-wrap w-fit">
                   {BOOKING_VOLUME_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => setBookingVolumeRange(option.value)}
-                      className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg border-none cursor-pointer transition-colors ${bookingVolumeRange === option.value
-                        ? "bg-white text-blue-700 shadow-sm"
-                        : "bg-transparent text-gray-500 hover:text-gray-700"
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border-none cursor-pointer transition-colors ${bookingVolumeRange === option.value
+                        ? "bg-white text-blue-700 shadow-2xs"
+                        : "bg-transparent text-slate-500 hover:text-slate-800"
                         }`}
                     >
                       {option.label}
@@ -929,22 +993,22 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                   ))}
                 </div>
               </div>
-              <div style={{ flex: 1, minHeight: 230 }}>
+              <div className="flex-1 w-full min-h-[220px]">
                 <ResponsiveContainer width="100%" height={230}>
                   <LineChart data={bookingVolumeData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis
                       dataKey="label"
-                      tick={{ fontSize: 11, fill: "#94a3b8" }}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
                       axisLine={false}
                       tickLine={false}
                     />
-                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <Tooltip
                       content={({ active, payload, label }) => {
                         if (!active || !payload?.length) return null;
                         return (
-                          <div className="bg-slate-800 rounded-xl px-3.5 py-2.5 text-white text-[11px] shadow-xl border border-slate-700">
+                          <div className="bg-slate-900/95 backdrop-blur-md rounded-xl px-3.5 py-2.5 text-white text-[11px] shadow-xl border border-slate-800">
                             <div className="font-bold mb-1.5 text-slate-300">{label}</div>
                             {payload.map((p, i) => (
                               <div key={i} className="flex items-center gap-2 mb-0.5">
@@ -960,35 +1024,35 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                     />
                     <Legend
                       wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                      formatter={(value) => <span style={{ color: "#64748b" }}>{value}</span>}
+                      formatter={(value) => <span style={{ color: "#475569", fontWeight: 600 }}>{value}</span>}
                     />
                     <Line
                       type="monotone"
                       dataKey="orders"
-                      name="Total"
-                      stroke="#3B82F6"
+                      name="Total Bookings"
+                      stroke="#2563EB"
                       strokeWidth={2.5}
-                      dot={<CustomDot fill="#3B82F6" />}
-                      activeDot={{ r: 6, fill: "#3B82F6", stroke: "#fff", strokeWidth: 2 }}
+                      dot={<CustomDot fill="#2563EB" />}
+                      activeDot={{ r: 6, fill: "#2563EB", stroke: "#fff", strokeWidth: 2 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="completed"
                       name="Completed"
-                      stroke="#10B981"
+                      stroke="#059669"
                       strokeWidth={2.5}
-                      dot={<CustomDot fill="#10B981" />}
-                      activeDot={{ r: 6, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }}
+                      dot={<CustomDot fill="#059669" />}
+                      activeDot={{ r: 6, fill: "#059669", stroke: "#fff", strokeWidth: 2 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="cancelled"
                       name="Cancelled"
-                      stroke="#EF4444"
-                      strokeWidth={2.5}
-                      strokeDasharray="5 3"
-                      dot={<CustomDot fill="#EF4444" />}
-                      activeDot={{ r: 6, fill: "#EF4444", stroke: "#fff", strokeWidth: 2 }}
+                      stroke="#DC2626"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={<CustomDot fill="#DC2626" />}
+                      activeDot={{ r: 5, fill: "#DC2626", stroke: "#fff", strokeWidth: 2 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -996,25 +1060,26 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </div>
 
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl p-5 shadow-sm flex flex-col h-full">
+          <div className="lg:col-span-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs flex flex-col h-full min-h-[300px]">
               <div className="mb-2 shrink-0">
-                <h2 className="m-0 text-[15px] font-extrabold text-gray-900">Services</h2>
+                <h2 className="m-0 text-sm sm:text-base font-extrabold text-slate-900">Service Mix</h2>
+                <p className="mt-0.5 text-xs text-slate-500 m-0">Distribution of customer booking types</p>
               </div>
-              <div className="relative" style={{ height: 155 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="relative flex-1 flex items-center justify-center my-1" style={{ minHeight: 160 }}>
+                <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
                     <Pie
                       data={serviceMix}
                       cx="50%"
                       cy="50%"
-                      innerRadius={48}
-                      outerRadius={68}
+                      innerRadius={46}
+                      outerRadius={66}
                       dataKey="value"
                       paddingAngle={3}
                       onMouseEnter={(_, i) => setActiveServiceIdx(i)}
                       onMouseLeave={() => setActiveServiceIdx(null)}
-                      animationDuration={600}
+                      animationDuration={500}
                     >
                       {serviceMix.map((entry, i) => (
                         <Cell
@@ -1022,34 +1087,33 @@ export default function AdminDashboard({ onNavigateToOrders }) {
                           fill={entry.color}
                           stroke="none"
                           opacity={activeServiceIdx === null || activeServiceIdx === i ? 1 : 0.3}
-                          style={{ transition: "opacity 0.25s", cursor: "pointer" }}
+                          style={{ transition: "opacity 0.2s", cursor: "pointer" }}
                         />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => v + "%"} />
+                    <Tooltip formatter={(v) => `${v}%`} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div
                   className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-                  style={{ height: 155 }}
                 >
-                  <div className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">Types</div>
-                  <div className="text-[20px] font-extrabold text-gray-900">{serviceMix.length}</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Services</div>
+                  <div className="text-xl font-extrabold text-slate-900">{serviceMix.length}</div>
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5 mt-2 flex-1">
+              <div className="flex flex-col gap-1.5 mt-2 pt-2 border-t border-slate-100">
                 {serviceMix.map((entry, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between text-[11px] py-0.5 px-1 rounded-md hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                     onMouseEnter={() => setActiveServiceIdx(i)}
                     onMouseLeave={() => setActiveServiceIdx(null)}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
-                      <span className="text-gray-600">{entry.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: entry.color }} />
+                      <span className="text-slate-700 font-medium">{entry.name}</span>
                     </div>
-                    <span className="font-bold text-gray-900">{entry.value}%</span>
+                    <span className="font-bold text-slate-900">{entry.value}%</span>
                   </div>
                 ))}
               </div>
@@ -1057,68 +1121,22 @@ export default function AdminDashboard({ onNavigateToOrders }) {
           </div>
         </div>
 
-        {overCapacityRequests.length > 0 && (
-          <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div>
-                <p className="m-0 text-xs font-black uppercase tracking-wider text-amber-800">Over Capacity Warning</p>
-                <p className="mt-0.5 text-xs font-medium text-amber-700">
-                  {overCapacityRequests.length} booking request{overCapacityRequests.length !== 1 ? "s" : ""} exceed recommended capacity
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-              <span className="text-xl font-black text-amber-700">{overCapacityRequests.length}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate('/admin/orders', { state: { filterStatus: 'Over Capacity' } });
-                }}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white text-xs font-bold rounded-xl transition-saas border-none cursor-pointer min-h-[44px] flex items-center"
-              >
-                Review Requests
-              </button>
-            </div>
-          </div>
-        )}
-
+        {/* Operational Queues & Activity Panels (Hierarchy: Overdue -> Today's Schedule -> Complete) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Today's Schedule Card */}
+          {/* Overdue & Attention Panel (Prioritized First for Actionable Visibility) */}
           <DataCard
-            title="Today's Schedule"
-            subtitle={`${TODAY} • ${apptToday.length} appointment${apptToday.length !== 1 ? "s" : ""}`}
-            icon={CalendarDays}
+            title="Overdue & Action Needed"
+            icon={AlertTriangle}
             headerExtra={
-              <StatusBadge status="confirmed" label="Today" size="xs" />
+              apptOverdue.length > 0 ? (
+                <StatusBadge status="overdue" label={`${apptOverdue.length} Action Needed`} size="xs" />
+              ) : null
             }
-          >
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
-              {apptToday.length === 0 ? (
-                <EmptyState
-                  title="No appointments today"
-                  description="There are no scheduled pickups or drop-offs for today."
-                />
-              ) : (
-                apptToday.map((appt) => (
-                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
-                ))
-              )}
-            </div>
-          </DataCard>
-
-          {/* Overdue Dates Card */}
-          <DataCard
-            title="Overdue Dates"
-            subtitle={`${apptOverdue.length} pending record${apptOverdue.length !== 1 ? "s" : ""}`}
-            icon={CalendarDays}
             action={
               <select
                 value={overdueFilter}
                 onChange={(e) => setOverdueFilter(e.target.value)}
-                className="text-xs font-bold bg-slate-100 border-none rounded-xl px-2.5 py-1 text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-rose-400"
+                className="text-xs font-bold bg-slate-100 hover:bg-slate-200/80 border-none rounded-xl px-2.5 py-1 text-slate-700 outline-none cursor-pointer focus:ring-2 focus:ring-rose-400 transition-colors"
               >
                 <option value="all">All</option>
                 <option value="yesterday">Yesterday</option>
@@ -1127,7 +1145,7 @@ export default function AdminDashboard({ onNavigateToOrders }) {
               </select>
             }
           >
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
+            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
               {apptOverdue.length === 0 ? (
                 <EmptyState
                   title="No overdue appointments"
@@ -1141,22 +1159,43 @@ export default function AdminDashboard({ onNavigateToOrders }) {
             </div>
           </DataCard>
 
-          {/* Complete Card */}
+          {/* Today's Schedule Panel */}
           <DataCard
-            title="Complete"
-            subtitle={`${filteredAllAppts.length} ready to release`}
+            title="Today's Schedule"
+            icon={CalendarDays}
+            headerExtra={
+              <StatusBadge status="confirmed" label="Today" size="xs" />
+            }
+          >
+            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
+              {apptToday.length === 0 ? (
+                <EmptyState
+                  title="No appointments today"
+                  description="There are no scheduled pickups or drop-offs for today."
+                />
+              ) : (
+                apptToday.map((appt) => (
+                  <ApptCard key={appt.id} appt={appt} showView onViewOrder={handleViewOrder} isClickable />
+                ))
+              )}
+            </div>
+          </DataCard>
+
+          {/* Complete / Ready for Release Panel */}
+          <DataCard
+            title="Ready for Release"
             icon={Package}
             action={
               <input
                 type="text"
-                placeholder="Search complete..."
+                placeholder="Search ready items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-32 sm:w-44 px-2.5 py-1 text-xs bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-500 rounded-xl outline-none transition-saas"
+                className="w-28 sm:w-36 px-2.5 py-1 text-xs bg-slate-100 border border-transparent focus:bg-white focus:border-emerald-500 rounded-xl outline-none transition-all"
               />
             }
           >
-            <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 320 }}>
+            <div className="flex flex-col gap-2 overflow-y-auto max-h-[360px] pr-0.5 custom-scrollbar">
               {filteredAllAppts.length === 0 ? (
                 <EmptyState
                   title="No orders ready for release"
@@ -1174,12 +1213,3 @@ export default function AdminDashboard({ onNavigateToOrders }) {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

@@ -37,7 +37,7 @@ export default function RBAC() {
                         Welcome to JJSTrack
                     </h1>
                     <p className="text-slate-200 text-xs sm:text-sm max-w-md text-center leading-relaxed font-sans font-normal drop-shadow-sm">
-                        Select your authorized portal scope to access your workspace.
+                        Select your authorized portal to access your workspace.
                     </p>
                 </header>
 
@@ -67,7 +67,7 @@ export default function RBAC() {
                                 Full access for administrators to manage all system functions
                             </p>
                             <div className="flex flex-wrap gap-1.5 mb-4 sm:mb-5">
-                                {['Analytics & Reports', 'Staff Management', 'Services & Pricing', 'Inventory'].map((scope) => (
+                                {['Analytics & Reports', 'Staff Management', 'Services & Pricing', 'Inventory', 'Appointments'].map((scope) => (
                                     <span key={scope} className="text-[11px] font-medium font-sans text-neutral-300 bg-neutral-900/60 border border-neutral-800/80 px-2.5 py-1 rounded-md group-hover:border-neutral-700 transition-colors backdrop-blur-md">
                                         {scope}
                                     </span>

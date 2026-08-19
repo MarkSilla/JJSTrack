@@ -47,7 +47,6 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
 
   const handleLogout = () => {
     if (logout) logout()
-    // Context.logout() handles redirect to /login
   }
 
   const toggleDesktop = () => setIsDesktopCollapsed(!isDesktopCollapsed)

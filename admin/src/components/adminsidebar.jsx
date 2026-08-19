@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
 import {
-    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, CircleDashed, PackageCheck, ChevronDown, Settings, PhilippinePeso,
+    LayoutDashboard, Calendar, ShoppingBag, Users, Package, BarChart3, QrCode, ChevronLeft, ChevronRight, ChevronDown, PhilippinePeso,
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -14,7 +14,7 @@ const navItems = [
     { type: 'section', label: 'Overview' },
     { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/admin/dashboard' },
     { type: 'section', label: 'Operations' },
-    { icon: Calendar, label: 'Appointment', description: 'Booking schedule and service queue', path: '/admin/appointment' },
+    { icon: Calendar, label: 'Appointment', description: 'Booking schedule and queue', path: '/admin/appointment' },
     {
         icon: ShoppingBag, label: 'Orders', description: 'Production workflow and records',
         subItems: [
@@ -38,18 +38,17 @@ const navItems = [
     { icon: BarChart3, label: 'Report', description: 'Analytics and business performance', path: '/admin/report' },
 ]
 
-const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded, logout }) => {
+const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded }) => {
     const location = useLocation()
     const navigate = useNavigate()
     const [isSmallScreen, setIsSmallScreen] = useState(false)
     const [hoveredItem, setHoveredItem] = useState(null)
+    const [expandedMenus, setExpandedMenus] = useState({})
 
     const isDesktopCollapsed = collapsed ?? true
     const setIsDesktopCollapsed = setCollapsed ?? (() => { })
     const mobileExpanded = isMobileExpanded ?? false
     const setMobileExpanded = setIsMobileExpanded ?? (() => { })
-
-    const [expandedMenus, setExpandedMenus] = useState({})
 
     useEffect(() => {
         const nextExpanded = navItems.reduce((acc, item) => {
@@ -101,58 +100,77 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [mobileExpanded, setMobileExpanded])
 
-    const handleLogout = () => {
-        // Clear authentication data from localStorage
-        localStorage.removeItem('adminToken')
-        localStorage.removeItem('rememberAdminEmail')
-        navigate('/')
-    }
-
     const toggleDesktop = () => {
         if (!isDesktopCollapsed) {
             setExpandedMenus({})
         }
         setIsDesktopCollapsed(!isDesktopCollapsed)
     }
+
     const showLabel = isSmallScreen ? mobileExpanded : !isDesktopCollapsed
 
     return (
         <>
+            {/* Mobile Backdrop */}
             {mobileExpanded && (
                 <div
-                    className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+                    className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30"
                     onClick={() => setMobileExpanded(false)}
                     aria-hidden="true"
                 />
             )}
+
+            {/* Sidebar */}
             <aside
                 id="jjs-sidebar"
-                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-300 ease-in-out z-50 shadow-xl border-r border-gray-800 flex flex-col
+                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-40 shadow-xl border-r border-gray-700 flex flex-col font-inter
           ${isSmallScreen
                         ? mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'
                         : isDesktopCollapsed ? 'w-20' : 'w-64'
                     }`}
             >
-                <div className="p-4 border-b border-gray-800 flex items-center justify-between h-16 shrink-0">
-                    <div className={`flex items-center ${isDesktopCollapsed && !isSmallScreen ? 'justify-center w-full' : ''}`}>
-                        <div className={`flex items-center justify-center ${isDesktopCollapsed && !isSmallScreen ? 'w-8 h-8' : 'w-8 h-8 mr-2.5'}`}>
+                {/* Logo Header */}
+                <div className="p-4 border-b border-gray-700 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                    style={{ paddingLeft: isDesktopCollapsed && !isSmallScreen ? '22px' : '24px' }}
+                >
+                    <div className="flex items-center w-full">
+                        <div className="flex items-center justify-center w-8 h-8 mr-3 shrink-0">
                             <img src={img.JJS} alt="JJS Logo" className="object-contain w-8 h-8" />
                         </div>
-                        <div className={showLabel ? 'block' : 'hidden'}>
-                            <h1 className="text-xl font-bold text-white tracking-tight">JJS-Track</h1>
-                            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Admin</p>
+                        <div
+                            className="flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            style={{
+                                width: showLabel ? '120px' : '0px',
+                                opacity: showLabel ? 1 : 0,
+                                transform: showLabel ? 'translateX(0)' : 'translateX(-10px)',
+                                pointerEvents: showLabel ? 'auto' : 'none',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <h1 className="text-sm font-bold text-white tracking-tight leading-none">JJS-Track</h1>
+                            <p className="text-gray-400 text-xs uppercase font-semibold tracking-widest mt-0.5 leading-none">Admin Portal</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Nav Items */}
                 <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
-                    <ul className={`space-y-1.5 ${isDesktopCollapsed && !isSmallScreen ? 'px-3' : 'px-4'}`}>
-                        {navItems.map((item) => {
+                    <ul className="space-y-1 px-3">
+                        {navItems.map((item, index) => {
                             if (item.type === 'section') {
                                 return (
-                                    <li key={item.label} className={showLabel ? 'px-4 pt-4 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-gray-500' : 'my-3 border-t border-gray-800'} >
-                                        {showLabel ? item.label : null}
+                                    <li key={item.label} className="relative transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
+                                        style={{
+                                            maxHeight: showLabel ? '32px' : '0px',
+                                            opacity: showLabel ? 1 : 0,
+                                            padding: showLabel ? '2px 0' : '0',
+                                            margin: showLabel ? '' : '0',
+                                        }}
+                                    >
+                                        <div className="px-3 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
+                                            {item.label}
+                                        </div>
                                     </li>
                                 )
                             }
@@ -165,26 +183,60 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                             return (
                                 <li
                                     key={item.label}
-                                    className="relative flex flex-col"
+                                    data-nav-label={item.label}
+                                    className="relative flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                    style={{
+                                        transform: isSmallScreen
+                                            ? mobileExpanded ? 'translateX(0)' : 'translateX(-16px)'
+                                            : 'none',
+                                        opacity: isSmallScreen
+                                            ? mobileExpanded ? 1 : 0
+                                            : 1,
+                                        transitionDelay: isSmallScreen && mobileExpanded
+                                            ? `${(index + 1) * 45}ms`
+                                            : '0ms'
+                                    }}
                                     onMouseEnter={() => setHoveredItem(item.label)}
                                     onMouseLeave={() => setHoveredItem(null)}
                                 >
                                     {item.subItems ? (
                                         <button
+                                            type="button"
                                             onClick={() => toggleSubMenu(item.label)}
-                                            className={`flex items-center gap-3 w-full rounded-xl transition-all duration-200 group border-none cursor-pointer outline-none bg-transparent
-                                                ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
-                                                ${isActive ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}
+                                            className={`flex items-center w-full py-2 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group border-none cursor-pointer outline-none bg-transparent text-left
+                                                ${isActive ? 'bg-blue-600/15 text-blue-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
+                                            style={{
+                                                paddingLeft: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px',
+                                                paddingRight: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px'
+                                            }}
                                         >
                                             <item.icon
                                                 size={20}
-                                                className={`transition-all duration-300 shrink-0 group-hover:scale-110 ${isActive ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
+                                                className={`transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0 group-hover:scale-105 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'}`}
                                             />
-                                            <div className={`flex items-center justify-between w-full ${showLabel ? 'block' : 'hidden'}`}>
-                                                <span className="font-bold text-sm leading-none">{item.label}</span>
+                                            <div
+                                                className="flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                                style={{
+                                                    width: showLabel ? '150px' : '0px',
+                                                    opacity: showLabel ? 1 : 0,
+                                                    transform: showLabel ? 'translateX(0)' : 'translateX(-8px)',
+                                                    pointerEvents: showLabel ? 'auto' : 'none',
+                                                    overflow: 'hidden',
+                                                    whiteSpace: 'nowrap',
+                                                    marginLeft: showLabel ? '12px' : '0px'
+                                                }}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-sm leading-tight">{item.label}</span>
+                                                    {item.description && (
+                                                        <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-blue-300/80' : 'text-slate-500'}`}>
+                                                            {item.description}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <ChevronDown
                                                     size={16}
-                                                    className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-white' : 'text-gray-500'}`}
+                                                    className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-white' : 'text-slate-500'}`}
                                                 />
                                             </div>
                                         </button>
@@ -192,62 +244,67 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                                         <Link
                                             to={item.path}
                                             onClick={() => isSmallScreen && setMobileExpanded(false)}
-                                            className={`flex items-center gap-3 w-full rounded-xl transition-all duration-200 group outline-none
-                                                ${isDesktopCollapsed && !isSmallScreen ? 'px-0 py-3 justify-center' : 'px-4 py-3'}
-                                                ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}
+                                            className={`flex items-center w-full py-2 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group outline-none
+                                                ${isActive ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-600/25' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
+                                            style={{
+                                                paddingLeft: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px',
+                                                paddingRight: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px'
+                                            }}
                                         >
                                             <item.icon
                                                 size={20}
-                                                className={`transition-all duration-300 shrink-0 group-hover:scale-110 ${isActive ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'text-gray-400 group-hover:text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]'}`}
+                                                className={`transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
                                             />
-                                            <div className={`flex flex-col ${showLabel ? 'block' : 'hidden'}`}>
-                                                <span className="font-bold text-sm leading-none">{item.label}</span>
-                                                {isActive && <span className="text-[10px] text-blue-200 mt-1">Active</span>}
+                                            <div
+                                                className="flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                                style={{
+                                                    width: showLabel ? '150px' : '0px',
+                                                    opacity: showLabel ? 1 : 0,
+                                                    transform: showLabel ? 'translateX(0)' : 'translateX(-8px)',
+                                                    pointerEvents: showLabel ? 'auto' : 'none',
+                                                    overflow: 'hidden',
+                                                    whiteSpace: 'nowrap',
+                                                    marginLeft: showLabel ? '12px' : '0px'
+                                                }}
+                                            >
+                                                <span className="font-medium text-sm leading-tight">{item.label}</span>
+                                                {item.description && (
+                                                    <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
+                                                        {item.description}
+                                                    </span>
+                                                )}
                                             </div>
                                         </Link>
                                     )}
-                                    {item.subItems && isExpanded && showLabel && (
-                                        <ul className="mt-1 space-y-1 px-3 ml-6 border-l border-gray-700">
-                                            {item.subItems.map((subItem) => {
-                                                const isSubActive = isPathActive(location.pathname, subItem.path, subItem.matchNested)
-                                                return (
-                                                    <li key={subItem.path}>
-                                                        <Link
-                                                            to={subItem.path}
-                                                            onClick={() => isSmallScreen && setMobileExpanded(false)}
-                                                            className={`block px-4 py-2 text-[12px] rounded-lg transition-colors font-semibold
-                                                                ${isSubActive ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-                                                        >
-                                                            {subItem.label}
-                                                        </Link>
-                                                    </li>
-                                                )
-                                            })}
-                                        </ul>
-                                    )}
 
-                                    {/* Tooltips for collapsed desktop */}
-                                    {isDesktopCollapsed && !isSmallScreen && hoveredItem === item.label && (
-                                        <div className="fixed left-24 z-[100] bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs border border-gray-800 min-w-max">
-                                            <div className="font-bold">{item.label}</div>
-                                            <div className="text-[10px] text-gray-400 mt-0.5 mb-1">{item.description}</div>
-
-                                            {/* Show quick links on hover if it has subitems */}
-                                            {item.subItems && (
-                                                <div className="mt-2 pt-2 border-t border-gray-700 flex flex-col gap-1">
-                                                    {item.subItems.map(subItem => (
-                                                        <Link
-                                                            key={subItem.path}
-                                                            to={subItem.path}
-                                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${isPathActive(location.pathname, subItem.path, subItem.matchNested) ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
-                                                        >
-                                                            {subItem.label}
-                                                        </Link>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="absolute right-full top-[18px] -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
+                                    {/* Submenu Dropdown */}
+                                    {item.subItems && (
+                                        <div
+                                            className="grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
+                                            style={{
+                                                gridTemplateRows: (isExpanded && showLabel) ? '1fr' : '0fr',
+                                                opacity: (isExpanded && showLabel) ? 1 : 0,
+                                            }}
+                                        >
+                                            <div className="overflow-hidden">
+                                                <ul className="mt-1 space-y-1 pl-9 pr-2 border-l border-slate-700/60 ml-5 py-1">
+                                                    {item.subItems.map((subItem) => {
+                                                        const isSubActive = isPathActive(location.pathname, subItem.path, subItem.matchNested)
+                                                        return (
+                                                            <li key={subItem.path}>
+                                                                <Link
+                                                                    to={subItem.path}
+                                                                    onClick={() => isSmallScreen && setMobileExpanded(false)}
+                                                                    className={`block px-3 py-1.5 text-xs rounded-lg transition-all duration-200 font-medium
+                                                                        ${isSubActive ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
+                                                                >
+                                                                    {subItem.label}
+                                                                </Link>
+                                                            </li>
+                                                        )
+                                                    })}
+                                                </ul>
+                                            </div>
                                         </div>
                                     )}
                                 </li>
@@ -256,25 +313,43 @@ const HomeSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExp
                     </ul>
                 </nav>
 
-                {/* Footer with App Info */}
-                <div className={`border-t border-gray-800/80 py-3 shrink-0 ${isDesktopCollapsed && !isSmallScreen ? 'px-2 text-center' : 'px-4'}`}>
-                    {showLabel ? (
-                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                            <span className="font-semibold text-gray-400">JJS-Track</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">v1.0</span>
+                {/* Tooltips for collapsed desktop */}
+                {isDesktopCollapsed && !isSmallScreen && hoveredItem && navItems.find(i => i.label === hoveredItem) && (
+                    <div
+                        className="fixed left-[4.5rem] z-[200] pointer-events-none"
+                        style={{ top: `${document.querySelector(`li[data-nav-label="${hoveredItem}"]`)?.getBoundingClientRect().top || 0}px` }}
+                    >
+                        <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl whitespace-nowrap text-xs border border-gray-800 min-w-max">
+                            <div className="font-semibold">{hoveredItem}</div>
+                            {navItems.find(i => i.label === hoveredItem)?.description && (
+                                <div className="text-[10px] text-gray-300 mt-0.5">{navItems.find(i => i.label === hoveredItem)?.description}</div>
+                            )}
+                            {navItems.find(i => i.label === hoveredItem)?.subItems && (
+                                <div className="mt-2 pt-2 border-t border-gray-700 flex flex-col gap-1 pointer-events-auto">
+                                    {navItems.find(i => i.label === hoveredItem)?.subItems.map(subItem => (
+                                        <Link
+                                            key={subItem.path}
+                                            to={subItem.path}
+                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${isPathActive(location.pathname, subItem.path, subItem.matchNested) ? 'bg-blue-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
+                                        >
+                                            {subItem.label}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="absolute right-full top-3 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
                         </div>
-                    ) : (
-                        <span className="text-[9px] font-mono text-gray-600">v1.0</span>
-                    )}
-                </div>
+                    </div>
+                )}
             </aside>
 
             {/* Desktop Expand/Collapse Button */}
             {!isSmallScreen && (
                 <button
+                    type="button"
                     onClick={toggleDesktop}
                     style={{ left: isDesktopCollapsed ? '70px' : '246px', top: '24px' }}
-                    className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-[60] group"
+                    className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-xl z-50 group cursor-pointer"
                     aria-label={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                     {isDesktopCollapsed ? (

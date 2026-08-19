@@ -26,25 +26,28 @@ export default function DataCard({
     >
       {/* Header */}
       {(title || subtitle || Icon || action || headerExtra) && (
-        <div className="flex items-start justify-between gap-3 p-4 sm:p-5 pb-3 border-b border-slate-50 shrink-0">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              {Icon && <Icon size={16} className="text-blue-600 shrink-0" />}
-              {title && (
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight truncate m-0">
-                  {title}
-                </h3>
-              )}
-              {headerExtra}
-            </div>
-            {subtitle && (
-              <p className="text-xs text-slate-500 mt-0.5 m-0 leading-normal truncate">
-                {subtitle}
-              </p>
+        <div className="p-3.5 sm:p-4 pb-3 border-b border-slate-100 shrink-0 flex flex-col gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {Icon && <Icon size={18} className="text-blue-600 shrink-0" />}
+            {title && (
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-tight m-0">
+                {title}
+              </h3>
             )}
           </div>
 
-          {action && <div className="shrink-0">{action}</div>}
+          {(headerExtra || action) && (
+            <div className="flex items-center justify-between gap-2 w-full flex-wrap pt-0.5">
+              <div className="shrink-0">{headerExtra}</div>
+              <div className="shrink-0">{action}</div>
+            </div>
+          )}
+
+          {subtitle && (
+            <p className="text-xs text-slate-500 m-0 leading-normal truncate">
+              {subtitle}
+            </p>
+          )}
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import LandingNavbar from '../components/LandingNavbar'
 import Footer from '../components/Footer'
 import { AuthContext } from '../context/Context'
@@ -163,7 +164,12 @@ const LandingPage = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-transparent to-[#020617]" />
 
           <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center">
-            <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom duration-700">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="text-center mb-10"
+            >
               <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-none tracking-tight uppercase italic">
                 <span className="text-white">JJS </span>
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500">TRACK</span>
@@ -171,23 +177,28 @@ const LandingPage = () => {
               <p className="text-base sm:text-lg md:text-xl text-slate-200 max-w-2xl mx-auto font-medium leading-relaxed mt-4">
                 We Create, Repair, and Elevate Team and Company Uniforms.
               </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center"
+            >
               <button
                 onClick={() => navigate('/signup')}
-                className="group relative min-h-[44px] px-8 py-4 bg-blue-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="group relative min-h-[44px] px-8 py-4 bg-blue-600 text-white rounded-xl font-bold uppercase text-xs tracking-wider transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer"
               >
                 Sign Up Now
               </button>
               <button
                 onClick={handleDownloadApp}
-                className="group relative inline-flex min-h-[44px] items-center justify-center gap-3 px-4 py-4 lg:px-8 lg:py-4 rounded-xl border border-slate-700 bg-slate-900/80 text-white font-bold uppercase text-[10px] tracking-wider backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 hover:scale-105 active:scale-95 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                className="group relative inline-flex min-h-[44px] items-center justify-center gap-3 px-4 py-4 lg:px-8 lg:py-4 rounded-xl border border-slate-700 bg-slate-900/80 text-white font-bold uppercase text-[10px] tracking-wider backdrop-blur-md transition-all hover:bg-slate-800 hover:border-slate-600 hover:scale-105 active:scale-95 shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer"
                 type="button"
               >
                 <Download className="h-4 w-4 transition-transform" />
                 Download App
               </button>
-            </div>
+            </motion.div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 z-20 overflow-hidden border-y border-slate-800 bg-[#020617]/80 py-2.5 backdrop-blur-md">
             <div className="hero-services-track flex w-max whitespace-nowrap">
@@ -204,13 +215,20 @@ const LandingPage = () => {
         </section>
         <section id="features" className="relative px-4 sm:px-6 lg:px-8 py-16 md:py-24 flex items-start justify-center overflow-hidden bg-slate-100">
           <div className="relative z-10 text-center max-w-6xl mx-auto">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">
-              Everything You Need to Scale
-            </h2>
-            <div className="border-b-4 border-amber-400 w-16 md:w-20 mx-auto mb-6 rounded-full"></div>
-            <p className="text-base md:text-lg text-slate-600 mb-12 max-w-3xl mx-auto font-medium">
-              Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
-            </p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">
+                Everything You Need to Scale
+              </h2>
+              <div className="border-b-4 border-amber-400 w-16 md:w-20 mx-auto mb-6 rounded-full"></div>
+              <p className="text-base md:text-lg text-slate-600 mb-12 max-w-3xl mx-auto font-medium">
+                Powerful tools designed specifically for JJSportswear, bringing traditional craftsmanship into the digital age.
+              </p>
+            </motion.div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
               {[
                 { icon: ClipboardList, title: 'Order Tracking', desc: 'Track every order from measurement to delivery with real-time status updates.' },
@@ -218,30 +236,44 @@ const LandingPage = () => {
                 { icon: Ruler, title: 'Measurements Database', desc: 'Store and access precise measurements instantly. Never lose a detail.' },
                 { icon: Package, title: 'Inventory Control', desc: 'Monitor fabric stock and supplies in real-time to prevent shortages.' }
               ].map((f, i) => (
-                <article
+                <motion.article
                   key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.4, delay: i * 0.08 }}
                   tabIndex={0}
                   role="article"
-                  className="group bg-white rounded-2xl p-8 text-left border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                  className="group bg-white rounded-2xl p-8 text-left border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-default"
                 >
                   <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 transition-colors duration-300">
                     <f.icon className="text-blue-600 group-hover:text-white transition-colors duration-300" size={22} />
                   </div>
                   <h3 className="text-base font-bold text-slate-900 mb-2 tracking-tight uppercase">{f.title}</h3>
                   <p className="text-slate-600 text-sm font-normal leading-relaxed">{f.desc}</p>
-                </article>
+                </motion.article>
               ))}
             </div>
           </div>
         </section>
         <section id="services" className="relative py-16 md:py-24 overflow-hidden bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8 md:mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-8 md:mb-12"
+            >
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold font-playfair text-[#0F172A] mb-4">Our Expertise</h2>
               <div className="border-b-4 border-amber-400 w-16 md:w-20 mx-auto rounded-full"></div>
-            </div>
+            </motion.div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4 }}
                 tabIndex={0}
                 role="button"
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/designs'); } }}
@@ -270,8 +302,14 @@ const LandingPage = () => {
                     </span>
                   </div>
                 </div>
-              </div>
-              <div className="relative bg-slate-900 rounded-2xl overflow-hidden min-h-[280px] md:min-h-[360px] group border border-slate-800 shadow-md">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="relative bg-slate-900 rounded-2xl overflow-hidden min-h-[280px] md:min-h-[360px] group border border-slate-800 shadow-md"
+              >
                 <div className="absolute inset-0">
                   <img src={fit} alt="Fit Profiles" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-35 group-hover:opacity-50 transition-opacity" />
                 </div>
@@ -281,8 +319,14 @@ const LandingPage = () => {
                     We securely store your measurements and style preferences to ensure every piece fits perfectly, every time you order.
                   </p>
                 </div>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.15 }}
+                className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md"
+              >
                 <div className="absolute inset-0 bg-slate-900">
                   <img src={desi} alt="Repair" width="900" height="700" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-40 group-hover:opacity-55 transition-opacity duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent opacity-70" />
@@ -293,8 +337,14 @@ const LandingPage = () => {
                     From resizing and hemming to zipper replacement and repairs, we restore and adjust your clothes to look and feel just right.
                   </p>
                 </div>
-              </div>
-              <div className="md:col-span-2 relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="md:col-span-2 relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[320px] group border border-slate-800 shadow-md"
+              >
                 <div className="absolute inset-0 bg-slate-900">
                   <img src={jersey} alt="jersey" width="1200" height="800" loading="lazy" decoding="async" className="w-full h-full object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
                 </div>
@@ -302,7 +352,7 @@ const LandingPage = () => {
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase italic mb-3 tracking-tight">Quality You Can Trust</h3>
                   <p className="text-sm md:text-base text-slate-200 font-normal max-w-2xl leading-relaxed">Every stitch matters. We focus on clean finishes, strong seams, and long-lasting materials—because details make the design stand out.</p>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
@@ -418,5 +468,3 @@ const LandingPage = () => {
 }
 
 export default LandingPage
-
-

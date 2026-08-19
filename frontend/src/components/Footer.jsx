@@ -96,7 +96,7 @@ const Footer = () => {
                   <button
                     type="button"
                     onClick={() => openLegalModal('privacy')}
-                    className="hover:text-blue-400"
+                    className="hover:text-blue-400 cursor-pointer"
                   >
                     Privacy Policy
                   </button>
@@ -106,7 +106,7 @@ const Footer = () => {
                   <button
                     type="button"
                     onClick={() => openLegalModal('terms')}
-                    className="hover:text-blue-400"
+                    className="hover:text-blue-400 cursor-pointer"
                   >
                     Terms of Use
                   </button>
@@ -114,8 +114,8 @@ const Footer = () => {
               </ul>
             </div>
           </div>
-        </div >
-      </footer >
+        </div>
+      </footer>
 
       {selectedDocument && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
