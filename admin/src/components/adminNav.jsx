@@ -624,3 +624,4 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
 }
 
 export default AdminNav
+

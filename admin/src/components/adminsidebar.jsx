@@ -12,6 +12,8 @@ import {
     ChevronRight,
     ChevronDown,
     PhilippinePeso,
+    User,
+    X
 } from 'lucide-react'
 import img from '../assets/img.js'
 
@@ -47,43 +49,35 @@ const NAV_ITEMS = [
     { icon: PhilippinePeso, label: 'Services Pricing', description: 'Update service rates', path: '/admin/services-pricing' },
 
     { type: 'section', label: 'Insights' },
-    { icon: BarChart3, label: 'Report', description: 'Analytics and business performance', path: '/admin/report' },
+    { icon: BarChart3, label: 'Reports', description: 'Analytics & performance', path: '/admin/report' },
 ]
 
-// Utility to check active path
 const isPathActive = (pathname, targetPath, matchNested = false) => {
     if (!targetPath) return false
     return pathname === targetPath || (matchNested && pathname.startsWith(`${targetPath}/`))
 }
 
-const AdminSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileExpanded }) => {
+const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen = false, setIsMobileOpen = () => { } }) => {
     const location = useLocation()
-
-    // Screen breakpoint state (Mobile: < 1024px)
+    const [tooltipState, setTooltipState] = useState({ visible: false, label: '', top: 0 })
+    const [expandedSubmenus, setExpandedSubmenus] = useState({})
     const [isSmallScreen, setIsSmallScreen] = useState(() =>
         typeof window !== 'undefined' ? window.innerWidth < 1024 : false
     )
-    const [hoveredItem, setHoveredItem] = useState(null)
-    const [expandedSubmenus, setExpandedSubmenus] = useState({})
 
-    const isDesktopCollapsed = collapsed ?? true
-    const setIsDesktopCollapsed = setCollapsed ?? (() => { })
-    const mobileExpanded = isMobileExpanded ?? false
-    const setMobileExpanded = setIsMobileExpanded ?? (() => { })
-
-    // Sync viewport resize
+    // Sync viewport size
     useEffect(() => {
         const handleResize = () => {
             const small = window.innerWidth < 1024
             setIsSmallScreen(small)
-            if (!small) setMobileExpanded(false)
+            if (!small) setIsMobileOpen(false)
         }
         handleResize()
         window.addEventListener('resize', handleResize)
         return () => window.removeEventListener('resize', handleResize)
-    }, [setMobileExpanded])
+    }, [setIsMobileOpen])
 
-    // Automatically expand active submenus based on route
+    // Auto expand active submenus based on route
     useEffect(() => {
         const activeSubmenus = NAV_ITEMS.reduce((acc, item) => {
             if (item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))) {
@@ -97,46 +91,56 @@ const AdminSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
         }
     }, [location.pathname])
 
-    // Click outside to close mobile sidebar
+    // Lock body scroll when mobile drawer is open
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            const sidebar = document.getElementById('admin-sidebar')
-            if (mobileExpanded && sidebar && !sidebar.contains(event.target)) {
-                setMobileExpanded(false)
-            }
+        if (isSmallScreen && isMobileOpen) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
         }
-        if (mobileExpanded) {
-            document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+            document.body.style.overflow = ''
         }
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [mobileExpanded, setMobileExpanded])
+    }, [isSmallScreen, isMobileOpen])
 
     const toggleSubMenu = (label) => {
-        if (isDesktopCollapsed && !isSmallScreen) {
-            setIsDesktopCollapsed(false)
+        if (collapsed && !isSmallScreen) {
+            setCollapsed(false)
         }
         setExpandedSubmenus(prev => ({ ...prev, [label]: !prev[label] }))
     }
 
     const toggleDesktop = () => {
-        if (!isDesktopCollapsed) {
+        if (!collapsed) {
             setExpandedSubmenus({})
         }
-        setIsDesktopCollapsed(!isDesktopCollapsed)
+        setCollapsed(!collapsed)
     }
 
-    // Label visibility rule:
-    // Mobile: Show full labels only when mobile sidebar is open
-    // Desktop: Show full labels when desktop sidebar is expanded
-    const showLabels = isSmallScreen ? mobileExpanded : !isDesktopCollapsed
+    const handleMouseEnter = (itemObj, e) => {
+        if (collapsed && !isSmallScreen) {
+            const rect = e.currentTarget.getBoundingClientRect()
+            setTooltipState({
+                visible: true,
+                item: itemObj,
+                top: rect.top + rect.height / 2
+            })
+        }
+    }
+
+    const handleMouseLeave = () => {
+        setTooltipState(prev => ({ ...prev, visible: false }))
+    }
+
+    const showLabels = isSmallScreen ? true : !collapsed
 
     return (
         <>
-            {/* Mobile Backdrop */}
-            {mobileExpanded && (
+            {/* Mobile Backdrop Overlay */}
+            {isSmallScreen && isMobileOpen && (
                 <div
-                    className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
-                    onClick={() => setMobileExpanded(false)}
+                    className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+                    onClick={() => setIsMobileOpen(false)}
                     aria-hidden="true"
                 />
             )}
@@ -144,185 +148,167 @@ const AdminSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
             {/* Sidebar Main Container */}
             <aside
                 id="admin-sidebar"
-                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-40 shadow-xl border-r border-gray-700 flex flex-col font-inter
-                    ${mobileExpanded ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
-                    ${isDesktopCollapsed ? 'lg:w-20 lg:translate-x-0' : 'lg:w-64 lg:translate-x-0'}
+                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white z-40 shadow-2xl border-r border-slate-800 flex flex-col font-inter transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+                    w-80 max-w-[85vw] ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+                    lg:translate-x-0 ${collapsed ? 'lg:w-20' : 'lg:w-64'}
                 `}
             >
                 {/* Brand / Logo Header */}
-                <div
-                    className="p-4 border-b border-gray-700 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                    style={{ paddingLeft: isDesktopCollapsed && !isSmallScreen ? '22px' : '24px' }}
-                >
-                    <div className="flex items-center w-full">
-                        <div className="flex items-center justify-center w-8 h-8 mr-3 shrink-0">
+                <div className="p-3.5 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <div className="flex items-center w-full min-w-0 justify-center lg:justify-start">
+                        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl ">
                             <img src={img.JJS} alt="JJS Logo" className="object-contain w-8 h-8" />
                         </div>
                         <div
-                            className="flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                            className="flex flex-col transition-all duration-300 overflow-hidden whitespace-nowrap ml-3"
                             style={{
-                                width: showLabels ? '120px' : '0px',
+                                width: showLabels ? '140px' : '0px',
                                 opacity: showLabels ? 1 : 0,
-                                transform: showLabels ? 'translateX(0)' : 'translateX(-10px)',
-                                pointerEvents: showLabels ? 'auto' : 'none',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap'
                             }}
                         >
                             <h1 className="text-sm font-bold text-white tracking-tight leading-none">JJS-Track</h1>
-                            <p className="text-gray-400 text-xs uppercase font-semibold tracking-widest mt-0.5 leading-none">Admin Portal</p>
+                            <p className="text-slate-400 text-[10px] uppercase font-semibold tracking-widest mt-0.5 leading-none">Admin Portal</p>
                         </div>
                     </div>
+
+                    {/* Mobile Close Button */}
+                    {isSmallScreen && (
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileOpen(false)}
+                            className="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center shrink-0"
+                            aria-label="Close menu"
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
                 </div>
 
-                {/* Navigation Items List */}
-                <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">
-                    <ul className="space-y-1 px-3">
+                {/* Navigation Items List (Compact Layout) */}
+                <nav className="flex-1 py-2 px-2.5 overflow-y-auto custom-scrollbar">
+                    <ul className="space-y-1">
                         {NAV_ITEMS.map((item, index) => {
-                            // Section Header
-                            if (item.type === 'section') {
-                                return (
-                                    <li
-                                        key={item.label}
-                                        className="relative transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
-                                        style={{
-                                            maxHeight: showLabels ? '32px' : '0px',
-                                            opacity: showLabels ? 1 : 0,
-                                            padding: showLabels ? '2px 0' : '0',
-                                            margin: showLabels ? '' : '0',
-                                        }}
-                                    >
-                                        <div className="px-3 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">
-                                            {item.label}
-                                        </div>
-                                    </li>
-                                )
-                            }
-
+                            const isSection = item.type === 'section'
                             const isActive = item.path
                                 ? isPathActive(location.pathname, item.path, item.matchNested)
                                 : item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))
                             const isSubmenuExpanded = expandedSubmenus[item.label]
 
+                            if (isSection) {
+                                const isFirst = index === 0
+                                return (
+                                    <li key={item.label} className="overflow-hidden">
+                                        {showLabels ? (
+                                            <div className={`px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap ${isFirst ? 'pt-2 pb-1' : 'pt-5 pb-1'
+                                                }`}>
+                                                {item.label}
+                                            </div>
+                                        ) : (
+                                            /* 24px Section Gap in Collapsed Mode (Matches design spec) */
+                                            !isFirst && (
+                                                <div className="my-2.5 h-4 flex items-center justify-center">
+                                                    <div className="w-5 h-[1px] bg-slate-800/80 rounded-full" />
+                                                </div>
+                                            )
+                                        )}
+                                    </li>
+                                )
+                            }
+
+                            const Icon = item.icon
+
                             return (
                                 <li
                                     key={item.label}
-                                    data-nav-label={item.label}
-                                    className="relative flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                                    style={{
-                                        transform: isSmallScreen
-                                            ? mobileExpanded ? 'translateX(0)' : 'translateX(-16px)'
-                                            : 'none',
-                                        opacity: isSmallScreen
-                                            ? mobileExpanded ? 1 : 0
-                                            : 1,
-                                        transitionDelay: isSmallScreen && mobileExpanded
-                                            ? `${(index + 1) * 45}ms`
-                                            : '0ms'
-                                    }}
-                                    onMouseEnter={() => setHoveredItem(item.label)}
-                                    onMouseLeave={() => setHoveredItem(null)}
+                                    className="relative flex flex-col my-0.5"
+                                    onMouseEnter={(e) => handleMouseEnter(item, e)}
+                                    onMouseLeave={handleMouseLeave}
                                 >
-                                    {/* Submenu Item Button */}
                                     {item.subItems ? (
+                                        /* Dropdown Accordion Item */
                                         <button
                                             type="button"
                                             onClick={() => toggleSubMenu(item.label)}
-                                            className={`flex items-center w-full py-2 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group border-none cursor-pointer outline-none bg-transparent text-left
-                                                ${isActive ? 'bg-blue-600/15 text-blue-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
-                                            style={{
-                                                paddingLeft: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px',
-                                                paddingRight: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px'
-                                            }}
+                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group text-left outline-none cursor-pointer ${collapsed && !isSmallScreen ? 'w-10 h-10 mx-auto justify-center px-0' : 'h-10 px-3'
+                                                } ${isActive
+                                                    ? 'bg-blue-600/15 border-blue-500/30 text-blue-400 font-semibold'
+                                                    : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                                                }`}
                                         >
-                                            <item.icon
-                                                size={20}
-                                                className={`transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0 group-hover:scale-105 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'}`}
+                                            <Icon
+                                                size={19}
+                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'
+                                                    }`}
                                             />
                                             <div
-                                                className="flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                                className="flex items-center justify-between transition-all duration-200 overflow-hidden whitespace-nowrap ml-3 flex-1"
                                                 style={{
-                                                    width: showLabels ? '150px' : '0px',
+                                                    width: showLabels ? '100%' : '0px',
                                                     opacity: showLabels ? 1 : 0,
-                                                    transform: showLabels ? 'translateX(0)' : 'translateX(-8px)',
-                                                    pointerEvents: showLabels ? 'auto' : 'none',
-                                                    overflow: 'hidden',
-                                                    whiteSpace: 'nowrap',
-                                                    marginLeft: showLabels ? '12px' : '0px'
+                                                    display: showLabels ? 'flex' : 'none'
                                                 }}
                                             >
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-XS leading-tight">{item.label}</span>
-                                                    {item.description && (
-                                                        <span className={`text-[8px] leading-tight mt-0.5 ${isActive ? 'text-blue-300/80' : 'text-slate-500'}`}>
-                                                            {item.description}
-                                                        </span>
-                                                    )}
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-xs font-medium leading-tight">{item.label}</span>
                                                 </div>
                                                 <ChevronDown
-                                                    size={16}
-                                                    className={`transition-transform duration-300 ${isSubmenuExpanded ? 'rotate-180 text-white' : 'text-slate-500'}`}
+                                                    size={15}
+                                                    className={`transition-transform duration-200 shrink-0 ml-1 ${isSubmenuExpanded ? 'rotate-180 text-white' : 'text-slate-500'
+                                                        }`}
                                                 />
                                             </div>
                                         </button>
                                     ) : (
-                                        /* Single Link Nav Item */
+                                        /* Single Link Item */
                                         <Link
                                             to={item.path}
-                                            onClick={() => isSmallScreen && setMobileExpanded(false)}
-                                            className={`flex items-center w-full py-2 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group outline-none
-                                                ${isActive ? 'bg-blue-600 text-white font-semibold shadow-lg shadow-blue-600/25' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
-                                            style={{
-                                                paddingLeft: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px',
-                                                paddingRight: isDesktopCollapsed && !isSmallScreen ? '16px' : '12px'
-                                            }}
+                                            onClick={() => isSmallScreen && setIsMobileOpen(false)}
+                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group outline-none ${collapsed && !isSmallScreen ? 'w-10 h-10 mx-auto justify-center px-0' : 'h-10 px-3'
+                                                } ${isActive
+                                                    ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-md shadow-blue-600/25'
+                                                    : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                                                }`}
                                         >
-                                            <item.icon
-                                                size={20}
-                                                className={`transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex-shrink-0 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}
+                                            <Icon
+                                                size={19}
+                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                                                    }`}
                                             />
                                             <div
-                                                className="flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                                className="flex flex-col transition-all duration-200 overflow-hidden whitespace-nowrap ml-3 flex-1"
                                                 style={{
-                                                    width: showLabels ? '150px' : '0px',
+                                                    width: showLabels ? '100%' : '0px',
                                                     opacity: showLabels ? 1 : 0,
-                                                    transform: showLabels ? 'translateX(0)' : 'translateX(-8px)',
-                                                    pointerEvents: showLabels ? 'auto' : 'none',
-                                                    overflow: 'hidden',
-                                                    whiteSpace: 'nowrap',
-                                                    marginLeft: showLabels ? '12px' : '0px'
+                                                    display: showLabels ? 'flex' : 'none'
                                                 }}
                                             >
-                                                <span className="font-medium text-sm leading-tight">{item.label}</span>
-                                                {item.description && (
-                                                    <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'text-blue-100' : 'text-slate-500'}`}>
-                                                        {item.description}
-                                                    </span>
-                                                )}
+                                                <span className="text-xs font-medium leading-tight">{item.label}</span>
                                             </div>
                                         </Link>
                                     )}
 
-                                    {/* Submenu Accordion */}
-                                    {item.subItems && (
+                                    {/* Submenu Accordion Drawer */}
+                                    {item.subItems && showLabels && (
                                         <div
-                                            className="grid transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
+                                            className="grid transition-all duration-200 ease-in-out overflow-hidden"
                                             style={{
-                                                gridTemplateRows: (isSubmenuExpanded && showLabels) ? '1fr' : '0fr',
-                                                opacity: (isSubmenuExpanded && showLabels) ? 1 : 0,
+                                                gridTemplateRows: isSubmenuExpanded ? '1fr' : '0fr',
+                                                opacity: isSubmenuExpanded ? 1 : 0,
                                             }}
                                         >
                                             <div className="overflow-hidden">
-                                                <ul className="mt-1 space-y-1 pl-9 pr-2 border-l border-slate-700/60 ml-5 py-1">
+                                                <ul className="mt-1 space-y-1 pl-7 pr-2 border-l border-slate-700/60 ml-3 py-1">
                                                     {item.subItems.map((subItem) => {
                                                         const isSubActive = isPathActive(location.pathname, subItem.path, subItem.matchNested)
                                                         return (
                                                             <li key={subItem.path}>
                                                                 <Link
                                                                     to={subItem.path}
-                                                                    onClick={() => isSmallScreen && setMobileExpanded(false)}
-                                                                    className={`block px-3 py-1.5 text-xs rounded-lg transition-all duration-200 font-medium
-                                                                        ${isSubActive ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800/70 hover:text-white'}`}
+                                                                    onClick={() => isSmallScreen && setIsMobileOpen(false)}
+                                                                    className={`block px-2.5 py-1 text-xs rounded-lg transition-all font-medium ${isSubActive
+                                                                        ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                                                                        : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                                                                        }`}
                                                                 >
                                                                     {subItem.label}
                                                                 </Link>
@@ -338,50 +324,56 @@ const AdminSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
                         })}
                     </ul>
                 </nav>
-
-                {/* Collapsed Desktop Tooltip */}
-                {isDesktopCollapsed && !isSmallScreen && hoveredItem && NAV_ITEMS.find(i => i.label === hoveredItem) && (
-                    <div
-                        className="fixed left-[4.5rem] z-[200] pointer-events-none"
-                        style={{ top: `${document.querySelector(`li[data-nav-label="${hoveredItem}"]`)?.getBoundingClientRect().top || 0}px` }}
-                    >
-                        <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl whitespace-nowrap text-xs border border-gray-800 min-w-max">
-                            <div className="font-semibold">{hoveredItem}</div>
-                            {NAV_ITEMS.find(i => i.label === hoveredItem)?.description && (
-                                <div className="text-[8px] text-gray-300 mt-0.5">{NAV_ITEMS.find(i => i.label === hoveredItem)?.description}</div>
-                            )}
-                            {NAV_ITEMS.find(i => i.label === hoveredItem)?.subItems && (
-                                <div className="mt-2 pt-2 border-t border-gray-700 flex flex-col gap-1 pointer-events-auto">
-                                    {NAV_ITEMS.find(i => i.label === hoveredItem)?.subItems.map(subItem => (
-                                        <Link
-                                            key={subItem.path}
-                                            to={subItem.path}
-                                            className={`text-[10px] py-1 px-2 rounded-md transition-colors ${isPathActive(location.pathname, subItem.path, subItem.matchNested) ? 'bg-blue-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`}
-                                        >
-                                            {subItem.label}
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="absolute right-full top-3 -translate-y-1/2 w-0 h-0 border-t-[6px] border-b-[6px] border-r-[6px] border-transparent border-r-gray-900" />
-                        </div>
-                    </div>
-                )}
             </aside>
+
+            {/* Fixed Floating Tooltip / Popover on Desktop Hover */}
+            {collapsed && !isSmallScreen && tooltipState.visible && tooltipState.item && (
+                <div
+                    className="fixed z-[9999] pointer-events-auto -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
+                    style={{ left: '92px', top: `${tooltipState.top}px` }}
+                    onMouseEnter={() => setTooltipState(prev => ({ ...prev, visible: true }))}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    <div className="relative bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-2xl whitespace-nowrap text-xs border border-slate-700/90 flex flex-col gap-1 min-w-[130px]">
+                        {/* Left Arrow Pointer */}
+                        <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[5px] border-b-[5px] border-r-[6px] border-t-transparent border-b-transparent border-r-slate-900" />
+
+                        <div className="font-semibold text-white tracking-tight leading-tight">{tooltipState.item.label}</div>
+
+                        {tooltipState.item.subItems && (
+                            <div className="mt-1 pt-1.5 border-t border-slate-700/80 flex flex-col gap-1">
+                                {tooltipState.item.subItems.map((sub) => (
+                                    <Link
+                                        key={sub.path}
+                                        to={sub.path}
+                                        onClick={() => setTooltipState(prev => ({ ...prev, visible: false }))}
+                                        className={`text-[11px] py-1 px-2.5 rounded-lg transition-colors font-medium ${isPathActive(location.pathname, sub.path, sub.matchNested)
+                                            ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                            }`}
+                                    >
+                                        {sub.label}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Desktop Expand / Collapse Floating Button */}
             {!isSmallScreen && (
                 <button
                     type="button"
                     onClick={toggleDesktop}
-                    style={{ left: isDesktopCollapsed ? '70px' : '246px', top: '24px' }}
-                    className="fixed w-6 h-6 bg-[#0F172A] border border-gray-700 rounded-full flex items-center justify-center hover:bg-gray-800 hover:border-blue-500 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-xl z-50 group cursor-pointer"
-                    aria-label={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    style={{ left: collapsed ? '70px' : '246px', top: '24px' }}
+                    className="fixed w-6 h-6 bg-[#0F172A] border border-slate-700 rounded-full flex items-center justify-center hover:bg-slate-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-50 group cursor-pointer"
+                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
-                    {isDesktopCollapsed ? (
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                    {collapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
                     ) : (
-                        <ChevronLeft className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                        <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
                     )}
                 </button>
             )}

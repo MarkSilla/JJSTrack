@@ -90,15 +90,15 @@ const getPageMeta = (pathname) => {
 
 const AdminLayout = () => {
     const [collapsed, setCollapsed] = useState(true)
-    const [isMobileExpanded, setIsMobileExpanded] = useState(false)
+    const [isMobileOpen, setIsMobileOpen] = useState(false)
     const location = useLocation()
     const pageMeta = getPageMeta(location.pathname)
 
     const handleBurgerClick = () => {
         if (window.innerWidth < 1024) {
-            setIsMobileExpanded(!isMobileExpanded)
+            setIsMobileOpen(prev => !prev)
         } else {
-            setCollapsed(!collapsed)
+            setCollapsed(prev => !prev)
         }
     }
 
@@ -107,18 +107,19 @@ const AdminLayout = () => {
             <AdminSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
-                isMobileExpanded={isMobileExpanded}
-                setIsMobileExpanded={setIsMobileExpanded}
+                isMobileOpen={isMobileOpen}
+                setIsMobileOpen={setIsMobileOpen}
             />
 
             <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
                     <AdminNav
                         onToggleSidebar={handleBurgerClick}
+                        isMobileDrawerOpen={isMobileOpen}
                         pageTitle={pageMeta.title}
                         pageSubtitle={pageMeta.subtitle}
                     />
-                    <main className="flex-1 min-w-0 w-full overflow-x-hidden overflow-y-auto p-0 pt-2 md:p-3 lg:p-1">
+                    <main className="flex-1 min-w-0 w-full overflow-x-hidden overflow-y-auto p-0 pt-2 pb-4 md:p-3 lg:p-1 lg:pb-1">
                         <PageEntrance variant="outlet">
                             <Outlet />
                         </PageEntrance>
