@@ -77,6 +77,13 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         return () => window.removeEventListener('resize', handleResize)
     }, [setIsMobileOpen])
 
+    // Auto-close mobile drawer on route change (e.g. after login redirect)
+    useEffect(() => {
+        if (isSmallScreen) {
+            setIsMobileOpen(false)
+        }
+    }, [location.pathname])
+
     // Auto expand active submenus based on route
     useEffect(() => {
         const activeSubmenus = NAV_ITEMS.reduce((acc, item) => {
