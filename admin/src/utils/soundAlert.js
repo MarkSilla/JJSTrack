@@ -27,7 +27,6 @@ const detachUnlockListeners = () => {
   unlockHandlersAttached = false;
 };
 
-// Ultra-clean crystal glass pop notification sound (iOS / macOS style)
 const playGlassPop = (audioContext, startFreq = 880, endFreq = 1174.66, delay = 0, volume = 0.05) => {
   const startTime = audioContext.currentTime + delay;
   const duration = 0.08;
@@ -39,7 +38,6 @@ const playGlassPop = (audioContext, startFreq = 880, endFreq = 1174.66, delay = 
   oscillator.frequency.setValueAtTime(startFreq, startTime);
   oscillator.frequency.exponentialRampToValueAtTime(endFreq, startTime + 0.04);
 
-  // Soft 4ms attack curve to eliminate any click/pop artifacts, followed by smooth decay
   gainNode.gain.setValueAtTime(0.0001, startTime);
   gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.004);
   gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
@@ -53,30 +51,25 @@ const playGlassPop = (audioContext, startFreq = 880, endFreq = 1174.66, delay = 
 
 const runAlertPattern = (audioContext, type = 'warning') => {
   try {
-    // Ultra-clean, modern, subtle glass notification sounds
     if (type === 'lowStock' || type === 'dueSoon') {
-      // Soft double glass tap
-      playGlassPop(audioContext, 783.99, 1046.50, 0, 0.05); // G5 -> C6
-      playGlassPop(audioContext, 1046.50, 1318.51, 0.07, 0.05); // C6 -> E6
+      playGlassPop(audioContext, 783.99, 1046.50, 0, 0.05);
+      playGlassPop(audioContext, 1046.50, 1318.51, 0.07, 0.05);
       return true;
     }
 
     if (type === 'outOfStock' || type === 'overdue') {
-      // Crystal 3-tap cascade
-      playGlassPop(audioContext, 659.25, 880.00, 0, 0.05); // E5 -> A5
-      playGlassPop(audioContext, 880.00, 1174.66, 0.06, 0.05); // A5 -> D6
-      playGlassPop(audioContext, 1174.66, 1567.98, 0.12, 0.05); // D6 -> G6
+      playGlassPop(audioContext, 659.25, 880.00, 0, 0.05);
+      playGlassPop(audioContext, 880.00, 1174.66, 0.06, 0.05);
+      playGlassPop(audioContext, 1174.66, 1567.98, 0.12, 0.05);
       return true;
     }
 
     if (type === 'workflow') {
-      // Crisp single glass chime
-      playGlassPop(audioContext, 880.00, 1318.51, 0, 0.06); // A5 -> E6
+      playGlassPop(audioContext, 880.00, 1318.51, 0, 0.06);
       return true;
     }
 
-    // Default clean single pop notification
-    playGlassPop(audioContext, 880.00, 1174.66, 0, 0.05); // A5 -> D6
+    playGlassPop(audioContext, 880.00, 1174.66, 0, 0.05);
     return true;
   } catch (error) {
     console.error('Error creating alert sound:', error);
@@ -118,12 +111,10 @@ export const initAlertSound = () => {
   unlockHandlersAttached = true;
 };
 
-// Auto-initialize on import so listeners are registered immediately
 if (typeof window !== 'undefined') {
   initAlertSound();
 }
 
-// Sound Alert Utility for inventory and order notifications
 export const playAlertSound = async (type = 'warning') => {
   try {
     const audioContext = getAudioContext();

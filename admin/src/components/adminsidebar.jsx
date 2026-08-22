@@ -65,7 +65,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         typeof window !== 'undefined' ? window.innerWidth < 1024 : false
     )
 
-    // Sync viewport size
+    // Viewport listener
     useEffect(() => {
         const handleResize = () => {
             const small = window.innerWidth < 1024
@@ -77,14 +77,18 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         return () => window.removeEventListener('resize', handleResize)
     }, [setIsMobileOpen])
 
-    // Auto-close mobile drawer on route change (e.g. after login redirect)
+    useEffect(() => {
+        if (window.innerWidth < 1024) {
+            setIsMobileOpen(false)
+        }
+    }, [])
+
     useEffect(() => {
         if (isSmallScreen) {
             setIsMobileOpen(false)
         }
-    }, [location.pathname])
+    }, [location.pathname, isSmallScreen, setIsMobileOpen])
 
-    // Auto expand active submenus based on route
     useEffect(() => {
         const activeSubmenus = NAV_ITEMS.reduce((acc, item) => {
             if (item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))) {
@@ -98,7 +102,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         }
     }, [location.pathname])
 
-    // Lock body scroll when mobile drawer is open
     useEffect(() => {
         if (isSmallScreen && isMobileOpen) {
             document.body.style.overflow = 'hidden'
@@ -143,7 +146,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
 
     return (
         <>
-            {/* Mobile Backdrop Overlay */}
+            {/* Overlay */}
             {isSmallScreen && isMobileOpen && (
                 <div
                     className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -152,7 +155,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                 />
             )}
 
-            {/* Sidebar Main Container */}
+            {/* Sidebar */}
             <aside
                 id="admin-sidebar"
                 className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white z-40 shadow-2xl border-r border-slate-800 flex flex-col font-inter transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
@@ -160,7 +163,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                     lg:translate-x-0 ${collapsed ? 'lg:w-20' : 'lg:w-64'}
                 `}
             >
-                {/* Brand / Logo Header */}
+                {/* Header */}
                 <div className="p-3.5 border-b border-slate-800 flex items-center justify-between shrink-0">
                     <div className="flex items-center w-full min-w-0 justify-center lg:justify-start">
                         <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl ">
@@ -178,7 +181,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                         </div>
                     </div>
 
-                    {/* Mobile Close Button */}
                     {isSmallScreen && (
                         <button
                             type="button"
@@ -191,7 +193,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                     )}
                 </div>
 
-                {/* Navigation Items List (Compact Layout) */}
+                {/* Navigation */}
                 <nav className="flex-1 py-2 px-2.5 overflow-y-auto custom-scrollbar">
                     <ul className="space-y-1">
                         {NAV_ITEMS.map((item, index) => {
@@ -211,7 +213,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                                 {item.label}
                                             </div>
                                         ) : (
-                                            /* 24px Section Gap in Collapsed Mode (Matches design spec) */
                                             !isFirst && (
                                                 <div className="my-2.5 h-4 flex items-center justify-center">
                                                     <div className="w-5 h-[1px] bg-slate-800/80 rounded-full" />
@@ -232,7 +233,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                     onMouseLeave={handleMouseLeave}
                                 >
                                     {item.subItems ? (
-                                        /* Dropdown Accordion Item */
                                         <button
                                             type="button"
                                             onClick={() => toggleSubMenu(item.label)}
@@ -266,7 +266,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                             </div>
                                         </button>
                                     ) : (
-                                        /* Single Link Item */
                                         <Link
                                             to={item.path}
                                             onClick={() => isSmallScreen && setIsMobileOpen(false)}
@@ -294,7 +293,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                         </Link>
                                     )}
 
-                                    {/* Submenu Accordion Drawer */}
                                     {item.subItems && showLabels && (
                                         <div
                                             className="grid transition-all duration-200 ease-in-out overflow-hidden"
@@ -333,7 +331,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                 </nav>
             </aside>
 
-            {/* Fixed Floating Tooltip / Popover on Desktop Hover */}
+            {/* Tooltip */}
             {collapsed && !isSmallScreen && tooltipState.visible && tooltipState.item && (
                 <div
                     className="fixed z-[9999] pointer-events-auto -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
@@ -342,7 +340,6 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                     onMouseLeave={handleMouseLeave}
                 >
                     <div className="relative bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-2xl whitespace-nowrap text-xs border border-slate-700/90 flex flex-col gap-1 min-w-[130px]">
-                        {/* Left Arrow Pointer */}
                         <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-t-[5px] border-b-[5px] border-r-[6px] border-t-transparent border-b-transparent border-r-slate-900" />
 
                         <div className="font-semibold text-white tracking-tight leading-tight">{tooltipState.item.label}</div>
@@ -368,7 +365,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                 </div>
             )}
 
-            {/* Desktop Expand / Collapse Floating Button */}
+            {/* Toggle button */}
             {!isSmallScreen && (
                 <button
                     type="button"

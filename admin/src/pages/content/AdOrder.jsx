@@ -24,8 +24,6 @@ const FALLBACK_REFRESH_MS = 60000;
 const getRepairDisplayLabel = (booking = {}) =>
     booking.selectedOptions?.[0]?.name || booking.service || booking.repairDescription || 'Repair';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 export const getActiveStepIndex = (order, orderTracking) => {
     if (!order) return 0;
     if (order.steps && order.steps.length > 0) {
@@ -134,8 +132,6 @@ export const convertBooking = (booking) => {
     };
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export default function AdOrder() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -158,8 +154,6 @@ export default function AdOrder() {
         catch { return {}; }
     });
     const [assignConfirm, setAssignConfirm] = useState({ show: false, orderId: null, empId: null });
-
-    // ─── Fetch Orders & Bookings ──────────────────────────────────────────────
 
     const fetchOrdersAndBookings = useCallback(async (silent = false) => {
             try {
@@ -255,8 +249,6 @@ export default function AdOrder() {
         }
     }, [location.state]);
 
-    // ─── Derived State ────────────────────────────────────────────────────────
-
     const getOrderSortTime = (order) => {
         const parseDateValue = (value) => {
             if (!value) return 0;
@@ -347,13 +339,9 @@ export default function AdOrder() {
         return c;
     }, [orders]);
 
-    // ─── Navigation handler (replaces setActiveOrderId) ───────────────────────
-
     const handleOrderClick = (orderId) => {
         navigate(`/admin/orders/${orderId}`);
     };
-
-    // ─── Assign handlers (kept here so they persist across navigation) ────────
 
     const handleAssign = (orderId, empId) => {
         setAssignConfirm({ show: true, orderId, empId });
@@ -399,8 +387,6 @@ export default function AdOrder() {
 
     const cancelAssign = () => setAssignConfirm({ show: false, orderId: null, empId: null });
 
-    // ─── Render ───────────────────────────────────────────────────────────────
-
     if (loading) {
         return (
             <div className="font-inter min-h-screen bg-slate-50 flex flex-col p-3 lg:p-6 pb-20">
@@ -426,8 +412,8 @@ export default function AdOrder() {
 
                 <OrderList
                     filteredOrders={filteredOrders}
-                    activeOrderId={null}           /* No active selection on the list page */
-                    onOrderClick={handleOrderClick} /* NEW: navigate instead of setActiveOrderId */
+                    activeOrderId={null}
+                    onOrderClick={handleOrderClick}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     sortOption={sortOption}
@@ -441,7 +427,7 @@ export default function AdOrder() {
                     counts={counts}
                     orderTracking={orderTracking}
                     assignments={assignments}
-                    fullWidth                      /* NEW: tell OrderList it owns the full width */
+                    fullWidth
                 />
             </div>
 

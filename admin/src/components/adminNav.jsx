@@ -15,7 +15,6 @@ const NOTIFICATION_LIMIT = 20
 const NOTIFICATION_SOCKET_RECONNECT_MS = 2500
 const NOTIFICATION_REFRESH_DEBOUNCE_MS = 200
 
-// ← DAGDAG ITO
 const PAGE_TITLES = {
     '/admin/dashboard': { title: 'Dashboard', subtitle: 'Overview of your system' },
     '/admin/appointment': { title: 'Appointments', subtitle: 'Manage appointments' },
@@ -114,7 +113,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
     const location = useLocation()
     const { adminUser, logout } = useContext(AdminAuthContext)
 
-    // ← DAGDAG ITO
     const currentPage = PAGE_TITLES[location.pathname] ?? { title: pageTitle, subtitle: pageSubtitle }
 
     const storedAdminUser = getStoredAdminUser()
@@ -514,7 +512,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 w-full shrink-0">
             <div className="flex items-center justify-between h-16 px-4 md:px-6">
 
-                {/* Left — hamburger + page title */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
                         onClick={onToggleSidebar}
@@ -524,7 +521,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                         <Menu size={22} />
                     </button>
 
-                    {/* Page Title */}
                     <div className="min-w-0">
                         <h1 className="text-sm font-bold text-slate-900 leading-tight truncate">
                             {currentPage.title}
@@ -537,7 +533,6 @@ const AdminNav = ({ onToggleSidebar, pageTitle = 'Admin Panel', pageSubtitle = '
                     </div>
                 </div>
 
-                {/* Right — date, bell, avatar */}
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                     <div className="hidden sm:flex flex-col items-end mr-2">
                         <p className="text-xs font-bold text-slate-900 leading-tight">{dayStr}</p>

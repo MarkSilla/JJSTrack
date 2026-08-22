@@ -3,7 +3,6 @@ import { Check, ArrowLeft, ArrowRight, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import img from '../../assets/img.js'
 
-// Repair steps
 import StepService from '../repairForm/StepService.jsx'
 import StepOptions from '../repairForm/StepOptions.jsx'
 import StepPhoto from '../repairForm/StepPhoto.jsx'
@@ -14,13 +13,11 @@ import { REPAIR_OPTIONS } from '../repairForm/constants.js'
 import { bookingApi } from '../../services/bookingApi.js'
 import { uploadImageToCloudinary, uploadFilesToCloudinary } from '../../utils/cloudinary.js'
 
-// Team steps
 import TeamStepPlayers from '../teamForm/TeamStepPlayers.jsx'
 import TeamStepDesign from '../teamForm/TeamStepDesign.jsx'
 import TeamStepContact from '../teamForm/TeamStepContact.jsx'
 import TeamStepConfirm from '../teamForm/TeamStepConfirm.jsx'
 
-// Org steps
 import OrgStepDetails from '../OrgTeam/OrgStepDetails.jsx'
 import OrgStepContact from '../OrgTeam/OrgStepContact.jsx'
 import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
@@ -71,7 +68,6 @@ const emptyContactDetails = () => ({
     ...emptyAddressFields,
 })
 
-// Stepper
 const Stepper = ({ currentStep, labels, expanded = false }) => (
     <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
         <ol className="hidden sm:flex items-center">
@@ -155,7 +151,6 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [bookingCapacity, setBookingCapacity] = useState(null)
     const [capacityLoading, setCapacityLoading] = useState(false)
 
-    // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
     const [quantities, setQuantities] = useState({})
     const [repairDescription, setRepairDescription] = useState('')
@@ -164,27 +159,23 @@ const BookingModal = ({ isOpen, onClose }) => {
     const [selectedDate, setSelectedDate] = useState(null)
     const [selectedSlot, setSelectedSlot] = useState('')
 
-    // Team state
     const [teamName, setTeamName] = useState('')
     const [players, setPlayers] = useState([])
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
     const [contact, setContact] = useState(() => emptyContactDetails())
 
-    // Org state
     const [orgName, setOrgName] = useState('')
     const [members, setMembers] = useState([])
     const [orgDesignFile, setOrgDesignFile] = useState(null)
     const [orgDriveLink, setOrgDriveLink] = useState('')
     const [orgContact, setOrgContact] = useState(() => emptyContactDetails())
 
-    // Initialize contact data from user on component mount
     useEffect(() => {
         const userStr = localStorage.getItem('user')
         if (userStr) {
             try {
                 const user = JSON.parse(userStr)
-                // Auto-fill repair form details
                 if (user.fullName || user.phoneNumber || user.email || user.address) {
                     setDetails({
                         name: user.fullName || '',
@@ -203,7 +194,6 @@ const BookingModal = ({ isOpen, onClose }) => {
                         city: user.cityName || '',
                     })
                 }
-                // Auto-fill team contact
                 if (user.fullName || user.phoneNumber || user.email) {
                     setContact({
                         fullName: user.fullName || '',
@@ -222,7 +212,6 @@ const BookingModal = ({ isOpen, onClose }) => {
                         brgyName: user.brgyName || '',
                     })
                 }
-                // Auto-fill org contact
                 if (user.fullName || user.phoneNumber || user.email) {
                     setOrgContact({
                         fullName: user.fullName || '',
@@ -260,7 +249,6 @@ const BookingModal = ({ isOpen, onClose }) => {
             .finally(() => setCapacityLoading(false))
     }, [isOpen])
 
-    // Reset form function
     const resetForm = () => {
         setStep(1)
         setService('')
@@ -268,7 +256,6 @@ const BookingModal = ({ isOpen, onClose }) => {
         setError('')
         setSizeGuideOpen(false)
 
-        // Reset repair state
         setSelectedOptions([])
         setQuantities({})
         setRepairDescription('')
@@ -277,14 +264,12 @@ const BookingModal = ({ isOpen, onClose }) => {
         setSelectedDate(null)
         setSelectedSlot('')
 
-        // Reset team state
         setTeamName('')
         setPlayers([])
         setDesignFile(null)
         setDriveLink('')
         setContact(emptyContactDetails())
 
-        // Reset org state
         setOrgName('')
         setMembers([])
         setOrgDesignFile(null)
@@ -292,7 +277,6 @@ const BookingModal = ({ isOpen, onClose }) => {
         setOrgContact(emptyContactDetails())
     }
 
-    // Handle modal close
     const handleClose = () => {
         resetForm()
         onClose()

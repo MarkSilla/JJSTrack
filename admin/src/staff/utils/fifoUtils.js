@@ -1,28 +1,6 @@
-// ============================================================
-// FIFO BATCH UTILITIES — STAFF SIDE
-// ============================================================
-// PARA SA FIFO YAN — eksaktong kapareho ng nasa Admin fifoUtils.js
-// Dalawang magkahiwalay na Vite apps kaya kailangan ng sariling kopya,
-// pero IISA ang localStorage keys para magkasync ang data nila.
-//
-// PAUNAWA SA BACKEND DEV:
-// Dito lahat ng batch tracking ay naka-store sa localStorage lang muna.
-// Kapag may backend na, palitan mo ang localStorage calls ng API calls.
-// Ang structure ng bawat batch ay:
-// {
-//   batchId: number,       — unique ID ng batch
-//   quantity: number,      — gaano karami ang natitira sa batch na ito
-//   dateAdded: string,     — ISO date string kung kailan dinagdag
-// }
-// ============================================================
-
 const FIFO_KEY_PREFIX = "fifo_batches_";
 
-// ─── INTERNAL HELPER ──────────────────────────────────────────────────────────
-// Basahin ang batches ng isang item mula sa localStorage.
-// TODO (BACKEND): Palitan ito ng GET /api/inventory/:id/batches
 function _readBatches(itemId) {
-  // PARA SA FIFO YAN — ito ang nagbabasa ng batches
   try {
     const raw = localStorage.getItem(FIFO_KEY_PREFIX + itemId);
     return raw ? JSON.parse(raw) : [];
@@ -31,14 +9,11 @@ function _readBatches(itemId) {
   }
 }
 
-// I-save ang updated batches pabalik sa localStorage.
-// TODO (BACKEND): Palitan ito ng PUT /api/inventory/:id/batches
 function _writeBatches(itemId, batches) {
-  // PARA SA FIFO YAN — ito ang nagsasave ng batches
   try {
     localStorage.setItem(FIFO_KEY_PREFIX + itemId, JSON.stringify(batches));
   } catch (e) {
-    console.error("FIFO: Hindi ma-save ang batches sa localStorage", e);
+    console.error("FIFO error:", e);
   }
 }
 
