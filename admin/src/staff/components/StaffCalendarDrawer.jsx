@@ -65,28 +65,61 @@ export default function StaffCalendarDrawer({ isOpen, onClose, schedules = [] })
     const visibleSchedules = selectedSchedules.length > 0 ? selectedSchedules : upcomingSchedules;
 
     useEffect(() => {
+        if (isOpen && typeof window !== 'undefined') {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
         const handleKeyDown = (e) => {
-            if (e.key === 'Escape' && isOpen) {
+            if (e.key === 'Escape') {
                 onClose();
             }
         };
-        if (isOpen) {
-            window.addEventListener('keydown', handleKeyDown);
-        }
-        return () => window.removeEventListener('keydown', handleKeyDown);
+
+        const handleClickOutside = (e) => {
+            const drawerEl = document.getElementById('staff-calendar-drawer');
+            if (drawerEl && !drawerEl.contains(e.target)) {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside, { passive: true });
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, [isOpen, onClose]);
 
     return (
         <>
             {/* Backdrop */}
-            <div
-                className={`fixed inset-0 bg-slate-900/25 backdrop-blur-xs z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
-                onClick={onClose}
-                aria-hidden="true"
-            />
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+                    onClick={onClose}
+                    aria-hidden="true"
+                />
+            )}
 
             {/* Slide-over Drawer */}
-            <div className={`fixed inset-y-0 right-0 w-80 sm:w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col font-inter border-l border-slate-200/80 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div
+                id="staff-calendar-drawer"
+                className={`fixed inset-y-0 right-0 w-80 max-w-[85vw] sm:w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col font-inter border-l border-slate-200 ${
+                    isOpen ? 'translate-x-0 pointer-events-auto' : 'translate-x-full pointer-events-none invisible'
+                }`}
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
                     <div className="flex items-center gap-2.5">

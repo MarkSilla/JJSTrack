@@ -7,7 +7,6 @@ import { pricingApi } from '../../../services/pricingApi.js'
 import { uploadImageToCloudinary, uploadFilesToCloudinary } from '../../utils/cloudinary.js'
 import { mergeServicePricing } from '../../utils/servicePricing.js'
 
-// Repair steps
 import StepService from '../repairForm/StepService.jsx'
 import StepOptions from '../repairForm/StepOptions.jsx'
 import StepPhoto from '../repairForm/StepPhoto.jsx'
@@ -16,13 +15,11 @@ import StepPickup from '../repairForm/StepPickup.jsx'
 import StepReview from '../repairForm/StepReview.jsx'
 import { REPAIR_OPTIONS } from '../repairForm/constants.js'
 
-// Team steps
 import TeamStepPlayers from '../teamForm/TeamStepPlayers.jsx'
 import TeamStepDesign from '../teamForm/TeamStepDesign.jsx'
 import TeamStepContact from '../teamForm/TeamStepContact.jsx'
 import TeamStepConfirm from '../teamForm/TeamStepConfirm.jsx'
 
-// Org steps
 import OrgStepDetails from '../OrgTeam/OrgStepDetails.jsx'
 import OrgStepContact from '../OrgTeam/OrgStepContact.jsx'
 import OrgStepConfirm from '../OrgTeam/OrgStepConfirm.jsx'
@@ -135,7 +132,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const [bookingCapacity, setBookingCapacity] = useState(null)
     const [capacityLoading, setCapacityLoading] = useState(false)
 
-    // Repair state
     const [selectedOptions, setSelectedOptions] = useState([])
     const [quantities, setQuantities] = useState({})
     const [repairDescription, setRepairDescription] = useState('')
@@ -147,19 +143,16 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
     const [selectedSlot, setSelectedSlot] = useState('')
     const [notes, setNotes] = useState('')
 
-    // Bulk repair state
     const [isBulkMode, setIsBulkMode] = useState(false)
     const [bulkItems, setBulkItems] = useState([])
     const [bulkSharedNotes, setBulkSharedNotes] = useState('')
 
-    // Team state
     const [teamName, setTeamName] = useState('')
     const [players, setPlayers] = useState([])
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
     const [contact, setContact] = useState(() => buildContactFromUser(getStoredUser()))
 
-    // Org state
     const [orgName, setOrgName] = useState('')
     const [members, setMembers] = useState([])
     const [orgDesignFile, setOrgDesignFile] = useState(null)
@@ -196,7 +189,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
             .finally(() => setCapacityLoading(false))
     }, [isOpen, initialBookingDate])
 
-    // Reset form function
     const resetForm = () => {
         setStep(1)
         setService('')
@@ -204,7 +196,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setError('')
         setSizeGuideOpen(false)
 
-        // Reset repair state
         setSelectedOptions([])
         setQuantities({})
         setRepairDescription('')
@@ -216,19 +207,16 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setSelectedSlot('')
         setNotes('')
 
-        // Reset bulk repair state
         setIsBulkMode(false)
         setBulkItems([])
         setBulkSharedNotes('')
 
-        // Reset team state
         setTeamName('')
         setPlayers([])
         setDesignFile(null)
         setDriveLink('')
         setContact(buildContactFromUser(getStoredUser()))
 
-        // Reset org state
         setOrgName('')
         setMembers([])
         setOrgDesignFile(null)
@@ -236,7 +224,6 @@ const BookingModal = ({ isOpen, onClose, initialBookingDate = '' }) => {
         setOrgContact(buildContactFromUser(getStoredUser()))
     }
 
-    // Handle modal close
     const handleClose = () => {
         resetForm()
         onClose()

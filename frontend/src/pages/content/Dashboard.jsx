@@ -142,7 +142,6 @@ const normalizeStepLabel = (label = '') =>
         .replace(/[-_]+/g, ' ')
         .replace(/\s+/g, ' ')
 
-// ─── Step icons — lowercase keys to match .toLowerCase() ───
 const STEP_ICON = {
     'dropped off': Inbox,
     'drop off': Inbox,
@@ -225,7 +224,6 @@ const ProgressTracker = ({ steps }) => (
     </>
 )
 
-// ─── Status Badge ─────────────────────────────
 const StatusBadge = ({ status }) => {
     const map = {
         'Pending': 'bg-yellow-50 text-yellow-600',

@@ -12,7 +12,6 @@ const api = axios.create({
 attachAdminAuthInterceptors(api);
 
 export const bookingApi = {
-  // Create booking
   createBooking: async (bookingData) => {
     try {
       const response = await api.post('/bookings', bookingData);
@@ -23,7 +22,6 @@ export const bookingApi = {
     }
   },
 
-  // Get all bookings
   getAllBookings: async () => {
     try {
       const response = await api.get('/bookings');
@@ -34,7 +32,6 @@ export const bookingApi = {
     }
   },
 
-  // Get booking by ID
   getBookingById: async (id) => {
     try {
       const response = await api.get(`/bookings/${id}`);
@@ -45,7 +42,6 @@ export const bookingApi = {
     }
   },
 
-  // Update booking status
   updateBookingStatus: async (id, status) => {
     try {
       const response = await api.put(`/bookings/${id}/status`, { status });
@@ -56,7 +52,6 @@ export const bookingApi = {
     }
   },
 
-  // Update booking (generic - can update steps, status, notes, etc)
   updateBooking: async (id, data) => {
     try {
       const response = await api.put(`/bookings/${id}`, data);
@@ -67,7 +62,6 @@ export const bookingApi = {
     }
   },
 
-  // Convert booking to order
   convertToOrder: async (id) => {
     try {
       const response = await api.post(`/bookings/${id}/convert`, {});
@@ -78,7 +72,6 @@ export const bookingApi = {
     }
   },
 
-  // Cancel booking
   cancelBooking: async (id, data = {}) => {
     try {
       const response = await api.put(`/bookings/${id}/cancel`, data);
@@ -89,7 +82,6 @@ export const bookingApi = {
     }
   },
 
-  // Check available slots for a date
   getAvailableSlots: async (date) => {
     try {
       const response = await api.get(`/bookings/slots/available/${date}`);
@@ -100,7 +92,6 @@ export const bookingApi = {
     }
   },
 
-  // Get QR code for booking
   getBookingQR: async (id) => {
     try {
       const response = await api.get(`/bookings/${id}/qr`);
@@ -111,7 +102,6 @@ export const bookingApi = {
     }
   },
 
-  // Mark booking as picked up by scanning QR
   markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
       const response = await api.post('/bookings/qr/pickup', { bookingId, releaseProofImage, releaseNotes, releasedBy });
@@ -122,7 +112,6 @@ export const bookingApi = {
     }
   },
 
-  // Generate QR codes for all bookings (admin only)
   generateMissingQRCodes: async () => {
     try {
       const response = await api.post('/bookings/admin/generate-qr');
@@ -133,7 +122,6 @@ export const bookingApi = {
     }
   },
 
-  // Archive booking
   archiveBooking: async (bookingId) => {
     try {
       const response = await api.post(`/bookings/${bookingId}/archive`);
@@ -144,7 +132,6 @@ export const bookingApi = {
     }
   },
 
-  // Unarchive booking
   unarchiveBooking: async (bookingId) => {
     try {
       const response = await api.post(`/bookings/${bookingId}/unarchive`);
@@ -155,7 +142,6 @@ export const bookingApi = {
     }
   },
 
-  // Get slot summary
   getSlotSummary: async (from, to) => {
     try {
       const response = await api.get('/bookings/slots/summary', {

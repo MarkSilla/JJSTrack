@@ -23,6 +23,7 @@ const StaffLayout = () => {
 
     React.useEffect(() => {
         setIsMobileExpanded(false)
+        setCalendarOpen(false)
     }, [location.pathname])
 
     return (

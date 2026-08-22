@@ -33,13 +33,11 @@ const BookingForms = lazy(() => import('./pages/content/Bookingforms'))
 const Profile = lazy(() => import('./pages/content/Profile'))
 
 const PageFallback = () => {
-  // Safe location access in case router is initializing
   let pathname = ''
   try {
     pathname = window.location.pathname
   } catch (_) {}
 
-  // Avoid showing authenticated skeleton shell on public pages
   const isPublicPath = [
     '/',
     '/login',
@@ -71,7 +69,6 @@ const PageFallback = () => {
     <div className="relative min-h-[60vh]" aria-label="Loading page">
       <RouteSkeleton>{contentSkeleton}</RouteSkeleton>
 
-      {/* Mobile Scissor Blur Loading Overlay */}
       <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-50/60 backdrop-blur-md animate-fade-in sm:hidden">
         <div className="relative flex flex-col items-center justify-center p-5 bg-[#0F172A] rounded-2xl border border-white/10 shadow-2xl max-w-[240px]">
           <div className="w-14 h-14 flex items-center justify-center relative mb-2">

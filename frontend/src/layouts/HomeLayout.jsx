@@ -14,18 +14,16 @@ const HomeLayout = () => {
   const [isNavigating, setIsNavigating] = useState(false)
   const location = useLocation()
 
-  // Trigger brief page transition loader on mobile route updates
   useEffect(() => {
     if (window.innerWidth < 1024) {
       setIsNavigating(true)
       const timer = setTimeout(() => {
         setIsNavigating(false)
-      }, 350) // Fast 350ms overlay transition
+      }, 350)
       return () => clearTimeout(timer)
     }
   }, [location.pathname])
 
-  // When burger button is clicked on mobile, toggle the mobile expanded state
   const handleBurgerClick = () => {
     if (window.innerWidth < 1024) {
       setIsMobileExpanded(!isMobileExpanded)
@@ -35,7 +33,6 @@ const HomeLayout = () => {
   }
 
   useEffect(() => {
-    // Check if user needs to complete profile after Google login
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     const needsGoogleProfileCompletion =
       user &&
@@ -77,13 +74,11 @@ const HomeLayout = () => {
         <div className={`flex-1 min-w-0 transition-all duration-300 ease-in-out ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
           <HomeNavbar collapsed={collapsed} setCollapsed={handleBurgerClick} isMobileExpanded={isMobileExpanded} />
 
-          {/* Dynamic Content Blur Area during load transitions on mobile */}
           <main className={`transition-all duration-300 ${isNavigating ? 'filter blur-[4px] pointer-events-none' : ''}`}>
             <Outlet />
           </main>
         </div>
 
-        {/* Dynamic Mobile Route Transition Scissor Loader Overlay */}
         {isNavigating && (
           <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#020617]/35 backdrop-blur-[1px] animate-fade-in lg:hidden pointer-events-none">
             <div className="relative flex flex-col items-center justify-center p-5 bg-[#0F172A] rounded-2xl border border-white/10 shadow-2xl max-w-[200px]">

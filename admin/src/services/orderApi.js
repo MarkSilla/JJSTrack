@@ -34,7 +34,6 @@ export const orderApi = {
     }
   },
 
-  // Get aggregated order stats
   getOrderStats: async () => {
     try {
       const response = await api.get('/orders/stats');
@@ -45,7 +44,6 @@ export const orderApi = {
     }
   },
 
-  // Get order by ID
   getOrderById: async (id) => {
     try {
       const response = await api.get(`/orders/${id}`);
@@ -56,7 +54,6 @@ export const orderApi = {
     }
   },
 
-  // Update order status
   updateOrderStatus: async (id, status) => {
     try {
       const response = await api.put(`/orders/${id}`, { status });
@@ -67,7 +64,6 @@ export const orderApi = {
     }
   },
 
-  // Update order step
   updateOrderStep: async (id, step) => {
     try {
       const response = await api.put(`/orders/${id}/step`, { step });
@@ -78,15 +74,12 @@ export const orderApi = {
     }
   },
 
-  // Generic update order - can update any fields including steps
   updateOrder: async (id, data) => {
     try {
-      // If updating steps, use the dedicated steps endpoint
       if (data.steps && Object.keys(data).length === 1) {
         const response = await api.put(`/orders/${id}/steps`, { steps: data.steps });
         return response.data;
       }
-      // Otherwise use generic update
       const response = await api.put(`/orders/${id}`, data);
       return response.data;
     } catch (error) {
@@ -95,7 +88,6 @@ export const orderApi = {
     }
   },
 
-  // Assign employee to order
   assignEmployee: async (id, employeeId) => {
     try {
       const response = await api.put(`/orders/${id}/assign`, { employeeId });
@@ -106,7 +98,6 @@ export const orderApi = {
     }
   },
 
-  // Cancel order
   cancelOrder: async (id, data = {}) => {
     try {
       const response = await api.put(`/orders/${id}/cancel`, data);
@@ -117,7 +108,6 @@ export const orderApi = {
     }
   },
 
-  // Get QR code for order
   getOrderQR: async (id) => {
     try {
       const response = await api.get(`/orders/${id}/qr`);
@@ -128,7 +118,6 @@ export const orderApi = {
     }
   },
 
-  // Mark order as released by scanning QR
   markAsReleased: async (orderId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
       const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes, releasedBy });
@@ -139,7 +128,6 @@ export const orderApi = {
     }
   },
 
-  // Generate QR codes for all orders (admin only)
   generateMissingQRCodes: async () => {
     try {
       const response = await api.post('/orders/admin/generate-qr');
@@ -150,7 +138,6 @@ export const orderApi = {
     }
   },
 
-  // Archive order
   archiveOrder: async (id) => {
     try {
       const archivedAt = new Date().toISOString();
@@ -167,7 +154,6 @@ export const orderApi = {
     }
   },
 
-  // Unarchive order
   unarchiveOrder: async (id) => {
     try {
       const response = await api.put(`/orders/${id}`, {

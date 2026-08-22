@@ -21,7 +21,6 @@ const POCKET_PRICE = 100
 
 const emptyPlayer = {
     surname: '', nickname: '', number: '', productType: '', jerseySize: '', shortSize: '', pockets: false, addOns: [],
-    // Manual sizing fields
     useManualjerseySize: false, useManualsShortSize: false,
     jerseyLength: '', jerseyBody: '', shortHips: '', shortLength: ''
 }
@@ -32,7 +31,6 @@ const getPlayerPrice = (player) => {
     let total = product.price
     if (player.pockets && product.needsShortSize) total += POCKET_PRICE
 
-    // Add optional add-ons pricing
     if (player.addOns && Array.isArray(player.addOns)) {
         player.addOns.forEach(addOnId => {
             const addOn = OPTIONAL_PRODUCT_TYPES.find((p) => p.id === addOnId)
@@ -215,9 +213,7 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
     const selectedProduct = PRODUCT_TYPES.find((p) => p.id === form.productType)
     const needsShortSize = selectedProduct?.needsShortSize || false
 
-    // Check if jersey size is valid (either preset or manual)
     const jerseyValid = form.useManualjerseySize ? (form.jerseyLength && form.jerseyBody) : form.jerseySize
-    // Check if short size is valid (either preset or manual, if needed)
     const shortValid = !needsShortSize ? true : (form.useManualsShortSize ? (form.shortHips && form.shortLength) : form.shortSize)
 
     const canAdd = form.surname && form.number && form.productType && jerseyValid && shortValid

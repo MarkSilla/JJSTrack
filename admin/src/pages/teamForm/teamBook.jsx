@@ -19,7 +19,6 @@ const buildContactFromUser = (user) => ({
     address: user?.address || '',
 })
 
-//Stepper
 const Stepper = ({ currentStep, expanded = false }) => (
     <nav className={`w-full ${expanded ? 'max-w-6xl' : 'max-w-2xl'} mx-auto transition-all duration-300`} aria-label="Progress">
         <ol className="hidden sm:flex items-center">
@@ -95,15 +94,12 @@ const TeamBook = () => {
     const navigate = useNavigate()
     const [step, setStep] = useState(1)
 
-    // Step 1
     const [teamName, setTeamName] = useState('')
     const [players, setPlayers] = useState([])
 
-    // Step 2
     const [designFile, setDesignFile] = useState(null)
     const [driveLink, setDriveLink] = useState('')
 
-    // Step 3
     const [contact, setContact] = useState({ fullName: '', phone: '', email: '', facebook: '', address: '' })
     const [loading, setLoading] = useState(false)
     const [nextError, setNextError] = useState('')

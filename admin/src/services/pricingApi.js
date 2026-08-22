@@ -12,7 +12,6 @@ const api = axios.create({
 attachAdminAuthInterceptors(api);
 
 export const pricingApi = {
-  // Get all pricing
   getAllPricing: async () => {
     try {
       const response = await api.get('/pricing');
@@ -23,7 +22,6 @@ export const pricingApi = {
     }
   },
 
-  // Get pricing by service type
   getPricingByType: async (serviceType) => {
     try {
       const response = await api.get(`/pricing/${serviceType}`);
@@ -34,7 +32,6 @@ export const pricingApi = {
     }
   },
 
-  // Create or update pricing
   saveOrUpdatePricing: async (serviceType, pricingData) => {
     try {
       const response = await api.put(`/pricing/${serviceType}`, {
@@ -48,7 +45,6 @@ export const pricingApi = {
     }
   },
 
-  // Delete pricing
   deletePricing: async (serviceType) => {
     try {
       const response = await api.delete(`/pricing/${serviceType}`);
