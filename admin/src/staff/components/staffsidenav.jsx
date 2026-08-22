@@ -119,7 +119,7 @@ const StaffSidebar = ({ collapsed, setCollapsed, isMobileExpanded, setIsMobileEx
             {/* Mobile Backdrop */}
             {mobileExpanded && (
                 <div
-                    className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
+                    className="lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
                     onClick={() => setMobileExpanded(false)}
                     aria-hidden="true"
                 />

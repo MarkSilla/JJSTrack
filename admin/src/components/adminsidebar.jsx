@@ -165,14 +165,13 @@ const AdminSidebar = ({
 
     return (
         <>
-            {/* Mobile Backdrop Overlay */}
-            <div
-                className={`fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
-                    isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-                }`}
-                onClick={() => setIsMobileOpen(false)}
-                aria-hidden="true"
-            />
+            {isMobileOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                    onClick={() => setIsMobileOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
 
             {/* Sidebar */}
             <aside
@@ -209,7 +208,7 @@ const AdminSidebar = ({
                     </button>
                 </div>
 
-                {/* Navigation */}
+                {/* Nav */}
                 <nav className="flex-1 py-2 px-2.5 overflow-y-auto custom-scrollbar">
                     <ul className="space-y-1">
                         {NAV_ITEMS.map((item, index) => {
@@ -300,7 +299,7 @@ const AdminSidebar = ({
                                         </Link>
                                     )}
 
-                                    {/* Submenu Accordion */}
+                                    {/* Submenu */}
                                     {item.subItems && (
                                         <div
                                             className={`grid transition-all duration-200 ease-in-out overflow-hidden ${
@@ -342,7 +341,7 @@ const AdminSidebar = ({
                 </nav>
             </aside>
 
-            {/* Tooltip on desktop collapsed hover */}
+            {/* Tooltip hover */}
             {collapsed && tooltipState.visible && tooltipState.item && (
                 <div
                     className="hidden lg:block fixed z-[9999] pointer-events-auto -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
@@ -377,7 +376,7 @@ const AdminSidebar = ({
                 </div>
             )}
 
-            {/* Desktop Toggle button */}
+            {/* Toggle button */}
             <button
                 type="button"
                 onClick={toggleDesktop}
