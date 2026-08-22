@@ -11,14 +11,19 @@ const StaffLayout = () => {
     const [isMobileExpanded, setIsMobileExpanded] = useState(false)
     const [calendarOpen, setCalendarOpen] = useState(false)
     const [calendarEntries, setCalendarEntries] = useState([])
+    const location = useLocation()
 
     const handleBurgerClick = () => {
-        if (window.innerWidth < 1024) {
-            setIsMobileExpanded(!isMobileExpanded)
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+            setIsMobileExpanded(prev => !prev)
         } else {
-            setCollapsed(!collapsed)
+            setCollapsed(prev => !prev)
         }
     }
+
+    React.useEffect(() => {
+        setIsMobileExpanded(false)
+    }, [location.pathname])
 
     return (
         <div className="min-h-screen bg-gray-50 flex w-full overflow-x-hidden">
