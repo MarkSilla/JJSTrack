@@ -95,12 +95,16 @@ const AdminLayout = () => {
     const pageMeta = getPageMeta(location.pathname)
 
     const handleBurgerClick = () => {
-        if (window.innerWidth < 1024) {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
             setIsMobileOpen(prev => !prev)
         } else {
             setCollapsed(prev => !prev)
         }
     }
+
+    React.useEffect(() => {
+        setIsMobileOpen(false)
+    }, [location.pathname])
 
     return (
         <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
@@ -111,7 +115,7 @@ const AdminLayout = () => {
                 setIsMobileOpen={setIsMobileOpen}
             />
 
-            <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`flex-1 min-w-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <div className="flex flex-col h-screen">
                     <AdminNav
                         onToggleSidebar={handleBurgerClick}

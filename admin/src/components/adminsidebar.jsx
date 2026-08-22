@@ -12,21 +12,19 @@ import {
     ChevronRight,
     ChevronDown,
     PhilippinePeso,
-    User,
     X
 } from 'lucide-react'
 import img from '../assets/img.js'
 
 const NAV_ITEMS = [
     { type: 'section', label: 'Overview' },
-    { icon: LayoutDashboard, label: 'Dashboard', description: 'Your main dashboard', path: '/admin/dashboard' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
 
     { type: 'section', label: 'Operations' },
-    { icon: Calendar, label: 'Appointment', description: 'Booking schedule and queue', path: '/admin/appointment' },
+    { icon: Calendar, label: 'Appointment', path: '/admin/appointment' },
     {
         icon: ShoppingBag,
         label: 'Orders',
-        description: 'Production workflow and records',
         subItems: [
             { label: 'All Orders', path: '/admin/orders', matchNested: true },
             { label: 'Released', path: '/admin/released' },
@@ -36,20 +34,19 @@ const NAV_ITEMS = [
     {
         icon: Package,
         label: 'Inventory',
-        description: 'Stock control and movement logs',
         subItems: [
             { label: 'Current Stock', path: '/admin/inventory' },
             { label: 'Stock History', path: '/admin/inventory/history' },
         ]
     },
-    { icon: QrCode, label: 'QR Scanner', description: 'Release and pickup scanning', path: '/admin/qr-scanner' },
+    { icon: QrCode, label: 'QR Scanner', path: '/admin/qr-scanner' },
 
     { type: 'section', label: 'Management' },
-    { icon: Users, label: 'Staff', description: 'Employee profiles and access', path: '/admin/staff' },
-    { icon: PhilippinePeso, label: 'Services Pricing', description: 'Update service rates', path: '/admin/services-pricing' },
+    { icon: Users, label: 'Staff', path: '/admin/staff' },
+    { icon: PhilippinePeso, label: 'Services Pricing', path: '/admin/services-pricing' },
 
     { type: 'section', label: 'Insights' },
-    { icon: BarChart3, label: 'Reports', description: 'Analytics & performance', path: '/admin/report' },
+    { icon: BarChart3, label: 'Reports', path: '/admin/report' },
 ]
 
 const isPathActive = (pathname, targetPath, matchNested = false) => {
@@ -57,38 +54,33 @@ const isPathActive = (pathname, targetPath, matchNested = false) => {
     return pathname === targetPath || (matchNested && pathname.startsWith(`${targetPath}/`))
 }
 
-const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen = false, setIsMobileOpen = () => { } }) => {
+const AdminSidebar = ({
+    collapsed = true,
+    setCollapsed = () => { },
+    isMobileOpen = false,
+    setIsMobileOpen = () => { }
+}) => {
     const location = useLocation()
-    const [tooltipState, setTooltipState] = useState({ visible: false, label: '', top: 0 })
+    const [tooltipState, setTooltipState] = useState({ visible: false, item: null, top: 0 })
     const [expandedSubmenus, setExpandedSubmenus] = useState({})
-    const [isSmallScreen, setIsSmallScreen] = useState(() =>
-        typeof window !== 'undefined' ? window.innerWidth < 1024 : false
-    )
 
-    // Viewport listener
+    // Auto close on route change
+    useEffect(() => {
+        setIsMobileOpen(false)
+    }, [location.pathname, setIsMobileOpen])
+
+    // Close on resize to desktop breakpoint (1024px)
     useEffect(() => {
         const handleResize = () => {
-            const small = window.innerWidth < 1024
-            setIsSmallScreen(small)
-            if (!small) setIsMobileOpen(false)
+            if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                setIsMobileOpen(false)
+            }
         }
-        handleResize()
         window.addEventListener('resize', handleResize)
         return () => window.removeEventListener('resize', handleResize)
     }, [setIsMobileOpen])
 
-    useEffect(() => {
-        if (window.innerWidth < 1024) {
-            setIsMobileOpen(false)
-        }
-    }, [])
-
-    useEffect(() => {
-        if (isSmallScreen) {
-            setIsMobileOpen(false)
-        }
-    }, [location.pathname, isSmallScreen, setIsMobileOpen])
-
+    // Auto-expand submenus when active route is inside
     useEffect(() => {
         const activeSubmenus = NAV_ITEMS.reduce((acc, item) => {
             if (item.subItems?.some(sub => isPathActive(location.pathname, sub.path, sub.matchNested))) {
@@ -102,8 +94,9 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         }
     }, [location.pathname])
 
+    // Prevent body scroll when mobile drawer is open
     useEffect(() => {
-        if (isSmallScreen && isMobileOpen) {
+        if (isMobileOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
             document.body.style.overflow = 'hidden'
         } else {
             document.body.style.overflow = ''
@@ -111,10 +104,38 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         return () => {
             document.body.style.overflow = ''
         }
-    }, [isSmallScreen, isMobileOpen])
+    }, [isMobileOpen])
+
+    // Close on click outside or escape key press
+    useEffect(() => {
+        if (!isMobileOpen) return
+
+        const handleClickOutside = (e) => {
+            const sidebar = document.getElementById('admin-sidebar')
+            if (sidebar && !sidebar.contains(e.target)) {
+                setIsMobileOpen(false)
+            }
+        }
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setIsMobileOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('touchstart', handleClickOutside, { passive: true })
+        window.addEventListener('keydown', handleKeyDown)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('touchstart', handleClickOutside)
+            window.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [isMobileOpen, setIsMobileOpen])
 
     const toggleSubMenu = (label) => {
-        if (collapsed && !isSmallScreen) {
+        if (collapsed) {
             setCollapsed(false)
         }
         setExpandedSubmenus(prev => ({ ...prev, [label]: !prev[label] }))
@@ -128,7 +149,7 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
     }
 
     const handleMouseEnter = (itemObj, e) => {
-        if (collapsed && !isSmallScreen) {
+        if (collapsed && typeof window !== 'undefined' && window.innerWidth >= 1024) {
             const rect = e.currentTarget.getBoundingClientRect()
             setTooltipState({
                 visible: true,
@@ -142,55 +163,50 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
         setTooltipState(prev => ({ ...prev, visible: false }))
     }
 
-    const showLabels = isSmallScreen ? true : !collapsed
-
     return (
         <>
-            {/* Overlay */}
-            {isSmallScreen && isMobileOpen && (
-                <div
-                    className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
-                    onClick={() => setIsMobileOpen(false)}
-                    aria-hidden="true"
-                />
-            )}
+            {/* Mobile Backdrop Overlay */}
+            <div
+                className={`fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+                    isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+                onClick={() => setIsMobileOpen(false)}
+                aria-hidden="true"
+            />
 
             {/* Sidebar */}
             <aside
                 id="admin-sidebar"
-                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white z-40 shadow-2xl border-r border-slate-800 flex flex-col font-inter transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-                    w-80 max-w-[85vw] ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
-                    lg:translate-x-0 ${collapsed ? 'lg:w-20' : 'lg:w-64'}
+                className={`fixed top-0 left-0 h-screen bg-[#0F172A] text-white z-50 shadow-2xl border-r border-slate-800 flex flex-col font-inter transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+                    w-72 max-w-[85vw]
+                    ${isMobileOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none max-lg:invisible'}
+                    lg:visible lg:pointer-events-auto lg:translate-x-0
+                    ${collapsed ? 'lg:w-20' : 'lg:w-64'}
                 `}
             >
                 {/* Header */}
-                <div className="p-3.5 border-b border-slate-800 flex items-center justify-between shrink-0">
-                    <div className="flex items-center w-full min-w-0 justify-center lg:justify-start">
-                        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl ">
-                            <img src={img.JJS} alt="JJS Logo" className="object-contain w-8 h-8" />
+                <div className="p-3.5 border-b border-slate-800 flex items-center justify-between shrink-0 h-16">
+                    <div className="flex items-center min-w-0">
+                        <div className="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl bg-slate-800/60">
+                            <img src={img.JJS} alt="JJS Logo" className="object-contain w-7 h-7" />
                         </div>
-                        <div
-                            className="flex flex-col transition-all duration-300 overflow-hidden whitespace-nowrap ml-3"
-                            style={{
-                                width: showLabels ? '140px' : '0px',
-                                opacity: showLabels ? 1 : 0,
-                            }}
-                        >
+                        <div className={`flex flex-col ml-3 overflow-hidden whitespace-nowrap transition-opacity duration-200 ${
+                            collapsed ? 'lg:hidden' : 'block'
+                        }`}>
                             <h1 className="text-sm font-bold text-white tracking-tight leading-none">JJS-Track</h1>
-                            <p className="text-slate-400 text-[10px] uppercase font-semibold tracking-widest mt-0.5 leading-none">Admin Portal</p>
+                            <p className="text-slate-400 text-[10px] uppercase font-semibold tracking-widest mt-1 leading-none">Admin Portal</p>
                         </div>
                     </div>
 
-                    {isSmallScreen && (
-                        <button
-                            type="button"
-                            onClick={() => setIsMobileOpen(false)}
-                            className="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center shrink-0"
-                            aria-label="Close menu"
-                        >
-                            <X size={18} />
-                        </button>
-                    )}
+                    {/* Mobile Close Button */}
+                    <button
+                        type="button"
+                        onClick={() => setIsMobileOpen(false)}
+                        className="flex lg:hidden w-8 h-8 rounded-xl bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 items-center justify-center shrink-0 transition-colors cursor-pointer"
+                        aria-label="Close menu"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
 
                 {/* Navigation */}
@@ -207,17 +223,15 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                 const isFirst = index === 0
                                 return (
                                     <li key={item.label} className="overflow-hidden">
-                                        {showLabels ? (
-                                            <div className={`px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap ${isFirst ? 'pt-2 pb-1' : 'pt-5 pb-1'
-                                                }`}>
-                                                {item.label}
+                                        <div className={`px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap ${
+                                            collapsed ? 'lg:hidden' : 'block'
+                                        } ${isFirst ? 'pt-2 pb-1' : 'pt-4 pb-1'}`}>
+                                            {item.label}
+                                        </div>
+                                        {collapsed && !isFirst && (
+                                            <div className="hidden lg:flex my-2 h-3 items-center justify-center">
+                                                <div className="w-5 h-[1px] bg-slate-800 rounded-full" />
                                             </div>
-                                        ) : (
-                                            !isFirst && (
-                                                <div className="my-2.5 h-4 flex items-center justify-center">
-                                                    <div className="w-5 h-[1px] bg-slate-800/80 rounded-full" />
-                                                </div>
-                                            )
                                         )}
                                     </li>
                                 )
@@ -236,66 +250,62 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                         <button
                                             type="button"
                                             onClick={() => toggleSubMenu(item.label)}
-                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group text-left outline-none cursor-pointer ${collapsed && !isSmallScreen ? 'w-10 h-10 mx-auto justify-center px-0' : 'h-10 px-3'
-                                                } ${isActive
-                                                    ? 'bg-blue-600/15 border-blue-500/30 text-blue-400 font-semibold'
-                                                    : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                                                }`}
+                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group text-left outline-none cursor-pointer ${
+                                                collapsed ? 'lg:w-10 lg:h-10 lg:mx-auto lg:justify-center lg:px-0 h-10 px-3' : 'h-10 px-3'
+                                            } ${isActive
+                                                ? 'bg-blue-600/15 border-blue-500/30 text-blue-400 font-semibold'
+                                                : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                                            }`}
                                         >
                                             <Icon
                                                 size={19}
-                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'
-                                                    }`}
+                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${
+                                                    isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'
+                                                }`}
                                             />
-                                            <div
-                                                className="flex items-center justify-between transition-all duration-200 overflow-hidden whitespace-nowrap ml-3 flex-1"
-                                                style={{
-                                                    width: showLabels ? '100%' : '0px',
-                                                    opacity: showLabels ? 1 : 0,
-                                                    display: showLabels ? 'flex' : 'none'
-                                                }}
-                                            >
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-xs font-medium leading-tight">{item.label}</span>
-                                                </div>
+                                            <div className={`items-center justify-between overflow-hidden whitespace-nowrap ml-3 flex-1 ${
+                                                collapsed ? 'flex lg:hidden' : 'flex'
+                                            }`}>
+                                                <span className="text-xs font-medium leading-tight">{item.label}</span>
                                                 <ChevronDown
                                                     size={15}
-                                                    className={`transition-transform duration-200 shrink-0 ml-1 ${isSubmenuExpanded ? 'rotate-180 text-white' : 'text-slate-500'
-                                                        }`}
+                                                    className={`transition-transform duration-200 shrink-0 ml-1 ${
+                                                        isSubmenuExpanded ? 'rotate-180 text-white' : 'text-slate-500'
+                                                    }`}
                                                 />
                                             </div>
                                         </button>
                                     ) : (
                                         <Link
                                             to={item.path}
-                                            onClick={() => isSmallScreen && setIsMobileOpen(false)}
-                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group outline-none ${collapsed && !isSmallScreen ? 'w-10 h-10 mx-auto justify-center px-0' : 'h-10 px-3'
-                                                } ${isActive
-                                                    ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-md shadow-blue-600/25'
-                                                    : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                                                }`}
+                                            onClick={() => setIsMobileOpen(false)}
+                                            className={`flex items-center w-full rounded-xl border transition-all duration-200 group outline-none ${
+                                                collapsed ? 'lg:w-10 lg:h-10 lg:mx-auto lg:justify-center lg:px-0 h-10 px-3' : 'h-10 px-3'
+                                            } ${isActive
+                                                ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-md shadow-blue-600/25'
+                                                : 'border-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                                            }`}
                                         >
                                             <Icon
                                                 size={19}
-                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
-                                                    }`}
+                                                className={`shrink-0 transition-transform duration-200 group-hover:scale-105 ${
+                                                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                                                }`}
                                             />
-                                            <div
-                                                className="flex flex-col transition-all duration-200 overflow-hidden whitespace-nowrap ml-3 flex-1"
-                                                style={{
-                                                    width: showLabels ? '100%' : '0px',
-                                                    opacity: showLabels ? 1 : 0,
-                                                    display: showLabels ? 'flex' : 'none'
-                                                }}
-                                            >
+                                            <div className={`overflow-hidden whitespace-nowrap ml-3 flex-1 ${
+                                                collapsed ? 'block lg:hidden' : 'block'
+                                            }`}>
                                                 <span className="text-xs font-medium leading-tight">{item.label}</span>
                                             </div>
                                         </Link>
                                     )}
 
-                                    {item.subItems && showLabels && (
+                                    {/* Submenu Accordion */}
+                                    {item.subItems && (
                                         <div
-                                            className="grid transition-all duration-200 ease-in-out overflow-hidden"
+                                            className={`grid transition-all duration-200 ease-in-out overflow-hidden ${
+                                                collapsed ? 'lg:hidden' : ''
+                                            }`}
                                             style={{
                                                 gridTemplateRows: isSubmenuExpanded ? '1fr' : '0fr',
                                                 opacity: isSubmenuExpanded ? 1 : 0,
@@ -309,11 +319,12 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                                             <li key={subItem.path}>
                                                                 <Link
                                                                     to={subItem.path}
-                                                                    onClick={() => isSmallScreen && setIsMobileOpen(false)}
-                                                                    className={`block px-2.5 py-1 text-xs rounded-lg transition-all font-medium ${isSubActive
-                                                                        ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                                                                        : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
-                                                                        }`}
+                                                                    onClick={() => setIsMobileOpen(false)}
+                                                                    className={`block px-2.5 py-1 text-xs rounded-lg transition-all font-medium ${
+                                                                        isSubActive
+                                                                            ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                                                                            : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                                                                    }`}
                                                                 >
                                                                     {subItem.label}
                                                                 </Link>
@@ -331,11 +342,11 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                 </nav>
             </aside>
 
-            {/* Tooltip */}
-            {collapsed && !isSmallScreen && tooltipState.visible && tooltipState.item && (
+            {/* Tooltip on desktop collapsed hover */}
+            {collapsed && tooltipState.visible && tooltipState.item && (
                 <div
-                    className="fixed z-[9999] pointer-events-auto -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
-                    style={{ left: '92px', top: `${tooltipState.top}px` }}
+                    className="hidden lg:block fixed z-[9999] pointer-events-auto -translate-y-1/2 animate-in fade-in zoom-in-95 duration-150"
+                    style={{ left: '88px', top: `${tooltipState.top}px` }}
                     onMouseEnter={() => setTooltipState(prev => ({ ...prev, visible: true }))}
                     onMouseLeave={handleMouseLeave}
                 >
@@ -351,10 +362,11 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                                         key={sub.path}
                                         to={sub.path}
                                         onClick={() => setTooltipState(prev => ({ ...prev, visible: false }))}
-                                        className={`text-[11px] py-1 px-2.5 rounded-lg transition-colors font-medium ${isPathActive(location.pathname, sub.path, sub.matchNested)
-                                            ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                                            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                                            }`}
+                                        className={`text-[11px] py-1 px-2.5 rounded-lg transition-colors font-medium ${
+                                            isPathActive(location.pathname, sub.path, sub.matchNested)
+                                                ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                                                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                        }`}
                                     >
                                         {sub.label}
                                     </Link>
@@ -365,22 +377,20 @@ const AdminSidebar = ({ collapsed = true, setCollapsed = () => { }, isMobileOpen
                 </div>
             )}
 
-            {/* Toggle button */}
-            {!isSmallScreen && (
-                <button
-                    type="button"
-                    onClick={toggleDesktop}
-                    style={{ left: collapsed ? '70px' : '246px', top: '24px' }}
-                    className="fixed w-6 h-6 bg-[#0F172A] border border-slate-700 rounded-full flex items-center justify-center hover:bg-slate-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-50 group cursor-pointer"
-                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                >
-                    {collapsed ? (
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                    ) : (
-                        <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                    )}
-                </button>
-            )}
+            {/* Desktop Toggle button */}
+            <button
+                type="button"
+                onClick={toggleDesktop}
+                style={{ left: collapsed ? '68px' : '244px', top: '20px' }}
+                className="hidden lg:flex fixed w-6 h-6 bg-[#0F172A] border border-slate-700 rounded-full items-center justify-center hover:bg-slate-800 hover:border-blue-500 transition-all duration-300 shadow-xl z-50 group cursor-pointer"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+                {collapsed ? (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                ) : (
+                    <ChevronLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                )}
+            </button>
         </>
     )
 }

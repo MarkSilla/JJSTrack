@@ -17,25 +17,12 @@ function _writeBatches(itemId, batches) {
   }
 }
 
-// ─── PUBLIC API ───────────────────────────────────────────────────────────────
-
-/**
- * Kuhanin ang lahat ng batches ng isang item, sorted oldest-first.
- * TODO (BACKEND): Palitan ng GET /api/inventory/:id/batches?sort=asc
- */
 export function getBatches(itemId) {
-  // PARA SA FIFO YAN — pinaka-matanda ang una (oldest first)
   const batches = _readBatches(itemId);
   return [...batches].sort((a, b) => new Date(a.dateAdded) - new Date(b.dateAdded));
 }
 
-/**
- * Dagdag ng bagong batch kapag may nag-add ng stock.
- * HINDI pinagsasama sa lumang batch — bagong batch ito!
- * TODO (BACKEND): Palitan ng POST /api/inventory/:id/batches
- */
 export function addBatch(itemId, quantity) {
-  // PARA SA FIFO YAN — bawat dagdag ng stock = bagong batch
   const batches = _readBatches(itemId);
   const newBatchId = batches.length > 0 ? Math.max(...batches.map(b => b.batchId)) + 1 : 1;
   const newBatch = {
@@ -48,14 +35,8 @@ export function addBatch(itemId, quantity) {
   return newBatch;
 }
 
-/**
- * I-preview ang kung paano maa-affect ng deduction ang batches — WALANG pagbabago sa actual data.
- * Ginagamit ito sa modal para ipakita sa user ang batch breakdown bago mag-confirm.
- * TODO (BACKEND): Palitan ng GET /api/inventory/:id/fifo-preview?quantity=X
- */
 export function previewFIFO(itemId, quantity) {
-  // PARA SA FIFO YAN — preview lang, walang actual na pagbabago
-  const batches = getBatches(itemId); // oldest first na ito
+  const batches = getBatches(itemId);
   let remaining = Number(quantity);
   const breakdown = [];
 
@@ -78,15 +59,8 @@ export function previewFIFO(itemId, quantity) {
   };
 }
 
-/**
- * I-deduct ang stock gamit ang FIFO order — pinaka-matanda ang mababawasan muna.
- * TODO (BACKEND): Palitan ng PATCH /api/inventory/:id/fifo-deduct { quantity: X }
- *                 ang backend ang bahala sa pagbabago ng batches sa DB
- */
 export function deductFIFO(itemId, quantity) {
-  // PARA SA FIFO YAN — dito nangyayari ang actual na deduction, oldest batch muna
   const batches = _readBatches(itemId);
-  // I-sort oldest first para sa tamang FIFO order
   const sorted = [...batches].sort((a, b) => new Date(a.dateAdded) - new Date(b.dateAdded));
 
   let remaining = Number(quantity);
@@ -107,36 +81,22 @@ export function deductFIFO(itemId, quantity) {
   });
 
   if (remaining > 0) {
-    // Hindi sapat ang stock — huwag ituloy ang deduction
-    // TODO (BACKEND): Ipadala ito bilang 400 Bad Request sa backend
-    console.warn("FIFO: Hindi sapat ang stock para sa deduction");
+    console.warn("FIFO: Insufficient stock for deduction");
     return { success: false, breakdown: [], shortfall: remaining };
   }
 
-  // Tanggalin ang mga empty na batches (quantity === 0)
   const cleaned = updated.filter(b => b.quantity > 0);
   _writeBatches(itemId, cleaned);
 
   return { success: true, breakdown, shortfall: 0 };
 }
 
-/**
- * Kunin ang total na available stock ng isang item batay sa FIFO batches.
- * TODO (BACKEND): Palitan ng GET /api/inventory/:id/total-stock
- */
 export function getTotalStock(itemId) {
-  // PARA SA FIFO YAN — sum ng lahat ng batch quantities
   const batches = _readBatches(itemId);
   return batches.reduce((sum, b) => sum + b.quantity, 0);
 }
 
-/**
- * I-initialize ang batches para sa isang item kung wala pa itong batches.
- * Ginagamit ito sa unang pagkakataon para ma-seed ang mock data.
- * TODO (BACKEND): Huwag na itong kailanin — ang backend na ang magma-manage ng batches
- */
 export function initBatchesIfEmpty(itemId, currentStock) {
-  // PARA SA FIFO YAN — pansamantala lang ito habang walang backend batch support
   const existing = _readBatches(itemId);
   if (existing.length === 0 && currentStock > 0) {
     const initialBatch = {
