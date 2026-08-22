@@ -53,12 +53,15 @@ export default function StatCard({
   loading = false,
   accentColor,
   onClick,
+  active = false,
+  isActive = false,
   className = '',
 }) {
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.default
   const isInteractive = Boolean(onClick)
   const isDark = variant === 'analytics'
   const displaySub = sub || subtitle
+  const isSelected = active || isActive
 
   const handleKeyDown = (e) => {
     if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
@@ -88,7 +91,9 @@ export default function StatCard({
       tabIndex={isInteractive ? 0 : undefined}
       onClick={isInteractive ? onClick : undefined}
       onKeyDown={handleKeyDown}
-      className={`relative overflow-hidden rounded-xl transition-all duration-200 group text-left w-full select-none ${styles.bg} ${styles.border} ${
+      className={`relative overflow-hidden rounded-xl transition-all duration-200 group text-left w-full select-none ${styles.bg} ${
+        isSelected ? 'border-blue-500 ring-2 ring-blue-500/40 shadow-md bg-blue-50/10' : styles.border
+      } ${
         isInteractive ? 'cursor-pointer hover:shadow-md hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none' : 'cursor-default'
       } ${variant === 'compact' ? 'p-3' : 'p-4'} ${className}`}
       style={{ boxShadow: 'var(--shadow-card)' }}

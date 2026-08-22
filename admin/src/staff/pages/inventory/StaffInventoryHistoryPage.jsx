@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { inventoryApi } from "../../services/inventoryApi";
 import { SkeletonBlock } from "../../../components/SkeletonLoaders.jsx";
+import { StatCard } from "../../../components/ui";
 import { getStoredStaffUser } from "../../utils/staffSession";
 
 const HISTORY_FETCH_LIMIT = 500;
@@ -71,26 +72,7 @@ function getUsageTarget(activity) {
   );
 }
 
-function StatCard({ label, value, sub, icon: Icon, accent }) {
-  return (
-    <div
-      className="font-inter bg-white rounded-2xl py-4 px-5 relative overflow-hidden border border-slate-200/60"
-      style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-    >
-      <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.08]" style={{ background: accent }} />
-      <div className="flex items-center gap-3 relative z-10">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${accent}18`, border: `1.5px solid ${accent}30` }}>
-          <Icon size={20} color={accent} strokeWidth={2.2} />
-        </div>
-        <div className="min-w-0">
-          <div className="text-[11px] font-bold tracking-widest uppercase text-slate-400">{label}</div>
-          <div className="text-xl font-black text-slate-900 leading-none mt-1">{value}</div>
-          <div className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-tight">{sub}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 function DetailModal({ activity, onClose }) {
   if (!activity) return null;
@@ -289,11 +271,11 @@ export default function StaffInventoryHistoryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Total Logs" value={stats.totalLogs} sub="Recorded usage" icon={BarChart3} accent="#2563EB" />
-        <StatCard label="Stock Out" value={formatQty(stats.stockOut)} sub="Units consumed" icon={ArrowDownCircle} accent="#DC2626" />
-        <StatCard label="Linked Orders" value={stats.usedOrders} sub="Recorded in notes" icon={Package} accent="#7C3AED" />
-        <StatCard label="Items Touched" value={stats.touchedItems} sub="Unique supplies" icon={Tag} accent="#059669" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Total Logs" value={stats.totalLogs} sub="Recorded usage" icon={BarChart3} accentColor="#2563EB" />
+        <StatCard label="Stock Out" value={formatQty(stats.stockOut)} sub="Units consumed" icon={ArrowDownCircle} accentColor="#DC2626" />
+        <StatCard label="Linked Orders" value={stats.usedOrders} sub="Recorded in notes" icon={Package} accentColor="#7C3AED" />
+        <StatCard label="Items Touched" value={stats.touchedItems} sub="Unique supplies" icon={Tag} accentColor="#059669" />
       </div>
 
       <div className="flex items-center gap-3">

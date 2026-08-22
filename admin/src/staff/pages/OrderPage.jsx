@@ -7,6 +7,7 @@ import OrderTable from './order/components/OrderTable';
 import OrderCard from './order/components/OrderCard';
 import OrderDetails from './order/components/OrderDetails';
 import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
+import { StatCard } from '../../components/ui';
 
 const KPI_CARDS = [
     { label: 'All', key: 'All', icon: Inbox, sub: 'Total assigned', color: '#3B82F6' },
@@ -98,32 +99,19 @@ const OrderPage = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
-                {KPI_CARDS.map((card, idx) => {
-                    const Icon = card.icon;
-                    const isActive = filterStatus === card.key;
-                    const accent = card.color;
-                    return (
-                        <button
-                            key={idx}
-                            onClick={() => setFilterStatus(card.key)}
-                            className={`font-inter bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-gray-200/50'}`}
-                            style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                        >
-                            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}>
-                                    <Icon size={20} color={accent} strokeWidth={2.2} />
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-0.5">{card.label}</div>
-                                    <div className="text-xl font-black text-gray-900 leading-none mb-1">{counts[card.key] ?? 0}</div>
-                                    <div className="text-[10px] font-medium text-gray-400">{card.sub}</div>
-                                </div>
-                            </div>
-                        </button>
-                    );
-                })}
+            <div className="grid grid-cols-2 xl:grid-cols-6 gap-3">
+                {KPI_CARDS.map((card, idx) => (
+                    <StatCard
+                        key={idx}
+                        icon={card.icon}
+                        label={card.label}
+                        value={counts[card.key] ?? 0}
+                        sub={card.sub}
+                        accentColor={card.color}
+                        isActive={filterStatus === card.key}
+                        onClick={() => setFilterStatus(card.key)}
+                    />
+                ))}
             </div>
 
             <OrderFilters

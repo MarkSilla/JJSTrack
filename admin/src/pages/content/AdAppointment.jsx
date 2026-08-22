@@ -18,7 +18,7 @@ import {
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
 import { CalendarPageSkeleton } from '../../components/SkeletonLoaders.jsx';
-import { StatusBadge } from '../../components/ui';
+import { StatusBadge, StatCard } from '../../components/ui';
 
 const TYPE_CONFIG = {
     repair: { label: 'Repair', hex: '#EF4444', icon: Scissors },
@@ -540,26 +540,16 @@ const AdAppointment = () => {
         <div className="font-inter min-h-screen bg-slate-50">
             <div className="px-4 sm:px-6 py-5 pb-24 sm:pb-10">
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
-                    {stats.map((stat, index) => (
-                        <div
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                    {stats.map((stat) => (
+                        <StatCard
                             key={stat.label}
-                            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
-                            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                        >
-                            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: stat.color }} />
-                            <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
-                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: stat.bg }}>
-                                    <stat.icon size={13} color={stat.color} strokeWidth={2.5} className="sm:hidden" />
-                                    <stat.icon size={16} color={stat.color} strokeWidth={2.2} className="hidden sm:block" />
-                                </div>
-                                <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{stat.label}</span>
-                            </div>
-                            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
-                                {stat.value}
-                            </div>
-                            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{stat.sub}</div>
-                        </div>
+                            icon={stat.icon}
+                            label={stat.label}
+                            value={stat.value}
+                            sub={stat.sub}
+                            accentColor={stat.color}
+                        />
                     ))}
                 </div>
 

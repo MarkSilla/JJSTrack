@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-    ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon, ChevronDown, ChevronUp, Search, X, User, ChevronRight
+    ClipboardList, Clock, Loader, CheckCircle, AlertTriangle, CalendarDays, MoreVertical, CheckCircle2, Inbox, CalendarX, CalendarIcon, ChevronDown, ChevronUp, Search, X, User, ChevronRight, Filter
 } from 'lucide-react';
 import { bookingApi } from '../services/bookingApi';
 import { orderApi } from '../services/orderApi.js';
@@ -15,6 +15,7 @@ import { getPickupSlotDisplay } from '../utils/pickupSlot.js';
 import { getStaffDerivedStatus } from '../utils/orderStatus.js';
 import { StaffDashboardSkeleton } from '../../components/SkeletonLoaders.jsx';
 import { StatCard, StatusBadge, DataCard, EmptyState } from '../../components/ui';
+import { getStoredStaffUser } from '../utils/staffSession.js';
 
 const FALLBACK_REFRESH_MS = 60000;
 
@@ -148,7 +149,25 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+    const filterDropdownRef = useRef(null);
     const upcomingScheduleRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+                setIsFilterDropdownOpen(false);
+            }
+        };
+        if (isFilterDropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isFilterDropdownOpen]);
 
     const fetchTasks = useCallback(async (silent = false) => {
         const updateCalendarEntries = typeof setCalendarEntries === 'function' ? setCalendarEntries : () => { };
@@ -344,25 +363,18 @@ const Dashboard = () => {
         return <StaffDashboardSkeleton />;
     }
 
+    const staffUser = getStoredStaffUser();
+    const staffName = staffUser?.fullName || staffUser?.name || staffUser?.firstName || 'Staff';
+
     return (
         <div className="space-y-4 sm:space-y-5 font-inter">
-            {/* SECTION 1: WELCOME BANNER (Mobile-First SaaS Workspace Header) */}
+            {/* Welcome banner */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-md relative overflow-hidden text-white">
                 <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700/80">
-                                <CalendarDays className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                <span>{formattedTodayDate}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                                <span>Active Staff Workspace</span>
-                            </span>
-                        </div>
                         <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
-                            {getGreeting()}, Staff
+                            {getGreeting()}, {staffName}
                         </h1>
                         <p className="text-slate-400 text-xs sm:text-sm font-medium max-w-xl">
                             {urgentItemsCount > 0
@@ -402,10 +414,10 @@ const Dashboard = () => {
 
             {/* MAIN CONTENT SPLIT LAYOUT (Mobile Vertical Order -> Tablet/Desktop Grid) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 items-start">
-                
+
                 {/* LEFT MAIN COLUMN: Workspace & Mobile Alerts */}
                 <div className="lg:col-span-2 space-y-4">
-                    
+
                     {/* SECTION 2: TODAY'S TASK ALERT (High-Visibility Mobile Workload Alert) */}
                     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
                         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
@@ -454,25 +466,21 @@ const Dashboard = () => {
                                                 openTaskDetails(alert.id);
                                             }
                                         }}
-                                        className={`p-3 rounded-xl border transition-all flex items-start justify-between gap-3 min-h-[44px] ${
-                                            alert.id ? 'cursor-pointer hover:shadow-xs focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none' : ''
-                                        } ${
-                                            alert.type === 'overdue'
+                                        className={`p-3 rounded-xl border transition-all flex items-start justify-between gap-3 min-h-[44px] ${alert.id ? 'cursor-pointer hover:shadow-xs focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none' : ''
+                                            } ${alert.type === 'overdue'
                                                 ? 'bg-rose-50/70 border-rose-200 text-rose-950 hover:bg-rose-100/70'
                                                 : 'bg-amber-50/70 border-amber-200 text-amber-950 hover:bg-amber-100/70'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="flex items-start gap-2.5 min-w-0">
-                                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                                                alert.type === 'overdue' ? 'bg-rose-600' : 'bg-amber-600'
-                                            }`} />
+                                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.type === 'overdue' ? 'bg-rose-600' : 'bg-amber-600'
+                                                }`} />
                                             <div className="min-w-0">
                                                 <p className={`text-xs font-bold ${alert.type === 'overdue' ? 'text-rose-900' : 'text-amber-900'}`}>
                                                     {alert.title}
                                                 </p>
-                                                <p className={`text-[11px] mt-0.5 font-medium leading-relaxed ${
-                                                    alert.type === 'overdue' ? 'text-rose-700' : 'text-amber-800'
-                                                }`}>
+                                                <p className={`text-[11px] mt-0.5 font-medium leading-relaxed ${alert.type === 'overdue' ? 'text-rose-700' : 'text-amber-800'
+                                                    }`}>
                                                     {alert.desc}
                                                 </p>
                                             </div>
@@ -505,8 +513,8 @@ const Dashboard = () => {
                                     <ClipboardList size={18} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-900">Today's Tasks Workspace</h3>
-                                    <p className="text-xs text-slate-500 font-medium">Main operational workload items</p>
+                                    <h3 className="text-sm font-bold text-slate-900">Today's Tasks</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Operational workload items</p>
                                 </div>
                             </div>
                             {tasks.length > 0 ? (
@@ -526,9 +534,9 @@ const Dashboard = () => {
 
                         {/* Search Bar & Filter Controls */}
                         {tasks.length > 0 && (
-                            <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                {/* Touch-Friendly Search Input */}
-                                <div className="relative flex-1 max-w-sm">
+                            <div className="px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/40 flex items-center gap-2.5">
+                                {/* Extended Search Input */}
+                                <div className="relative flex-1">
                                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     <input
                                         type="text"
@@ -548,25 +556,42 @@ const Dashboard = () => {
                                     )}
                                 </div>
 
-                                {/* Status Filter Pills */}
-                                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
-                                    {['All', 'Pending', 'In Progress', 'Overdue', 'Completed'].map((status) => {
-                                        const isSelected = statusFilter === status;
-                                        return (
-                                            <button
-                                                key={status}
-                                                type="button"
-                                                onClick={() => setStatusFilter(status)}
-                                                className={`min-h-[36px] px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
-                                                    isSelected
-                                                        ? 'bg-blue-600 text-white shadow-xs'
-                                                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                                                }`}
-                                            >
-                                                {status}
-                                            </button>
-                                        );
-                                    })}
+                                {/* Simple Filter Dropdown */}
+                                <div className="relative shrink-0" ref={filterDropdownRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsFilterDropdownOpen((prev) => !prev)}
+                                        className={`min-h-[40px] px-3.5 py-2 text-xs font-bold rounded-xl border transition-all flex items-center gap-2 cursor-pointer ${statusFilter !== 'All'
+                                                ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-xs'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                            }`}
+                                    >
+                                        <Filter size={14} className={statusFilter !== 'All' ? 'text-blue-600' : 'text-slate-400'} />
+                                        <span>{statusFilter === 'All' ? 'Filter' : statusFilter}</span>
+                                        <ChevronDown size={14} className={`text-slate-400 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {isFilterDropdownOpen && (
+                                        <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                                            {['All', 'Pending', 'In Progress', 'Overdue', 'Completed'].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setStatusFilter(status);
+                                                        setIsFilterDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full px-3.5 py-2 text-left text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${statusFilter === status
+                                                            ? 'bg-blue-50 text-blue-700 font-bold'
+                                                            : 'text-slate-700 hover:bg-slate-50'
+                                                        }`}
+                                                >
+                                                    <span>{status}</span>
+                                                    {statusFilter === status && <CheckCircle2 size={13} className="text-blue-600" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -763,7 +788,7 @@ const Dashboard = () => {
 
                 {/* RIGHT SIDE COLUMN: Upcoming Schedule & Mobile Metric Cards */}
                 <div className="space-y-4 lg:col-span-1">
-                    
+
                     {/* SECTION 4: UPCOMING TASKS (Upcoming Schedule Timeline) */}
                     <div ref={upcomingScheduleRef} className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col">
                         <div className="px-4 sm:px-5 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
@@ -773,7 +798,7 @@ const Dashboard = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-900">Upcoming Schedule</h3>
-                                    <p className="text-[11px] text-slate-500 font-medium">Next operational appointments</p>
+                                    <p className="text-[11px] text-slate-500 font-medium">Next appointments</p>
                                 </div>
                             </div>
                         </div>
@@ -809,9 +834,8 @@ const Dashboard = () => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-1">
                                                 <p className="text-xs font-bold text-slate-900 truncate">{schedule.title}</p>
-                                                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                                                    schedule.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'
-                                                }`} />
+                                                <span className={`w-2 h-2 rounded-full shrink-0 ${schedule.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'
+                                                    }`} />
                                             </div>
                                             <p className="text-[11px] text-slate-500 mt-0.5 font-medium truncate">
                                                 {schedule.dateLabel} • {schedule.location}

@@ -10,6 +10,7 @@ import {
     Wifi, Zap, Droplets, Phone, ShieldCheck, Trash2, Plus, Eye,
 } from "lucide-react";
 import { bookingApi } from "../../services/bookingApi";
+import { StatCard } from "../../components/ui";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -332,35 +333,17 @@ export default function AdAnalytics() {
                 </div>
 
                 {/* Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-                    {FINANCE_CARDS.map(({ icon: Icon, label, value, sub, accent, bgAccent, trend }) => (
-                        <div
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                    {FINANCE_CARDS.map(({ icon: Icon, label, value, sub, accent, trend }) => (
+                        <StatCard
                             key={label}
-                            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
-                            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                        >
-                            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                            <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                                <div className="flex items-center gap-2 sm:gap-2.5">
-                                    <div
-                                        className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
-                                        style={{ background: bgAccent }}
-                                    >
-                                        <Icon size={13} color={accent} strokeWidth={2.5} className="sm:hidden" />
-                                        <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-                                    </div>
-                                    <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-                                </div>
-                                <div className={`hidden sm:flex items-center gap-0.5 text-[10px] font-bold rounded-lg px-3 py-1 shrink-0 ${trend >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
-                                    {trend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                                    {Math.abs(trend)}%
-                                </div>
-                            </div>
-                            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">
-                                {value}
-                            </div>
-                            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
-                        </div>
+                            icon={Icon}
+                            label={label}
+                            value={value}
+                            sub={sub}
+                            accentColor={accent}
+                            trend={trend ? { value: `${Math.abs(trend)}%`, isPositive: trend >= 0 } : undefined}
+                        />
                     ))}
                 </div>
 

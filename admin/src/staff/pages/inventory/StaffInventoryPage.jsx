@@ -23,6 +23,7 @@ import { inventoryApi } from "../../services/inventoryApi";
 import { bookingApi } from "../../services/bookingApi";
 import { orderApi } from "../../services/orderApi";
 import { SkeletonBlock } from "../../../components/SkeletonLoaders.jsx";
+import { StatCard } from "../../../components/ui";
 
 const getStatus = (stock, minStock) => {
   if (stock <= 0) return "Out of Stock";
@@ -691,42 +692,7 @@ export default function StaffInventoryPage() {
     }
   };
 
-  const StatCard = ({ label, value, sub, icon: Icon, accent }) => (
-    <div
-      className="bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-200/50"
-      style={{
-        boxShadow:
-          "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)",
-      }}
-    >
-      <div
-        className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500"
-        style={{ background: accent }}
-      />
-      <div className="font-inter flex items-center gap-3 relative z-10">
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
-          style={{
-            background: `${accent}18`,
-            border: `1.5px solid ${accent}30`,
-          }}
-        >
-          <Icon size={20} color={accent} strokeWidth={2.2} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">
-            {label}
-          </div>
-          <div className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1">
-            {value}
-          </div>
-          <div className="text-[10px] text-gray-400 font-medium truncate leading-none uppercase tracking-tighter opacity-80">
-            {sub}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+
 
   return (
     <div className="font-inter space-y-4">
@@ -747,27 +713,27 @@ export default function StaffInventoryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <StatCard
           label="Total Available"
           value={totalAvailable}
           sub="Items with stock"
           icon={Package}
-          accent="#3B82F6"
+          accentColor="#3B82F6"
         />
         <StatCard
           label="Low Stock"
           value={lowStockCount}
           sub="Need attention"
           icon={AlertTriangle}
-          accent="#F59E0B"
+          accentColor="#F59E0B"
         />
         <StatCard
           label="Out of Stock"
           value={outOfStockCount}
           sub="Needs restocking"
           icon={XCircle}
-          accent="#EF4444"
+          accentColor="#EF4444"
         />
       </div>
 

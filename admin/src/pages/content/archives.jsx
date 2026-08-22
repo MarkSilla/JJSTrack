@@ -251,8 +251,8 @@ export default function ArchivedItems() {
 
     return (
         <div className="font-[inter] flex flex-col overflow-x-hidden">
-            <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4space-y-4">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="shrink-0 px-4 lg:px-6 pt-5 pb-4 space-y-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <StatCard icon={FolderArchive} label="Total Archived" value={archivedItems.length} sub="historical records" color="amber" />
                     <StatCard icon={CheckCircle2} label="Released" value={releasedCount} sub="archived releases" color="blue" />
                     <StatCard icon={XCircle} label="Cancelled" value={cancelledCount} sub="archived cancellations" color="rose" />

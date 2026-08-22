@@ -24,6 +24,7 @@ import { orderApi } from '../../services/orderApi.js';
 import OrderRecordDetail from './OrderRecordDetail.jsx';
 import { buildReleasedRecords } from './orderRecordUtils.js';
 import { exportReleasedToPDF } from '../../components/Export.js';
+import { StatCard } from '../../components/ui';
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 const tokens = {
@@ -85,29 +86,7 @@ function PayBadge({ status }) {
     );
 }
 
-/* ─── StatCard ──────────────────────────────────────────────────────────── */
-function StatCard({ icon: Icon, label, value, sub, color }) {
-    const t = tokens[color] || tokens.blue;
-    return (
-        <div
-            className="bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)' }}
-        >
-            <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: t.accent }} />
-            <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                <div className="flex items-center gap-2 sm:gap-2.5">
-                    <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: t.bg }}>
-                        <Icon size={13} color={t.text} strokeWidth={2.5} className="sm:hidden" />
-                        <Icon size={16} color={t.text} strokeWidth={2.2} className="hidden sm:block" />
-                    </div>
-                    <span className="text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-                </div>
-            </div>
-            <div className="mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] font-black sm:font-extrabold text-gray-900 leading-none tracking-tight pl-[36px] sm:pl-[45px] text-left">{value}</div>
-            <div className="block text-[9px] text-gray-400 mt-1 sm:mt-0.5 pl-[36px] sm:pl-[45px] opacity-80 sm:opacity-100">{sub}</div>
-        </div>
-    );
-}
+
 
 
 /* ─── ArchiveConfirmModal ───────────────────────────────────────────────── */
@@ -371,8 +350,8 @@ export default function ReleasedItems() {
 
                     {/* Stat cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-                        <StatCard icon={CheckCircle2} label="Total Released" value={releasedItems.length} sub="active records" color="blue" />
-                        <StatCard icon={CreditCard} label="Paid" value={paidCount} sub={`of ${releasedItems.length}`} color="green" />
+                        <StatCard icon={CheckCircle2} label="Total Released" value={releasedItems.length} sub="active records" accentColor="#3B82F6" />
+                        <StatCard icon={CreditCard} label="Paid" value={paidCount} sub={`of ${releasedItems.length}`} accentColor="#10B981" />
                         <StatCard
                             icon={DollarSign}
                             label="Revenue"
@@ -380,9 +359,9 @@ export default function ReleasedItems() {
                                 ? `₱${totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                 : 'N/A'}
                             sub="released value"
-                            color="violet"
+                            accentColor="#7C3AED"
                         />
-                        <StatCard icon={ArrowUpDown} label="Showing" value={filteredItems.length} sub="filtered rows" color="amber" />
+                        <StatCard icon={ArrowUpDown} label="Showing" value={filteredItems.length} sub="filtered rows" accentColor="#F59E0B" />
                     </div>
                 </div>
 

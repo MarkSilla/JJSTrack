@@ -24,6 +24,7 @@ import {
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi"
 import { fmt } from "../../utils/helpers.js"
 import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx"
+import { StatCard } from "../../components/ui"
 
 const SOCKET_RECONNECT_MS = 2500
 const SOCKET_REFRESH_DEBOUNCE_MS = 200
@@ -674,28 +675,17 @@ export default function AdInventoryHistory() {
   return (
     <div className="min-h-screen bg-slate-50 font-inter overflow-x-hidden">
       <div className="px-4 lg:px-6 py-2 top-0 z-100 overflow-visible">
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-2 sm:gap-3 mb-3">
-          {statCards.map(({ icon: Icon, label, value, sub, accent, bgAccent }, index) => (
-            <div
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-2.5 sm:gap-3 mb-3">
+          {statCards.map(({ icon: Icon, label, value, sub, accent }, index) => (
+            <StatCard
               key={label}
-              className={`bg-white rounded-2xl p-2 sm:py-3 sm:px-4 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default border border-slate-100/50 ${index === 4
-                ? 'col-span-2 lg:col-span-3 xl:col-span-1 order-last xl:order-none'
-                : 'col-span-1 order-none'
-                }`}
-              style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-            >
-              <div className="absolute -top-8 -right-12 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-              <div className="flex items-center gap-2 mb-1.5 sm:mb-3">
-                <div className={`rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 ${index === 4 ? 'w-8 h-8 sm:w-9 sm:h-9' : 'w-7 h-7 sm:w-9 sm:h-9'}`} style={{ background: bgAccent }}>
-                  <Icon size={index === 4 ? 14 : 13} color={accent} strokeWidth={2.5} className="sm:hidden" />
-                  <Icon size={16} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-                </div>
-                <span className={`text-[8px] sm:text-[12px] font-bold sm:font-semibold text-gray-500 truncate leading-tight ${index === 4 ? 'max-w-none' : 'max-w-none'}`}>{label}</span>
-              </div>
-              <div className={`leading-none tracking-tight font-black sm:font-extrabold text-gray-900 ${index === 4 ? 'mt-0 sm:mt-[-14px] text-[16px] sm:text-[22px] pl-[40px] sm:pl-[45px]' : 'mt-[-4px] sm:mt-[-14px] text-[14px] sm:text-[22px] pl-[36px] sm:pl-[45px] text-left'
-                }`}>{value}</div>
-              <div className={`block text-[9px] text-gray-400 mt-1 sm:mt-0.5 opacity-80 sm:opacity-100 ${index === 4 ? 'pl-[40px] sm:pl-[45px]' : 'pl-[36px] sm:pl-[45px]'}`}>{sub}</div>
-            </div>
+              icon={Icon}
+              label={label}
+              value={value}
+              sub={sub}
+              accentColor={accent}
+              className={index === 4 ? 'col-span-2 lg:col-span-3 xl:col-span-1 order-last xl:order-none' : 'col-span-1 order-none'}
+            />
           ))}
         </div>
 

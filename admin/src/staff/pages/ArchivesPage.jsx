@@ -12,6 +12,7 @@ import { bookingApi } from '../services/bookingApi';
 import { orderApi } from '../services/orderApi.js';
 import img from '../assets/img';
 import { StatCardsSkeleton, TableSkeleton } from '../../components/SkeletonLoaders.jsx';
+import { StatCard } from '../../components/ui';
 
 const getJerseySizeText = (player) => {
     if (player?.useManualjerseySize) {
@@ -1127,31 +1128,19 @@ const ArchivesPage = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                {kpiCards.map((k, idx) => {
-                    const isActive = typeFilter === k.filter;
-                    const accent = k.color;
-                    return (
-                        <button
-                            key={idx}
-                            onClick={() => setTypeFilter(k.filter)}
-                            className={`bg-white rounded-2xl py-4 px-5 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left border-none outline-none ${isActive ? 'ring-2 ring-blue-500 ring-offset-2 shadow-md' : 'border border-slate-200/50'}`}
-                            style={{ boxShadow: isActive ? "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1)" : "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-                        >
-                            <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-                            <div className="flex items-center gap-3 relative z-10">
-                                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: accent + "18", border: `1.5px solid ${accent}30` }}>
-                                    <k.icon size={20} color={accent} strokeWidth={2.2} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-[11px] font-semibold text-gray-500 tracking-tight leading-none mb-1.5 uppercase">{k.label}</div>
-                                    <div className="text-xl  font-black text-slate-800 tracking-tighter leading-none mb-1">{k.value}</div>
-                                    <div className="text-[10px] text-gray-400 font-me truncate leading-none uppercase tracking-tighter opacity-80">{k.sub}</div>
-                                </div>
-                            </div>
-                        </button>
-                    );
-                })}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {kpiCards.map((k, idx) => (
+                    <StatCard
+                        key={idx}
+                        icon={k.icon}
+                        label={k.label}
+                        value={k.value}
+                        sub={k.sub}
+                        accentColor={k.color}
+                        isActive={typeFilter === k.filter}
+                        onClick={() => setTypeFilter(k.filter)}
+                    />
+                ))}
             </div>
 
             <div className="flex items-center gap-2 mb-5">
