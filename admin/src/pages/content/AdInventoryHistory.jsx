@@ -24,7 +24,6 @@ import {
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi"
 import { fmt } from "../../utils/helpers.js"
 import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx"
-import { StatCard } from "../../components/ui"
 
 const SOCKET_RECONNECT_MS = 2500
 const SOCKET_REFRESH_DEBOUNCE_MS = 200

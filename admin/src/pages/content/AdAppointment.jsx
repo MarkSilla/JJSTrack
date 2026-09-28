@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -13,7 +13,10 @@ import {
     X,
     Package,
     Minus,
-    Plus
+    Plus,
+    SlidersHorizontal,
+    Save,
+    Info
 } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi.js';
 import { getPickupSlotDisplay, getPickupSlotSortValue } from '../../utils/pickupSlot.js';
@@ -140,6 +143,52 @@ const AdAppointment = () => {
     const today = new Date();
     const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
     const [selectedDateStr, setSelectedDateStr] = useState(toDateString(today.getFullYear(), today.getMonth(), today.getDate()));
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+    const [hintModal, setHintModal] = useState(false);
+    const hintTimeoutRef = useRef(null);
+
+    const handleShowHint = () => {
+        if (typeof window !== 'undefined' && window.innerWidth < 640) {
+            toast.info("Touch and hold (long-press) any date to open booking options.", {
+                duration: 4000,
+            });
+        } else {
+            setHintModal((prev) => !prev);
+            if (hintTimeoutRef.current) {
+                clearTimeout(hintTimeoutRef.current);
+            }
+            hintTimeoutRef.current = setTimeout(() => {
+                setHintModal(false);
+            }, 4000);
+        }
+    };
+
+    // Refs for long-press detection on touch devices
+    const longPressTimerRef = useRef(null);
+    const touchStartPosRef = useRef({ x: 0, y: 0 });
+    const isLongPressTriggeredRef = useRef(false);
+
+    useEffect(() => {
+        if (isBookingModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isBookingModalOpen]);
+
+    useEffect(() => {
+        return () => {
+            if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+            }
+            if (hintTimeoutRef.current) {
+                clearTimeout(hintTimeoutRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         const preset = location.state?.dashboardPreset;
@@ -403,20 +452,100 @@ const AdAppointment = () => {
     }, [selectedAppointments, activeFilter]);
 
     const handleDayClick = (dateStr) => {
+        if (isLongPressTriggeredRef.current) return;
         setSelectedDateStr(dateStr);
-        setShowSchedule(true);
         setActiveFilter('all');
+    };
+
+    const handleDayDoubleClick = (dateStr, e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        setSelectedDateStr(dateStr);
+        setIsBookingModalOpen(true);
+    };
+
+    const handleTouchStart = (dateStr, e) => {
+        if (e.touches && e.touches.length > 0) {
+            touchStartPosRef.current = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+            };
+        }
+        isLongPressTriggeredRef.current = false;
+
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+        }
+
+        longPressTimerRef.current = setTimeout(() => {
+            isLongPressTriggeredRef.current = true;
+            setSelectedDateStr(dateStr);
+            setIsBookingModalOpen(true);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                try {
+                    navigator.vibrate(50);
+                } catch (err) {
+                    // Ignore vibration if unsupported
+                }
+            }
+        }, 450);
+    };
+
+    const handleTouchMove = (e) => {
+        if (!longPressTimerRef.current) return;
+        if (e.touches && e.touches.length > 0) {
+            const dx = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+            const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+            if (dx > 10 || dy > 10) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+            }
+        }
+    };
+
+    const handleTouchEnd = (e) => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        if (isLongPressTriggeredRef.current) {
+            if (e && e.cancelable) {
+                e.preventDefault();
+            }
+            if (e) {
+                e.stopPropagation();
+            }
+            setTimeout(() => {
+                isLongPressTriggeredRef.current = false;
+            }, 120);
+        }
+    };
+
+    const handleTouchCancel = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        isLongPressTriggeredRef.current = false;
     };
 
     const renderCalendarCells = () => {
         const cells = [];
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
 
         for (let i = 0; i < firstDay; i++) {
-            cells.push(<div key={`pad-${i}`} className="aspect-square sm:aspect-auto sm:min-h-[90px]" />);
+            cells.push(
+                <div key={`pad-${i}`} className="min-h-[58px] sm:min-h-[90px] lg:min-h-[100px] p-1 sm:p-2 lg:p-2.5 opacity-0 pointer-events-none" />
+            );
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = toDateString(year, month, d);
+            const cellDate = new Date(`${dateStr}T00:00:00`);
+            const isPast = cellDate < now;
             const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
             const isSelected = selectedDateStr === dateStr;
             const marks = marksByDate[dateStr] || {};
@@ -424,82 +553,134 @@ const AdAppointment = () => {
             const activeTypes = Object.keys(marks).sort();
             const totalCount = Object.values(marks).reduce((s, n) => s + n, 0);
 
-            const countStatus =
-                totalCount >= 7 ? 'full' :
-                    totalCount >= 4 ? 'near-full' :
-                        totalCount >= 1 ? 'available' : 'none';
+            const slotSummary = slotSummaryByDate[dateStr] || {};
+            const used = slotSummary.used ?? totalCount;
+            const max = slotSummary.max ?? 10;
+            const isFull = slotSummary.isFull || (max > 0 && used >= max) || dateStatus?.status === 'full_slots';
+            const isNearFull = !isFull && max > 0 && used >= Math.ceil(max * 0.7);
+            const ratio = max > 0 ? used / max : 0;
+            const hasSlotData = Boolean(slotSummaryByDate[dateStr] || totalCount > 0);
+
+            let fillColor = 'bg-emerald-500';
+            if (ratio >= 1) fillColor = 'bg-rose-500';
+            else if (ratio >= 0.7) fillColor = 'bg-amber-500';
+            else if (ratio >= 0.5) fillColor = 'bg-yellow-400';
+
+            // Base cell styling matching frontend calendar
+            let cellBg = 'bg-white hover:bg-slate-50 border-slate-100/90 hover:border-slate-200';
+            if (isSelected) {
+                cellBg = 'bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-600 shadow-md ring-2 ring-blue-400/40 z-10 -translate-y-0.5 text-white';
+            } else if (dateStatus?.status === 'holiday') {
+                cellBg = 'bg-gradient-to-br from-violet-50/80 to-purple-50/80 border-violet-100 hover:border-violet-200';
+            } else if (dateStatus?.status === 'closed') {
+                cellBg = 'bg-slate-100/80 border-slate-200 hover:border-slate-300';
+            } else if (isFull) {
+                cellBg = 'bg-gradient-to-br from-rose-50/80 to-red-50/80 border-rose-100 hover:border-rose-200';
+            } else if (isNearFull) {
+                cellBg = 'bg-gradient-to-br from-amber-50/80 to-orange-50/80 border-amber-100 hover:border-amber-200';
+            } else if (totalCount > 0 || (slotSummary.used !== undefined && slotSummary.used > 0)) {
+                cellBg = 'bg-gradient-to-br from-emerald-50/70 to-green-50/70 border-emerald-100 hover:border-emerald-200';
+            } else if (isPast) {
+                cellBg = 'bg-slate-50/60 border-slate-100/80 opacity-60 hover:opacity-100';
+            }
 
             cells.push(
                 <div
                     key={d}
                     onClick={() => handleDayClick(dateStr)}
+                    onDoubleClick={(e) => handleDayDoubleClick(dateStr, e)}
+                    onTouchStart={(e) => handleTouchStart(dateStr, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchCancel}
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
                     className={`
-                        relative transition-all duration-300 border rounded-2xl flex flex-col
-                        aspect-square sm:aspect-auto sm:min-h-[100px]
-                        p-2 sm:p-3 cursor-pointer group
-                        ${isSelected
-                            ? 'bg-green-600/70 border-green-600 shadow-xl z-10 -translate-y-0.5'
-                            : dateStatus
-                                ? 'bg-slate-100 border-slate-300 hover:border-slate-400 hover:shadow-md'
-                            : countStatus === 'full'
-                                ? 'bg-red-50/50 border-red-100 hover:border-red-300 hover:shadow-md'
-                                : countStatus === 'near-full'
-                                    ? 'bg-amber-50/50 border-amber-100 hover:border-amber-300 hover:shadow-md'
-                                    : countStatus === 'available'
-                                        ? 'bg-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-md'
-                                        : isToday
-                                            ? 'bg-slate-100 border-slate-200 hover:shadow-md'
-                                            : 'bg-white border-slate-100 hover:border-blue-200 hover:bg-slate-50/50 hover:shadow-sm'
-                        }
+                        relative transition-all duration-200 border rounded-xl sm:rounded-2xl flex flex-col justify-between
+                        min-h-[58px] sm:min-h-[90px] lg:min-h-[100px]
+                        p-1 sm:p-2 lg:p-2.5 cursor-pointer group overflow-hidden select-none touch-manipulation
+                        ${cellBg}
                     `}
                 >
-                    <div className={`
-                        w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl font-black shrink-0 text-[11px] sm:text-[13px] transition-all duration-300
-                        ${isSelected
-                            ? 'bg-white/20 text-white backdrop-blur-sm'
-                            : dateStatus
-                                ? 'bg-slate-700 text-white shadow-sm ring-4 ring-slate-100'
-                            : countStatus === 'full'
-                                ? 'bg-red-500 text-white shadow-sm ring-4 ring-red-50'
-                                : countStatus === 'near-full'
-                                    ? 'bg-amber-400 text-amber-900 shadow-sm ring-4 ring-amber-50'
-                                    : countStatus === 'available'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                                        : isToday
-                                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
-                                            : 'text-slate-600 group-hover:text-blue-600'
-                        }
-                    `}>
-                        {d}
-                    </div>
+                    {/* Top: Day Number & Type Dots */}
+                    <div className="flex items-center justify-between w-full gap-1">
+                        <span className={`
+                            w-5 h-5 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-black text-[10px] sm:text-[13px] transition-colors
+                            ${isSelected
+                                ? 'bg-white/20 text-white backdrop-blur-sm shadow-xs'
+                                : isToday
+                                    ? 'bg-slate-900 text-white shadow-xs'
+                                    : dateStatus?.status === 'holiday'
+                                        ? 'text-violet-700 font-black'
+                                        : isFull
+                                            ? 'text-rose-600 font-black'
+                                            : 'text-slate-700 group-hover:text-blue-600'
+                            }
+                        `}>
+                            {d}
+                        </span>
 
-                    {dateStatus && dateStatus.status && (
-                        <div className={`mt-2 inline-flex w-fit rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${DATE_STATUS_CONFIG[dateStatus.status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
-                            {dateStatus.label || 'Blocked'}
-                        </div>
-                    )}
-
-                    <div className="mt-auto pt-2">
-                        {activeTypes.length > 0 && (
-                            <div className="flex gap-1 flex-wrap">
+                        {/* Service Type Dots (Repair/Jersey/Org) */}
+                        {activeTypes.length > 0 && !isSelected && (
+                            <div className="hidden sm:flex items-center gap-1 shrink-0">
                                 {activeTypes.map(type => (
-                                    <div
+                                    <span
                                         key={type}
-                                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-white"
-                                        style={{ backgroundColor: isSelected ? '#fff' : TYPE_CONFIG[type].hex }}
+                                        className="w-1.5 h-1.5 rounded-full shadow-xs ring-1 ring-white"
+                                        style={{ backgroundColor: TYPE_CONFIG[type]?.hex || '#3b82f6' }}
+                                        title={TYPE_CONFIG[type]?.label}
                                     />
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {totalCount > 0 && !isSelected && (
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="bg-slate-800 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md">
-                                {totalCount}
+                    {/* Middle: Badges (Pickups count / Date Status) */}
+                    <div className="w-full my-auto flex flex-col items-center gap-0.5 sm:gap-1 overflow-hidden py-0.5">
+                        {/* Pickup Badge */}
+                        {totalCount > 0 && !isSelected && (
+                            <span className="w-full text-center bg-blue-100/90 text-blue-700 border border-blue-200/80 font-black text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0.5 rounded leading-tight tracking-tight uppercase truncate">
+                                {totalCount > 1 ? `${totalCount} Pickups` : 'Pickup'}
+                            </span>
+                        )}
+
+                        {/* Date Status Badge (Holiday / Closed / Full) */}
+                        {dateStatus && dateStatus.status && !isSelected && (
+                            <span className={`w-full text-center font-black text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0.5 rounded leading-tight tracking-tight uppercase truncate ${dateStatus.status === 'full_slots'
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : dateStatus.status === 'holiday'
+                                    ? 'bg-violet-100 text-violet-700 border border-violet-200'
+                                    : 'bg-slate-200 text-slate-700 border border-slate-300'
+                                }`}>
+                                {dateStatus.status === 'full_slots' ? 'Full' : dateStatus.label || 'Closed'}
+                            </span>
+                        )}
+
+                        {/* If full slots from slot count */}
+                        {!dateStatus && isFull && !isSelected && totalCount === 0 && (
+                            <span className="w-full text-center bg-rose-100 text-rose-700 border border-rose-200 font-black text-[6px] sm:text-[8px] px-0.5 sm:px-1 py-0.5 rounded leading-tight tracking-tight uppercase truncate">
+                                Full
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Bottom: Capacity Bar & text (like frontend!) */}
+                    <div className="w-full mt-auto pt-0.5">
+                        {hasSlotData && !dateStatus && (
+                            <div className="w-full flex flex-col gap-0.5">
+                                <div className="w-full bg-slate-200/70 rounded-full h-1 sm:h-1.5 overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all duration-300 ${isSelected ? 'bg-white' : fillColor}`}
+                                        style={{ width: `${Math.min(100, Math.max(8, ratio * 100))}%` }}
+                                    />
+                                </div>
+                                <span className={`text-[6px] sm:text-[7.5px] font-bold font-mono text-center leading-none truncate ${isSelected ? 'text-white/90' : 'text-slate-400'
+                                    }`}>
+                                    {used}/{max}
+                                </span>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -538,9 +719,9 @@ const AdAppointment = () => {
 
     return (
         <div className="font-inter min-h-screen bg-slate-50">
-            <div className="px-4 sm:px-6 py-5 pb-24 sm:pb-10">
+            <div className="px-3 sm:px-6 py-4 sm:py-5 pb-24 sm:pb-10">
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-4 sm:mb-6">
                     {stats.map((stat) => (
                         <StatCard
                             key={stat.label}
@@ -555,27 +736,51 @@ const AdAppointment = () => {
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 xl:items-start">
 
-                    <div className="xl:col-span-2 bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 lg:p-8 shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-5 sm:mb-8 flex-wrap gap-3 sm:gap-4">
-                            <h2 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2 sm:gap-3 tracking-tight">
-                                <Calendar className="text-blue-500" size={22} />
-                                {monthNames[month]} {year}
+                    <div className="xl:col-span-2 bg-white rounded-2xl sm:rounded-[2rem] p-3 sm:p-6 lg:p-8 shadow-sm border border-gray-100">
+                        <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2 sm:gap-4 relative">
+                            <h2 className="text-sm sm:text-lg font-bold text-gray-800 flex items-center gap-2 sm:gap-3 tracking-tight">
+                                <Calendar className="text-blue-500 shrink-0" size={20} />
+                                <span>{monthNames[month]} {year}</span>
                             </h2>
                             <div className="flex items-center gap-2 ml-auto">
+                                {hintModal && (
+                                    <div className="hidden sm:flex items-center gap-2 bg-blue-50 text-blue-900 border border-blue-200 px-3.5 py-1.5 rounded-full shadow-xs animate-in fade-in slide-in-from-right-4 duration-300">
+                                        <Info size={14} className="text-blue-600 shrink-0" />
+                                        <span className="text-xs font-medium text-blue-900">
+                                            <strong className="font-semibold text-blue-950"></strong> Double-click any date to open booking options.
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setHintModal(false)}
+                                            className="text-blue-400 hover:text-blue-700 transition-colors cursor-pointer bg-transparent border-none p-0.5 ml-1"
+                                        >
+                                            <X size={13} />
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={handleShowHint}
+                                    className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100/80 transition-all cursor-pointer shadow-xs active:scale-95"
+                                    title="Interaction guide"
+                                >
+                                    <Info size={16} />
+                                </button>
                                 <div className="flex items-center gap-1 bg-gray-50 rounded-full p-1 border border-gray-100">
-                                    <button onClick={prevMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
-                                        <ChevronLeft size={18} />
+                                    <button onClick={prevMonth} className="p-1.5 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
+                                        <ChevronLeft size={16} />
                                     </button>
-                                    <button onClick={nextMonth} className="p-2 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
-                                        <ChevronRight size={18} />
+                                    <button onClick={nextMonth} className="p-1.5 sm:p-2.5 rounded-full hover:bg-white hover:shadow-sm text-gray-600 transition-all cursor-pointer bg-transparent border-none">
+                                        <ChevronRight size={16} />
                                     </button>
                                 </div>
+
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-7 mb-2 sm:mb-4">
+                        <div className="grid grid-cols-7 mb-2 sm:mb-3">
                             {WEEKDAYS_FULL.map((day, i) => (
-                                <div key={day} className="text-center text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400">
+                                <div key={day} className="text-center text-[9px] sm:text-xs font-bold uppercase tracking-wider text-gray-400">
                                     <span className="hidden sm:inline">{day}</span>
                                     <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
                                 </div>
@@ -588,12 +793,12 @@ const AdAppointment = () => {
 
                     </div>
                     <div className={`
-                        xl:block bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100
-                        flex flex-col h-full
+                        bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100
+                        flex flex-col overflow-hidden
                         ${showSchedule ? 'block' : 'hidden xl:flex'}
                     `}>
 
-                        <div className="shrink-0 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-7 pb-3">
+                        <div className="shrink-0 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-7 pb-2.5">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm sm:text-base font-bold text-gray-800 flex items-center gap-2">
                                     <Calendar className="text-blue-500" size={18} />
@@ -605,6 +810,15 @@ const AdAppointment = () => {
                                             ? `${selectedAppointments.length} items`
                                             : `${filteredAppointments.length}/${selectedAppointments.length}`}
                                     </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsBookingModalOpen(true)}
+                                        className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer border-none"
+                                        title="Manage Booking Options & Slots"
+                                    >
+                                        <SlidersHorizontal size={12} />
+                                        <span className="hidden sm:inline">Options</span>
+                                    </button>
                                     <button
                                         onClick={() => setShowSchedule(false)}
                                         className="xl:hidden w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors cursor-pointer border-none"
@@ -650,137 +864,13 @@ const AdAppointment = () => {
                             </div>
                         )}
 
-                        <div className="shrink-0 px-4 sm:px-6 lg:px-8 pb-3 border-b border-gray-100">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div>
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Customer Booking</h4>
-                                        <p className="mt-1 text-xs font-semibold text-slate-700">
-                                            {(dateStatuses[selectedDateStr]?.status && dateStatuses[selectedDateStr]?.label) || 'Open for bookings'}
-                                        </p>
-                                    </div>
-                                    {dateStatuses[selectedDateStr] && dateStatuses[selectedDateStr].status && (
-                                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${DATE_STATUS_CONFIG[dateStatuses[selectedDateStr].status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
-                                            Active
-                                        </span>
-                                    )}
-                                </div>
-
-                                <textarea
-                                    value={statusNote}
-                                    onChange={(event) => setStatusNote(event.target.value)}
-                                    placeholder="Optional note"
-                                    className="mt-3 h-16 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                                />
-
-                                <div className="mt-3 grid grid-cols-1 gap-2">
-                                    {[
-                                        {
-                                            key: 'repair',
-                                            label: 'Repair',
-                                            value: statusCounts.repair,
-                                            effective: effectiveStatusCounts.repair,
-                                            actual: actualStatusCounts.repair,
-                                            max: 7,
-                                        },
-                                        {
-                                            key: 'jerseyOrg',
-                                            label: 'Team Jersey / Company',
-                                            value: statusCounts.jerseyOrg,
-                                            effective: effectiveStatusCounts.jerseyOrg,
-                                            actual: actualStatusCounts.jerseyOrg,
-                                            max: 3,
-                                        },
-                                    ].map((item) => {
-                                        const minAllowed = item.actual;
-                                        const canDecrement = !statusSaving && item.value > minAllowed;
-                                        const canIncrement = !statusSaving && item.effective < item.max;
-                                        return (
-                                            <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.label}</p>
-                                                    <p className="text-[10px] font-semibold text-slate-400">
-                                                        {item.actual > 0
-                                                            ? <span className="text-blue-500">{item.actual} from customers</span>
-                                                            : 'Manual booked count'
-                                                        }
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        disabled={!canDecrement}
-                                                        onClick={() => adjustStatusCount(item.key, item.value - 1, item.max, minAllowed)}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <Minus size={14} />
-                                                    </button>
-                                                    <span className="w-12 text-center text-sm font-black text-slate-800">
-                                                        {item.effective}/{item.max}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        disabled={!canIncrement}
-                                                        onClick={() => adjustStatusCount(item.key, item.value + 1, item.max, minAllowed)}
-                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                                                    >
-                                                        <Plus size={14} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="mt-3 grid grid-cols-3 gap-2">
-                                    {Object.entries(DATE_STATUS_CONFIG).map(([status, config]) => (
-                                        <button
-                                            key={status}
-                                            type="button"
-                                            disabled={statusSaving}
-                                            onClick={() => saveSelectedDateStatus(status)}
-                                            className={`rounded-xl border px-2 py-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60 ${config.color}`}
-                                        >
-                                            {config.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="mt-2.5 grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        disabled={statusSaving}
-                                        onClick={saveManualCounts}
-                                        className="w-full rounded-xl border border-blue-200 bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                    >
-                                        {statusSaving ? (
-                                            <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                            </svg>
-                                        ) : (
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                                                <polyline points="17 21 17 13 7 13 7 21" />
-                                                <polyline points="7 3 7 8 15 8" />
-                                            </svg>
-                                        )}
-                                        Save Counts
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={statusSaving || !dateStatuses[selectedDateStr]}
-                                        onClick={clearSelectedDateStatus}
-                                        className="w-full rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                    >
-                                        <X size={12} strokeWidth={2.5} />
-                                        Clear Status
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-y-auto p-3 sm:px-4 lg:px-6 pt-3 space-y-2 sm:space-y-2.5 max-h-[540px] custom-scrollbar">
+                        <div
+                            className="overflow-y-auto p-3 sm:px-4 lg:px-6 pt-2 space-y-2 sm:space-y-2.5 max-h-[465px] custom-scrollbar"
+                            style={filteredAppointments.length > 5 ? {
+                                maskImage: 'linear-gradient(to bottom, black calc(100% - 48px), transparent 100%)',
+                                WebkitMaskImage: 'linear-gradient(to bottom, black calc(100% - 48px), transparent 100%)',
+                            } : undefined}
+                        >
                             {filteredAppointments.length > 0 ? (
                                 <>
                                     {filteredAppointments.map(app => {
@@ -789,15 +879,15 @@ const AdAppointment = () => {
                                             <div
                                                 key={app.id}
                                                 onClick={() => navigate(`/admin/orders/${app.id}`)}
-                                                className="bg-[#F8FAFC] border border-gray-100 p-2.5 sm:p-3.5 rounded-xl hover:border-blue-200 hover:shadow-md transition-all cursor-pointer active:bg-blue-50"
+                                                className="bg-[#F8FAFC] border border-gray-100 p-2.5 sm:p-3 rounded-xl hover:border-blue-200 hover:shadow-md transition-all cursor-pointer active:bg-blue-50"
                                             >
-                                                <div className="flex justify-between items-start mb-2">
+                                                <div className="flex justify-between items-start mb-1.5">
                                                     <span className="text-xs font-bold text-gray-400 tracking-wider">{app.time}</span>
-                                                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full tracking-wider ${statusBadge.color}`}>
+                                                    <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider ${statusBadge.color}`}>
                                                         {app.status}
                                                     </span>
                                                 </div>
-                                                <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-800 mb-1.5 leading-snug">{app.customer}</h4>
+                                                <h4 className="text-[13.5px] sm:text-[14px] font-bold text-gray-800 mb-1 leading-snug">{app.customer}</h4>
                                                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-500 font-medium">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_CONFIG[app.type].hex }} />
@@ -811,11 +901,11 @@ const AdAppointment = () => {
                                             </div>
                                         );
                                     })}
-                                    {filteredAppointments.length > 0 && filteredAppointments.length < 5 && (
-                                        <div className="py-10 rounded-2xl flex items-center justify-center">
-                                            <span className="text-[10px] font-bold text-slate-300 tracking-[0.2em]">Nothing here</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center justify-center gap-2 py-3 px-2 text-slate-400">
+                                        <span className="h-px bg-slate-200 flex-1" />
+                                        <span className="text-[11px] font-medium text-slate-400">End of appointments for this day</span>
+                                        <span className="h-px bg-slate-200 flex-1" />
+                                    </div>
                                 </>
                             ) : (
                                 <div className="flex flex-col items-center justify-center text-center py-10 sm:py-16 px-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
@@ -827,7 +917,7 @@ const AdAppointment = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="shrink-0 px-4 py-3 sm:px-6 bg-slate-50 border-t border-gray-200 shadow-sm">
+                        <div className="shrink-0 px-4 py-3 sm:px-6 bg-slate-50 border-t border-gray-100">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">Service Types</h4>
@@ -875,6 +965,187 @@ const AdAppointment = () => {
                     </div>
                 )}
             </div>
+
+            {/* Customer Booking Options Modal / Bottom Sheet */}
+            {isBookingModalOpen && (
+                <div
+                    className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+                    onClick={() => setIsBookingModalOpen(false)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md relative flex flex-col max-h-[92vh] sm:max-h-[85vh] overflow-hidden border border-slate-100 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
+                    >
+                        {/* Mobile Bottom Sheet Grab Bar */}
+                        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+                        </div>
+
+                        {/* Header */}
+                        <div className="shrink-0 px-5 pt-3 sm:pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                    <Calendar size={18} />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm sm:text-base font-black text-slate-800 tracking-tight capitalize truncate">
+                                        {selectedDateFormatted}
+                                    </h3>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            {selectedAppointments.length} Items
+                                        </span>
+                                        {dateStatuses[selectedDateStr]?.status && (
+                                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${DATE_STATUS_CONFIG[dateStatuses[selectedDateStr].status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
+                                                {DATE_STATUS_CONFIG[dateStatuses[selectedDateStr].status]?.label || dateStatuses[selectedDateStr].status}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsBookingModalOpen(false)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer border-none shrink-0"
+                                title="Close"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Scrollable Content */}
+                        <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar space-y-3.5">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div>
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Customer Booking</h4>
+                                        <p className="mt-0.5 text-xs font-bold text-slate-700">
+                                            {(dateStatuses[selectedDateStr]?.status && dateStatuses[selectedDateStr]?.label) || 'Open for bookings'}
+                                        </p>
+                                    </div>
+                                    {dateStatuses[selectedDateStr] && dateStatuses[selectedDateStr].status ? (
+                                        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${DATE_STATUS_CONFIG[dateStatuses[selectedDateStr].status]?.color || DATE_STATUS_CONFIG.closed.color}`}>
+                                            Active
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                                            Available
+                                        </span>
+                                    )}
+                                </div>
+
+                                <textarea
+                                    value={statusNote}
+                                    onChange={(event) => setStatusNote(event.target.value)}
+                                    placeholder="Optional note"
+                                    className="mt-3 h-20 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-xs font-medium text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                                />
+
+                                <div className="mt-3.5 grid grid-cols-1 gap-2.5">
+                                    {[
+                                        {
+                                            key: 'repair',
+                                            label: 'Repair',
+                                            value: statusCounts.repair,
+                                            effective: effectiveStatusCounts.repair,
+                                            actual: actualStatusCounts.repair,
+                                            max: 7,
+                                        },
+                                        {
+                                            key: 'jerseyOrg',
+                                            label: 'Team Jersey / Company',
+                                            value: statusCounts.jerseyOrg,
+                                            effective: effectiveStatusCounts.jerseyOrg,
+                                            actual: actualStatusCounts.jerseyOrg,
+                                            max: 3,
+                                        },
+                                    ].map((item) => {
+                                        const minAllowed = item.actual;
+                                        const canDecrement = !statusSaving && item.value > minAllowed;
+                                        const canIncrement = !statusSaving && item.effective < item.max;
+                                        return (
+                                            <div key={item.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-xs">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">{item.label}</p>
+                                                    <p className="text-[10px] font-semibold text-slate-400">
+                                                        {item.actual > 0
+                                                            ? <span className="text-blue-600 font-bold">{item.actual} from customers</span>
+                                                            : 'Manual booked count'
+                                                        }
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canDecrement}
+                                                        onClick={() => adjustStatusCount(item.key, item.value - 1, item.max, minAllowed)}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                                    >
+                                                        <Minus size={14} />
+                                                    </button>
+                                                    <span className="w-12 text-center text-sm font-black text-slate-800">
+                                                        {item.effective}/{item.max}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canIncrement}
+                                                        onClick={() => adjustStatusCount(item.key, item.value + 1, item.max, minAllowed)}
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="mt-3.5 grid grid-cols-3 gap-2">
+                                    {Object.entries(DATE_STATUS_CONFIG).map(([status, config]) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            disabled={statusSaving}
+                                            onClick={() => saveSelectedDateStatus(status)}
+                                            className={`rounded-xl border px-2.5 py-2.5 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60 text-center ${config.color}`}
+                                        >
+                                            {config.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        disabled={statusSaving}
+                                        onClick={saveManualCounts}
+                                        className="w-full rounded-xl border border-blue-200 bg-blue-600 hover:bg-blue-700 px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-white shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                        {statusSaving ? (
+                                            <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                        ) : (
+                                            <Save size={14} />
+                                        )}
+                                        Save Counts
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={statusSaving || !dateStatuses[selectedDateStr]}
+                                        onClick={clearSelectedDateStatus}
+                                        className="w-full rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                        <X size={14} strokeWidth={2.5} />
+                                        Clear Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <BookingDetailsModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
 
