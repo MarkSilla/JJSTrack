@@ -302,21 +302,27 @@ const TeamStepPlayers = ({ teamName, setTeamName, players, setPlayers, contact =
                 <div className={`grid gap-5 ${showSizeGuide ? 'lg:grid-cols-[minmax(0,42rem)_minmax(24rem,28rem)]' : 'grid-cols-1'}`}>
                     <div className="bg-[#F8FAFC] border border-gray-200 rounded-xl p-5 space-y-4">
                         {/* Name & Number */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Surname <span className="text-red-400">*</span></label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 flex items-center gap-1 min-h-[20px]">
+                                    Surname <span className="text-red-400">*</span>
+                                </label>
                                 <input value={form.surname} onChange={(e) => set('surname', e.target.value)} placeholder="Surname"
-                                    className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Nickname <span className="text-gray-400 font-normal">(Optional)</span></label>
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 flex items-center gap-1 min-h-[20px] whitespace-nowrap">
+                                    Nickname <span className="text-gray-400 font-normal text-[9px]">(Optional)</span>
+                                </label>
                                 <input value={form.nickname} onChange={(e) => set('nickname', e.target.value)} placeholder="Nickname"
-                                    className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60">Number <span className="text-red-400">*</span></label>
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/60 flex items-center gap-1 min-h-[20px]">
+                                    Number <span className="text-red-400">*</span>
+                                </label>
                                 <input type="number" value={form.number} onChange={(e) => set('number', e.target.value)} placeholder="7"
-                                    className="bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all " />
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-gray-800 text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/15 transition-all" />
                             </div>
                         </div>
 

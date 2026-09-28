@@ -21,17 +21,22 @@
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body table {
     overflow: visible !important;
 }
+.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:hover,
+.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:focus-within {
+    position: relative;
+    z-index: 999;
+}
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day:hover,
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day:focus-within {
     position: relative;
-    z-index: 120;
+    z-index: 1000;
 }
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day-frame:hover,
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day-frame:focus-within,
 .dashboard-interactive-past .calendar-wrapper .fc .day-cell-inner:hover,
 .dashboard-interactive-past .calendar-wrapper .fc .day-cell-inner:focus-within {
     position: relative;
-    z-index: 121;
+    z-index: 1001;
 }
 .dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-day {
     overflow: visible;
@@ -46,8 +51,10 @@
     position: absolute;
     left: 50%;
     bottom: calc(100% + 10px);
-    z-index: 200;
-    width: min(260px, 72vw);
+    top: auto;
+    z-index: 99999;
+    width: min(240px, calc(100% + 140px));
+    max-width: 240px;
     padding: 10px;
     border: 1px solid #dbeafe;
     border-radius: 12px;
@@ -59,18 +66,22 @@
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translate(-50%, 0) scale(1);
-    transition: none;
+    transform: translate(calc(-50% + var(--bubble-shift-x, 0px)), 0) scale(1);
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    box-sizing: border-box;
 }
 .dashboard-interactive-past .calendar-wrapper .fc .dashboard-date-bubble::after {
     content: '';
     position: absolute;
-    left: 50%;
+    left: var(--bubble-arrow-x, 50%);
     bottom: -6px;
+    top: auto;
     width: 12px;
     height: 12px;
     border-right: 1px solid #dbeafe;
     border-bottom: 1px solid #dbeafe;
+    border-top: 0;
+    border-left: 0;
     background: #ffffff;
     transform: translateX(-50%) rotate(45deg);
 }
@@ -83,46 +94,15 @@
     visibility: visible;
     display: block;
     pointer-events: auto;
-    transform: translate(-50%, 0) scale(1);
+    z-index: 99999;
+    transform: translate(calc(-50% + var(--bubble-shift-x, 0px)), 0) scale(1);
 }
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .dashboard-date-bubble {
-    left: 0;
-    transform: translate(0, 6px) scale(0.98);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .dashboard-date-bubble::after {
-    left: 18px;
-    transform: rotate(45deg);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .day-cell-inner:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .day-cell-inner:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .fc-daygrid-day-frame:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .fc-daygrid-day-frame:focus-within .dashboard-date-bubble {
-    transform: translate(0, 0) scale(1);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .dashboard-date-bubble {
-    left: auto;
-    right: 0;
-    transform: translate(0, 6px) scale(0.98);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .dashboard-date-bubble::after {
-    left: auto;
-    right: 18px;
-    transform: rotate(45deg);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .day-cell-inner:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .day-cell-inner:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .fc-daygrid-day-frame:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .fc-daygrid-day-frame:focus-within .dashboard-date-bubble {
-    transform: translate(0, 0) scale(1);
-}
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .dashboard-date-bubble {
+.dashboard-interactive-past .calendar-wrapper .fc .dashboard-date-bubble.bubble-below {
     top: calc(100% + 10px);
     bottom: auto;
-    transform: translate(-50%, 0) scale(1);
+    z-index: 99999;
 }
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .dashboard-date-bubble::after {
+.dashboard-interactive-past .calendar-wrapper .fc .dashboard-date-bubble.bubble-below::after {
     top: -6px;
     bottom: auto;
     border-top: 1px solid #dbeafe;
@@ -130,28 +110,39 @@
     border-right: 0;
     border-bottom: 0;
 }
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .day-cell-inner:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .day-cell-inner:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-daygrid-day:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-daygrid-day-frame:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-daygrid-day-frame:focus-within .dashboard-date-bubble {
-    transform: translate(-50%, 0) scale(1);
+.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .dashboard-date-bubble {
+    --bubble-shift-x: 75px;
+    --bubble-arrow-x: 20%;
 }
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat .dashboard-date-bubble {
-    transform: translate(0, 0) scale(1);
+.dashboard-interactive-past .calendar-wrapper .fc .fc-day-mon .dashboard-date-bubble {
+    --bubble-shift-x: 40px;
+    --bubble-arrow-x: 33%;
 }
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun .day-cell-inner:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun .day-cell-inner:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun .fc-daygrid-day-frame:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sun .fc-daygrid-day-frame:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat .day-cell-inner:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat .day-cell-inner:focus-within .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat .fc-daygrid-day-frame:hover .dashboard-date-bubble,
-.dashboard-interactive-past .calendar-wrapper .fc .fc-daygrid-body tr:first-child .fc-day-sat .fc-daygrid-day-frame:focus-within .dashboard-date-bubble {
-    transform: translate(0, 0) scale(1);
+.dashboard-interactive-past .calendar-wrapper .fc .fc-day-fri .dashboard-date-bubble {
+    --bubble-shift-x: -40px;
+    --bubble-arrow-x: 67%;
+}
+.dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .dashboard-date-bubble {
+    --bubble-shift-x: -75px;
+    --bubble-arrow-x: 80%;
+}
+@media (max-width: 640px) {
+    .dashboard-interactive-past .calendar-wrapper .fc .fc-day-sun .dashboard-date-bubble {
+        --bubble-shift-x: 85px;
+        --bubble-arrow-x: 15%;
+    }
+    .dashboard-interactive-past .calendar-wrapper .fc .fc-day-mon .dashboard-date-bubble {
+        --bubble-shift-x: 45px;
+        --bubble-arrow-x: 30%;
+    }
+    .dashboard-interactive-past .calendar-wrapper .fc .fc-day-fri .dashboard-date-bubble {
+        --bubble-shift-x: -45px;
+        --bubble-arrow-x: 70%;
+    }
+    .dashboard-interactive-past .calendar-wrapper .fc .fc-day-sat .dashboard-date-bubble {
+        --bubble-shift-x: -85px;
+        --bubble-arrow-x: 85%;
+    }
 }
 .dashboard-interactive-past .calendar-wrapper .fc .bubble-date {
     margin: 0;

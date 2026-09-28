@@ -413,10 +413,59 @@ export default function Dashboard() {
         }
     }, [])
 
-    const showDateDetails = useCallback((dateKey) => {
+    const adjustBubblePosition = useCallback((targetEl) => {
+        if (!targetEl) return
+        const bubbleEl = targetEl.querySelector('.dashboard-date-bubble')
+        if (!bubbleEl) return
+
+        const cardContainer = targetEl.closest('.bg-white') || targetEl.closest('.calendar-wrapper') || document.body
+        const containerRect = cardContainer.getBoundingClientRect()
+        const cellRect = targetEl.getBoundingClientRect()
+
+        const padding = 8
+        const bubbleWidth = Math.min(240, containerRect.width - padding * 2)
+
+        const cellCenterX = cellRect.left + cellRect.width / 2
+
+        const idealLeft = cellCenterX - bubbleWidth / 2
+        const minLeft = containerRect.left + padding
+        const maxLeft = containerRect.right - bubbleWidth - padding
+
+        const clampedLeft = Math.max(minLeft, Math.min(maxLeft, idealLeft))
+        const shiftX = clampedLeft - idealLeft
+
+        const arrowX = `calc(50% - ${shiftX}px)`
+
+        const gridContainer = targetEl.closest('.fc-daygrid-body') || targetEl.closest('.calendar-wrapper') || cardContainer
+        const gridRect = gridContainer.getBoundingClientRect()
+
+        const cellTopInGrid = cellRect.top - gridRect.top
+        const spaceAbove = cellRect.top - containerRect.top
+        const spaceBelow = containerRect.bottom - cellRect.bottom
+
+        // True first row of grid is < 50px from top of calendar body
+        const isTrueFirstRow = cellTopInGrid < 50
+        const isBelow = isTrueFirstRow 
+            ? (spaceBelow >= 160) 
+            : (spaceAbove < 160 && spaceBelow >= 200)
+
+        bubbleEl.style.setProperty('--bubble-shift-x', `${Math.round(shiftX)}px`)
+        bubbleEl.style.setProperty('--bubble-arrow-x', arrowX)
+
+        if (isBelow) {
+            bubbleEl.classList.add('bubble-below')
+        } else {
+            bubbleEl.classList.remove('bubble-below')
+        }
+    }, [])
+
+    const showDateDetails = useCallback((dateKey, targetEl) => {
         clearDetailHoverTimeout()
         setHoveredDate(dateKey)
-    }, [clearDetailHoverTimeout])
+        if (targetEl) {
+            adjustBubblePosition(targetEl)
+        }
+    }, [clearDetailHoverTimeout, adjustBubblePosition])
 
     const hideDateDetails = useCallback((dateKey) => {
         clearDetailHoverTimeout()
@@ -523,10 +572,11 @@ export default function Dashboard() {
         return (
             <div
                 className="day-cell-inner"
-                onMouseEnter={() => showDateDetails(key)}
+                onMouseEnter={(e) => showDateDetails(key, e.currentTarget)}
                 onMouseLeave={() => hideDateDetails(key)}
-                onFocus={() => showDateDetails(key)}
+                onFocus={(e) => showDateDetails(key, e.currentTarget)}
                 onBlur={() => hideDateDetails(key)}
+                onTouchStart={(e) => showDateDetails(key, e.currentTarget)}
                 tabIndex={0}
             >
                 <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
@@ -675,13 +725,13 @@ export default function Dashboard() {
                 </div>
 
                 {/* ── Calendar + Order Tracker ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
 
                     {/* Calendar */}
-                    <div className="lg:col-span-2 reveal-item stagger-1">
-                        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-5 shadow-sm">
+                    <div className="w-full">
+                        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-5 shadow-sm relative overflow-visible">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-3 sm:mb-4">Calendar</h3>
-                            <div className="calendar-wrapper" style={{ padding: 0, boxShadow: 'none', border: 'none' }}>
+                            <div className="calendar-wrapper" style={{ padding: 0, boxShadow: 'none', border: 'none', overflow: 'visible' }}>
                                 <CalendarComponent
                                     dayCellClassNames={dayCellClassNames}
                                     dayCellContent={dayCellContent}
@@ -763,7 +813,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Order Tracker */}
-                    <div className="lg:col-span-3 bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 reveal-item stagger-2">
+                    <div className="w-full bg-white rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs sm:text-sm font-semibold text-gray-800">Order Tracker</h3>
                             <div className="flex items-center gap-2 relative">

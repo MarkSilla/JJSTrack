@@ -12,7 +12,7 @@ JJS Track is a full-stack order, booking, inventory, staff, invoice, chat, and n
 - [Core Features](#core-features)
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
-- [Local Setup](#local-setup))
+- [Local Setup](#local-setup)
 - [Realtime Features](#realtime-features)
 
 ## Project Structure
@@ -192,6 +192,7 @@ Current realtime areas include:
 - Order feed/tracking updates.
 
 The frontend/admin clients derive WebSocket URLs from the configured API base URL. In local development, `http://localhost:4000/api` becomes a matching `ws://localhost:4000/...` socket URL.
+
 
 ## License
 
