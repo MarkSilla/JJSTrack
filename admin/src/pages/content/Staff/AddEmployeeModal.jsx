@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X, Copy } from "lucide-react";
 import { regions, provinces, cities, barangays } from "select-philippines-address";
 
@@ -267,8 +268,8 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm overflow-hidden">
+    return createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden animate-in fade-in duration-200">
             <style>{`
                 @media (max-width: 768px) {
                     #admin-chat-bubble {
@@ -461,7 +462,8 @@ const AddEmployeeModal = ({ employees = [], initialData, onClose, onAdd }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

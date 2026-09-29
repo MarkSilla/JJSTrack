@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Search, Plus, ChevronDown, MoreHorizontal, Eye, Pencil, UserX, Hash, CheckCircle2, XCircle, AlertCircle, Key, Clock, EyeOff, Filter, ArrowDownUp, Activity } from "lucide-react";
 import { toast } from "sonner";
 import StatCard from "./Staff/StatCard";
@@ -957,8 +958,8 @@ const AdStaff = () => {
             )}
             {selectedEmployee && <ProfilePanel emp={selectedEmployee} onClose={() => setSelected(null)} onDeactivate={deactivate} onReactivate={reactivate} onResetPassword={promptResetPassword} />}
 
-            {confirmAction && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            {confirmAction && createPortal(
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="text-[15px] font-bold text-slate-800">{confirmAction.title}</h3>
@@ -1011,11 +1012,12 @@ const AdStaff = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {passwordResetEmp && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            {passwordResetEmp && createPortal(
+                <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="text-[15px] font-bold text-slate-800">Reset Password</h3>
@@ -1076,7 +1078,8 @@ const AdStaff = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

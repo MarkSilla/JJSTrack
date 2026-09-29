@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, Pencil, X, Mail, Phone, MapPin, Calendar, User, Activity, Briefcase, Building2, Star, CheckCircle2, Shield, Clock, KeyRound, UserX, Package, TrendingUp, BadgeCheck, } from "lucide-react";
 
 const Avatar = ({ initials, color, size = 36 }) => (
@@ -58,8 +59,8 @@ const ProfilePanel = ({ emp, onClose, onDeactivate, onReactivate, onResetPasswor
     const tabs = ["Overview", "Performance", "Employment", "System"];
     const [tab, setTab] = useState("Overview");
 
-    return (
-        <div className="fixed inset-0 z-40 flex items-stretch justify-end bg-slate-900/35 backdrop-blur-[2px]">
+    return createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-stretch justify-end bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-xl bg-white flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                     <button onClick={onClose} className="flex items-center gap-2 text-[12px] font-medium text-slate-500 hover:text-slate-800 bg-transparent border-none cursor-pointer transition-colors">
@@ -217,7 +218,8 @@ const ProfilePanel = ({ emp, onClose, onDeactivate, onReactivate, onResetPasswor
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
