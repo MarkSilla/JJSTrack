@@ -176,29 +176,31 @@ function UseItemModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-w-md sm:max-h-[90vh] rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 sm:hidden" />
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-slate-100">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Use Item</h3>
-            <p className="text-sm text-slate-500 mt-0.5">{item.name}</p>
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 shrink-0 bg-white">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">Use Item</h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate">{item.name}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="Close modal"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 sm:py-5 overscroll-contain space-y-4">
           <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">Available Stock</span>
             <span
@@ -366,34 +368,35 @@ function UseItemModal({
               inventory. The system uses the oldest available batch first.
             </p>
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                canSubmit &&
-                onConfirm(item, parsedQty, {
-                  ...usageContext,
-                  note: purposeNote.trim(),
-                })
-              }
-              disabled={!canSubmit}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${canSubmit
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                }`}
-            >
-              {submitting ? "Saving..." : "Confirm Use"}
-            </button>
-          </div>
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60 active:scale-[0.98]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              canSubmit &&
+              onConfirm(item, parsedQty, {
+                ...usageContext,
+                note: purposeNote.trim(),
+              })
+            }
+            disabled={!canSubmit}
+            className={`flex-1 py-2.5 sm:py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] ${canSubmit
+              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              }`}
+          >
+            {submitting ? "Saving..." : "Confirm Use"}
+          </button>
         </div>
       </div>
     </div>

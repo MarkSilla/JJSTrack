@@ -24,6 +24,7 @@ import {
 import { getInventoryUpdatesWebSocketUrl, inventoryApi } from "../../services/inventoryApi"
 import { fmt } from "../../utils/helpers.js"
 import { SkeletonBlock } from "../../components/SkeletonLoaders.jsx"
+import { StatCard } from "../../components/ui"
 
 const SOCKET_RECONNECT_MS = 2500
 const SOCKET_REFRESH_DEBOUNCE_MS = 200
@@ -162,25 +163,7 @@ function getUsageTarget(activity) {
   )
 }
 
-function StatCard({ label, value, sub, icon: Icon, accent, bgAccent }) {
-  return (
-    <div
-      className="bg-white rounded-2xl py-2 px-3 sm:py-2.5 sm:px-3 relative overflow-hidden group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 cursor-default"
-      style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)" }}
-    >
-      <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-[0.07] group-hover:opacity-[0.12] transition-opacity duration-500" style={{ background: accent }} />
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: bgAccent }}>
-          <Icon size={13} color={accent} strokeWidth={2.2} className="sm:hidden" />
-          <Icon size={15} color={accent} strokeWidth={2.2} className="hidden sm:block" />
-        </div>
-        <span className="text-[8px] sm:text-[11px] font-bold sm:font-semibold text-gray-500 leading-tight">{label}</span>
-      </div>
-      <div className="mt-[-4px] text-[12px] sm:text-[14px] font-extrabold text-gray-900 leading-none tracking-tight pl-0 sm:pl-[40px] text-center sm:text-left">{value}</div>
-      <div className="hidden sm:block text-[10px] text-gray-400 mt-0.5 pl-[40px]">{sub}</div>
-    </div>
-  )
-}
+
 
 function ActionBadge({ actionType }) {
   const { label, Icon, badge } = getActionConfig(actionType)
@@ -295,148 +278,192 @@ function DetailModal({ item, onClose }) {
   const { label, Icon, badge, soft } = getActionConfig(item.actionType)
   const batchBreakdown = Array.isArray(item.batchBreakdown) ? item.batchBreakdown : []
 
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-hide-chat-bubble', 'true');
+    style.innerHTML = `
+      @media (max-width: 768px) {
+        #admin-chat-bubble {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style && style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center sm:p-4">
-      <div className="w-full h-full sm:h-auto sm:max-w-5xl sm:max-h-[92vh] bg-white sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-4 py-4 sm:px-5 sm:py-4 border-b border-slate-100 flex items-start justify-between gap-4 shrink-0">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${soft}`}>
-                <Icon size={20} />
+    <div
+      className="fixed inset-0 z-[120] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center sm:p-4"
+      onClick={onClose}
+    >
+      <style>{`
+        @media (max-width: 768px) {
+          #admin-chat-bubble {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div
+        className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-w-5xl sm:max-h-[92vh] bg-white sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-slate-200 flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+          <div className="min-w-0 pr-2">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 ${soft}`}>
+                <Icon size={18} className="sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-lg font-bold text-gray-900 truncate">{item.inventoryName || "Inventory item"}</h2>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate leading-tight">
+                  {item.inventoryName || "Inventory item"}
+                </h2>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1">
+                  <span className="text-[11px] sm:text-xs font-mono text-slate-500 bg-slate-100 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">
                     {item.inventorySku || "N/A"}
                   </span>
-                  <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                  <span className="text-[11px] sm:text-xs text-slate-500 bg-slate-100 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">
                     {item.category || "Uncategorized"}
                   </span>
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${badge}`}>
-                    <Icon size={12} />
+                  <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold ${badge}`}>
+                    <Icon size={11} />
                     {label}
                   </span>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-slate-500">Detailed stock movement and batch usage.</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 sm:mt-1.5 hidden sm:block">Detailed stock movement and batch usage.</p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl text-slate-500 hover:text-red-600 transition-colors flex items-center justify-center shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center shrink-0"
             aria-label="Close movement details"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-5 space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Movement</p>
-                <p className="mt-2 text-base font-bold text-gray-900">{formatMovement(item)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stock Flow</p>
-                <p className="mt-2 text-base font-bold text-gray-900">{getStockFlow(item)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Movement Cost</p>
-                <p className="mt-2 text-base font-bold text-emerald-600">{fmt(item.totalCost || 0)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Recorded At</p>
-                <p className="mt-2 text-base font-bold text-gray-900">{formatDateTime(item.createdAt)}</p>
-              </div>
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Movement</p>
+              <p className="mt-2 text-base font-bold text-gray-900">{formatMovement(item)}</p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Actor</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                    <User size={18} />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{item.performedByName || "System"}</p>
-                    <p className="text-sm text-slate-500 capitalize">{item.performedByRole || "system"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Used For</p>
-                <p className="font-semibold text-gray-900">{getUsageTarget(item) || "No order reference"}</p>
-                {(item.usageContext?.customerName || item.usageContext?.serviceType) && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    {[item.usageContext?.customerName, item.usageContext?.serviceType].filter(Boolean).join(" / ")}
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Notes</p>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {item.note || "No additional note was recorded for this movement."}
-                </p>
-              </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stock Flow</p>
+              <p className="mt-2 text-base font-bold text-gray-900">{getStockFlow(item)}</p>
             </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Stock Batch Breakdown</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {batchBreakdown.length > 0
-                      ? `${batchBreakdown.length} batch record${batchBreakdown.length === 1 ? "" : "s"} tracked`
-                      : "No stock batch impact recorded"}
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                  Total {fmt(item.totalCost || 0)}
-                </span>
-              </div>
-
-              {batchBreakdown.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-slate-400">
-                  No batch breakdown is attached to this activity.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        {["Batch", "Quantity", "Unit Cost", "Line Cost", "Received"].map((heading) => (
-                          <th key={heading} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-4 py-2.5">
-                            {heading}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {batchBreakdown.map((batch, index) => (
-                        <tr key={`${batch.batchCode || "batch"}-${index}`} className="border-b border-slate-50 last:border-0">
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
-                              {batch.batchCode || "N/A"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">
-                            {formatQty(batch.quantity)} {item.unit || ""}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{fmt(batch.unitPrice || 0)}</td>
-                          <td className="px-4 py-3 font-semibold text-emerald-600">{fmt(batch.lineCost || 0)}</td>
-                          <td className="px-4 py-3 text-slate-500">{formatShortDate(batch.receivedAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Movement Cost</p>
+              <p className="mt-2 text-base font-bold text-emerald-600">{fmt(item.totalCost || 0)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Recorded At</p>
+              <p className="mt-2 text-base font-bold text-gray-900">{formatDateTime(item.createdAt)}</p>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Actor</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                  <User size={18} />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">{item.performedByName || "System"}</p>
+                  <p className="text-sm text-slate-500 capitalize">{item.performedByRole || "system"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Used For</p>
+              <p className="font-semibold text-gray-900">{getUsageTarget(item) || "No order reference"}</p>
+              {(item.usageContext?.customerName || item.usageContext?.serviceType) && (
+                <p className="mt-1 text-sm text-slate-500">
+                  {[item.usageContext?.customerName, item.usageContext?.serviceType].filter(Boolean).join(" / ")}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Notes</p>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {item.note || "No additional note was recorded for this movement."}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-gray-900">Stock Batch Breakdown</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {batchBreakdown.length > 0
+                    ? `${batchBreakdown.length} batch record${batchBreakdown.length === 1 ? "" : "s"} tracked`
+                    : "No stock batch impact recorded"}
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                Total {fmt(item.totalCost || 0)}
+              </span>
+            </div>
+
+            {batchBreakdown.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-slate-400">
+                No batch breakdown is attached to this activity.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      {["Batch", "Quantity", "Unit Cost", "Line Cost", "Received"].map((heading) => (
+                        <th key={heading} className="text-left text-xs font-semibold uppercase tracking-wider text-slate-400 px-4 py-2.5">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batchBreakdown.map((batch, index) => (
+                      <tr key={`${batch.batchCode || "batch"}-${index}`} className="border-b border-slate-50 last:border-0">
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 px-2.5 py-1 rounded text-slate-700">
+                            {batch.batchCode || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">
+                          {formatQty(batch.quantity)} {item.unit || ""}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{fmt(batch.unitPrice || 0)}</td>
+                        <td className="px-4 py-3 font-semibold text-emerald-600">{fmt(batch.lineCost || 0)}</td>
+                        <td className="px-4 py-3 text-slate-500">{formatShortDate(batch.receivedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

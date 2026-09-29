@@ -368,6 +368,24 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
   const [showUnitModal, setShowUnitModal] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-hide-chat-bubble', 'true');
+    style.innerHTML = `
+      @media (max-width: 768px) {
+        #admin-chat-bubble {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style && style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    };
+  }, []);
+
   // Check if form has changed from original
   const hasChanges = form.name !== item.name ||
     form.category !== item.category ||
@@ -395,156 +413,194 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
-        <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-md rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-5">
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4 overflow-hidden" onClick={onClose}>
+        <style>{`
+          @media (max-width: 768px) {
+            #admin-chat-bubble {
+              display: none !important;
+            }
+          }
+        `}</style>
+        <div
+          className="bg-white w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-md rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Fixed Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 shrink-0 bg-white">
+            <div className="min-w-0 pr-3">
+              <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">Update Item</h3>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">Edit item details</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close modal"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 sm:py-5 overscroll-contain space-y-4">
             <div>
-              <h3 className="text-lg font-black text-gray-900">Update Item</h3>
-              <p className="text-xs text-slate-400">Edit item details</p>
-            </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={e => set("name", e.target.value)}
-              placeholder="e.g. Sewing Needles"
-              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500" />
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-            <div className="relative">
-              <button
-                ref={categoryButtonRef}
-                onClick={() => {
-                  const next = !showCategoryModal;
-                  if (!next) {
-                    setShowCategoryModal(false);
-                    return;
-                  }
-                  const rect = categoryButtonRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    setCategoryMenuStyle({
-                      position: 'fixed',
-                      top: rect.bottom + window.scrollY + 6,
-                      left: rect.left + window.scrollX,
-                      minWidth: rect.width,
-                      maxHeight: '240px',
-                      overflowY: 'auto',
-                      zIndex: 9999,
-                      backgroundColor: 'white',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '0.75rem',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                    });
-                  }
-                  setShowCategoryModal(true);
-                }}
-                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-              >
-                <span className="truncate">{form.category}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
-              </button>
-              {showCategoryModal && (
-                <div style={categoryMenuStyle}>
-                  {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => {
-                        set("category", c);
-                        setShowCategoryModal(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
-            <div className="relative">
-              <button
-                ref={unitButtonRef}
-                onClick={() => {
-                  const next = !showUnitModal;
-                  if (!next) {
-                    setShowUnitModal(false);
-                    return;
-                  }
-                  const rect = unitButtonRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    setUnitMenuStyle({
-                      position: 'fixed',
-                      top: rect.bottom + window.scrollY + 6,
-                      left: rect.left + window.scrollX,
-                      minWidth: rect.width,
-                      maxHeight: '240px',
-                      overflowY: 'auto',
-                      zIndex: 9999,
-                      backgroundColor: 'white',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '0.75rem',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                    });
-                  }
-                  setShowUnitModal(true);
-                }}
-                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-              >
-                <span className="truncate">{form.unit}</span>
-                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
-              </button>
-              {showUnitModal && (
-                <div style={unitMenuStyle}>
-                  {UNIT_OPTIONS.map(u => (
-                    <button
-                      key={u}
-                      onClick={() => {
-                        set("unit", u);
-                        setShowUnitModal(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                    >
-                      {u}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-2">
-              Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
-              <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
-              Update it from Inventory Settings.
-            </p>
-          </div>
-
-          {fields.filter(f => f.key !== "name").map(f => (
-            <div key={f.key} className="mb-4">
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                {f.label}
-              </label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
               <input
-                type={f.type}
-                value={form[f.key]}
-                onChange={e => set(f.key, e.target.value)}
-                placeholder={f.placeholder}
-                step={f.step || undefined}
-                className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
+                type="text"
+                value={form.name}
+                onChange={e => set("name", e.target.value)}
+                placeholder="e.g. Sewing Needles"
+                className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
+              />
             </div>
-          ))}
 
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button onClick={handleConfirm} disabled={!hasChanges} className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"
-              }`}>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+              <div className="relative">
+                <button
+                  ref={categoryButtonRef}
+                  type="button"
+                  onClick={() => {
+                    const next = !showCategoryModal;
+                    if (!next) {
+                      setShowCategoryModal(false);
+                      return;
+                    }
+                    const rect = categoryButtonRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setCategoryMenuStyle({
+                        position: 'fixed',
+                        top: rect.bottom + window.scrollY + 6,
+                        left: rect.left + window.scrollX,
+                        minWidth: rect.width,
+                        maxHeight: '240px',
+                        overflowY: 'auto',
+                        zIndex: 9999,
+                        backgroundColor: 'white',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '0.75rem',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                      });
+                    }
+                    setShowCategoryModal(true);
+                  }}
+                  className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+                >
+                  <span className="truncate">{form.category}</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+                </button>
+                {showCategoryModal && (
+                  <div style={categoryMenuStyle}>
+                    {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          set("category", c);
+                          setShowCategoryModal(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
+              <div className="relative">
+                <button
+                  ref={unitButtonRef}
+                  type="button"
+                  onClick={() => {
+                    const next = !showUnitModal;
+                    if (!next) {
+                      setShowUnitModal(false);
+                      return;
+                    }
+                    const rect = unitButtonRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      setUnitMenuStyle({
+                        position: 'fixed',
+                        top: rect.bottom + window.scrollY + 6,
+                        left: rect.left + window.scrollX,
+                        minWidth: rect.width,
+                        maxHeight: '240px',
+                        overflowY: 'auto',
+                        zIndex: 9999,
+                        backgroundColor: 'white',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '0.75rem',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                      });
+                    }
+                    setShowUnitModal(true);
+                  }}
+                  className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+                >
+                  <span className="truncate">{form.unit}</span>
+                  <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
+                </button>
+                {showUnitModal && (
+                  <div style={unitMenuStyle}>
+                    {UNIT_OPTIONS.map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => {
+                          set("unit", u);
+                          setShowUnitModal(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">
+                Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
+                <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
+                Update it from Inventory Settings.
+              </p>
+            </div>
+
+            {fields.filter(f => f.key !== "name").map(f => (
+              <div key={f.key}>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  {f.label}
+                </label>
+                <input
+                  type={f.type}
+                  value={form[f.key]}
+                  onChange={e => set(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                  step={f.step || undefined}
+                  className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Fixed Footer */}
+          <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!hasChanges}
+              className={`flex-1 py-2.5 sm:py-2 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors active:scale-[0.98] ${hasChanges ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"}`}
+            >
               <Check size={15} /> Update
             </button>
           </div>
@@ -559,7 +615,7 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
                 <h3 className="text-lg font-black text-gray-900">Confirm Update</h3>
                 <p className="text-sm text-slate-500 mt-1">Are you sure you want to update this item details?</p>
               </div>
-              <button onClick={() => setConfirmModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
+              <button type="button" onClick={() => setConfirmModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-4 mb-6">
@@ -568,8 +624,8 @@ function UpdateModal({ item, settings, onConfirm, onClose }) {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setConfirmModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button onClick={handleConfirmUpdate} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+              <button type="button" onClick={() => setConfirmModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button type="button" onClick={handleConfirmUpdate} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                 <Check size={15} /> Confirm Update
               </button>
             </div>
@@ -590,6 +646,24 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   const [previewError, setPreviewError] = useState("");
   const openBatches = useMemo(() => getSortedBatches(item), [item]);
   const parsedAmount = Number(amount);
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-hide-chat-bubble', 'true');
+    style.innerHTML = `
+      @media (max-width: 768px) {
+        #admin-chat-bubble {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style && style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -662,180 +736,218 @@ function AdjustModal({ item, type: initialType, onConfirm, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-xl rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-
-        <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-4 flex items-start justify-between bg-white px-6 pt-6 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Adjust Stock</h3>
-            <p className="text-sm text-slate-500">{item.name}</p>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4 overflow-hidden" onClick={onClose}>
+      <style>{`
+        @media (max-width: 768px) {
+          #admin-chat-bubble {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div
+        className="bg-white w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-xl rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 shrink-0 bg-white">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">
+              {adjType === "increase" ? "Receive Stocks" : "Use Stocks"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate">{item.name}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="bg-slate-50 rounded-xl px-4 py-3 my-4 flex items-center justify-between">
-          <span className="text-sm text-slate-500">Current Stock</span>
-          <span className="text-xl font-black text-gray-900 tabular-nums">
-            {formatQty(item.stock)}/{formatQty(getMaxStock(item))} <span className="text-sm font-normal text-slate-400">{item.unit}</span>
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
-            <p className="text-lg font-black text-gray-900 mt-1">{getBatchCount(item)}</p>
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 sm:py-5 overscroll-contain space-y-4">
+          <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-slate-500">Current Stock</span>
+            <span className="text-xl font-black text-gray-900 tabular-nums">
+              {formatQty(item.stock)}/{formatQty(getMaxStock(item))} <span className="text-sm font-normal text-slate-400">{item.unit}</span>
+            </span>
           </div>
-          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Avg Cost</p>
-            <p className="text-lg font-black text-gray-900 mt-1">{fmt(getAverageUnitCost(item))}</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
+              <p className="text-lg font-black text-gray-900 mt-1">{getBatchCount(item)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Avg Cost</p>
+              <p className="text-lg font-black text-gray-900 mt-1">{fmt(getAverageUnitCost(item))}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Current Value</p>
+              <p className="text-lg font-black text-gray-900 mt-1">{fmt(getCurrentValue(item))}</p>
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-200 px-4 py-3 bg-white">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Current Value</p>
-            <p className="text-lg font-black text-gray-900 mt-1">{fmt(getCurrentValue(item))}</p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setAdjType("increase")}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all cursor-pointer ${adjType === "increase" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+            >
+              <ArrowUpCircle size={15} /> Receive Batch
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdjType("decrease")}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all cursor-pointer ${adjType === "decrease" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+            >
+              <ArrowDownCircle size={15} /> Use Stock
+            </button>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <button onClick={() => setAdjType("increase")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "increase" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-500"}`}>
-            <ArrowUpCircle size={15} /> Receive Batch
-          </button>
-          <button onClick={() => setAdjType("decrease")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm border-2 transition-all ${adjType === "decrease" ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-500"}`}>
-            <ArrowDownCircle size={15} /> Use Stock
-          </button>
-        </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="Enter amount…"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none"
+            />
+          </div>
 
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
-          <input type="number" min="1" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
-            placeholder="Enter amount…"
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none" />
-        </div>
+          {adjType === "increase" ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Batch Cost per Unit</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={unitPrice}
+                    onChange={e => setUnitPrice(e.target.value)}
+                    placeholder="e.g. 120.00"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
+                  <input
+                    type="date"
+                    value={receivedAt}
+                    onChange={e => setReceivedAt(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium"
+                  />
+                </div>
+              </div>
 
-        {adjType === "increase" ? (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                <p className="text-sm font-bold text-gray-900 mb-1">New stock batch</p>
+                <p className="text-sm text-slate-600">
+                  This stock will be stored as a separate batch and will not merge with older stock.
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <p className="text-sm font-bold text-gray-900 mb-1">Stock usage</p>
+                <p className="text-sm text-slate-600">
+                  The system uses the oldest available batch first for quality control and accurate costing.
+                </p>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Batch Cost per Unit</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={unitPrice}
-                  onChange={e => setUnitPrice(e.target.value)}
-                  placeholder="e.g. 120.00"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium appearance-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
-                <input
-                  type="date"
-                  value={receivedAt}
-                  onChange={e => setReceivedAt(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 transition-colors font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-5">
-              <p className="text-sm font-bold text-gray-900 mb-1">New stock batch</p>
-              <p className="text-sm text-slate-600">
-                This stock will be stored as a separate batch and will not merge with older stock.
-              </p>
-            </div>
-          </>
-        ) : (
-          <div className="space-y-4 mb-5">
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <p className="text-sm font-bold text-gray-900 mb-1">Stock usage</p>
-              <p className="text-sm text-slate-600">
-                The system uses the oldest available batch first for quality control and accurate costing.
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
-                <span className="text-xs text-slate-400">{openBatches.length} active</span>
-              </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {openBatches.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">
-                    No active batches.
-                  </div>
-                ) : openBatches.map(batch => (
-                  <div key={batch.id || batch.batchId} className="rounded-xl border border-slate-200 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{batch.batchCode}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Received {formatShortDate(batch.receivedAt)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-slate-800">{formatQty(batch.quantity)} {item.unit}</p>
-                        <p className="text-xs text-slate-400">{fmt(batch.unitPrice || 0)}/unit</p>
-                      </div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Open Batches</p>
+                  <span className="text-xs text-slate-400">{openBatches.length} active</span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {openBatches.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">
+                      No active batches.
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stock Usage Preview</p>
-                {fifoPreview?.totalCost > 0 && (
-                  <span className="text-xs font-semibold text-slate-500">Cost {fmt(fifoPreview.totalCost)}</span>
-                )}
-              </div>
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                {previewLoading ? (
-                  <div className="px-4 py-4 text-sm text-slate-400">Checking stock usage...</div>
-                ) : previewError ? (
-                  <div className="px-4 py-4 text-sm text-red-500">{previewError}</div>
-                ) : !parsedAmount ? (
-                  <div className="px-4 py-4 text-sm text-slate-400">Enter a quantity to preview which batches will be used.</div>
-                ) : !fifoPreview?.breakdown?.length ? (
-                  <div className="px-4 py-4 text-sm text-slate-400">No eligible batch found for this deduction.</div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {fifoPreview.breakdown.map(entry => (
-                      <div key={entry.batchId} className="px-4 py-3 flex items-center justify-between gap-3">
+                  ) : openBatches.map(batch => (
+                    <div key={batch.id || batch.batchId} className="rounded-xl border border-slate-200 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-bold text-gray-900">{entry.batchCode}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {formatShortDate(entry.receivedAt)} • {fmt(entry.unitPrice || 0)}/unit
-                          </p>
+                          <p className="text-sm font-bold text-gray-900">{batch.batchCode}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Received {formatShortDate(batch.receivedAt)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-red-600">-{formatQty(entry.willUse)} {item.unit}</p>
-                          <p className="text-xs text-slate-400">{fmt(entry.lineCost || 0)}</p>
+                          <p className="text-sm font-bold text-slate-800">{formatQty(batch.quantity)} {item.unit}</p>
+                          <p className="text-xs text-slate-400">{fmt(batch.unitPrice || 0)}/unit</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stock Usage Preview</p>
+                  {fifoPreview?.totalCost > 0 && (
+                    <span className="text-xs font-semibold text-slate-500">Cost {fmt(fifoPreview.totalCost)}</span>
+                  )}
+                </div>
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  {previewLoading ? (
+                    <div className="px-4 py-4 text-sm text-slate-400">Checking stock usage...</div>
+                  ) : previewError ? (
+                    <div className="px-4 py-4 text-sm text-red-500">{previewError}</div>
+                  ) : !parsedAmount ? (
+                    <div className="px-4 py-4 text-sm text-slate-400">Enter a quantity to preview which batches will be used.</div>
+                  ) : !fifoPreview?.breakdown?.length ? (
+                    <div className="px-4 py-4 text-sm text-slate-400">No eligible batch found for this deduction.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {fifoPreview.breakdown.map(entry => (
+                        <div key={entry.batchId} className="px-4 py-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{entry.batchCode}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {formatShortDate(entry.receivedAt)} • {fmt(entry.unitPrice || 0)}/unit
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-red-600">-{formatQty(entry.willUse)} {item.unit}</p>
+                            <p className="text-xs text-slate-400">{fmt(entry.lineCost || 0)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {fifoPreview && !fifoPreview.canFulfill && (
+                  <p className="text-xs font-medium text-red-500 mt-2">
+                    Short by {formatQty(fifoPreview.shortfall)} {item.unit}.
+                  </p>
                 )}
               </div>
-              {fifoPreview && !fifoPreview.canFulfill && (
-                <p className="text-xs font-medium text-red-500 mt-2">
-                  Short by {formatQty(fifoPreview.shortfall)} {item.unit}.
-                </p>
-              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex gap-3 border-t border-slate-100 bg-white px-6 pt-3 pb-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+          >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill}
-            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
+            className={`flex-1 py-2.5 sm:py-2 rounded-xl text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] ${adjType === "decrease" && fifoPreview && !fifoPreview.canFulfill
               ? "bg-slate-300 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700"
               }`}
@@ -956,6 +1068,24 @@ function AddItemModal({ settings, onConfirm, onClose }) {
     Number.isNaN(unitPriceValue) ||
     unitPriceValue < 0;
 
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-hide-chat-bubble', 'true');
+    style.innerHTML = `
+      @media (max-width: 768px) {
+        #admin-chat-bubble {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style && style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    };
+  }, []);
+
   const handleConfirm = () => {
     if (!form.name.trim()) return;
     const stockValue = Number(form.stock) || 0;
@@ -989,168 +1119,203 @@ function AddItemModal({ settings, onConfirm, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-w-md rounded-none sm:rounded-2xl p-6 shadow-xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Add Item / Receive Batch</h3>
-            <p className="text-xs text-slate-400">Create a new item or add a new stock batch to an existing one</p>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-0 sm:p-4 overflow-hidden" onClick={onClose}>
+      <style>{`
+        @media (max-width: 768px) {
+          #admin-chat-bubble {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div
+        className="bg-white w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-md rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 shrink-0 bg-white">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">Add Item / Receive Batch</h3>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">Create a new item or add a new stock batch to an existing one</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1"><X size={18} /></button>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={e => set("name", e.target.value)}
-            placeholder="e.g. Sewing Needles"
-            className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500" />
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
-          <div className="relative">
-            <button
-              ref={categoryButtonRef}
-              onClick={() => {
-                const next = !showCategoryModal;
-                if (!next) {
-                  setShowCategoryModal(false);
-                  return;
-                }
-                const rect = categoryButtonRef.current?.getBoundingClientRect();
-                if (rect) {
-                  setCategoryMenuStyle({
-                    position: 'fixed',
-                    top: rect.bottom + window.scrollY + 6,
-                    left: rect.left + window.scrollX,
-                    minWidth: rect.width,
-                    maxHeight: '240px',
-                    overflowY: 'auto',
-                    zIndex: 9999,
-                    backgroundColor: 'white',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                  });
-                }
-                setShowCategoryModal(true);
-              }}
-              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-            >
-              <span className="truncate">{form.category}</span>
-              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
-            </button>
-            {showCategoryModal && (
-              <div style={categoryMenuStyle}>
-                {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
-                  <button
-                    key={c}
-                    onClick={() => {
-                      set("category", c);
-                      setShowCategoryModal(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
-          <div className="relative">
-            <button
-              ref={unitButtonRef}
-              onClick={() => {
-                const next = !showUnitModal;
-                if (!next) {
-                  setShowUnitModal(false);
-                  return;
-                }
-                const rect = unitButtonRef.current?.getBoundingClientRect();
-                if (rect) {
-                  setUnitMenuStyle({
-                    position: 'fixed',
-                    top: rect.bottom + window.scrollY + 6,
-                    left: rect.left + window.scrollX,
-                    minWidth: rect.width,
-                    maxHeight: '240px',
-                    overflowY: 'auto',
-                    zIndex: 9999,
-                    backgroundColor: 'white',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                  });
-                }
-                setShowUnitModal(true);
-              }}
-              className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
-            >
-              <span className="truncate">{form.unit}</span>
-              <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
-            </button>
-            {showUnitModal && (
-              <div style={unitMenuStyle}>
-                {UNIT_OPTIONS.map(u => (
-                  <button
-                    key={u}
-                    onClick={() => {
-                      set("unit", u);
-                      setShowUnitModal(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2">
-            Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
-            <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
-            Change it from Inventory Settings.
-          </p>
-        </div>
-
-        {fields.filter(f => f.key !== "name").map(f => (
-          <div key={f.key} className="mb-4">
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              {f.label}
-            </label>
-            <input
-              type={f.type}
-              value={form[f.key]}
-              onChange={e => set(f.key, e.target.value)}
-              placeholder={f.placeholder}
-              step={f.step || undefined}
-              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`} />
-          </div>
-        ))}
-
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
-          <input
-            type="date"
-            value={form.receivedAt}
-            onChange={e => set("receivedAt", e.target.value)}
-            className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
-          />
-        </div>
-
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
           <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 sm:py-5 overscroll-contain space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Item Name</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={e => set("name", e.target.value)}
+              placeholder="e.g. Sewing Needles"
+              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Category</label>
+            <div className="relative">
+              <button
+                ref={categoryButtonRef}
+                type="button"
+                onClick={() => {
+                  const next = !showCategoryModal;
+                  if (!next) {
+                    setShowCategoryModal(false);
+                    return;
+                  }
+                  const rect = categoryButtonRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setCategoryMenuStyle({
+                      position: 'fixed',
+                      top: rect.bottom + window.scrollY + 6,
+                      left: rect.left + window.scrollX,
+                      minWidth: rect.width,
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                      zIndex: 9999,
+                      backgroundColor: 'white',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                    });
+                  }
+                  setShowCategoryModal(true);
+                }}
+                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.category}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showCategoryModal ? 'rotate-180' : ''}`} />
+              </button>
+              {showCategoryModal && (
+                <div style={categoryMenuStyle}>
+                  {["Sewing", "Fabric", "Fastener", "Tool", "Notions"].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        set("category", c);
+                        setShowCategoryModal(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.category === c ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Unit</label>
+            <div className="relative">
+              <button
+                ref={unitButtonRef}
+                type="button"
+                onClick={() => {
+                  const next = !showUnitModal;
+                  if (!next) {
+                    setShowUnitModal(false);
+                    return;
+                  }
+                  const rect = unitButtonRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setUnitMenuStyle({
+                      position: 'fixed',
+                      top: rect.bottom + window.scrollY + 6,
+                      left: rect.left + window.scrollX,
+                      minWidth: rect.width,
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                      zIndex: 9999,
+                      backgroundColor: 'white',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                    });
+                  }
+                  setShowUnitModal(true);
+                }}
+                className="flex items-center gap-1.5 pl-3 pr-3 py-2.5 w-full rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-600 transition-all cursor-pointer justify-between"
+              >
+                <span className="truncate">{form.unit}</span>
+                <ChevronDown size={12} className={`text-slate-400 transition-transform ${showUnitModal ? 'rotate-180' : ''}`} />
+              </button>
+              {showUnitModal && (
+                <div style={unitMenuStyle}>
+                  {UNIT_OPTIONS.map(u => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => {
+                        set("unit", u);
+                        setShowUnitModal(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-all duration-200 cursor-pointer border-none hover:bg-slate-50 hover:shadow-sm ${form.unit === u ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-800'}`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2">
+              Low stock alert for <span className="font-semibold text-slate-600">{form.unit}</span> is set to{" "}
+              <span className="font-semibold text-blue-600">{getUnitMinStock(settings, form.unit)}</span>.
+              Change it from Inventory Settings.
+            </p>
+          </div>
+
+          {fields.filter(f => f.key !== "name").map(f => (
+            <div key={f.key}>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                {f.label}
+              </label>
+              <input
+                type={f.type}
+                value={form[f.key]}
+                onChange={e => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                step={f.step || undefined}
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors ${f.type === "number" ? "appearance-none" : ""} border-slate-200 focus:border-blue-500`}
+              />
+            </div>
+          ))}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Received Date</label>
+            <input
+              type="date"
+              value={form.receivedAt}
+              onChange={e => set("receivedAt", e.target.value)}
+              className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex gap-2.5 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
             onClick={handleConfirm}
             disabled={isSaveDisabled}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${isSaveDisabled
+            className={`flex-1 py-2.5 sm:py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 active:scale-[0.98] ${isSaveDisabled
               ? "bg-slate-200 text-slate-400 cursor-not-allowed"
               : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
@@ -1170,6 +1335,24 @@ function InventorySettingsModal({ settings, onConfirm, onClose, saving }) {
     yards: normalizedSettings.thresholds.yards,
     meters: normalizedSettings.thresholds.meters,
   });
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-hide-chat-bubble', 'true');
+    style.innerHTML = `
+      @media (max-width: 768px) {
+        #admin-chat-bubble {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style && style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const nextSettings = normalizeInventorySettings(settings);
@@ -1200,69 +1383,90 @@ function InventorySettingsModal({ settings, onConfirm, onClose, saving }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-[70] sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5 sm:hidden" />
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-black text-gray-900">Low Stock Settings</h3>
-            <p className="text-xs text-slate-400">Set the alert threshold by unit. These values will be used across the whole inventory.</p>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[70] p-0 sm:p-4 overflow-hidden" onClick={onClose}>
+      <style>{`
+        @media (max-width: 768px) {
+          #admin-chat-bubble {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div
+        className="bg-white w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-xl rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 shrink-0 bg-white">
+          <div className="min-w-0 pr-3">
+            <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">Low Stock Settings</h3>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">Set the alert threshold by unit. These values will be used across the whole inventory.</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-          {LOW_STOCK_SETTING_UNITS.map((unit) => (
-            <div key={unit.key} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div>
-                  <p className="text-xs font-black tracking-[0.18em] text-slate-500">{unit.label}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">{unit.helper}</p>
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 sm:py-5 overscroll-contain space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {LOW_STOCK_SETTING_UNITS.map((unit) => (
+              <div key={unit.key} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-xs font-black tracking-[0.18em] text-slate-500">{unit.label}</p>
+                    <p className="text-[11px] text-slate-400 mt-1">{unit.helper}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Settings size={16} />
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Settings size={16} />
-                </div>
+
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Minimum stock before low alert
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={form[unit.key]}
+                  onChange={(event) => setThreshold(unit.key, event.target.value)}
+                  className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500 bg-white"
+                />
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Low stock will trigger when available stock is below this value.
+                </p>
               </div>
+            ))}
+          </div>
 
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Minimum stock before low alert
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={form[unit.key]}
-                onChange={(event) => setThreshold(unit.key, event.target.value)}
-                className="w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors border-slate-200 focus:border-blue-500 bg-white"
-              />
-              <p className="text-[11px] text-slate-400 mt-2">
-                Low stock will trigger when available stock is below this value.
-              </p>
-            </div>
-          ))}
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-semibold text-blue-900">Applies to all inventory items with the same unit</p>
+            <p className="text-xs text-blue-700 mt-1">
+              Add New Stock will no longer ask for minimum stock. The alert threshold now follows the unit setting automatically.
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 mb-5">
-          <p className="text-sm font-semibold text-blue-900">Applies to all inventory items with the same unit</p>
-          <p className="text-xs text-blue-700 mt-1">
-            Add New Stock will no longer ask for minimum stock. The alert threshold now follows the unit setting automatically.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex gap-2.5 sm:gap-3">
           <button
+            type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
+            className="flex-1 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60 active:scale-[0.98]"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:bg-blue-400"
+            className="flex-1 py-2.5 sm:py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:bg-blue-400 active:scale-[0.98]"
           >
             <Check size={15} />
             {saving ? "Saving..." : "Save Settings"}

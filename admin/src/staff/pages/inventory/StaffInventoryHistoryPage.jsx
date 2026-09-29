@@ -82,23 +82,33 @@ function DetailModal({ activity, onClose }) {
     : [];
 
   return (
-    <div className="font-inter fixed inset-0 z-[10020] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl max-h-[92vh] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black text-gray-900">{activity.inventoryName || "Inventory item"}</h2>
-            <p className="text-sm text-slate-500 mt-1">Stock usage details and batch records.</p>
+    <div
+      className="font-inter fixed inset-0 z-[10020] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-w-3xl sm:max-h-[92vh] bg-white sm:rounded-2xl shadow-2xl overflow-hidden border-0 sm:border border-slate-200 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex items-center justify-between gap-4 shrink-0 bg-white">
+          <div className="min-w-0 pr-2">
+            <h2 className="text-base sm:text-lg font-black text-gray-900 truncate leading-tight">
+              {activity.inventoryName || "Inventory item"}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Stock usage details and batch records.</p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center shrink-0"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center shrink-0"
             aria-label="Close details"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(92vh-81px)]">
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 p-4 sm:p-5 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Movement</p>
@@ -130,7 +140,7 @@ function DetailModal({ activity, onClose }) {
               <div className="px-4 py-8 text-center text-sm text-slate-400">No batch breakdown is attached.</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[400px]">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       {["Batch", "Quantity", "Unit Cost", "Line Cost"].map((heading) => (
@@ -154,6 +164,17 @@ function DetailModal({ activity, onClose }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-6 py-3 sm:py-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
