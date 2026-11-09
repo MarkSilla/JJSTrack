@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useContext, useEffect, useState } from 'react'
+﻿import React, { Suspense, lazy, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import LandingNavbar from '../components/LandingNavbar'
@@ -7,6 +7,7 @@ import { AuthContext } from '../context/Context'
 import { RouteSkeleton } from '../components/SkeletonLoaders'
 import { ArrowRight, ClipboardList, Clock, Download, Eye, Mail, MapPin, Navigation, Package, Phone, Ruler, Users } from 'lucide-react'
 import { pageViewApi } from '../../services/pageViewApi.js'
+import { useCookieConsent } from '../context/CookieConsentContext'
 import shop from '../assets/shop_result.png'
 import jjsLogo from '../assets/jjs_result.png'
 import panorama from '../assets/panoramajjs_result.webp'
@@ -31,6 +32,7 @@ const LandingPage = () => {
     return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator?.standalone === true
   })
   const { loading } = useContext(AuthContext)
+  const { analyticsAllowed } = useCookieConsent()
   const navigate = useNavigate()
   const [pageViews, setPageViews] = useState(null)
 
@@ -40,13 +42,21 @@ const LandingPage = () => {
       try {
         const hasViewedInSession = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('jjstrack_landing_viewed')
         let res
+        // Always fetch the current count for display purposes (read-only, not tracking)
+        // Only record a new view if analytics cookies are allowed
         if (hasViewedInSession) {
           res = await pageViewApi.getPageViewCount()
         } else {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('jjstrack_landing_viewed', '1')
+          if (analyticsAllowed) {
+            // User has consented to analytics — record the visit
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.setItem('jjstrack_landing_viewed', '1')
+            }
+            res = await pageViewApi.recordPageView()
+          } else {
+            // No analytics consent — only fetch the count, do not record
+            res = await pageViewApi.getPageViewCount()
           }
-          res = await pageViewApi.recordPageView()
         }
 
         if (isMounted && res?.success && typeof res.count === 'number') {
@@ -65,7 +75,7 @@ const LandingPage = () => {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [analyticsAllowed])
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event) => {

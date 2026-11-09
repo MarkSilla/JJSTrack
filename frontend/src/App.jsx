@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useContext } from 'react'
+﻿import React, { Suspense, lazy, useContext } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Context, { AuthContext } from './context/Context'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -13,6 +13,9 @@ import {
   ProfileSkeleton,
   InvoicesSkeleton
 } from './components/SkeletonLoaders'
+import { CookieConsentProvider } from './context/CookieConsentContext'
+import CookieConsentBanner from './components/CookieConsentBanner'
+import CookieSettingsModal from './components/CookieSettingsModal'
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const SignupPage = lazy(() => import('./pages/SignupPage'))
@@ -136,9 +139,13 @@ const AppContent = () => {
 
 const App = () => {
   return (
-    <Context>
-      <AppContent />
-    </Context>
+    <CookieConsentProvider>
+      <Context>
+        <AppContent />
+        <CookieConsentBanner />
+        <CookieSettingsModal />
+      </Context>
+    </CookieConsentProvider>
   )
 }
 

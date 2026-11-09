@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { Facebook, Instagram, Mail, MapPin, Phone } from 'lucide-react'
 import jjsLogo from '../assets/jjs_result.png'
+import { useCookieConsent } from '../context/CookieConsentContext'
 
 const Footer = () => {
   const [activeLegalDoc, setActiveLegalDoc] = useState(null)
+  const { openSettings } = useCookieConsent()
 
   const legalDocuments = {
     privacy: {
@@ -109,6 +111,17 @@ const Footer = () => {
                     className="hover:text-blue-400 cursor-pointer"
                   >
                     Terms of Use
+                  </button>
+                </li>
+                <li aria-hidden="true" className="text-gray-500">|</li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={openSettings}
+                    className="hover:text-blue-400 cursor-pointer"
+                    aria-label="Manage cookie preferences"
+                  >
+                    Cookie Settings
                   </button>
                 </li>
               </ul>
