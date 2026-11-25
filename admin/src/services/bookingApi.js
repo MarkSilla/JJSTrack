@@ -31,7 +31,6 @@ export const bookingApi = {
       throw error;
     }
   },
-
   getBookingById: async (id) => {
     try {
       const response = await api.get(`/bookings/${id}`);

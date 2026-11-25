@@ -41,6 +41,21 @@ export const bookingApi = {
     const response = await api.patch(`/bookings/${id}/step/${stepIndex}`, stepData);
     return response.data;
   },
+
+  getBookingQR: async (id) => {
+    const response = await api.get(`/bookings/${id}/qr`);
+    return response.data;
+  },
+
+  markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes, releasedBy) => {
+    const response = await api.post('/bookings/qr/pickup', {
+      bookingId,
+      releaseProofImage,
+      releaseNotes,
+      releasedBy,
+    });
+    return response.data;
+  },
 };
 
 export default bookingApi;
