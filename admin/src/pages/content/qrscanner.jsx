@@ -401,9 +401,21 @@ export default function QRScanner() {
                     order = extractScannedRecord(r);
                 } catch (e) {
                     const status = e.response?.status;
-                    if (status === 401 || status === 403) {
+                    if (status === 404) {
+                        try {
+                            const fallback = await activeOrderApi.getOrderById(scannedId);
+                            order = extractScannedRecord(fallback);
+                        } catch (fallbackErr) {
+                            const fallbackStatus = fallbackErr.response?.status;
+                            if (fallbackStatus === 401 || fallbackStatus === 403) {
+                                authErrorMessage = fallbackErr.response?.data?.message || 'Session unauthorized. Please sign in again.';
+                            } else if (fallbackStatus && fallbackStatus !== 404) {
+                                console.error('Order lookup fallback failed:', fallbackErr);
+                            }
+                        }
+                    } else if (status === 401 || status === 403) {
                         authErrorMessage = e.response?.data?.message || 'Session unauthorized. Please sign in again.';
-                    } else if (status && status !== 404) {
+                    } else if (status) {
                         console.error('Order lookup failed:', e);
                     }
                 }
@@ -419,9 +431,25 @@ export default function QRScanner() {
                     }
                 } catch (err) {
                     const status = err.response?.status;
-                    if (status === 401 || status === 403) {
+                    if (status === 404) {
+                        try {
+                            const fallback = await activeBookingApi.getBookingById(scannedId);
+                            const booking = extractScannedRecord(fallback);
+                            if (booking) {
+                                order = booking;
+                                isBooking = true;
+                            }
+                        } catch (fallbackErr) {
+                            const fallbackStatus = fallbackErr.response?.status;
+                            if (fallbackStatus === 401 || fallbackStatus === 403) {
+                                authErrorMessage = fallbackErr.response?.data?.message || 'Session unauthorized. Please sign in again.';
+                            } else if (fallbackStatus && fallbackStatus !== 404) {
+                                console.error('Booking lookup fallback failed:', fallbackErr);
+                            }
+                        }
+                    } else if (status === 401 || status === 403) {
                         authErrorMessage = err.response?.data?.message || 'Session unauthorized. Please sign in again.';
-                    } else if (status && status !== 404) {
+                    } else if (status) {
                         console.error('Booking lookup failed:', err);
                     }
                 }
