@@ -27,9 +27,7 @@ export const StaffAuthProvider = ({ children }) => {
       const data = await response.json().catch(() => null)
 
       if (!response.ok || !data?.success || !data?.staff) {
-        const error = new Error(data?.message || 'Failed to fetch staff session')
-        error.status = response.status
-        throw error
+        throw new Error(data?.message || 'Failed to fetch staff session')
       }
 
       return data.staff
@@ -65,7 +63,7 @@ export const StaffAuthProvider = ({ children }) => {
           } catch (sessionError) {
             console.error('Error hydrating staff session:', sessionError)
 
-            if (sessionError?.status === 401 || !nextStaffUser) {
+            if (!nextStaffUser) {
               clearStoredStaffSession()
               if (!isMounted) return
               setIsAuthenticated(false)

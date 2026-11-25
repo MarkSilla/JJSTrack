@@ -118,16 +118,6 @@ export const orderApi = {
     }
   },
 
-  getOrderForQRScan: async (id) => {
-    try {
-      const response = await api.get(`/orders/qr/${encodeURIComponent(id)}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching order for QR scan:', error);
-      throw error;
-    }
-  },
-
   markAsReleased: async (orderId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
       const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes, releasedBy });

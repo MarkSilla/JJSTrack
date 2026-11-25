@@ -10,10 +10,9 @@ import {
   assignEmployee,
   markAsReleased,
   getOrderQR,
-  getOrderForQRScan,
   generateMissingQRCodes,
 } from '../controllers/orderController.js';
-import { authMiddleware, adminMiddleware, staffMiddleware } from '../middleware/auth.js';
+import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -29,8 +28,7 @@ router.put('/:id/steps', authMiddleware, updateOrderSteps);
 router.put('/:id/assign', authMiddleware, assignEmployee);
 router.get('/:id/qr', authMiddleware, getOrderQR);
 
-// QR code scanning - lookup and mark order as released
-router.get('/qr/:id', authMiddleware, staffMiddleware, getOrderForQRScan);
+// QR code scanning - mark order as released
 router.post('/qr/release', authMiddleware, markAsReleased);
 
 // Admin only - generate missing QR codes

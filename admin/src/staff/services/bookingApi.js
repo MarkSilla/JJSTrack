@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/apiBaseUrl';
-import { clearStoredStaffSession, getStoredStaffToken } from '../utils/staffSession';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,23 +9,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = getStoredStaffToken();
+  const token = localStorage.getItem('staffToken') || sessionStorage.getItem('staffToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error?.response?.status === 401 && getStoredStaffToken()) {
-      clearStoredStaffSession();
-      window.dispatchEvent(new Event('staff-auth-changed'));
-    }
-    return Promise.reject(error);
-  }
-);
 
 export const bookingApi = {
   getAllBookings: async () => {
@@ -36,16 +24,6 @@ export const bookingApi = {
 
   getBookingById: async (id) => {
     const response = await api.get(`/bookings/${id}`);
-    return response.data;
-  },
-
-  getBookingForQRScan: async (id) => {
-    const response = await api.get(`/bookings/qr/${encodeURIComponent(id)}`);
-    return response.data;
-  },
-
-  markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes, releasedBy) => {
-    const response = await api.post('/bookings/qr/pickup', { bookingId, releaseProofImage, releaseNotes, releasedBy });
     return response.data;
   },
 

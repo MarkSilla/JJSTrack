@@ -2354,38 +2354,6 @@ const generateBookingQR = async (bookingId) => {
   }
 };
 
-// Lookup booking for QR scanner (any authenticated staff or admin)
-export const getBookingForQRScan = async (req, res) => {
-  try {
-    const rawId = String(req.params?.id || '').trim();
-    if (!rawId) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
-    }
-
-    const lookupQuery = mongoose.Types.ObjectId.isValid(rawId)
-      ? { $or: [{ _id: rawId }, { bookingId: rawId }] }
-      : { bookingId: rawId };
-
-    const booking = await bookingModel
-      .findOne(lookupQuery)
-      .populate('userId', 'fullName email phoneNumber');
-
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
-    }
-
-    await ensureBookingId(booking);
-
-    res.json({
-      success: true,
-      booking: serializeBookingWithWorkflowStatus(booking),
-    });
-  } catch (error) {
-    console.error('Get Booking For QR Scan Error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch booking for QR scan' });
-  }
-};
-
 // Get QR code for a booking
 export const getBookingQR = async (req, res) => {
   try {
@@ -2419,16 +2387,8 @@ export const getBookingQR = async (req, res) => {
 export const markAsPickedUp = async (req, res) => {
   try {
     const { bookingId, releaseProofImage, releaseNotes, releasedBy: releasedByFromClient } = req.body;
-    const rawId = String(bookingId || '').trim();
-    if (!rawId) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
-    }
 
-    const lookupQuery = mongoose.Types.ObjectId.isValid(rawId)
-      ? { $or: [{ _id: rawId }, { bookingId: rawId }] }
-      : { bookingId: rawId };
-
-    const booking = await bookingModel.findOne(lookupQuery);
+    const booking = await bookingModel.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }

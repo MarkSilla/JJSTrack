@@ -102,16 +102,6 @@ export const bookingApi = {
     }
   },
 
-  getBookingForQRScan: async (id) => {
-    try {
-      const response = await api.get(`/bookings/qr/${encodeURIComponent(id)}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching booking for QR scan:', error);
-      throw error;
-    }
-  },
-
   markAsPickedUp: async (bookingId, releaseProofImage, releaseNotes, releasedBy) => {
     try {
       const response = await api.post('/bookings/qr/pickup', { bookingId, releaseProofImage, releaseNotes, releasedBy });
