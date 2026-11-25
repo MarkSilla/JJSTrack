@@ -1,37 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Html5QrcodeScanner, Html5QrcodeScanType, Html5Qrcode } from 'html5-qrcode';
+import { useLocation } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 import {
     QrCode, CheckCircle2, AlertCircle, AlertTriangle, X,
     PackageCheck, Loader,
     User, Wrench, CalendarDays, Hash,
     Camera, Info, ChevronDown, ChevronUp,
-    ImageUp, ScanQrCode, Sun, RefreshCw
+    ImageUp, Sun, RefreshCw
 } from 'lucide-react';
-import { orderApi } from '../../services/orderApi';
-import { bookingApi } from '../../services/bookingApi';
+import { orderApi as adminOrderApi } from '../../services/orderApi';
+import { bookingApi as adminBookingApi } from '../../services/bookingApi';
+import { orderApi as staffOrderApi } from '../../staff/services/orderApi';
+import { bookingApi as staffBookingApi } from '../../staff/services/bookingApi';
 import { toast } from 'sonner';
-const getLoggedInUserName = () => {
-    try {
-        const staffUser = localStorage.getItem('staffUser') || sessionStorage.getItem('staffUser');
-        if (staffUser) {
-            const parsed = JSON.parse(staffUser);
-            const name = parsed?.fullName ||
-                [parsed?.firstName, parsed?.lastName].filter(Boolean).join(' ').trim();
-            if (name) return name;
-        }
-    } catch { }
-    try {
-        const adminUser = localStorage.getItem('adminUser');
-        if (adminUser) {
-            const parsed = JSON.parse(adminUser);
-            const name = parsed?.fullName || parsed?.name;
-            if (name) return name;
-            if (parsed?.role === 'admin') return 'Admin';
-        }
-    } catch { }
 
-    return 'Staff/Admin';
+const getLoggedInUserName = (isStaffRoute = false) => {
+    const readStaffName = () => {
+        try {
+            const staffUser = localStorage.getItem('staffUser') || sessionStorage.getItem('staffUser');
+            if (staffUser) {
+                const parsed = JSON.parse(staffUser);
+                const name = parsed?.fullName ||
+                    [parsed?.firstName, parsed?.lastName].filter(Boolean).join(' ').trim();
+                if (name) return name;
+            }
+        } catch { }
+        return '';
+    };
+
+    const readAdminName = () => {
+        try {
+            const adminUser = localStorage.getItem('adminUser');
+            if (adminUser) {
+                const parsed = JSON.parse(adminUser);
+                const name = parsed?.fullName || parsed?.name;
+                if (name) return name;
+                if (parsed?.role === 'admin') return 'Admin';
+            }
+        } catch { }
+        return '';
+    };
+
+    if (isStaffRoute) {
+        return readStaffName() || readAdminName() || 'Staff';
+    }
+    return readAdminName() || readStaffName() || 'Admin';
 };
 
 const STYLES = `
@@ -209,7 +222,11 @@ const getSuccessMessage = (isBooking = false) =>
     isBooking ? 'Item marked as picked up and payment recorded.' : 'Item released and payment recorded.';
 
 export default function QRScanner() {
-    const navigate = useNavigate();
+    const location = useLocation();
+    const isStaffRoute = location.pathname.startsWith('/staff');
+    const activeOrderApi = isStaffRoute ? staffOrderApi : adminOrderApi;
+    const activeBookingApi = isStaffRoute ? staffBookingApi : adminBookingApi;
+
     const [scannedOrder, setScannedOrder] = useState(null);
     const [scanError, setScanError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -223,7 +240,6 @@ export default function QRScanner() {
     const [isPaid, setIsPaid] = useState(false);
     const [proofImage, setProofImage] = useState(null);
     const [proofNotes, setProofNotes] = useState('');
-    const html5QrcodeScanner = useRef(null);
     const scanResultRef = useRef(null);
     const videoCheckRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -265,13 +281,28 @@ export default function QRScanner() {
         return () => {
             obs.disconnect();
             clearInterval(videoCheckRef.current);
-            if (qrScannerRef.current) {
-                if (qrScannerRef.current.isScanning) {
-                    qrScannerRef.current.stop().catch(err => console.error("Stop failed", err));
-                }
+            if (proofStreamRef.current) {
+                proofStreamRef.current.getTracks().forEach(track => track.stop());
+                proofStreamRef.current = null;
+            }
+            const scanner = qrScannerRef.current;
+            qrScannerRef.current = null;
+            if (scanner) {
+                const cleanup = scanner.isScanning
+                    ? scanner.stop().catch(err => console.error('Stop failed', err))
+                    : Promise.resolve();
+                cleanup.finally(() => {
+                    try { scanner.clear(); } catch { }
+                });
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (isProofCameraOpen && proofVideoRef.current && proofStreamRef.current) {
+            proofVideoRef.current.srcObject = proofStreamRef.current;
+        }
+    }, [isProofCameraOpen]);
 
     const startLightCheck = () => {
         videoCheckRef.current = setInterval(() => {
@@ -317,10 +348,10 @@ export default function QRScanner() {
 
         try {
             const releaseId = record.isBooking ? record._id : (record.orderId || record._id);
-            const releasedBy = getLoggedInUserName();
+            const releasedBy = getLoggedInUserName(isStaffRoute);
             const res = record.isBooking
-                ? await bookingApi.markAsPickedUp(releaseId, proofImg, pNotes, releasedBy)
-                : await orderApi.markAsReleased(releaseId, proofImg, pNotes, releasedBy);
+                ? await activeBookingApi.markAsPickedUp(releaseId, proofImg, pNotes, releasedBy)
+                : await activeOrderApi.markAsReleased(releaseId, proofImg, pNotes, releasedBy);
 
             if (res.success) {
                 finalizeSuccessfulScan(record);
@@ -332,7 +363,8 @@ export default function QRScanner() {
                 setScannedOrder(null);
             }
         } catch (err) {
-            setScanError(err.message?.toLowerCase().includes('already') ? getAlreadyHandledMessage(record.isBooking, err.message) : `Error: ${err.message}`);
+            const errMsg = err.response?.data?.message || err.message || 'Failed to update record.';
+            setScanError(errMsg.toLowerCase().includes('already') ? getAlreadyHandledMessage(record.isBooking, errMsg) : `Error: ${errMsg}`);
             setResultKey(k => k + 1);
             setScanState('error');
             setScannedOrder(null);
@@ -359,51 +391,58 @@ export default function QRScanner() {
             }
 
             let order = null, isBooking = false;
+            let authErrorMessage = '';
             const shouldCheckOrder = !isBookingPayload;
             const shouldCheckBooking = !isOrderPayload;
 
             if (shouldCheckOrder) {
                 try {
-                    const r = await orderApi.getOrderById(scannedId);
+                    const r = await activeOrderApi.getOrderForQRScan(scannedId);
                     order = extractScannedRecord(r);
                 } catch (e) {
-                    if (e.response?.status && e.response.status !== 404) {
+                    const status = e.response?.status;
+                    if (status === 401 || status === 403) {
+                        authErrorMessage = e.response?.data?.message || 'Session unauthorized. Please sign in again.';
+                    } else if (status && status !== 404) {
                         console.error('Order lookup failed:', e);
                     }
                 }
             }
 
-            if (!order && shouldCheckBooking) {
+            if (!order && !authErrorMessage && shouldCheckBooking) {
                 try {
-                    const r = await bookingApi.getBookingById(scannedId);
+                    const r = await activeBookingApi.getBookingForQRScan(scannedId);
                     const booking = extractScannedRecord(r);
                     if (booking) {
                         order = booking;
                         isBooking = true;
                     }
                 } catch (err) {
-                    const s = err.response?.status;
-                    if (s === 404 || s === 500) {
-                        try {
-                            const rel = await bookingApi.markAsPickedUp(scannedId);
-                            if (rel?.success) { finalizeSuccessfulScan({ _id: scannedId, isBooking: true, paid: true }); return; }
-                            else { const m = rel?.message || ''; if (m.toLowerCase().includes('already')) { setScanError(getAlreadyHandledMessage(true, m)); setResultKey(k => k + 1); setScanState('error'); return; } }
-                        } catch (re) {
-                            if (re.response?.status === 400) {
-                                const m = re.response?.data?.message || '';
-                                setScanError(m.toLowerCase().includes('not found') ? `Order "${scannedId}" not found.` : m.toLowerCase().includes('already') ? getAlreadyHandledMessage(true, m) : m || 'Invalid order ID.');
-                                setResultKey(k => k + 1); setScanState('error'); return;
-                            }
-                        }
+                    const status = err.response?.status;
+                    if (status === 401 || status === 403) {
+                        authErrorMessage = err.response?.data?.message || 'Session unauthorized. Please sign in again.';
+                    } else if (status && status !== 404) {
+                        console.error('Booking lookup failed:', err);
                     }
                 }
+            }
+
+            if (authErrorMessage) {
+                setScanError(authErrorMessage);
+                setResultKey(k => k + 1);
+                setScanState('error');
+                return;
             }
 
             if (order) {
                 const scannedRecord = { ...order, isBooking };
                 const alreadyHandled = order.status === 'Released' || order.released || order.isReleased || order.isPickedUp;
-                if (alreadyHandled) { setScanError(getAlreadyHandledMessage(isBooking, order.status)); setResultKey(k => k + 1); setScanState('error'); setScannedOrder(null); }
-                else {
+                if (alreadyHandled) {
+                    setScanError(getAlreadyHandledMessage(isBooking, order.status));
+                    setResultKey(k => k + 1);
+                    setScanState('error');
+                    setScannedOrder(null);
+                } else {
                     setScannedOrder(scannedRecord);
                     setResultKey(k => k + 1);
                     setScanState('proof');
@@ -412,11 +451,13 @@ export default function QRScanner() {
                 }
             } else {
                 setScanError(`Order "${scannedId}" not found. QR may be invalid or expired.`);
-                setResultKey(k => k + 1); setScanState('error');
+                setResultKey(k => k + 1);
+                setScanState('error');
             }
         } catch (err) {
             setScanError(`Error: ${err.message}`);
-            setResultKey(k => k + 1); setScanState('error');
+            setResultKey(k => k + 1);
+            setScanState('error');
         } finally {
             setIsLoading(false);
         }
@@ -432,9 +473,10 @@ export default function QRScanner() {
         stopProofCamera();
     };
 
-    const startProofCamera = async (mode = proofFacingMode) => {
+    const startProofCamera = async (modeArg = proofFacingMode) => {
+        const mode = typeof modeArg === 'string' ? modeArg : proofFacingMode;
         setIsProofCameraOpen(true);
-        triggerStopCamera(); // Stop QR scanner
+        await triggerStopCamera(); // Ensure QR scanner releases camera before proof stream starts
         try {
             if (proofStreamRef.current) {
                 proofStreamRef.current.getTracks().forEach(track => track.stop());
@@ -524,8 +566,9 @@ export default function QRScanner() {
         }
     };
 
-    const triggerStartCamera = async (mode = facingMode) => {
+    const triggerStartCamera = async (modeArg = facingMode) => {
         if (!qrScannerRef.current) return;
+        const mode = typeof modeArg === 'string' ? modeArg : facingMode;
 
         if (qrScannerRef.current.isScanning) {
             try {
@@ -699,7 +742,7 @@ export default function QRScanner() {
                                 </div>
                                 <div className="flex items-center gap-2 px-3.5 py-3 border-t border-gray-100 bg-white">
                                     {!cameraActive ? (
-                                        <button onClick={triggerStartCamera}
+                                        <button onClick={() => triggerStartCamera()}
                                             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-xs font-semibold transition-all cursor-pointer border-none">
                                             <Camera size={13} />
                                             Start Camera

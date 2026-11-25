@@ -208,6 +208,37 @@ export const getOrderById = async (req, res) => {
   }
 };
 
+// Lookup order for QR scanner (any authenticated staff or admin)
+export const getOrderForQRScan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const lookupQuery = buildOrderLookupQuery(id);
+
+    if (!lookupQuery) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const order = await orderModel
+      .findOne(lookupQuery)
+      .populate('userId', 'fullName email');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const invoice = await invoiceModel.findOne({ orderId: order._id });
+
+    res.json({
+      success: true,
+      order: serializeOrderWithWorkflowStatus(order, invoice),
+      invoice,
+    });
+  } catch (error) {
+    console.error('Get Order For QR Scan Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch order for QR scan' });
+  }
+};
+
 
 export const updateOrderStatus = async (req, res) => {
   try {

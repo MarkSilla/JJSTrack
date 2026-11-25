@@ -15,6 +15,7 @@ import {
   saveManualBookedCounts,
   deleteBookingDateStatus,
   getBookingQR,
+  getBookingForQRScan,
   markAsPickedUp,
   generateMissingBookingQRCodes,
   archiveBooking,
@@ -41,7 +42,8 @@ router.get('/:id/qr', authMiddleware, getBookingQR);
 router.post('/:id/archive', authMiddleware, adminMiddleware, archiveBooking);
 router.post('/:id/unarchive', authMiddleware, adminMiddleware, unarchiveBooking);
 
-// QR code scanning - mark booking as picked up
+// QR code scanning - lookup and mark booking as picked up
+router.get('/qr/:id', authMiddleware, staffMiddleware, getBookingForQRScan);
 router.post('/qr/pickup', authMiddleware, markAsPickedUp);
 
 // Admin only - generate missing QR codes

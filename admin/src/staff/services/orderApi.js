@@ -27,6 +27,16 @@ export const orderApi = {
     return response.data;
   },
 
+  getOrderForQRScan: async (id) => {
+    const response = await api.get(`/orders/qr/${encodeURIComponent(id)}`);
+    return response.data;
+  },
+
+  markAsReleased: async (orderId, releaseProofImage, releaseNotes, releasedBy) => {
+    const response = await api.post('/orders/qr/release', { orderId, releaseProofImage, releaseNotes, releasedBy });
+    return response.data;
+  },
+
   updateOrder: async (id, data) => {
     if (data?.steps) {
       const response = await api.put(`/orders/${id}/steps`, {
